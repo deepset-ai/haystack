@@ -36,7 +36,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
 <a name="base.BaseRetriever.timing"></a>
 #### timing
@@ -80,7 +80,7 @@ position in the ranking of documents the correct document is.
                     are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                      contains the keys "predictions" and "metrics".
-- `headers`: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
 <a name="sparse"></a>
 # Module sparse
@@ -152,7 +152,8 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
 ## ElasticsearchFilterOnlyRetriever
@@ -180,7 +181,8 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="sparse.TfidfRetriever"></a>
 ## TfidfRetriever

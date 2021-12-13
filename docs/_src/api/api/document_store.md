@@ -284,7 +284,8 @@ Get values associated with a metadata key. The output is in the format:
 - `filters`: narrow down the scope to documents that match the given filters.
 - `index`: Elasticsearch index where the meta values should be searched. If not supplied,
               self.index will be used.
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
 #### write\_documents
@@ -319,7 +320,8 @@ they will automatically get UUIDs assigned. See the `Document` class for details
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 **Raises**:
 
@@ -343,7 +345,8 @@ Write annotation labels into document store.
 - `labels`: A list of Python dictionaries or a list of Haystack Label objects.
 - `index`: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
 - `batch_size`: Number of labels that are passed to Elasticsearch's bulk function at a time.
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.update_document_meta"></a>
 #### update\_document\_meta
@@ -398,7 +401,8 @@ Get documents from the document store.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_all_documents_generator"></a>
 #### get\_all\_documents\_generator
@@ -419,7 +423,8 @@ a large number of documents without having to load all documents in memory.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_all_labels"></a>
 #### get\_all\_labels
@@ -446,7 +451,8 @@ that are most relevant to the query as defined by the BM25 algorithm.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.query_by_embedding"></a>
 #### query\_by\_embedding
@@ -465,7 +471,8 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 **Returns**:
 
@@ -501,7 +508,8 @@ This can be useful if want to add or change the embeddings for your documents (e
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 **Returns**:
 
@@ -520,7 +528,8 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 - `index`: Index name to delete the document from.
 - `filters`: Optional filters to narrow down the documents to be deleted.
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 **Returns**:
 
@@ -545,7 +554,8 @@ Delete documents in an index. All documents are deleted if no filters are passed
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 **Returns**:
 
@@ -567,7 +577,8 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 - `ids`: Optional list of IDs to narrow down the labels to be deleted.
 - `filters`: Optional filters to narrow down the labels to be deleted.
     Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 **Returns**:
 
@@ -602,7 +613,8 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
-- `headers`: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 **Returns**:
 
@@ -2030,7 +2042,7 @@ Create a new index (also called repository) stored in the GraphDB instance
 **Arguments**:
 
 - `config_path`: path to a .ttl file with configuration settings, details:
-- `headers`: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically
 
 <a name="graphdb.GraphDBKnowledgeGraph.delete_index"></a>
@@ -2044,7 +2056,7 @@ Delete the index that GraphDBKnowledgeGraph is connected to. This method deletes
 
 **Arguments**:
 
-- `headers`: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 
 <a name="graphdb.GraphDBKnowledgeGraph.import_from_ttl_file"></a>
 #### import\_from\_ttl\_file
@@ -2059,7 +2071,7 @@ Load an existing knowledge graph represented in the form of triples of subject, 
 
 - `index`: name of the index (also called repository) in the GraphDB instance where the imported triples shall be stored
 - `path`: path to a .ttl containing a knowledge graph
-- `headers`: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 
 <a name="graphdb.GraphDBKnowledgeGraph.get_all_triples"></a>
 #### get\_all\_triples
@@ -2073,7 +2085,7 @@ Query the given index in the GraphDB instance for all its stored triples. Duplic
 **Arguments**:
 
 - `index`: name of the index (also called repository) in the GraphDB instance
-- `headers`: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 
 **Returns**:
 
@@ -2091,7 +2103,7 @@ Query the given index in the GraphDB instance for all its stored subjects. Dupli
 **Arguments**:
 
 - `index`: name of the index (also called repository) in the GraphDB instance
-- `headers`: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 
 **Returns**:
 
@@ -2109,7 +2121,7 @@ Query the given index in the GraphDB instance for all its stored predicates. Dup
 **Arguments**:
 
 - `index`: name of the index (also called repository) in the GraphDB instance
-- `headers`: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 
 **Returns**:
 
@@ -2127,7 +2139,7 @@ Query the given index in the GraphDB instance for all its stored objects. Duplic
 **Arguments**:
 
 - `index`: name of the index (also called repository) in the GraphDB instance
-- `headers`: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 
 **Returns**:
 
@@ -2146,7 +2158,7 @@ Execute a SPARQL query on the given index in the GraphDB instance
 
 - `sparql_query`: SPARQL query that shall be executed
 - `index`: name of the index (also called repository) in the GraphDB instance
-- `headers`: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
+- `headers`: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 
 **Returns**:
 
