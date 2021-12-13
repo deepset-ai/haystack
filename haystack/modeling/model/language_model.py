@@ -484,6 +484,8 @@ class Bert(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: bool = False,
+        output_attentions: bool = False,
         **kwargs,
     ):
         """
@@ -501,13 +503,17 @@ class Bert(LanguageModel):
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=self.model.encoder.config.output_hidden_states or output_hidden_states,
+            output_attentions=self.model.encoder.config.output_attentions or output_attentions,
+            return_dict=False
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
+#        if self.model.encoder.config.output_hidden_states == True:
+#            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
+#            return sequence_output, pooled_output, all_hidden_states
+#        else:
+#            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
+#            return sequence_output, pooled_output
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True

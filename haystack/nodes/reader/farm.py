@@ -7,7 +7,7 @@ from collections import defaultdict
 from time import perf_counter
 import torch
 
-from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
+from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo, TinyBERTDistillationDataSilo
 from haystack.modeling.data_handler.processor import SquadProcessor
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.inputs import QAInput, Question
@@ -15,7 +15,7 @@ from haystack.modeling.infer import QAInferencer
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.model.predictions import QAPred, QACandidate
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.training import Trainer, DistillationTrainer
+from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
 from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
@@ -181,7 +181,8 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
-        temperature: float = 1.0
+        temperature: float = 1.0,
+        tinybert: bool = False,
     ):
         if dev_filename:
             dev_split = 0
@@ -221,7 +222,10 @@ class FARMReader(BaseReader):
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
-        if teacher_model: # checks if teacher model is passed as parameter, in that case assume model distillation is used
+        if tinybert:
+            data_silo = TinyBERTDistillationDataSilo(teacher_model, teacher_batch_size or batch_size, device=devices[0], processor=processor, batch_size=batch_size, distributed=False,
+            max_processes=num_processes, caching=caching, cache_path=cache_path)
+        elif teacher_model: # checks if teacher model is passed as parameter, in that case assume model distillation is used
             data_silo = DistillationDataSilo(teacher_model, teacher_batch_size or batch_size, device=devices[0], processor=processor, batch_size=batch_size, distributed=False,
             max_processes=num_processes, caching=caching, cache_path=cache_path)
         else:
@@ -239,7 +243,22 @@ class FARMReader(BaseReader):
             use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        if teacher_model: # checks again if teacher model is passed as parameter, in that case assume model distillation is used
+        if tinybert:
+            trainer = TinyBERTDistillationTrainer(
+                model=model,
+                optimizer=optimizer,
+                lr_schedule=lr_schedule,
+                data_silo=data_silo,
+                save_dir=Path(save_dir),
+                evaluate_every=evaluate_every,
+                checkpoint_every=checkpoint_every,
+                checkpoints_to_keep=checkpoints_to_keep,
+                use_gpu=use_gpu,
+                devices=devices,
+                n_gpu=n_gpu,
+                tinybert=True,
+            )
+        elif teacher_model: # checks again if teacher model is passed as parameter, in that case assume model distillation is used
             trainer = DistillationTrainer.create_or_load_checkpoint(
                 model=model,
                 optimizer=optimizer,
