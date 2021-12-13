@@ -63,7 +63,7 @@ class BaseRetriever(BaseComponent):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
         pass
 
@@ -115,7 +115,7 @@ class BaseRetriever(BaseComponent):
                             are within ids explicitly stated in the labels.
         :param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                              contains the keys "predictions" and "metrics".
-        :param headers: custom HTTP headers to pass to document store client if available (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
 
         # Extract all questions for evaluation

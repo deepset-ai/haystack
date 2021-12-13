@@ -379,7 +379,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: narrow down the scope to documents that match the given filters.
         :param index: Elasticsearch index where the meta values should be searched. If not supplied,
                       self.index will be used.
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         body: dict = {"size": 0, "aggs": {"metadata_agg": {"terms": {"field": key}}}}
         if query:
@@ -430,7 +431,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -499,7 +501,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param labels: A list of Python dictionaries or a list of Haystack Label objects.
         :param index: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
         :param batch_size: Number of labels that are passed to Elasticsearch's bulk function at a time.
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.label_index
         if index and not self.client.indices.exists(index=index, headers=headers):
@@ -628,7 +631,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size, headers=headers
@@ -656,7 +660,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
 
         if index is None:
@@ -732,7 +737,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
 
         if index is None:
@@ -822,7 +828,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return:
         """
         if index is None:
@@ -1018,7 +1025,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
         if index is None:
@@ -1076,7 +1084,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
         logger.warning(
@@ -1099,7 +1108,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
         index = index or self.index
@@ -1135,7 +1145,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
             Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
         index = index or self.label_index
@@ -1186,7 +1197,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
-        :param headers: custom HTTP headers to pass to es client (e.g. user token with 'Authorization' header)
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return:
         """
         if index is None:
