@@ -121,6 +121,15 @@ def pytest_collection_modifyitems(config,items):
 
 @pytest.fixture(scope="function", autouse=True)
 def multiprocessing_cleanup(request):
+    """
+    Cleanup multiprocessing environment. Some nodes (e.g. FARMReader) currently do not properly close their multiprocessing pools after usage.
+    This is not an issue if the nodes live as long as the processes in which they are running.
+    In tests however we often use specific nodes for one test only and afterwards run further tests.
+    This puts unnecessary memory pressure on the testing environment.
+    """
+
+    # REST_API instantiates only one pipeline / multiprocessing pool that is used beyond test functions.
+    # We must not close that. Proper closing is done in rest_rest_api.py.
     if request.module.__name__ == "test_rest_api":
         return
     yield

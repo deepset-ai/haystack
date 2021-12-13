@@ -71,6 +71,15 @@ def populated_client(client: TestClient) -> TestClient:
 
 @pytest.fixture(scope="module", autouse=True)
 def multiprocessing_cleanup():
+    """
+    Cleanup multiprocessing environment. Some nodes (e.g. FARMReader) currently do not properly close their multiprocessing pools after usage.
+    This is not an issue if the nodes live as long as the processes in which they are running.
+    In tests however we often use specific nodes for one test only and afterwards run further tests.
+    This puts unnecessary memory pressure on the testing environment.
+    """
+
+    # REST_API instantiates only one pipeline / multiprocessing pool that is used beyond test functions.
+    # We must not close that between tests but after the test module has run.
     yield
     import objgraph
     pools = objgraph.by_type('Pool')
