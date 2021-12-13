@@ -244,20 +244,22 @@ class FARMReader(BaseReader):
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         if tinybert:
-            trainer = TinyBERTDistillationTrainer(
+            trainer = TinyBERTDistillationTrainer.create_or_load_checkpoint(
                 model=model,
                 optimizer=optimizer,
-                lr_schedule=lr_schedule,
                 data_silo=data_silo,
-                save_dir=Path(save_dir),
+                epochs=n_epochs,
+                n_gpu=n_gpu,
+                lr_schedule=lr_schedule,
                 evaluate_every=evaluate_every,
+                device=devices[0],
+                use_amp=use_amp,
+                disable_tqdm=not self.progress_bar,
+                checkpoint_root_dir=Path(checkpoint_root_dir),
                 checkpoint_every=checkpoint_every,
                 checkpoints_to_keep=checkpoints_to_keep,
-                use_gpu=use_gpu,
-                devices=devices,
-                n_gpu=n_gpu,
-                tinybert=True,
             )
+
         elif teacher_model: # checks again if teacher model is passed as parameter, in that case assume model distillation is used
             trainer = DistillationTrainer.create_or_load_checkpoint(
                 model=model,
