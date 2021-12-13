@@ -639,7 +639,7 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         doc_relevance_col: str = "gold_id_match",
-        node_input: str = "pipeline"
+        node_input: str = "prediction"
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
@@ -668,12 +668,12 @@ class EvaluationResult:
         :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
             values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
         :param node_input: the input on which the node was evaluated on.
-            Usually nodes get evaluated on the input provided by its predecessor nodes in the pipeline (value='pipeline').
+            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='prediction').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
             you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
-            For example when evaluating the reader use value='labels' to simulate a perfect retriever in an ExtractiveQAPipeline.
-            Values can be 'pipeline', 'labels'. 
-            Default value is 'pipeline'.
+            For example when evaluating the reader use value='label' to simulate a perfect retriever in an ExtractiveQAPipeline.
+            Values can be 'prediction', 'label'. 
+            Default value is 'prediction'.
         """
         return {node: self._calculate_node_metrics(df, 
                     simulated_top_k_reader=simulated_top_k_reader, 
@@ -691,7 +691,7 @@ class EvaluationResult:
         doc_relevance_col: str = "gold_id_match",
         document_metric: str = "recall_single_hit",
         answer_metric: str = "f1",
-        node_input: str = "pipeline"
+        node_input: str = "prediction"
     ) -> List[Dict]:
         """
         Returns the worst performing queries. 
@@ -711,12 +711,12 @@ class EvaluationResult:
         :param document_metric: the answer metric worst queries are calculated with.
             values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
         :param node_input: the input on which the node was evaluated on.
-            Usually nodes get evaluated on the input provided by its predecessor nodes in the pipeline (value='pipeline').
+            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='prediction').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
             you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
-            For example when evaluating the reader use value='labels' to simulate a perfect retriever in an ExtractiveQAPipeline.
-            Values can be 'pipeline', 'labels'. 
-            Default value is 'pipeline'.
+            For example when evaluating the reader use value='label' to simulate a perfect retriever in an ExtractiveQAPipeline.
+            Values can be 'prediction', 'label'. 
+            Default value is 'prediction'.
         """
         node_df = self.node_results[node]
         node_df = self._filter_node_input(node_df, node_input)
@@ -771,7 +771,7 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         doc_relevance_col: str = "gold_id_match",
-        node_input: str = "pipeline"
+        node_input: str = "prediction"
     ) -> Dict[str, float]:
         df = self._filter_node_input(df, node_input)
 
@@ -786,10 +786,10 @@ class EvaluationResult:
         return {**answer_metrics, **document_metrics}
 
     def _filter_node_input(self, df: pd.DataFrame, node_input: str) -> pd.DataFrame:
-        if "input" in df.columns:
+        if "node_input" in df.columns:
             df = df[df["node_input"] == node_input]
         else:
-            logger.warning("eval dataframe has no input column. node_input param will be ignored.")
+            logger.warning("eval dataframe has no node_input column. node_input param will be ignored.")
         return df
 
     def _calculate_answer_metrics(
