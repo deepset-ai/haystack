@@ -1,4 +1,4 @@
-from typing import Generator, MutableMapping, Optional, Dict, List, Union
+from typing import Generator, Optional, Dict, List, Union
 
 import logging
 import collections
@@ -34,12 +34,12 @@ class BaseKnowledgeGraph(BaseComponent):
     """
     outgoing_edges = 1
 
-    def run(self, sparql_query: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None):  # type: ignore
+    def run(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):  # type: ignore
         result = self.query(sparql_query=sparql_query, index=index, headers=headers)
         output = {"sparql_result": result}
         return output, "output_1"
 
-    def query(self, sparql_query: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None):
+    def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         raise NotImplementedError
 
 

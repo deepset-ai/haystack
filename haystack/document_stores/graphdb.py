@@ -1,4 +1,4 @@
-from typing import MutableMapping, Optional
+from typing import Dict, Optional
 
 import requests
 from pathlib import Path
@@ -42,7 +42,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         self.password = password
         self.prefixes = prefixes
 
-    def create_index(self, config_path: Path, headers: MutableMapping[str, str] = None):
+    def create_index(self, config_path: Path, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index (also called repository) stored in the GraphDB instance
         
@@ -60,7 +60,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         if response.status_code > 299:
             raise Exception(response.text)
 
-    def delete_index(self, headers: MutableMapping[str, str] = None):
+    def delete_index(self, headers: Optional[Dict[str, str]] = None):
         """
         Delete the index that GraphDBKnowledgeGraph is connected to. This method deletes all data stored in the index.
         :param headers: custom HTTP headers to pass to http client if available (e.g. user token with 'Authorization' header)
@@ -70,7 +70,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         if response.status_code > 299:
             raise Exception(response.text)
 
-    def import_from_ttl_file(self, index: str, path: Path, headers: MutableMapping[str, str] = None):
+    def import_from_ttl_file(self, index: str, path: Path, headers: Optional[Dict[str, str]] = None):
         """
         Load an existing knowledge graph represented in the form of triples of subject, predicate, and object from a .ttl file into an index of GraphDB
         
@@ -89,7 +89,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         if response.status_code > 299:
             raise Exception(response.text)
 
-    def get_all_triples(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None):
+    def get_all_triples(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
         Query the given index in the GraphDB instance for all its stored triples. Duplicates are not filtered.
         
@@ -101,7 +101,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         results = self.query(sparql_query=sparql_query, index=index, headers=headers)
         return results
 
-    def get_all_subjects(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None):
+    def get_all_subjects(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
         Query the given index in the GraphDB instance for all its stored subjects. Duplicates are not filtered.
         
@@ -113,7 +113,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         results = self.query(sparql_query=sparql_query, index=index, headers=headers)
         return results
 
-    def get_all_predicates(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None):
+    def get_all_predicates(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
         Query the given index in the GraphDB instance for all its stored predicates. Duplicates are not filtered.
         
@@ -125,7 +125,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         results = self.query(sparql_query=sparql_query, index=index, headers=headers)
         return results
 
-    def get_all_objects(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None):
+    def get_all_objects(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
         Query the given index in the GraphDB instance for all its stored objects. Duplicates are not filtered.
         
@@ -137,7 +137,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         results = self.query(sparql_query=sparql_query, index=index, headers=headers)
         return results
 
-    def query(self, sparql_query: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None):
+    def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
         Execute a SPARQL query on the given index in the GraphDB instance
         

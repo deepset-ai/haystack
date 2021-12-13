@@ -1,4 +1,4 @@
-from typing import List, Dict, MutableMapping, Union, Optional
+from typing import List, Dict, Union, Optional
 
 import logging
 import numpy as np
@@ -194,7 +194,7 @@ class DensePassageRetriever(BaseRetriever):
         if len(self.devices) > 1:
             self.model = DataParallel(self.model, device_ids=self.devices)
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -643,7 +643,7 @@ class TableTextRetriever(BaseRetriever):
         if len(self.devices) > 1:
             self.model = DataParallel(self.model, device_ids=self.devices)
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
         if not self.document_store:
@@ -1029,7 +1029,7 @@ class EmbeddingRetriever(BaseRetriever):
             raise ValueError(f"Unknown retriever embedding model format {model_format}")
         self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.

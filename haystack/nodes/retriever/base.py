@@ -1,4 +1,4 @@
-from typing import List, MutableMapping, Optional
+from typing import Dict, List, Optional
 
 import logging
 from abc import abstractmethod
@@ -54,7 +54,7 @@ class BaseRetriever(BaseComponent):
         filters: dict = None, 
         top_k: Optional[int] = None, 
         index: str = None,
-        headers: MutableMapping[str, str] = None) -> List[Document]:
+        headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -88,7 +88,7 @@ class BaseRetriever(BaseComponent):
         top_k: int = 10,
         open_domain: bool = False,
         return_preds: bool = False,
-        headers: MutableMapping[str, str] = None
+        headers: Optional[Dict[str, str]] = None
     ) -> dict:
         """
         Performs evaluation on the Retriever.
@@ -225,7 +225,7 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         documents: Optional[List[dict]] = None,
         index: Optional[str] = None,
-        headers: MutableMapping[str, str] = None
+        headers: Optional[Dict[str, str]] = None
     ):
         if root_node == "Query":
             self.query_count += 1
@@ -245,7 +245,7 @@ class BaseRetriever(BaseComponent):
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
-        headers: MutableMapping[str, str] = None
+        headers: Optional[Dict[str, str]] = None
     ):
         documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
         document_ids = [doc.id for doc in documents]
@@ -254,7 +254,7 @@ class BaseRetriever(BaseComponent):
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[dict], headers: MutableMapping[str, str] = None):
+    def run_indexing(self, documents: List[dict], headers: Optional[Dict[str, str]] = None):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             documents = deepcopy(documents)
             document_objects = [Document.from_dict(doc) for doc in documents]

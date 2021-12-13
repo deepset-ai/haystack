@@ -1,4 +1,4 @@
-from typing import List, MutableMapping, Optional
+from typing import Dict, List, Optional
 
 import logging
 import pandas as pd
@@ -64,7 +64,7 @@ class ElasticsearchRetriever(BaseRetriever):
         filters: dict = None, 
         top_k: Optional[int] = None, 
         index: str = None,
-        headers: MutableMapping[str, str] = None) -> List[Document]:
+        headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -95,7 +95,7 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         filters: dict = None, 
         top_k: Optional[int] = None, 
         index: str = None, 
-        headers: MutableMapping[str, str] = None) -> List[Document]:
+        headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -181,7 +181,7 @@ class TfidfRetriever(BaseRetriever):
         )
         return indices_and_scores
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: MutableMapping[str, str] = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.

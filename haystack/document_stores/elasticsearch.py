@@ -1,4 +1,4 @@
-from typing import List, MutableMapping, Optional, Union, Dict, Any, Generator
+from typing import List, Optional, Union, Dict, Any, Generator
 
 import json
 import logging
@@ -243,7 +243,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             hosts = [{"host": host, "port": port}]
         return hosts
 
-    def _create_document_index(self, index_name: str, headers: MutableMapping[str, str] = None):
+    def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents. In case if an index with the name already exists, it ensures that
         the embedding_field is present.
@@ -307,7 +307,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
-    def _create_label_index(self, index_name: str, headers: MutableMapping[str, str] = None):
+    def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         if self.client.indices.exists(index=index_name, headers=headers):
             return
         mapping = {
@@ -345,7 +345,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding"
         }
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, **kwargs) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
         index = index or self.index
         documents = self.get_documents_by_id([id], index=index, headers=headers)
@@ -354,7 +354,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, **kwargs) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
         index = index or self.index
         query = {"query": {"ids": {"values": ids}}}
@@ -368,7 +368,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         query: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         index: Optional[str] = None, 
-        headers: MutableMapping[str, str] = None
+        headers: Optional[Dict[str, str]] = None
     ) -> List[dict]:
         """
         Get values associated with a metadata key. The output is in the format:
@@ -404,7 +404,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
                         batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
-                        headers: MutableMapping[str, str] = None, **kwargs):
+                        headers: Optional[Dict[str, str]] = None, **kwargs):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -490,7 +490,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self, 
         labels: Union[List[Label], List[dict]], 
         index: Optional[str] = None, 
-        headers: MutableMapping[str, str] = None,
+        headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000,
         **kwargs
     ):
@@ -541,7 +541,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if labels_to_index:
             bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], headers: MutableMapping[str, str] = None):
+    def update_document_meta(self, id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
@@ -549,7 +549,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.client.update(index=self.index, id=id, body=body, refresh=self.refresh_type, headers=headers)
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None,
-                           only_documents_without_embedding: bool = False, headers: MutableMapping[str, str] = None, **kwargs) -> int:
+                           only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None, **kwargs) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -577,14 +577,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         count = result["count"]
         return count
 
-    def get_label_count(self, index: Optional[str] = None, headers: MutableMapping[str, str] = None, **kwargs) -> int:
+    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, **kwargs) -> int:
         """
         Return the number of labels in the document store
         """
         index = index or self.label_index
         return self.get_document_count(index=index, headers=headers)
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
@@ -616,7 +616,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None,
+        headers: Optional[Dict[str, str]] = None,
         **kwargs
     ) -> List[Document]:
         """
@@ -642,7 +642,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None,
+        headers: Optional[Dict[str, str]] = None,
         **kwargs
     ) -> Generator[Document, None, None]:
         """
@@ -674,7 +674,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self, 
         index: Optional[str] = None, 
         filters: Optional[Dict[str, List[str]]] = None, 
-        headers: MutableMapping[str, str] = None,
+        headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000, 
         **kwargs
     ) -> List[Label]:
@@ -692,7 +692,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
-        headers: MutableMapping[str, str] = None
+        headers: Optional[Dict[str, str]] = None
     ) -> Generator[dict, None, None]:
         """
         Return all documents in a specific index in the document store
@@ -722,7 +722,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
-        headers: MutableMapping[str, str] = None
+        headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -811,7 +811,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None,
-                           headers: MutableMapping[str, str] = None,
+                           headers: Optional[Dict[str, str]] = None,
                            **kwargs) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1003,7 +1003,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
-        headers: MutableMapping[str, str] = None
+        headers: Optional[Dict[str, str]] = None
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1070,7 +1070,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None, **kwargs):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None, **kwargs):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -1087,7 +1087,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters, headers=headers)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None, **kwargs):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None, **kwargs):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -1126,7 +1126,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: MutableMapping[str, str] = None, **kwargs):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None, **kwargs):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
@@ -1175,7 +1175,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         top_k: int = 10,
                         index: Optional[str] = None,
                         return_embedding: Optional[bool] = None,
-                        headers: MutableMapping[str, str] = None,
+                        headers: Optional[Dict[str, str]] = None,
                         **kwargs) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1247,7 +1247,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             ]
             return documents
 
-    def _create_document_index(self, index_name: str, headers: MutableMapping[str, str] = None):
+    def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents.
         """
@@ -1324,7 +1324,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
-    def _create_label_index(self, index_name: str, headers: MutableMapping[str, str] = None):
+    def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         if self.client.indices.exists(index=index_name, headers=headers):
             return
         mapping = {
