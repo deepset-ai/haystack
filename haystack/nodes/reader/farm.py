@@ -402,7 +402,9 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
-        temperature: float = 1.0
+        temperature: float = 1.0,
+        tinybert_loss: bool = False,
+        tinybert_epochs: int = 1,
     ):
         """
         Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -461,6 +463,18 @@ class FARMReader(BaseReader):
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         :return: None
         """
+        if tinybert_loss:
+            self._training_procedure(data_dir=data_dir, train_filename=train_filename,
+            dev_filename=dev_filename, test_filename=test_filename,
+            use_gpu=use_gpu, batch_size=student_batch_size,
+            n_epochs=tinybert_epochs, learning_rate=learning_rate,
+            max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
+            dev_split=dev_split, evaluate_every=evaluate_every,
+            save_dir=save_dir, num_processes=num_processes,
+            use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
+            checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
+            teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
+            caching=caching, cache_path=cache_path, tinybert=True)
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
         dev_filename=dev_filename, test_filename=test_filename,
         use_gpu=use_gpu, batch_size=student_batch_size,
