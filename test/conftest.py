@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import time
 from subprocess import run
@@ -39,6 +40,9 @@ from haystack.nodes.reader.table import TableReader
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
+
+
+logger = logging.getLogger(__name__)
 
 
 def pytest_addoption(parser):
@@ -133,12 +137,16 @@ def multiprocessing_cleanup(request):
     if request.module.__name__ == "test_rest_api":
         return
     yield
+    logger.info("multiprocessing cleanup running")
     import objgraph
     pools = objgraph.by_type('Pool')
     for pool in pools:
         if isinstance(pool, mp.pool.Pool):
+            logger.info(f"closing multiprocessing pool: {pool}")
             pool.close()
+    logger.info("running garbage collection")
     gc.collect()
+    logger.info("multiprocessing cleanup finished")
 
 @pytest.fixture(scope="session")
 def elasticsearch_fixture():
