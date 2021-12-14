@@ -222,10 +222,7 @@ class FARMReader(BaseReader):
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
-        if tinybert:
-            data_silo = TinyBERTDistillationDataSilo(teacher_model, teacher_batch_size or batch_size, device=devices[0], processor=processor, batch_size=batch_size, distributed=False,
-            max_processes=num_processes, caching=caching, cache_path=cache_path)
-        elif teacher_model: # checks if teacher model is passed as parameter, in that case assume model distillation is used
+        if teacher_model and not tinybert: # checks if teacher model is passed as parameter, in that case assume model distillation is used
             data_silo = DistillationDataSilo(teacher_model, teacher_batch_size or batch_size, device=devices[0], processor=processor, batch_size=batch_size, distributed=False,
             max_processes=num_processes, caching=caching, cache_path=cache_path)
         else:
@@ -246,6 +243,7 @@ class FARMReader(BaseReader):
         if tinybert:
             trainer = TinyBERTDistillationTrainer.create_or_load_checkpoint(
                 model=model,
+                teacher_model=teacher_model.inferencer.model,
                 optimizer=optimizer,
                 data_silo=data_silo,
                 epochs=n_epochs,
