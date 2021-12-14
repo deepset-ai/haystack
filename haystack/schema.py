@@ -638,7 +638,8 @@ class EvaluationResult:
         self, 
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_match"
+        doc_relevance_col: str = "gold_id_match",
+        node_input: str = "prediction"
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
@@ -666,11 +667,19 @@ class EvaluationResult:
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
         :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
             values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+        :param node_input: the input on which the node was evaluated on.
+            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='prediction').
+            However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
+            you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
+            For example when evaluating the reader use value='label' to simulate a perfect retriever in an ExtractiveQAPipeline.
+            Values can be 'prediction', 'label'. 
+            Default value is 'prediction'.
         """
         return {node: self._calculate_node_metrics(df, 
                     simulated_top_k_reader=simulated_top_k_reader, 
                     simulated_top_k_retriever=simulated_top_k_retriever,
-                    doc_relevance_col=doc_relevance_col) 
+                    doc_relevance_col=doc_relevance_col,
+                    node_input=node_input) 
             for node, df in self.node_results.items()}
 
     def wrong_examples(
@@ -681,7 +690,8 @@ class EvaluationResult:
         simulated_top_k_retriever: int = -1,
         doc_relevance_col: str = "gold_id_match",
         document_metric: str = "recall_single_hit",
-        answer_metric: str = "f1"
+        answer_metric: str = "f1",
+        node_input: str = "prediction"
     ) -> List[Dict]:
         """
         Returns the worst performing queries. 
@@ -700,8 +710,16 @@ class EvaluationResult:
             values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
         :param document_metric: the answer metric worst queries are calculated with.
             values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
+        :param node_input: the input on which the node was evaluated on.
+            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='prediction').
+            However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
+            you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
+            For example when evaluating the reader use value='label' to simulate a perfect retriever in an ExtractiveQAPipeline.
+            Values can be 'prediction', 'label'. 
+            Default value is 'prediction'.
         """
         node_df = self.node_results[node]
+        node_df = self._filter_node_input(node_df, node_input)
 
         answers = node_df[node_df["type"] == "answer"]
         if len(answers) > 0:
@@ -752,8 +770,11 @@ class EvaluationResult:
         df: pd.DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_match"
+        doc_relevance_col: str = "gold_id_match",
+        node_input: str = "prediction"
     ) -> Dict[str, float]:
+        df = self._filter_node_input(df, node_input)
+
         answer_metrics = self._calculate_answer_metrics(df, 
             simulated_top_k_reader=simulated_top_k_reader, 
             simulated_top_k_retriever=simulated_top_k_retriever)
@@ -763,6 +784,13 @@ class EvaluationResult:
             doc_relevance_col=doc_relevance_col)
         
         return {**answer_metrics, **document_metrics}
+
+    def _filter_node_input(self, df: pd.DataFrame, node_input: str) -> pd.DataFrame:
+        if "node_input" in df.columns:
+            df = df[df["node_input"] == node_input]
+        else:
+            logger.warning("eval dataframe has no node_input column. node_input param will be ignored.")
+        return df
 
     def _calculate_answer_metrics(
         self, 

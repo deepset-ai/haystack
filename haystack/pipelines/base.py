@@ -505,6 +505,7 @@ class Pipeline(BasePipeline):
         # add general info
         df["node"] = node_name
         df["query"] = query
+        df["node_input"] = "prediction"
 
         return df
 
