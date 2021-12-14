@@ -1,15 +1,10 @@
-from typing import Literal
-
 import uuid
 import faiss
 import math
 import numpy as np
 import pytest
 import sys
-
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
 
 from haystack.schema import Document
 from haystack.pipelines import DocumentSearchPipeline
