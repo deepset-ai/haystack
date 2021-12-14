@@ -29,43 +29,44 @@ DOCUMENTS = [
 ]
 
 DB_URL_TEMPLATES = {
-    "sqlite": "sqlite://hs-test.db",
-    "postgresql": "postgresql://sara:sara@127.0.0.1/hs_test",
+    "sqlite": lambda path: f"sqlite:////{path}/haystack_test.db",
+    "postgresql": lambda path: "postgresql://postgres:postgres@127.0.0.1/hs_test",
 }
 
 
+@pytest.fixture(autouse=True)
+def postgres_fixture():
+    with create_engine(
+        'postgresql://postgres:postgres@127.0.0.1/postgres',
+        isolation_level='AUTOCOMMIT'
+    ).connect() as connection:
 
-def reconnect(docstore, db_type):
-    """
-    Replaces the current DB connection with a completely new one.
-    Can be used to test agains other SQL databases like PostgreSQL
-    """
-    if not db_type in DB_URL_TEMPLATES.keys():
-        raise ValueError(f'"db_type" must be one of: {", ".join(DB_URL_TEMPLATES.keys())}' )
-    engine = create_engine(DB_URL_TEMPLATES[db_type])
-    db_connection = engine.connect()
+        try:
+            connection.execute('CREATE DATABASE hs_test;')
+        except Exception as e:
+            pass
 
-    Base = declarative_base()
-    Base.metadata.bind = db_connection
-    Base.metadata.create_all()
-    transaction = db_connection.begin()
+        try:
+            connection.execute('DROP SCHEMA public CASCADE;')
+        except Exception as e:
+            pass
+
+        connection.execute('CREATE SCHEMA public;')
+
+        yield   
     
-    docstore.session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=db_connection))
-    yield docstore
-
-    transaction.rollback()
-    Base.metadata.drop_all()
+        connection.execute('DROP SCHEMA public CASCADE;')
 
 
 
 @pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
-def test_faiss_index_save_and_load(tmp_path):
+@pytest.mark.parametrize("sql_url", DB_URL_TEMPLATES.keys())
+def test_faiss_index_save_and_load(tmp_path, sql_url):
     document_store = FAISSDocumentStore(
-        sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
+        sql_url=DB_URL_TEMPLATES[sql_url](tmp_path),
         index="haystack_test",
         progress_bar=False  # Just to check if the init parameters are kept
     )
-    reconnect(document_store, "postgresql")
 
     document_store.write_documents(DOCUMENTS)
 
