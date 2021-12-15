@@ -14,7 +14,7 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 
 from weaviate import client, AuthClientPassword
-from weaviate import ObjectsBatchRequest
+from weaviate.batch import Batch
 
 
 logger = logging.getLogger(__name__)
@@ -424,7 +424,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
-                docs_batch = ObjectsBatchRequest()
+                #docs_batch = Batch(self.weaviate_client)
                 for idx, doc in enumerate(document_batch):
                     _doc = {
                         **doc.to_dict(field_map=self._create_document_field_map())
@@ -457,10 +457,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             self._update_schema(property, index)
                             current_properties.append(property)
 
-                    docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
+                    self.weaviate_client.batch.add_data_object(_doc, class_name=index, uuid=doc_id, vector=vector)  #docs_batch
 
                 # Ingest a batch of documents
-                results = self.weaviate_client.batch.create(docs_batch)
+                results = self.weaviate_client.batch.create_objects()
                 # Weaviate returns errors for every failed document in the batch
                 if results is not None:
                     for result in results:
@@ -546,19 +546,31 @@ class WeaviateDocumentStore(BaseDocumentStore):
         properties = self._get_current_properties(index)
         properties.append("_additional {id, certainty, vector}")
 
-        if filters:
-            filter_dict = self._build_filter_clause(filters=filters)
-            result = self.weaviate_client.query.get(class_name=index, properties=properties)\
-                .with_where(filter_dict)\
-                .do()
-        else:
-            result = self.weaviate_client.query.get(class_name=index, properties=properties)\
-                .do()
+        num_of_documents = self.get_document_count(index=index, filters=filters)
+        all_docs = []
 
-        all_docs = {}
-        if result and "data" in result and "Get" in result.get("data"):
-            if result.get("data").get("Get").get(index):
-                all_docs = result.get("data").get("Get").get(index)
+        # Inherent Weaviate limitation to 100 elements forces us to loop here: 
+        #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.data.html?highlight=100#weaviate.data.DataObject.get
+        base_query = self.weaviate_client.query.get(class_name=index, properties=properties)
+        while len(all_docs) < num_of_documents:
+
+            query = base_query
+            if filters:
+                filter_dict = self._build_filter_clause(filters=filters)
+                query = query.with_where(filter_dict)
+
+            if all_docs:
+                # .with_limit() must be used with .with_offset, of the latter won't work properly
+                #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.gql.html?highlight=offset#weaviate.gql.get.GetBuilder.with_offset
+                query = query.with_limit(100).with_offset(offset=len(all_docs))
+
+            result = query.do()
+
+            if result and "data" in result and "Get" in result.get("data"):
+                if result.get("data").get("Get").get(index):
+                    all_docs += result.get("data").get("Get").get(index)
+            else:
+                raise ValueError(f"Weaviate returned ad exception: {result}")
 
         yield from all_docs
 

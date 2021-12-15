@@ -97,6 +97,19 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3"}
 
 
+def test_get_all_documents_large_quantities(document_store):
+    # Test to exclude situations like Weaviate not returning more than 100 docs by default
+    #   https://github.com/deepset-ai/haystack/issues/1893
+    docs_to_write = [
+        {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+        for i in range(1000)
+    ]
+    document_store.write_documents(docs_to_write)
+    documents = document_store.get_all_documents()
+    assert all(isinstance(d, Document) for d in documents)
+    assert len(documents) == len(docs_to_write)
+
+
 def test_get_all_document_filter_duplicate_text_value(document_store):
     documents = [
         Document(
