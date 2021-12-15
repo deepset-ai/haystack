@@ -54,7 +54,7 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
         filtered_answers = answers
 
     # Shorten long text fields
-    if max_text_len:
+    if max_text_len is not None:
         for ans in answers:
             if getattr(ans, "context") and len(ans.context) > max_text_len:
                 ans.context = ans.context[:max_text_len] + "..."
