@@ -502,7 +502,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         if "data" in result:
             if "Aggregate" in result.get('data'):
-                doc_count = result.get('data').get('Aggregate').get(index)[0]['meta']['count']
+                if result.get('data').get('Aggregate').get(index):
+                    doc_count = result.get('data').get('Aggregate').get(index)[0]['meta']['count']
 
         return doc_count
 
