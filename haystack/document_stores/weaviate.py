@@ -547,7 +547,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         properties.append("_additional {id, certainty, vector}")
 
         num_of_documents = self.get_document_count(index=index, filters=filters)
-        all_docs = []
+        all_docs: List[Dict] = []
 
         # Inherent Weaviate limitation to 100 elements forces us to loop here: 
         #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.data.html?highlight=100#weaviate.data.DataObject.get
