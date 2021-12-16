@@ -102,6 +102,8 @@ class AzureConverter(BaseConverter):
         :param known_language: Locale hint of the input document.
                                See supported locales here: https://aka.ms/azsdk/formrecognizer/supportedlocales.
         """
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
 
         if valid_languages is None:
             valid_languages = self.valid_languages
@@ -112,8 +114,6 @@ class AzureConverter(BaseConverter):
             result = poller.result()
 
         if self.save_json:
-            if isinstance(file_path, str):
-                file_path = Path(file_path)
             with open(file_path.with_suffix(".json"), "w") as json_file:
                 json.dump(result.to_dict(), json_file, indent=2)
 
