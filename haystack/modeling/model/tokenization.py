@@ -32,7 +32,8 @@ from transformers import (
     CamembertTokenizer, CamembertTokenizerFast,
     DPRContextEncoderTokenizer, DPRContextEncoderTokenizerFast,
     DPRQuestionEncoderTokenizer, DPRQuestionEncoderTokenizerFast,
-    BigBirdTokenizer, BigBirdTokenizerFast
+    BigBirdTokenizer, BigBirdTokenizerFast,
+    AutoTokenizer
 )
 from transformers import AutoConfig
 
