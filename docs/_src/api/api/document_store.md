@@ -1818,6 +1818,22 @@ Return the number of documents in the document store.
 
 Get documents from the document store.
 
+Note this limitation from the changelog of Weaviate 1.8.0:
+
+.. quote::
+    Due to the increasing cost of each page outlined above, there is a limit to
+    how many objects can be retrieved using pagination. By default setting the sum 
+    of offset and limit to higher than 10,000 objects, will lead to an error. 
+    If you must retrieve more than 10,000 objects, you can increase this limit by 
+    setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`. 
+
+    Warning: Setting this to arbitrarily high values can make the memory consumption 
+    of a single query explode and single queries can slow down the entire cluster.
+    We recommend setting this value to the lowest possible value that does not 
+    interfere with your users' expectations.
+
+(https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
+
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
@@ -1837,6 +1853,22 @@ Get documents from the document store.
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
 document store and yielded as individual documents. This method can be used to iteratively process
 a large number of documents without having to load all documents in memory.
+
+Note this limitation from the changelog of Weaviate 1.8.0:
+
+.. quote::
+    Due to the increasing cost of each page outlined above, there is a limit to
+    how many objects can be retrieved using pagination. By default setting the sum 
+    of offset and limit to higher than 10,000 objects, will lead to an error. 
+    If you must retrieve more than 10,000 objects, you can increase this limit by 
+    setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`. 
+
+    Warning: Setting this to arbitrarily high values can make the memory consumption 
+    of a single query explode and single queries can slow down the entire cluster.
+    We recommend setting this value to the lowest possible value that does not 
+    interfere with your users' expectations.
+
+(https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
 
 **Arguments**:
 
