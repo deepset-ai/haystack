@@ -8,7 +8,7 @@ You find them here here:
 ## Overview and Usage
 
 We move the Overview and Usage docs to the [haystack-website](https://github.com/deepset-ai/haystack-website) repository. You will find the docs in the folder `docs`. Please make sure to only edit the newest version of the docs. We will release the docs together with the Haystack version. 
-We are open for contibutions to our documentation. Please make sure to check our [Contribution Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md). You will find a step by step introduction to our docs [here](https://github.com/deepset-ai/haystack-website/tree/source).
+We are open for contributions to our documentation. Please make sure to check our [Contribution Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md). You will find a step by step introduction to our docs [here](https://github.com/deepset-ai/haystack-website/tree/source).
 
 ## Tutorials
 
