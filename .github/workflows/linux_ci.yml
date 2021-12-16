@@ -17,7 +17,7 @@ jobs:
           python-version: 3.8
       - name: Test with mypy
         run: |
-          pip install mypy types-Markdown types-requests types-PyYAML pydantic
+          pip install mypy==0.910 types-Markdown types-requests types-PyYAML pydantic
           mypy haystack
 
   build-cache:
