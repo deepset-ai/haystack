@@ -140,8 +140,8 @@ class DensePassageRetriever(BaseRetriever):
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
         tokenizers_default_classes = {
-            "query": "DPRQuestionEncoderTokenizer",
-            "passage": "DPRContextEncoderTokenizer"
+            "query": "AutoTokenizer",
+            "passage": "AutoTokenizer"
         }
         if self.infer_tokenizer_classes:
             tokenizers_default_classes["query"] = None   # type: ignore
