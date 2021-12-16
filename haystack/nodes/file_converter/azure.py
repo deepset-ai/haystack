@@ -52,7 +52,9 @@ class AzureConverter(BaseConverter):
         :param save_json: Whether to save the output of the Form Recognizer to a JSON file.
         :param preceding_context_len: Number of lines before a table to extract as preceding context (will be returned as part of meta data).
         :param following_context_len: Number of lines after a table to extract as subsequent context (will be returned as part of meta data).
-        :param merge_multiple_column_headers: Whether to merge multiple column header rows to a single row.
+        :param merge_multiple_column_headers: Some tables contain more than one row as a column header (i.e., column description).
+                                              This parameter lets you choose, whether to merge multiple column header
+                                              rows to a single row.
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(endpoint=endpoint, credential_key=credential_key, model_id=model_id,
@@ -110,7 +112,9 @@ class AzureConverter(BaseConverter):
             result = poller.result()
 
         if self.save_json:
-            with open(str(file_path) + ".json", "w") as json_file:
+            if isinstance(file_path, str):
+                file_path = Path(file_path)
+            with open(file_path.with_suffix(".json"), "w") as json_file:
                 json.dump(result.to_dict(), json_file, indent=2)
 
         docs = self._convert_tables_and_text(result, meta, valid_languages, file_path)
