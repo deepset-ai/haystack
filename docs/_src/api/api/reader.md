@@ -607,3 +607,15 @@ WARNING: The answer scores are not reliable, as they are always extremely high, 
 
 Dict containing query and answers
 
+<a name="table.RCIReader"></a>
+## RCIReader
+
+```python
+class RCIReader(BaseReader)
+```
+
+Table Reader model based on Glass et al. (2021)'s Row-Column-Intersection model.
+See the original paper for more details:
+Glass, Michael, et al. (2021): "Capturing Row and Column Semantics in Transformer Based Question Answering over Tables"
+(https://aclanthology.org/2021.naacl-main.96/)
+
