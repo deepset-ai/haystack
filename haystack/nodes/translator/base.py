@@ -26,6 +26,7 @@ class BaseTranslator(BaseComponent):
 
     def run(  # type: ignore
         self,
+        results: List[Dict[str, Any]] = None,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
@@ -33,6 +34,12 @@ class BaseTranslator(BaseComponent):
     ):
         """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
 
+        if results is not None:
+            translated_results = self.translate(results=results)
+            for i, result in enumerate(results):
+                result["query"] = translated_results[i]
+                result["answers"][0].answer = translated_results[len(results)+i]
+            return results, "output_1"
         results = {}
 
         # This will cover input query stage
