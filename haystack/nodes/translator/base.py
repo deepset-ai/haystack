@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Mapping, Optional, Union
-
+from copy import deepcopy
 from abc import abstractmethod
 
 from haystack.nodes.base import BaseComponent
@@ -33,30 +33,33 @@ class BaseTranslator(BaseComponent):
         dict_key: Optional[str] = None,
     ):
         """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
-
+        translation_results = {}
+        
         if results is not None:
-            translated_results = self.translate(results=results)
-            for i, result in enumerate(results):
-                result["query"] = translated_results[i]
-                result["answers"][0].answer = translated_results[len(results)+i]
-            return results, "output_1"
-        results = {}
+            if results is not None:
+                translation_results = {"results":deepcopy(results)}
+
+            translated_queries_answers = self.translate(results=translation_results["results"])
+            for i, result in enumerate(translation_results["results"]):
+                result["query"] = translated_queries_answers[i]
+                result["answers"][0].answer = translated_queries_answers[len(translation_results["results"])+i]
+            return translation_results, "output_1"
 
         # This will cover input query stage
         if query:
-            results["query"] = self.translate(query=query)
+            translation_results["query"] = self.translate(query=query)
         # This will cover retriever and summarizer
         if documents:
             _dict_key = dict_key or "text"
-            results["documents"] = self.translate(documents=documents, dict_key=_dict_key)
+            translation_results["documents"] = self.translate(documents=documents, dict_key=_dict_key)
 
         if answers:
             _dict_key = dict_key or "answer"
             if isinstance(answers, Mapping):
                 # This will cover reader
-                results["answers"] = self.translate(documents=answers["answers"], dict_key=_dict_key)
+                translation_results["answers"] = self.translate(documents=answers["answers"], dict_key=_dict_key)
             else:
                 # This will cover generator
-                results["answers"] = self.translate(documents=answers, dict_key=_dict_key)
+                translation_results["answers"] = self.translate(documents=answers, dict_key=_dict_key)
 
-        return results, "output_1"
+        return translation_results, "output_1"

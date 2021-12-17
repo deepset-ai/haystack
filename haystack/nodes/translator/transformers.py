@@ -92,7 +92,6 @@ class TransformersTranslator(BaseTranslator):
         queries_for_translator = None
         answers_for_translator = None
         if results is not None:
-            print(results)
             queries_for_translator = [result["query"] for result in results]
             answers_for_translator = [result["answers"][0].answer for result in results]
         if not query and not documents and results is None:
