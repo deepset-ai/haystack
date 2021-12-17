@@ -147,9 +147,9 @@ def export_answers_to_csv(agg_results: list, output_file):
         for i in range(len(res["answers"])):
             temp = res["answers"][i]
             data["query"].append(res["query"])
-            data["prediction"].append(temp["answer"])
+            data["prediction"].append(temp.answer)
             data["prediction_rank"].append(i + 1)
-            data["prediction_context"].append(temp["context"])
+            data["prediction_context"].append(temp.context)
 
     df = pd.DataFrame(data)
     df.to_csv(output_file, index=False)
