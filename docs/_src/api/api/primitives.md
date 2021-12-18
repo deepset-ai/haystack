@@ -13,7 +13,7 @@ class Document()
 #### \_\_init\_\_
 
 ```python
- | __init__(content: Union[str, pd.DataFrame], content_type: Literal["text", "table", "image"] = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None)
+ | __init__(content: Union[str, pd.DataFrame], content_type: Literal["text", "table", "image"] = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None, id_hash_from: Optional[List[Literal["content", "meta"]]] = None)
 ```
 
 One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
@@ -71,7 +71,7 @@ dict with content of the Document
 
 ```python
  | @classmethod
- | from_dict(cls, dict, field_map={})
+ | from_dict(cls, dict, field_map={}, id_hash_keys=None, id_hash_from=None)
 ```
 
 Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
