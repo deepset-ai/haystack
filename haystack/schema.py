@@ -55,7 +55,8 @@ class Document:
             score: Optional[float] = None,
             meta: Dict[str, Any] = None,
             embedding: Optional[np.ndarray] = None,
-            id_hash_keys: Optional[List[str]] = None
+            id_hash_keys: Optional[List[str]] = None,
+            id_hash_from:  Optional[List[Literal["content", "meta"]]] = None
     ):
         """
         One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
@@ -91,6 +92,8 @@ class Document:
         self.content_type = content_type
         self.score = score
         self.meta = meta or {}
+        self.id_hash_keys = id_hash_keys
+        self.id_hash_from = id_hash_from
 
         if embedding is not None:
             embedding = np.asarray(embedding)
@@ -100,11 +103,37 @@ class Document:
         if id:
             self.id: str = str(id)
         else:
-            self.id: str = self._get_id(id_hash_keys)
+            self.id: str = self._get_id(id_hash_keys=id_hash_keys, id_hash_from=id_hash_from)
 
-    def _get_id(self, id_hash_keys):
-        final_hash_key = ":".join(id_hash_keys) if id_hash_keys else str(self.content)
-        return '{:02x}'.format(mmh3.hash128(final_hash_key, signed=False))
+
+    def _get_id(self, 
+        id_hash_keys: Optional[List[str]] = None,
+        id_hash_from:  Optional[List[Literal["content", "meta"]]] = None
+    ):
+        """
+        Generate the id of a document by creating the hash of strings. By default the content of a document is 
+        used to generate the hash. There are two ways of modifying the generated id of a document. Either static keys
+        or a selection of the content. 
+        :param id_hash_keys: Optional list of strings that are used to generate the hash. 
+        :param id_hash_from: Optional list of fields that should be dynamically used to generate the hash. 
+        """
+
+        if id_hash_keys is None and id_hash_from is None: 
+            return '{:02x}'.format(mmh3.hash128(str(self.content), signed=False)) 
+
+        final_hash_key = "" 
+        if id_hash_keys is not None:
+            final_hash_key += ":".join(id_hash_keys)
+
+        if id_hash_from is not None:
+            if "content" in id_hash_from: 
+                final_hash_key += ":"+ str(self.content)
+            if "meta" in id_hash_from: 
+                final_hash_key += ":"+ str(self.meta)
+
+        if final_hash_key == "":
+            raise ValueError(f"Cant't create 'Document': 'id_hash_from' must contain at least one of ['content', 'meta']")
+        return '{:02x}'.format(mmh3.hash128(final_hash_key, signed=False)) 
 
     def to_dict(self, field_map={}) -> Dict:
         """
@@ -131,7 +160,7 @@ class Document:
         return _doc
 
     @classmethod
-    def from_dict(cls, dict, field_map={}):
+    def from_dict(cls, dict, field_map={}, id_hash_keys=None, id_hash_from=None):
         """
         Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
@@ -160,6 +189,10 @@ class Document:
             elif k in field_map:
                 k = field_map[k]
                 _new_doc[k] = v
+                
+        if _doc.get("id") is None:
+            _new_doc["id_hash_keys"]=id_hash_keys
+            _new_doc["id_hash_from"]=id_hash_from
 
         # Convert list of rows to pd.DataFrame
         if _new_doc.get("content_type", None) == "table" and isinstance(_new_doc["content"], list):

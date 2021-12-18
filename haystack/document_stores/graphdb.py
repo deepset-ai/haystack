@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict
 
 import requests
 from pathlib import Path
@@ -117,6 +117,12 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         sparql_query = "SELECT ?p WHERE { ?s ?p ?o. }"
         results = self.query(sparql_query=sparql_query, index=index)
         return results
+
+    def _create_document_field_map(self)->Dict:
+        """
+        There is no field mapping required
+        """
+        return {}
 
     def get_all_objects(self, index: Optional[str] = None):
         """

@@ -7,6 +7,11 @@ from itertools import islice
 from abc import abstractmethod
 from pathlib import Path
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal #type: ignore
+
 from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
 from haystack.errors import DuplicateDocumentError
@@ -303,9 +308,15 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
         pass
+    
+    @abstractmethod
+    def _create_document_field_map(self) -> Dict:
+        pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None):  # type: ignore
-        self.write_documents(documents=documents, index=index)
+    def run(self, documents: List[dict], index: Optional[str] = None, id_hash_from: Optional[Literal["content", "meta"]] = None  ):  # type: ignore
+        field_map = self._create_document_field_map()
+        doc_objects = [Document.from_dict(d, field_map=field_map, id_hash_from=id_hash_from) for d in documents]
+        self.write_documents(documents=doc_objects, index=index)
         return {}, "output_1"
 
     @abstractmethod
