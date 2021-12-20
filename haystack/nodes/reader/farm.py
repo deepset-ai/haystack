@@ -241,6 +241,8 @@ class FARMReader(BaseReader):
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         if tinybert:
+            if not teacher_model:
+                raise ValueError("TinyBERT distillation requires a teacher model.")
             trainer = TinyBERTDistillationTrainer.create_or_load_checkpoint(
                 model=model,
                 teacher_model=teacher_model.inferencer.model,
