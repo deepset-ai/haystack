@@ -85,6 +85,7 @@ class TransformersTranslator(BaseTranslator):
     ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
         """
         Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
+        :param results: Generated QA pairs to translate
         :param query: The query string to translate
         :param documents: The documents to translate
         :param dict_key: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
