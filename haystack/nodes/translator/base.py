@@ -48,19 +48,19 @@ class BaseTranslator(BaseComponent):
 
         # This will cover input query stage
         if query:
-            translation_results["query"] = self.translate(query=query)
+            translation_results["query"] = self.translate(query=query)  # type: ignore
         # This will cover retriever and summarizer
         if documents:
             _dict_key = dict_key or "text"
-            translation_results["documents"] = self.translate(documents=documents, dict_key=_dict_key)
+            translation_results["documents"] = self.translate(documents=documents, dict_key=_dict_key)  # type: ignore
 
         if answers:
             _dict_key = dict_key or "answer"
             if isinstance(answers, Mapping):
                 # This will cover reader
-                translation_results["answers"] = self.translate(documents=answers["answers"], dict_key=_dict_key)
+                translation_results["answers"] = self.translate(documents=answers["answers"], dict_key=_dict_key)  # type: ignore
             else:
                 # This will cover generator
-                translation_results["answers"] = self.translate(documents=answers, dict_key=_dict_key)
+                translation_results["answers"] = self.translate(documents=answers, dict_key=_dict_key)  # type: ignore
 
         return translation_results, "output_1"
