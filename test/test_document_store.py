@@ -953,10 +953,13 @@ def test_custom_headers(document_store_with_docs: BaseDocumentStore):
         mock_client = Mock(wraps=es_document_store.client)
         es_document_store.client = mock_client
     custom_headers = {'X-My-Custom-Header': 'header-value'}
-    documents = document_store_with_docs.get_all_documents(headers=custom_headers)
-    if mock_client:
+    if not mock_client:
+        with pytest.raises(NotImplementedError):
+            documents = document_store_with_docs.get_all_documents(headers=custom_headers)
+    else:
+        documents = document_store_with_docs.get_all_documents(headers=custom_headers)
         mock_client.search.assert_called_once()
         args, kwargs = mock_client.search.call_args
         assert "headers" in kwargs
         assert kwargs["headers"] == custom_headers
-    assert len(documents) > 0
+        assert len(documents) > 0

@@ -166,7 +166,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         }
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, index_param: Optional[Dict[str, Any]] = None, **kwargs):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, index_param: Optional[Dict[str, Any]] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -183,6 +183,9 @@ class MilvusDocumentStore(SQLDocumentStore):
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
+        if headers:
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        
         index = index or self.index
         index_param = index_param or self.index_param
         duplicate_documents = duplicate_documents or self.duplicate_documents
@@ -331,7 +334,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None,
-                           **kwargs) -> List[Document]:
+                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -343,6 +346,9 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param return_embedding: To return document embedding
         :return: list of Documents that are the most similar to `query_emb`
         """
+        if headers:
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        
         if filters:
             logger.warning("Query filters are not implemented for the MilvusDocumentStore.")
 
@@ -388,7 +394,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete all documents (from SQL AND Milvus).
         :param index: (SQL) index name for storing the docs and metadata
@@ -396,6 +402,9 @@ class MilvusDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
+        if headers:
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        
         logger.warning(
                 """DEPRECATION WARNINGS: 
                 1. delete_all_documents() method is deprecated, please use delete_documents method
@@ -404,7 +413,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, **kwargs):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -418,6 +427,9 @@ class MilvusDocumentStore(SQLDocumentStore):
             have their ID in the list).
         :return: None
         """
+        if headers:
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        
         index = index or self.index
         status, ok = self.milvus_server.has_collection(collection_name=index)
         if status.code != Status.SUCCESS:
@@ -445,7 +457,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        **kwargs
+        headers: Optional[Dict[str, str]] = None
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -459,6 +471,9 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        if headers:
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        
         index = index or self.index
         documents = super().get_all_documents_generator(
             index=index, filters=filters, batch_size=batch_size
@@ -477,7 +492,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             filters: Optional[Dict[str, List[str]]] = None,
             return_embedding: Optional[bool] = None,
             batch_size: int = 10_000,
-            **kwargs
+            headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Get documents from the document store (optionally using filter criteria).
@@ -489,6 +504,9 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        if headers:
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        
         index = index or self.index
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
@@ -496,7 +514,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         documents = list(result)
         return documents
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None, **kwargs) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
         """
         Fetch a document by specifying its text id string
 
@@ -504,12 +522,15 @@ class MilvusDocumentStore(SQLDocumentStore):
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         """
+        if headers:
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
         return document
 
     def get_documents_by_id(
-            self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, **kwargs
+            self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Fetch multiple documents by specifying their IDs (strings)
@@ -519,6 +540,9 @@ class MilvusDocumentStore(SQLDocumentStore):
                       DocumentStore's default index (self.index) will be used.
         :param batch_size: is currently not used
         """
+        if headers:
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        
         index = index or self.index
         documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if self.return_embedding:

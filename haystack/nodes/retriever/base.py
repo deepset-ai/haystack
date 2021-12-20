@@ -234,7 +234,7 @@ class BaseRetriever(BaseComponent):
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
             run_indexing = self.timing(self.run_indexing, "index_time")
-            output, stream = run_indexing(documents=documents, headers=headers)
+            output, stream = run_indexing(documents=documents)
         else:
             raise Exception(f"Invalid root_node '{root_node}'.")
         return output, stream
@@ -254,7 +254,7 @@ class BaseRetriever(BaseComponent):
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[dict], headers: Optional[Dict[str, str]] = None):
+    def run_indexing(self, documents: List[dict]):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             documents = deepcopy(documents)
             document_objects = [Document.from_dict(doc) for doc in documents]
