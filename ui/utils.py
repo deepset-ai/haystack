@@ -22,7 +22,7 @@ def haystack_is_ready():
     """
     url = f"{API_ENDPOINT}/{STATUS}"
     try:
-        if requests.get(url).json():
+        if requests.get(url).status_code < 400:
             return True
     except Exception as e:
         logging.exception(e)

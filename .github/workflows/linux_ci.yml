@@ -17,7 +17,7 @@ jobs:
           python-version: 3.8
       - name: Test with mypy
         run: |
-          pip install mypy types-Markdown types-requests types-PyYAML pydantic
+          pip install mypy==0.910 types-Markdown types-requests types-PyYAML pydantic
           mypy haystack
 
   build-cache:
@@ -41,6 +41,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade --upgrade-strategy eager -r requirements-dev.txt -e .
           pip install --upgrade --upgrade-strategy eager -r requirements.txt -e .
+          pip install --upgrade --upgrade-strategy eager -r ui/requirements.txt -e .
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
