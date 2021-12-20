@@ -15,7 +15,7 @@ Abstract class for a Translator component that translates either a query or a do
 
 ```python
  | @abstractmethod
- | translate(query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
+ | translate(results: List[Dict[str, Any]] = None, query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
 ```
 
 Translate the passed query or a list of documents from language A to B.
@@ -97,6 +97,7 @@ Run the actual translation. You can supply a query or a list of documents. Whate
 
 **Arguments**:
 
+- `results`: Generated QA pairs to translate
 - `query`: The query string to translate
 - `documents`: The documents to translate
 - `dict_key`: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
