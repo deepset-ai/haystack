@@ -1,9 +1,6 @@
 from typing import Optional, Union, Tuple, List, Callable
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from haystack.nodes import FARMReader
-    from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import _LRScheduler
 
 import sys
 import shutil
@@ -14,7 +11,7 @@ import torch
 from tqdm import tqdm
 from pathlib import Path
 
-from torch.nn import MSELoss
+from torch.nn import MSELoss, Linear
 import torch.nn.functional as F
 from torch.optim import Optimizer
 
@@ -630,7 +627,7 @@ class DistillationTrainer(Trainer):
     """
     def __init__(
         self,
-        model: "FARMReader",
+        model: "AdaptiveModel",
         optimizer: Optimizer,
         data_silo: DistillationDataSilo,
         epochs: int,
@@ -735,8 +732,8 @@ class DistillationTrainer(Trainer):
 class TinyBERTDistillationTrainer(Trainer):
     def __init__(
         self,
-        model: "FARMReader",
-        teacher_model: "FARMReader",
+        model: AdaptiveModel,
+        teacher_model: AdaptiveModel,
         optimizer: Optimizer,
         data_silo: DistillationDataSilo,
         epochs: int,
@@ -814,6 +811,28 @@ class TinyBERTDistillationTrainer(Trainer):
         evaluator_test=evaluator_test, disable_tqdm=disable_tqdm,
         max_grad_norm=max_grad_norm)
         self.teacher_model = teacher_model
+
+        dummy_inputs = teacher_model.language_model.model.dummy_inputs
+        with torch.no_grad():
+            _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
+            _, hidden_states, attentions = self.model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
+        
+        if len(teacher_attentions) % len(attentions) != 0:
+            raise ValueError("Teacher and student model do not seem to be compatible. Have you made sure that the student is a TinyBERT model and that the teacher is a BERT model?")
+        
+        self.teacher_block_size = len(teacher_attentions) // len(attentions)
+
+        teacher_dims = [hidden_state.shape[-1] for hidden_state in teacher_hidden_states]
+        student_dims = [hidden_state.shape[-1] for hidden_state in hidden_states]
+
+        self.dim_mappings: List[Optional[Linear]] = []
+
+        for teacher_dim, student_dim in zip(teacher_dims, student_dims):
+            if teacher_dim != student_dim:
+                self.dim_mappings.append(Linear(teacher_dim, student_dim))
+            else:
+                self.dim_mappings.append(None)
+
     
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         with torch.no_grad():
@@ -821,27 +840,22 @@ class TinyBERTDistillationTrainer(Trainer):
 
         _, hidden_states, attentions = self.model.forward(**batch, output_attentions=True, output_hidden_states=True)
 
-        if len(teacher_attentions) % len(attentions) != 0:
-            raise ValueError("Teacher and student model do not seem to be compatible. Have you made sure that the student is a TinyBERT model and that the teacher is a BERT model?")
-        
-        teacher_block_size = len(teacher_attentions) // len(attentions)
-        
-        loss_sum = None
+        loss = torch.tensor(0)
 
-        for student_attention, teacher_attention in zip(attentions, teacher_attentions[teacher_block_size - 1::teacher_block_size]):
+        for student_attention, teacher_attention, dim_mapping in zip(attentions,
+                teacher_attentions[self.teacher_block_size - 1::self.teacher_block_size],
+                self.dim_mappings):
             student_attention = torch.where(student_attention <= -1e2, torch.zeros_like(student_attention),
                 student_attention)
             teacher_attention = torch.where(teacher_attention <= -1e2, torch.zeros_like(teacher_attention),
                 teacher_attention)
             
-            loss = F.mse_loss(student_attention, teacher_attention)
-
-            if loss_sum is None:
-                loss_sum = loss
-            else:
-                loss_sum += loss
+            if dim_mapping:
+                student_attention = dim_mapping(student_attention)
+            
+            loss += F.mse_loss(student_attention, teacher_attention)
         
-        for student_hidden_state, teacher_hidden_state in zip(hidden_states, teacher_hidden_states[::teacher_block_size]):
-            loss_sum += F.mse_loss(student_hidden_state, teacher_hidden_state)
+        for student_hidden_state, teacher_hidden_state in zip(hidden_states, teacher_hidden_states[::self.teacher_block_size]):
+            loss += F.mse_loss(student_hidden_state, teacher_hidden_state)
 
-        return self.backward_propagate(loss_sum, step)
+        return self.backward_propagate(loss, step)
