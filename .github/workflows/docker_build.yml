@@ -28,8 +28,8 @@ jobs:
         with:
           file: Dockerfile-GPU
           tags: |
-            ${{ env.IMAGE }}:latest
-            ${{ env.IMAGE }}:${{ github.sha }}
+            deepset/haystack-gpu:latest
+            deepset/haystack-gpu:${{ github.sha }}
           push: true
-          cache-from: type=registry,ref=${{ env.IMAGE }}:latest
+          cache-from: type=registry,ref=deepset/haystack-gpu:latest
           cache-to: type=inline
