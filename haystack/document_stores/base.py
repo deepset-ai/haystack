@@ -313,9 +313,22 @@ class BaseDocumentStore(BaseComponent):
     def _create_document_field_map(self) -> Dict:
         pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None, id_hash_from: Optional[Literal["content", "meta"]] = None  ):  # type: ignore
+    def run(self, documents: List[dict], index: Optional[str] = None, id_hash_keys: Optional[List[str]] = None  ):  # type: ignore
+        """
+        Run requests of document stores 
+
+        Comment: We will gradually introduce the primitives. The doument stores also accept dicts and parse them to documents. 
+        In the future, however, only documents themselves will be accepted. Parsing the dictionaries in the run function 
+        is therefore only an interim solution until the run function also accepts documents. 
+
+        :param documents: A list of dicts that are documents.
+        :param index: Optional name of index where the documents shall be written to.
+                      If None, the DocumentStore's default index (self.index) will be used.
+        :param id_hash_keys: List of the fields that the hashes of the ids are generated from.
+        """
+        
         field_map = self._create_document_field_map()
-        doc_objects = [Document.from_dict(d, field_map=field_map, id_hash_from=id_hash_from) for d in documents]
+        doc_objects = [Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) for d in documents]
         self.write_documents(documents=doc_objects, index=index)
         return {}, "output_1"
 
