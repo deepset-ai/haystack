@@ -67,7 +67,7 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
     ]
     document_store.delete_documents(index="haystack_custom_test")
     document_store.write_documents(duplicate_documents, index="haystack_custom_test", duplicate_documents="skip")
-    assert len(document_store.get_all_documents()) == 1
+    assert len(document_store.get_all_documents(index="haystack_custom_test")) == 1
     with pytest.raises(DuplicateDocumentError):
         document_store.write_documents(duplicate_documents, index="haystack_custom_test", duplicate_documents="fail")
 
