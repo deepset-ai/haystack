@@ -813,6 +813,10 @@ class TinyBERTDistillationTrainer(Trainer):
         self.teacher_model = teacher_model
 
         dummy_inputs = teacher_model.language_model.model.dummy_inputs
+        dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)
+        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)
+        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)
+        #print(dummy_inputs)
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
             _, hidden_states, attentions = self.model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
@@ -840,7 +844,7 @@ class TinyBERTDistillationTrainer(Trainer):
 
         _, hidden_states, attentions = self.model.forward(**batch, output_attentions=True, output_hidden_states=True)
 
-        loss = torch.tensor(0)
+        loss = torch.tensor(0., device=self.device)
 
         for student_attention, teacher_attention, dim_mapping in zip(attentions,
                 teacher_attentions[self.teacher_block_size - 1::self.teacher_block_size],
