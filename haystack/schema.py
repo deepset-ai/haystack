@@ -95,9 +95,8 @@ class Document:
 
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding" ]
         self.id_hash_keys = id_hash_keys
-        if self.id_hash_keys != None:
-            if not set(self.id_hash_keys) <= set(allowed_hash_key_attributes):
-                raise ValueError(f"You passed custom strings {self.id_hash_keys} to id_hash_keys which is deprecated. Supply instead a list of Document's attribute names that the id should be based on (e.g. {allowed_hash_key_attributes}). See https://github.com/deepset-ai/haystack/pull/1910 for details)")
+        if not set(self.id_hash_keys or []) <= set(allowed_hash_key_attributes):
+            raise ValueError(f"You passed custom strings {self.id_hash_keys} to id_hash_keys which is deprecated. Supply instead a list of Document's attribute names that the id should be based on (e.g. {allowed_hash_key_attributes}). See https://github.com/deepset-ai/haystack/pull/1910 for details)")
 
     
         if embedding is not None:
