@@ -121,7 +121,7 @@ def pytest_collection_modifyitems(config,items):
 @pytest.fixture(scope="function", autouse=True)
 def gc_cleanup(request):
     """
-    Run garbage collector between tests.
+    Run garbage collector between tests in order to reduce memory footprint for CI.
     """
     yield
     gc.collect()
