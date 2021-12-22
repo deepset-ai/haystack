@@ -5,4 +5,3 @@ selenium
 webdriver-manager
 beautifulsoup4
 markdown
-objgraph

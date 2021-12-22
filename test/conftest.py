@@ -1,10 +1,7 @@
-import logging
 import subprocess
 import time
 from subprocess import run
 from sys import platform
-import multiprocessing as mp
-import gc
 
 import numpy as np
 import psutil
@@ -40,9 +37,6 @@ from haystack.nodes.reader.table import TableReader
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
-
-
-logger = logging.getLogger(__name__)
 
 
 def pytest_addoption(parser):
@@ -122,27 +116,6 @@ def pytest_collection_modifyitems(config,items):
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
                 item.add_marker(skip_docstore)
 
-
-@pytest.fixture(scope="function", autouse=True)
-def multiprocessing_cleanup(request):
-    """
-    Cleanup multiprocessing environment. Some nodes (e.g. FARMReader) currently do not properly close their multiprocessing pools after usage.
-    This is not an issue if the nodes live as long as the processes in which they are running.
-    In tests however we often use specific nodes for one test only and afterwards run further tests.
-    This puts unnecessary memory pressure on the testing environment.
-    """
-
-    # REST_API instantiates only one pipeline / multiprocessing pool that is used beyond test functions.
-    # We must not close that. Proper closing is done in rest_rest_api.py.
-    yield
-    logger.info("multiprocessing cleanup running")
-    import objgraph
-    pools = objgraph.by_type('Pool')
-    if len([pool for pool in pools if isinstance(pool, mp.pool.Pool)]) > 1:
-        logger.error(f"more than 1 multiprocessing pool")
-    logger.info("running garbage collection")
-    gc.collect()
-    logger.info("multiprocessing cleanup finished")
 
 @pytest.fixture(scope="session")
 def elasticsearch_fixture():
