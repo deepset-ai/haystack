@@ -730,6 +730,25 @@ class DistillationTrainer(Trainer):
         return self.backward_propagate(combined_loss, step)
 
 class TinyBERTDistillationTrainer(Trainer):
+    """
+    This Trainer implements the first stage of task specific distillation as described in the TinyBERT paper.
+    The standard DistillationTrainer can be used for the second stage. Unlike the DistillationTrainer, this Trainer does not use
+    cached teacher outputs as it would be too memory expensive. This means it is much slower than the DistillationTrainer.
+
+    **Example**
+    ```python
+    student = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D")
+    teacher = FARMReader(model_name_or_path="twmkn9/bert-base-uncased-squad2")
+
+    processor = SquadProcessor(tokenizer=student.inferencer.processor.tokenizer, max_seq_len=384)
+    student, optimizer, _ = initialize_optimizer(student, n_batches=len(data_silo.loaders["train"]), n_epochs=3, device="cuda:0", learning_rate=3e-5)
+
+    data_silo = DataSilo(teacher_model=teacher, batch_size=8, device="cuda:0", processor=processor)
+    trainer = TinyBertDistillationTrainer(student=student, optimizer=optimizer, data_silo=data_silo, epochs=3, n_gpu=1, device="cuda:0")
+
+    trainer.train()
+    ```
+    """
     def __init__(
         self,
         model: AdaptiveModel,
@@ -761,8 +780,8 @@ class TinyBERTDistillationTrainer(Trainer):
     ):
         """
         :param optimizer: An optimizer object that determines the learning strategy to be used during training
-        :param model: The model to be trained
-        :param teacher_model: The teacher model used for distillation
+        :param model: The model to be trained. It needs to be a TinyBERT model.
+        :param teacher_model: The teacher model used for distillation. This has to be based on bert-base-uncased.
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
@@ -812,11 +831,12 @@ class TinyBERTDistillationTrainer(Trainer):
         max_grad_norm=max_grad_norm)
         self.teacher_model = teacher_model
 
+        # creating dummy inputs to get the shapes of hidden states and attention of teacher and student model
         dummy_inputs = teacher_model.language_model.model.dummy_inputs
         dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)
         dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)
         dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)
-        #print(dummy_inputs)
+
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
             _, hidden_states, attentions = self.model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
@@ -829,11 +849,12 @@ class TinyBERTDistillationTrainer(Trainer):
         teacher_dims = [hidden_state.shape[-1] for hidden_state in teacher_hidden_states]
         student_dims = [hidden_state.shape[-1] for hidden_state in hidden_states]
 
+        # creating linear mappings in case the teacher and student model have different hidden state dimensions
         self.dim_mappings: List[Optional[Linear]] = []
 
         for teacher_dim, student_dim in zip(teacher_dims, student_dims):
             if teacher_dim != student_dim:
-                self.dim_mappings.append(Linear(teacher_dim, student_dim))
+                self.dim_mappings.append(Linear(student_dim, teacher_dim, bias=False))
             else:
                 self.dim_mappings.append(None)
 
@@ -846,20 +867,25 @@ class TinyBERTDistillationTrainer(Trainer):
 
         loss = torch.tensor(0., device=self.device)
 
+        # calculating attention loss
         for student_attention, teacher_attention, dim_mapping in zip(attentions,
                 teacher_attentions[self.teacher_block_size - 1::self.teacher_block_size],
                 self.dim_mappings):
+
+            # this wasn't described in the paper, but it was used in the original implementation
             student_attention = torch.where(student_attention <= -1e2, torch.zeros_like(student_attention),
                 student_attention)
             teacher_attention = torch.where(teacher_attention <= -1e2, torch.zeros_like(teacher_attention),
                 teacher_attention)
             
-            if dim_mapping:
-                student_attention = dim_mapping(student_attention)
-            
             loss += F.mse_loss(student_attention, teacher_attention)
         
+        # calculating hidden state loss
         for student_hidden_state, teacher_hidden_state in zip(hidden_states, teacher_hidden_states[::self.teacher_block_size]):
+            # linear mapping in case the teacher and student model have different hidden state dimensions, not necessary for attention as attention shape is determined by number of attention heads and sequence length
+            if dim_mapping:
+                student_hidden_state = dim_mapping(student_hidden_state)
+                
             loss += F.mse_loss(student_hidden_state, teacher_hidden_state)
 
         return self.backward_propagate(loss, step)

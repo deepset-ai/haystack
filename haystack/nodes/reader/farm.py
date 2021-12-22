@@ -225,7 +225,7 @@ class FARMReader(BaseReader):
         if teacher_model and not tinybert: # checks if teacher model is passed as parameter, in that case assume model distillation is used
             data_silo = DistillationDataSilo(teacher_model, teacher_batch_size or batch_size, device=devices[0], processor=processor, batch_size=batch_size, distributed=False,
             max_processes=num_processes, caching=caching, cache_path=cache_path)
-        else:
+        else: # caching would need too much memory for tinybert distillation so in that case we use the default data silo
             data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes, caching=caching, cache_path=cache_path)
 
         # 3. Create an optimizer and pass the already initialized model
@@ -245,7 +245,7 @@ class FARMReader(BaseReader):
                 raise ValueError("TinyBERT distillation requires a teacher model.")
             trainer = TinyBERTDistillationTrainer.create_or_load_checkpoint(
                 model=model,
-                teacher_model=teacher_model.inferencer.model,
+                teacher_model=teacher_model.inferencer.model, # teacher needs to be passed as teacher outputs aren't cached
                 optimizer=optimizer,
                 data_silo=data_silo,
                 epochs=n_epochs,
@@ -461,8 +461,10 @@ class FARMReader(BaseReader):
         :param caching whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
-        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+        :param tinybert_loss: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
+        :param tinybert_epochs: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
         :return: None
         """
         if tinybert_loss:
