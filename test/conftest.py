@@ -2,6 +2,7 @@ import subprocess
 import time
 from subprocess import run
 from sys import platform
+import gc
 
 import numpy as np
 import psutil
@@ -115,6 +116,15 @@ def pytest_collection_modifyitems(config,items):
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
                 item.add_marker(skip_docstore)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def gc_cleanup(request):
+    """
+    Run garbage collector between tests.
+    """
+    yield
+    gc.collect()
 
 
 @pytest.fixture(scope="session")
