@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import multiprocessing as mp
 
 import pytest
 from fastapi.testclient import TestClient
