@@ -140,10 +140,8 @@ def multiprocessing_cleanup(request):
     logger.info("multiprocessing cleanup running")
     import objgraph
     pools = objgraph.by_type('Pool')
-    for pool in pools:
-        if isinstance(pool, mp.pool.Pool):
-            logger.info(f"closing multiprocessing pool: {pool}")
-            pool.close()
+    if len([pool for pool in pools if isinstance(pool, mp.pool.Pool)]) > 1:
+        logger.error(f"more than 1 multiprocessing pool")
     logger.info("running garbage collection")
     gc.collect()
     logger.info("multiprocessing cleanup finished")
