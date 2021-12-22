@@ -134,8 +134,6 @@ def multiprocessing_cleanup(request):
 
     # REST_API instantiates only one pipeline / multiprocessing pool that is used beyond test functions.
     # We must not close that. Proper closing is done in rest_rest_api.py.
-    if request.module.__name__ == "test_rest_api":
-        return
     yield
     logger.info("multiprocessing cleanup running")
     import objgraph
