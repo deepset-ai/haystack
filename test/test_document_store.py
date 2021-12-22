@@ -125,12 +125,12 @@ def test_get_all_document_filter_duplicate_text_value(document_store):
     documents = document_store.get_all_documents(filters={"f1": ["0"]})
     assert documents[0].content == "Doc1"
     assert len(documents) == 1
-    assert len({d.meta["meta_id"] for d in documents}) == 0
+    assert documents[0].meta.get("meta_id") is None 
 
     documents = document_store.get_all_documents(filters={"f3": ["0"]})
     assert documents[0].content == "Doc2"
     assert len(documents) == 1
-    assert len({d.meta["meta_id"] for d in documents}) == 0
+    assert documents[0].meta.get("meta_id") is None
 
 
 def test_get_all_documents_with_correct_filters(document_store_with_docs):
