@@ -2,6 +2,7 @@ import subprocess
 import time
 from subprocess import run
 from sys import platform
+import gc
 
 import numpy as np
 import psutil
@@ -115,6 +116,15 @@ def pytest_collection_modifyitems(config,items):
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
                 item.add_marker(skip_docstore)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def gc_cleanup(request):
+    """
+    Run garbage collector between tests in order to reduce memory footprint for CI.
+    """
+    yield
+    gc.collect()
 
 
 @pytest.fixture(scope="session")
@@ -247,7 +257,7 @@ def xpdf_fixture():
             )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
@@ -256,17 +266,17 @@ def rag_generator():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def eli5_generator():
     return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", max_length=20)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def summarizer():
     return TransformersSummarizer(
         model_name_or_path="google/pegasus-xsum",
@@ -274,21 +284,21 @@ def summarizer():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def en_to_de_translator():
     return TransformersTranslator(
         model_name_or_path="Helsinki-NLP/opus-mt-en-de",
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def de_to_en_translator():
     return TransformersTranslator(
         model_name_or_path="Helsinki-NLP/opus-mt-de-en",
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def test_docs_xs():
     return [
         # current "dict" format for a document
@@ -300,7 +310,7 @@ def test_docs_xs():
     ]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def reader_without_normalized_scores():
     return FARMReader(
         model_name_or_path="distilbert-base-uncased-distilled-squad",
@@ -311,7 +321,7 @@ def reader_without_normalized_scores():
     )
 
 
-@pytest.fixture(params=["farm", "transformers"], scope="module")
+@pytest.fixture(params=["farm", "transformers"], scope="function")
 def reader(request):
     if request.param == "farm":
         return FARMReader(
@@ -328,32 +338,32 @@ def reader(request):
         )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def table_reader():
     return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def ranker_two_logits():
     return SentenceTransformersRanker(
         model_name_or_path="deepset/gbert-base-germandpr-reranking",
     )
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def ranker():
     return SentenceTransformersRanker(
         model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
         use_gpu=False
     )
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def zero_shot_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="cross-encoder/nli-distilroberta-base",
@@ -362,7 +372,7 @@ def zero_shot_document_classifier():
         labels=["negative", "positive"]
     )
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def batched_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
@@ -370,7 +380,7 @@ def batched_document_classifier():
         batch_size=16
     )
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def indexing_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
@@ -381,7 +391,7 @@ def indexing_document_classifier():
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
-@pytest.fixture(params=["farm"], scope="module")
+@pytest.fixture(params=["farm"], scope="function")
 def no_answer_reader(request):
     if request.param == "farm":
         return FARMReader(
@@ -401,14 +411,14 @@ def no_answer_reader(request):
         )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def prediction(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     return prediction
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def no_answer_prediction(no_answer_reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
@@ -543,7 +553,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
     return document_store
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def adaptive_model_qa(num_processes):
     """
     PyTest Fixture for a Question Answering Inferencer based on PyTorch.
@@ -571,7 +581,7 @@ def adaptive_model_qa(num_processes):
     assert len(children) == 0
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def bert_base_squad2(request):
     model = QAInferencer.load(
             "deepset/minilm-uncased-squad2",
