@@ -218,8 +218,10 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 :param caching whether or not to use caching for preprocessed dataset and teacher logits
 - `cache_path`: Path to cache the preprocessed dataset and teacher logits
 - `distillation_loss_weight`: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
-- `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
+- `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
 - `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+- `tinybert_loss`: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
+- `tinybert_epochs`: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
 
 **Returns**:
 
