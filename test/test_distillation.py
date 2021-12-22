@@ -2,8 +2,8 @@ from haystack.nodes import FARMReader
 import torch
 
 def test_distillation():
-    student = FARMReader(model_name_or_path="prajjwal1/bert-tiny")
-    teacher = FARMReader(model_name_or_path="prajjwal1/bert-small")
+    student = FARMReader(model_name_or_path="prajjwal1/bert-tiny", num_processes=0)
+    teacher = FARMReader(model_name_or_path="prajjwal1/bert-small", num_processes=0)
 
     # create a checkpoint of weights before distillation
     student_weights = []
