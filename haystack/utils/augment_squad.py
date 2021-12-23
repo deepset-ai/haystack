@@ -75,7 +75,7 @@ def tokenize_and_extract_words(text, tokenizer):
 
     return input_ids, words, word_subword_mapping
 
-def get_replacements(model: BertForMaskedLM, tokenizer: BertTokenizer, text, word_possibilities=20):
+def get_replacements(glove_word_id_mapping, glove_id_word_mapping, glove_vectors, model: BertForMaskedLM, tokenizer: BertTokenizer, text, word_possibilities=20):
 
     glove_word_id_mapping, glove_id_word_mapping, glove_vectors = load_glove()
 
@@ -114,8 +114,8 @@ def get_replacements(model: BertForMaskedLM, tokenizer: BertTokenizer, text, wor
 
     return possible_words
 
-def augment(model: BertForMaskedLM, tokenizer: BertTokenizer, text, multiplication_factor=20, word_possibilities=20, replace_probability=0.4):
-    replacements = get_replacements(model, tokenizer, text, word_possibilities)
+def augment(word_id_mapping, id_word_mapping, vectors, model: BertForMaskedLM, tokenizer: BertTokenizer, text, multiplication_factor=20, word_possibilities=20, replace_probability=0.4):
+    replacements = get_replacements(word_id_mapping, id_word_mapping, vectors, model, tokenizer, text, word_possibilities)
     new_texts = []
     for i in range(multiplication_factor):
         new_text = []
@@ -130,7 +130,9 @@ def augment(model: BertForMaskedLM, tokenizer: BertTokenizer, text, multiplicati
         new_texts.append(" ".join(new_text))
     return new_texts
 
-def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: Path, output_path: Path, multiplication_factor: int = 20, word_possibilities: int = 20, replace_probability: float = 0.4):
+def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: Path, output_path: Path, glove_path: Path = Path("glove.txt"), multiplication_factor: int = 20, word_possibilities: int = 20, replace_probability: float = 0.4):
+    word_id_mapping, id_word_mapping, vectors = load_glove(glove_path)
+
     with open(squad_path, "r") as f:
         squad = json.load(f)
         
@@ -140,11 +142,11 @@ def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: 
         paragraphs = []
         for paragraph in topic["paragraphs"]:
             context = paragraph["context"]
-            contexts = augment(model, tokenizer, context, multiplication_factor=multiplication_factor, word_possibilities=word_possibilities, replace_probability=replace_probability)
+            contexts = augment(word_id_mapping, id_word_mapping, vectors, model, tokenizer, context, multiplication_factor=multiplication_factor, word_possibilities=word_possibilities, replace_probability=replace_probability)
             qas = []
             for qa in paragraph["qas"]:
                 question = qa["question"]
-                question = augment(model, tokenizer, question, multiplication_factor=multiplication_factor, word_possibilities=word_possibilities, replace_probability=replace_probability)
+                question = augment(word_id_mapping, id_word_mapping, vectors, model, tokenizer, question, multiplication_factor=multiplication_factor, word_possibilities=word_possibilities, replace_probability=replace_probability)
                 qas_ = []
                 for question_ in question:
                     new_qa = deepcopy(qa)
@@ -166,11 +168,12 @@ def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--squad_path", type=str, required=True, help="Path to the squad json file")
-    parser.add_argument("--output_path", type=str, required=True, help="Path to save augmented dataaset")
+    parser.add_argument("--squad_path", type=Path, required=True, help="Path to the squad json file")
+    parser.add_argument("--output_path", type=Path, required=True, help="Path to save augmented dataaset")
     parser.add_argument("--multiplication_factor", type=int, default=4, help="Factor by which dataset size is multiplied")
     parser.add_argument("--word_possibilities", type=int, default=5, help="Number of possible words to choose from when replacing a word")
     parser.add_argument("--replace_probability", type=float, default=0.4, help="Probability of replacing a word")
+    parser.add_argument("--glove_path", type=Path, default="glove.txt", help="Path to the glove file")
 
     model = BertForMaskedLM.from_pretrained("bert-base-uncased")
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
