@@ -15,7 +15,7 @@ from haystack.modeling.infer import QAInferencer
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.model.predictions import QAPred, QACandidate
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.training import Trainer, DistillationTrainer
+from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
 from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
@@ -181,7 +181,8 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
-        temperature: float = 1.0
+        temperature: float = 1.0,
+        tinybert: bool = False,
     ):
         if dev_filename:
             dev_split = 0
@@ -221,10 +222,10 @@ class FARMReader(BaseReader):
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
-        if teacher_model: # checks if teacher model is passed as parameter, in that case assume model distillation is used
+        if teacher_model and not tinybert: # checks if teacher model is passed as parameter, in that case assume model distillation is used
             data_silo = DistillationDataSilo(teacher_model, teacher_batch_size or batch_size, device=devices[0], processor=processor, batch_size=batch_size, distributed=False,
             max_processes=num_processes, caching=caching, cache_path=cache_path)
-        else:
+        else: # caching would need too much memory for tinybert distillation so in that case we use the default data silo
             data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes, caching=caching, cache_path=cache_path)
 
         # 3. Create an optimizer and pass the already initialized model
@@ -239,7 +240,27 @@ class FARMReader(BaseReader):
             use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        if teacher_model: # checks again if teacher model is passed as parameter, in that case assume model distillation is used
+        if tinybert:
+            if not teacher_model:
+                raise ValueError("TinyBERT distillation requires a teacher model.")
+            trainer = TinyBERTDistillationTrainer.create_or_load_checkpoint(
+                model=model,
+                teacher_model=teacher_model.inferencer.model, # teacher needs to be passed as teacher outputs aren't cached
+                optimizer=optimizer,
+                data_silo=data_silo,
+                epochs=n_epochs,
+                n_gpu=n_gpu,
+                lr_schedule=lr_schedule,
+                evaluate_every=evaluate_every,
+                device=devices[0],
+                use_amp=use_amp,
+                disable_tqdm=not self.progress_bar,
+                checkpoint_root_dir=Path(checkpoint_root_dir),
+                checkpoint_every=checkpoint_every,
+                checkpoints_to_keep=checkpoints_to_keep,
+            )
+
+        elif teacher_model: # checks again if teacher model is passed as parameter, in that case assume model distillation is used
             trainer = DistillationTrainer.create_or_load_checkpoint(
                 model=model,
                 optimizer=optimizer,
@@ -383,7 +404,9 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
-        temperature: float = 1.0
+        temperature: float = 1.0,
+        tinybert_loss: bool = False,
+        tinybert_epochs: int = 1,
     ):
         """
         Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -438,10 +461,24 @@ class FARMReader(BaseReader):
         :param caching whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
-        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+        :param tinybert_loss: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
+        :param tinybert_epochs: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
         :return: None
         """
+        if tinybert_loss: # do hidden state and attention distillation as additional stage
+            self._training_procedure(data_dir=data_dir, train_filename=train_filename,
+            dev_filename=dev_filename, test_filename=test_filename,
+            use_gpu=use_gpu, batch_size=student_batch_size,
+            n_epochs=tinybert_epochs, learning_rate=learning_rate,
+            max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
+            dev_split=dev_split, evaluate_every=evaluate_every,
+            save_dir=save_dir, num_processes=num_processes,
+            use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
+            checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
+            teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
+            caching=caching, cache_path=cache_path, tinybert=True)
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
         dev_filename=dev_filename, test_filename=test_filename,
         use_gpu=use_gpu, batch_size=student_batch_size,
