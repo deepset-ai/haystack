@@ -467,7 +467,7 @@ class FARMReader(BaseReader):
         :param tinybert_epochs: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
         :return: None
         """
-        if tinybert_loss:
+        if tinybert_loss: # do hidden state and attention distillation as additional stage
             self._training_procedure(data_dir=data_dir, train_filename=train_filename,
             dev_filename=dev_filename, test_filename=test_filename,
             use_gpu=use_gpu, batch_size=student_batch_size,
