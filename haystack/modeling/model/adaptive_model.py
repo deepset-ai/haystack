@@ -363,6 +363,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         :param kwargs: Holds all arguments that need to be passed to the language model
                        and prediction head(s).
+        :param output_hidden_states: Whether to output hidden states
+        :param output_attentions: Whether to output attentions
         :return: All logits as torch.tensor or multiple tensors.
         """
         # Run forward pass of language model
