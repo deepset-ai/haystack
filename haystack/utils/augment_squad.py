@@ -76,9 +76,6 @@ def tokenize_and_extract_words(text, tokenizer):
     return input_ids, words, word_subword_mapping
 
 def get_replacements(glove_word_id_mapping, glove_id_word_mapping, glove_vectors, model: BertForMaskedLM, tokenizer: BertTokenizer, text, word_possibilities=20):
-
-    glove_word_id_mapping, glove_id_word_mapping, glove_vectors = load_glove()
-
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
 
     batch = []
