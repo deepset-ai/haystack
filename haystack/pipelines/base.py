@@ -1,15 +1,19 @@
-from typing import List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 import copy
 import inspect
 import logging
 import os
 import traceback
+import numpy as np
+import pandas as pd
 from pathlib import Path
 import networkx as nx
+from pandas.core.frame import DataFrame
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
+from haystack.nodes.evaluator.evaluator import calculate_em_str_multi, calculate_f1_str_multi, semantic_answer_similarity
 
 try:
     from ray import serve
@@ -18,7 +22,7 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack.schema import MultiLabel, Document
+from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
 
@@ -261,8 +265,7 @@ class Pipeline(BasePipeline):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         params: Optional[dict] = None,
-        debug: Optional[bool] = None,
-        debug_logs: Optional[bool] = None
+        debug: Optional[bool] = None
     ):
         """
             Runs the pipeline, one node at a time.
@@ -278,11 +281,8 @@ class Pipeline(BasePipeline):
                            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
             :param debug: Whether the pipeline should instruct nodes to collect debug information
                           about their execution. By default these include the input parameters
-                          they received, the output they generated, and eventual logs (of any severity)
-                          emitted. All debug information can then be found in the dict returned
-                          by this method under the key "_debug"
-            :param debug_logs: Whether all the logs of the node should be printed in the console,
-                               regardless of their severity and of the existing logger's settings.
+                          they received and the output they generated. All debug information can 
+                          then be found in the dict returned by this method under the key "_debug"
         """
         # validate the node names
         if params:
@@ -327,8 +327,6 @@ class Pipeline(BasePipeline):
                 if node_id not in node_input["params"].keys():
                     node_input["params"][node_id] = {}
                 node_input["params"][node_id]["debug"] = debug
-                if debug_logs is not None:
-                    node_input["params"][node_id]["debug_logs"] = debug_logs
 
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
@@ -365,6 +363,151 @@ class Pipeline(BasePipeline):
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
+
+    def eval(
+        self,
+        labels: List[MultiLabel],
+        params: Optional[dict] = None,
+        sas_model_name_or_path: str = None
+    ) -> EvaluationResult:
+        """
+            Evaluates the pipeline by running the pipeline once per query in debug mode 
+            and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+            :param labels: The labels to evaluate on
+            :param params: Dictionary of parameters to be dispatched to the nodes. 
+                        If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                        If you want to pass it to targeted nodes, you can do:
+                        {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+            :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+                        The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+                        Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                        More info in the paper: https://arxiv.org/abs/2108.06130
+                        Models:
+                        - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+                        Not all cross encoders can be used because of different return types.
+                        If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+                        - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+                        - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+                        - Large model for German only: "deepset/gbert-large-sts"
+        """    
+        eval_result = EvaluationResult()
+        queries = [label.query for label in labels]
+        for query, label in zip(queries, labels):
+            predictions = self.run(query=query, labels=label, params=params, debug=True)
+            
+            for node_name in predictions["_debug"].keys():
+                node_output = predictions["_debug"][node_name]["output"]
+                df = self._build_eval_dataframe(
+                    query, label, node_name, node_output)
+                eval_result.append(node_name, df)
+        
+        # add sas values in batch mode for whole Dataframe
+        # this is way faster than if we calculate it for each query separately
+        if sas_model_name_or_path is not None:
+            for df in eval_result.node_results.values():
+                if len(df[df["type"] == "answer"]) > 0:
+                    gold_labels = df["gold_answers"].values
+                    predictions = [[a] for a in df["answer"].values]
+                    sas, _ = semantic_answer_similarity(predictions=predictions, gold_labels=gold_labels, 
+                                                sas_model_name_or_path=sas_model_name_or_path)
+                    df["sas"] = sas
+
+        return eval_result
+
+    def _build_eval_dataframe(self, 
+        query: str, 
+        query_labels: MultiLabel, 
+        node_name: str, 
+        node_output: dict
+    ) -> DataFrame:
+        """
+        Builds a Dataframe for each query from which evaluation metrics can be calculated.
+        Currently only answer or document returning nodes are supported, returns None otherwise.
+        
+        Each row contains either an answer or a document that has been retrieved during evaluation.
+        Rows are being enriched with basic infos like rank, query, type or node.
+        Additional answer or document specific evaluation infos like gold labels 
+        and metrics depicting whether the row matches the gold labels are included, too.
+        """
+        df: DataFrame = pd.DataFrame()
+
+        if query_labels is None or query_labels.labels is None:
+            logger.warning(f"There is no label for query '{query}'. Query will be omitted.")
+            return df
+
+        # remarks for no_answers:
+        # Single 'no_answer'-labels are not contained in MultiLabel aggregates.
+        # If all labels are no_answers, MultiLabel.answers will be [""] and the other aggregates []
+        gold_answers = query_labels.answers
+        gold_offsets_in_documents = query_labels.gold_offsets_in_documents
+        gold_document_ids = query_labels.document_ids
+        gold_document_contents = query_labels.document_contents
+
+        # if node returned answers, include answer specific info:
+        # - the answer returned itself
+        # - the document_id the answer was found in
+        # - the position or offsets within the document the answer was found
+        # - the surrounding context of the answer within the document
+        # - the gold answers
+        # - the positon or offsets of the gold answer within the document
+        # - the gold document ids containing the answer
+        # - the exact_match metric depicting if the answer exactly matches the gold label
+        # - the f1 metric depicting how well the answer overlaps with the gold label on token basis
+        # - the sas metric depciting how well the answer matches the gold label on a semantic basis.
+        #   this will be calculated on all queries in eval() for performance reasons if a sas model has been provided
+        answers = node_output.get("answers", None)
+        if answers is not None:
+            answer_cols_to_keep = ["answer", "document_id", "offsets_in_document", "context"]
+            df_answers = pd.DataFrame(answers, columns=answer_cols_to_keep)
+            if len(df_answers) > 0:
+                df_answers["type"] = "answer"
+                df_answers["gold_answers"] = [gold_answers] * len(df_answers)
+                df_answers["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df_answers)
+                df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
+                df_answers["exact_match"] = df_answers.apply(
+                    lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
+                df_answers["f1"] = df_answers.apply(
+                    lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
+                df_answers["rank"] = np.arange(1, len(df_answers)+1)
+                df = pd.concat([df, df_answers])
+
+        # if node returned documents, include document specific info:
+        # - the document_id
+        # - the content of the document
+        # - the gold document ids
+        # - the gold document contents
+        # - the gold_id_match metric depicting whether one of the gold document ids matches the document
+        # - the answer_match metric depicting whether the document contains the answer
+        # - the gold_id_or_answer_match metric depicting whether one of the former two conditions are met
+        documents = node_output.get("documents", None)
+        if documents is not None:
+            document_cols_to_keep = ["content", "id"]
+            df_docs = pd.DataFrame(documents, columns=document_cols_to_keep)
+            if len(df_docs) > 0:
+                df_docs = df_docs.rename(columns={"id": "document_id"})
+                df_docs["type"] = "document"
+                df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
+                df_docs["gold_document_contents"] = [gold_document_contents] * len(df_docs)
+                df_docs["gold_id_match"] = df_docs.apply(
+                    lambda row: 1.0 if row["document_id"] in gold_document_ids else 0.0, axis=1)
+                df_docs["answer_match"] = df_docs.apply(
+                    lambda row: 
+                        1.0 if not query_labels.no_answer 
+                            and any(gold_answer in row["content"] for gold_answer in gold_answers) 
+                        else 0.0, 
+                    axis=1)
+                df_docs["gold_id_or_answer_match"] = df_docs.apply(
+                    lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1)
+                df_docs["rank"] = np.arange(1, len(df_docs)+1)
+                df = pd.concat([df, df_docs])
+
+        # add general info
+        df["node"] = node_name
+        df["query"] = query
+        df["node_input"] = "prediction"
+
+        return df
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
@@ -559,6 +702,110 @@ class Pipeline(BasePipeline):
 
         with open(path, 'w') as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
+
+    
+    def _format_document_answer(self, document_or_answer: dict):
+        return "\n \t".join([f'{name}: {value}' for name, value in document_or_answer.items()])
+
+    def _format_wrong_sample(self, query: dict):
+        metrics = "\n \t".join([f'{name}: {value}' for name, value in query['metrics'].items()])
+        documents = "\n\n \t".join([self._format_document_answer(doc) for doc in query.get('documents', [])])
+        documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
+        answers = "\n\n \t".join([self._format_document_answer(answer) for answer in query.get('answers', [])])
+        answers = f"Answers: \n \t{answers}\n" if len(answers) > 0 else ""
+        gold_document_ids = "\n \t".join(query['gold_document_ids'])
+        gold_answers = "\n \t".join(query.get('gold_answers', []))
+        gold_answers = f"Gold Answers: \n \t{gold_answers}\n" if len(gold_answers) > 0 else ""
+        s = (
+            f"Query: \n \t{query['query']}\n"
+            f"{gold_answers}"
+            f"Gold Document Ids: \n \t{gold_document_ids}\n"
+            f"Metrics: \n \t{metrics}\n"
+            f"{answers}"
+            f"{documents}"
+            f"_______________________________________________________"
+        )
+        return s
+
+    def _format_wrong_samples_node(self, node_name: str, wrong_samples_formatted: str):
+        s = (
+            f"                Wrong {node_name} Examples\n"
+            f"=======================================================\n"
+            f"{wrong_samples_formatted}\n"
+            f"=======================================================\n"
+        )
+        return s
+
+    def _format_wrong_samples_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
+        examples = {
+            node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples) 
+                for node in eval_result.node_results.keys()
+        }
+        examples_formatted = {
+            node: "\n".join([self._format_wrong_sample(example) for example in examples]) 
+                for node, examples in examples.items()
+        }
+
+        return "\n".join([self._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()])
+
+    def _format_pipeline_node(self, node: str, metrics: dict, metrics_top_1):
+        metrics = metrics.get(node, {})
+        metrics_top_1 = {f"{metric}_top_1": value for metric, value in metrics_top_1.get(node, {}).items()}
+        node_metrics = {**metrics, **metrics_top_1}
+        node_metrics_formatted = "\n".join(sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()])) 
+        node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""
+        s = (
+            f"                      {node}\n"
+            f"                        |\n"
+            f"{node_metrics_formatted}"
+            f"                        |"
+        )
+        return s
+
+    def _format_pipeline_overview(self, metrics: dict, metrics_top_1: dict):
+        pipeline_overview = "\n".join([self._format_pipeline_node(node, metrics, metrics_top_1) for node in self.graph.nodes])
+        s = (
+            f"================== Evaluation Report ==================\n"
+            f"=======================================================\n"
+            f"                   Pipeline Overview\n"
+            f"=======================================================\n"
+            f"{pipeline_overview}\n"
+            f"                      Output\n"
+            f"=======================================================\n"
+        )
+        return s
+
+    def print_eval_report(
+        self, 
+        eval_result: EvaluationResult, 
+        n_wrong_examples: int = 3, 
+        metrics_filter: Optional[Dict[str, List[str]]] = None):
+        """
+        Prints evaluation report containing a metrics funnel and worst queries for further analysis.
+        
+        :param eval_result: The evaluation result, can be obtained by running eval().
+        :param n_wrong_examples: The number of worst queries to show.
+        :param metrics_filter: The metrics to show per node. If None all metrics will be shown.
+        """
+        if any(degree > 1 for node, degree in self.graph.out_degree):
+            logger.warning("Pipelines with junctions are currently not supported.")
+            return
+        
+        metrics_top_n = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
+        metrics_top_1 = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1)
+        if metrics_filter is not None:
+            metrics_top_n = {node: metrics if node not in metrics_filter 
+                                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]} 
+                                    for node, metrics in metrics_top_n.items()}
+            metrics_top_1 = {node: metrics if node not in metrics_filter 
+                                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]} 
+                                    for node, metrics in metrics_top_1.items()}
+        pipeline_overview = self._format_pipeline_overview(metrics_top_n, metrics_top_1)        
+        wrong_samples_report = self._format_wrong_samples_report(eval_result=eval_result, n_wrong_examples=n_wrong_examples)
+
+        print(
+            f"{pipeline_overview}\n"
+            f"{wrong_samples_report}")
 
 
 class RayPipeline(Pipeline):

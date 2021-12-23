@@ -328,14 +328,14 @@ class Processor(ABC):
         return True
 
     def _log_samples(self, n_samples:int, baskets:List[SampleBasket]):
-        logger.info("*** Show {} random examples ***".format(n_samples))
+        logger.debug("*** Show {} random examples ***".format(n_samples))
         if len(baskets) == 0:
-            logger.info("*** No samples to show because there are no baskets ***")
+            logger.debug("*** No samples to show because there are no baskets ***")
             return
         for i in range(n_samples):
             random_basket = random.choice(baskets)
             random_sample = random.choice(random_basket.samples) # type: ignore
-            logger.info(random_sample)
+            logger.debug(random_sample)
 
     def _log_params(self):
         params = {
@@ -433,7 +433,7 @@ class SquadProcessor(Processor):
 
         :param dicts: dict, input dictionary with SQuAD style information present
         :param indices: list, indices used during multiprocessing so that IDs assigned to our baskets is unique
-        :param return_baskets: boolean, weather to return the baskets or not (baskets are needed during inference)
+        :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
         # Convert to standard format
         pre_baskets = [self.convert_qa_input_dict(x) for x in dicts] # TODO move to input object conversion
@@ -955,7 +955,7 @@ class TextSimilarityProcessor(Processor):
                                         ]
                          }
         :param indices: indices used during multiprocessing so that IDs assigned to our baskets is unique
-        :param return_baskets: weather to return the baskets or not (baskets are needed during inference)
+        :param return_baskets: whether to return the baskets or not (baskets are needed during inference)
         :return dataset, tensor_names, problematic_ids, [baskets]
         """
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
@@ -1433,7 +1433,7 @@ class TableTextSimilarityProcessor(Processor):
                                         ]
                          }
         :param indices: list, indices used during multiprocessing so that IDs assigned to our baskets is unique
-        :param return_baskets: boolean, weather to return the baskets or not (baskets are needed during inference)
+        :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
 
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
@@ -1727,7 +1727,7 @@ class TextClassificationProcessor(Processor):
         self.header = header
         self.max_samples = max_samples
         self.dev_stratification = dev_stratification
-        logger.warning(f"Currently no support in Processor for returning problematic ids")
+        logger.debug(f"Currently no support in Processor for returning problematic ids")
 
         super(TextClassificationProcessor, self).__init__(
             tokenizer=tokenizer,

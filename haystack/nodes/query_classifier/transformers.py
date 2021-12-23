@@ -4,6 +4,7 @@ from typing import Union
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from haystack.nodes.query_classifier import BaseQueryClassifier
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -54,21 +55,23 @@ class TransformersQueryClassifier(BaseQueryClassifier):
     """
     def __init__(
         self,
-        model_name_or_path: Union[
-            Path, str
-        ] = "shahrukhx01/bert-mini-finetune-question-detection"
+        model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
+        use_gpu: bool = True,
     ):
         """
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
+        :param use_gpu: Whether to use GPU (if available).
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(model_name_or_path=model_name_or_path)
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        device = 0 if self.devices[0].type == "cuda" else -1
 
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
         self.query_classification_pipeline = TextClassificationPipeline(
-            model=model, tokenizer=tokenizer
+            model=model, tokenizer=tokenizer, device=device
         )
 
     def run(self, query):

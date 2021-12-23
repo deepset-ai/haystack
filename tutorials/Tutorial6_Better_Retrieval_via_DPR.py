@@ -67,7 +67,7 @@ def tutorial6_better_retrieval_via_dpr():
     # prediction = pipe.run(query="Who created the Dothraki vocabulary?", params={"Reader": {"top_k": 5}})
     # prediction = pipe.run(query="Who is the sister of Sansa?", params={"Reader": {"top_k": 5}})
 
-    print_answers(prediction, details="minimal")
+    print_answers(prediction, details="minimum")
 
 
 if __name__ == "__main__":

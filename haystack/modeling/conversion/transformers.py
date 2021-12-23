@@ -1,4 +1,5 @@
 import logging
+from typing import Union
 
 from transformers import AutoModelForQuestionAnswering
 
@@ -42,7 +43,7 @@ class Converter:
         return converted_models
 
     @staticmethod
-    def convert_from_transformers(model_name_or_path, device, revision=None, task_type=None, processor=None, **kwargs):
+    def convert_from_transformers(model_name_or_path, device, revision=None, task_type=None, processor=None,  use_auth_token: Union[bool, str] = None, **kwargs):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
          - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
@@ -66,7 +67,7 @@ class Converter:
         :return: AdaptiveModel
         """
 
-        lm = LanguageModel.load(model_name_or_path, revision=revision, **kwargs)
+        lm = LanguageModel.load(model_name_or_path, revision=revision,use_auth_token=use_auth_token, **kwargs)
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]

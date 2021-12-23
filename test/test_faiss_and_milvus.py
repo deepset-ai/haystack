@@ -14,12 +14,12 @@ from haystack.pipelines import Pipeline
 from haystack.nodes.retriever.dense import EmbeddingRetriever
 
 DOCUMENTS = [
-    {"name": "name_1", "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
-    {"name": "name_2", "content": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
-    {"name": "name_3", "content": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
-    {"name": "name_4", "content": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
-    {"name": "name_5", "content": "text_5", "embedding": np.random.rand(768).astype(np.float32)},
-    {"name": "name_6", "content": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
+    {"meta": {"name": "name_1", "year": "2020", "month": "01"}, "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_2", "year": "2020", "month": "02"}, "content": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_3", "year": "2020", "month": "03"}, "content": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
+    {"meta": {"name": "name_4", "year": "2021", "month": "01"}, "content": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_5", "year": "2021", "month": "02"}, "content": "text_5", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_6", "year": "2021", "month": "03"}, "content": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
 ]
 
 
@@ -43,6 +43,16 @@ def test_faiss_index_save_and_load(tmp_path):
 
     # test loading the index
     new_document_store = FAISSDocumentStore.load(tmp_path / "haystack_test_faiss")
+
+    # check faiss index is restored
+    assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
+    # check if documents are restored
+    assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
+    # Check if the init parameters are kept
+    assert not new_document_store.progress_bar
+
+    # test loading the index via init
+    new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss")
 
     # check faiss index is restored
     assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
@@ -79,6 +89,31 @@ def test_faiss_index_save_and_load_custom_path(tmp_path):
     assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
     # Check if the init parameters are kept
     assert not new_document_store.progress_bar
+
+    # test loading the index via init
+    new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss", faiss_config_path=tmp_path / "custom_path.json")
+
+    # check faiss index is restored
+    assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
+    # check if documents are restored
+    assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
+    # Check if the init parameters are kept
+    assert not new_document_store.progress_bar
+
+
+@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
+def test_faiss_index_mutual_exclusive_args(tmp_path):
+    with pytest.raises(ValueError):
+        FAISSDocumentStore(
+            sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
+            faiss_index_path=f"{tmp_path/'haystack_test'}"
+        )
+
+    with pytest.raises(ValueError):
+        FAISSDocumentStore(
+            f"sqlite:////{tmp_path/'haystack_test.db'}",
+            faiss_index_path=f"{tmp_path/'haystack_test'}"
+        )
 
 
 @pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
@@ -220,6 +255,38 @@ def test_delete_docs_with_filters(document_store, retriever):
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_delete_docs_with_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    document_store.delete_documents(filters={"year": ["2020"]})
+
+    documents = document_store.get_all_documents()
+    assert len(documents) == 3
+    assert document_store.get_embedding_count() == 3
+    assert all("2021" == doc.meta["year"] for doc in documents)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_delete_docs_with_many_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    document_store.delete_documents(filters={"month": ["01"], "year": ["2020"]})
+
+    documents = document_store.get_all_documents()
+    assert len(documents) == 5
+    assert document_store.get_embedding_count() == 5
+    assert "name_1" not in {doc.meta["name"] for doc in documents}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
 def test_delete_docs_by_id(document_store, retriever):
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, batch_size=4)
@@ -259,6 +326,50 @@ def test_delete_docs_by_id_with_filters(document_store, retriever):
 
     all_ids_left = [doc.id for doc in documents]
     assert all(doc_id in all_ids_left for doc_id in ids_not_to_delete)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_get_docs_with_filters_one_value(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    documents =  document_store.get_all_documents(filters={"year": ["2020"]})
+
+    assert len(documents) == 3
+    assert all("2020" == doc.meta["year"] for doc in documents)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_get_docs_with_filters_many_values(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    documents = document_store.get_all_documents(filters={"name": ["name_5", "name_6"]})
+
+    assert len(documents) == 2
+    assert {doc.meta["name"] for doc in documents} == {"name_5", "name_6"}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
+@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+def test_get_docs_with_many_filters(document_store, retriever):
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, batch_size=4)
+    assert document_store.get_embedding_count() == 6
+
+    documents = document_store.get_all_documents(filters={"month": ["01"], "year": ["2020"]})
+
+    assert len(documents) == 1
+    assert "name_1" == documents[0].meta["name"]
+    assert "01" == documents[0].meta["month"]
+    assert "2020" == documents[0].meta["year"]
 
 
 

@@ -4,7 +4,7 @@ wheel
 # PyTorch
 # Temp. disabled the next line as it gets currently resolved to https://download.pytorch.org/whl/rocm3.8/torch-1.7.1%2Brocm3.8-cp38-cp38-linux_x86_64.whl
 # --find-links=https://download.pytorch.org/whl/torch_stable.html
-torch>1.5,<1.10
+torch>1.5,<1.11
 # progress bars in model download and training scripts
 tqdm
 # Used for downloading models over HTTP
@@ -16,7 +16,7 @@ sklearn
 seqeval
 mlflow<=1.13.1
 # huggingface repository
-transformers==4.7.0
+transformers==4.13.0
 # pickle extension for (de-)serialization
 dill
 # Inference with ONNX models. Install onnxruntime-gpu for Inference on GPUs
@@ -60,6 +60,7 @@ pymilvus
 SPARQLWrapper
 mmh3
 weaviate-client==2.5.0
-ray==1.5.0
+ray>=1.5.0,<=1.8.0
 dataclasses-json
 quantulum3
+azure-ai-formrecognizer==3.2.0b2

@@ -197,6 +197,13 @@ Explore the rest of our tutorials to learn how to tweak pipelines, train models 
 
 ## :beginner: Quick Demo
 
+**Hosted**
+
+Try out our hosted [Explore The World](https://haystack-demo.deepset.ai/) live demo here!
+Ask any question on countries or capital cities and let Haystack return the answers to you. 
+
+**Local**
+
 Start up a Haystack service via [Docker Compose](https://docs.docker.com/compose/).
 With this you can begin calling it directly via the REST API or even interact with it using the included Streamlit UI.
 

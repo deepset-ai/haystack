@@ -84,7 +84,7 @@ class ImageToTextConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
 
@@ -142,7 +142,7 @@ class ImageToTextConverter(BaseConverter):
 
         text = "\f".join(cleaned_pages)
         document = {"content": text, "meta": meta}
-        return document
+        return [document]
 
     def _image_to_text(self, image: PpmImageFile) -> List[str]:
         """

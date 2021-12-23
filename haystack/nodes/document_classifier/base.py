@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import logging
 from abc import abstractmethod
@@ -21,16 +21,22 @@ class BaseDocumentClassifier(BaseComponent):
     def predict(self, documents: List[Document]):
         pass
 
-    def run(self, query: str, documents: List[Document]): # type: ignore
+    def run(self, documents: Union[List[dict], List[Document]], root_node: str): # type: ignore
         self.query_count += 1
         if documents:
-            predict = self.timing(self.predict, "query_time")
+            predict = self.timing(self.predict, "query_time")            
+            documents = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
             results = predict(documents=documents)
         else:
             results = []
 
         document_ids = [doc.id for doc in results]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
+
+        # convert back to dicts if we are in an indexing pipeline
+        if root_node == "File":
+            results = [doc.to_dict() for doc in results]
+
         output = {"documents": results}
 
         return output, "output_1"

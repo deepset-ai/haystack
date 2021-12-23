@@ -5,3 +5,4 @@ from haystack.nodes.file_converter.markdown import MarkdownConverter
 from haystack.nodes.file_converter.pdf import PDFToTextConverter, PDFToTextOCRConverter
 from haystack.nodes.file_converter.tika import TikaConverter, TikaXHTMLParser
 from haystack.nodes.file_converter.txt import TextConverter
+from haystack.nodes.file_converter.azure import AzureConverter

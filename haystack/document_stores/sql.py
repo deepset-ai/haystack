@@ -28,7 +28,8 @@ class ORMBase(Base):
 class DocumentORM(ORMBase):
     __tablename__ = "document"
 
-    content = Column(Text, nullable=False)
+    content = Column(JSON, nullable=False)
+    content_type = Column(Text, nullable=True)
     # primary key in combination with id to allow the same doc in different indices
     index = Column(String(100), nullable=False, primary_key=True)
     vector_id = Column(String(100), unique=True, nullable=True)
@@ -179,7 +180,7 @@ class SQLDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        documents = list(self.get_all_documents_generator(index=index, filters=filters))
+        documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding))
         return documents
 
     def get_all_documents_generator(
@@ -201,7 +202,6 @@ class SQLDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
-
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
         result = self._query(
@@ -235,17 +235,19 @@ class SQLDocumentStore(BaseDocumentStore):
         documents_query = self.session.query(
             DocumentORM.id,
             DocumentORM.content,
+            DocumentORM.content_type,
             DocumentORM.vector_id
         ).filter_by(index=index)
 
         if filters:
-            documents_query = documents_query.join(MetaDocumentORM)
             for key, values in filters.items():
-                documents_query = documents_query.filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
-                    DocumentORM.id == MetaDocumentORM.document_id
-                )
+                documents_query = documents_query. \
+                    join(MetaDocumentORM, aliased=True). \
+                    filter(
+                        MetaDocumentORM.name == key,
+                        MetaDocumentORM.value.in_(values),
+                    )
+
         if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
         if vector_ids:
@@ -257,11 +259,12 @@ class SQLDocumentStore(BaseDocumentStore):
             documents_query = self._windowed_query(documents_query, DocumentORM.id, batch_size)
 
         for i, row in enumerate(documents_query, start=1):
-            documents_map[row.id] = Document(
-                id=row.id,
-                content=row.content,
-                meta=None if row.vector_id is None else {"vector_id": row.vector_id}
-            )
+            documents_map[row.id] = Document.from_dict({
+                "id": row.id,
+                "content": row.content,
+                "content_type": row.content_type,
+                "meta": {} if row.vector_id is None else {"vector_id": row.vector_id}
+            })
             if i % batch_size == 0:
                 documents_map = self._get_documents_meta(documents_map)
                 yield from documents_map.values()
@@ -334,7 +337,8 @@ class SQLDocumentStore(BaseDocumentStore):
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
-                doc_orm = DocumentORM(id=doc.id, content=doc.content, vector_id=vector_id, meta=meta_orms, index=index)
+                doc_orm = DocumentORM(id=doc.id, content=doc.to_dict()["content"], content_type=doc.content_type,
+                                      vector_id=vector_id, meta=meta_orms, index=index)
                 if duplicate_documents == "overwrite":
                     # First old meta data cleaning is required
                     self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
@@ -446,9 +450,13 @@ class SQLDocumentStore(BaseDocumentStore):
         query = self.session.query(DocumentORM).filter_by(index=index)
 
         if filters:
-            query = query.join(MetaDocumentORM)
             for key, values in filters.items():
-                query = query.filter(MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values))
+                query = query. \
+                    join(MetaDocumentORM, aliased=True). \
+                    filter(
+                        MetaDocumentORM.name == key,
+                        MetaDocumentORM.value.in_(values),
+                    )
 
         count = query.count()
         return count
@@ -461,11 +469,14 @@ class SQLDocumentStore(BaseDocumentStore):
         return self.session.query(LabelORM).filter_by(index=index).count()
 
     def _convert_sql_row_to_document(self, row) -> Document:
-        document = Document(
-            id=row.id,
-            content=row.content,
-            meta={meta.name: meta.value for meta in row.meta}
-        )
+        doc_dict = {
+            "id": row.id,
+            "content": row.content,
+            "content_type": row.content_type,
+            "meta": {meta.name: meta.value for meta in row.meta}
+        }
+        document = Document.from_dict(doc_dict)
+
         if row.vector_id:
             document.meta["vector_id"] = row.vector_id
         return document
@@ -537,11 +548,12 @@ class SQLDocumentStore(BaseDocumentStore):
             document_ids_to_delete = self.session.query(DocumentORM.id).filter(DocumentORM.index==index)
             if filters:
                 for key, values in filters.items():
-                    document_ids_to_delete = document_ids_to_delete.filter(
-                        MetaDocumentORM.name == key,
-                        MetaDocumentORM.value.in_(values),
-                        DocumentORM.id == MetaDocumentORM.document_id
-                    )
+                    document_ids_to_delete = document_ids_to_delete. \
+                        join(MetaDocumentORM, aliased=True). \
+                        filter(
+                            MetaDocumentORM.name == key,
+                            MetaDocumentORM.value.in_(values),
+                        )
             if ids:
                 document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
 

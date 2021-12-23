@@ -24,6 +24,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from functools import wraps
 import numpy as np
 import torch
 from torch import nn
@@ -44,6 +45,29 @@ from transformers.modeling_utils import SequenceSummary
 
 
 logger = logging.getLogger(__name__)
+
+
+def silence_transformers_logs(from_pretrained_func):
+    """
+    Wrapper that raises the log level of Transformers to
+    ERROR to hide some unnecessary warnings
+    """
+    @wraps(from_pretrained_func)
+    def quiet_from_pretrained_func(cls, *args, **kwargs):
+
+        # Raise the log level of Transformers
+        t_logger = logging.getLogger("transformers")
+        original_log_level = t_logger.level
+        t_logger.setLevel(logging.ERROR)
+
+        result = from_pretrained_func(cls, *args, **kwargs)
+
+        # Restore the log level
+        t_logger.setLevel(original_log_level)
+
+        return result
+
+    return quiet_from_pretrained_func
 
 
 # These are the names of the attributes in various model configs which refer to the number of dimensions
@@ -77,7 +101,7 @@ class LanguageModel(nn.Module):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[bool, str] = None,  **kwargs):
         """
         Load a pretrained language model either by
 
@@ -122,7 +146,6 @@ class LanguageModel(nn.Module):
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
         kwargs["revision"] = kwargs.get("revision", None)
-        logger.info("")
         logger.info("LOADING MODEL")
         logger.info("=============")
         config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
@@ -135,10 +158,10 @@ class LanguageModel(nn.Module):
             logger.info(f"Could not find {pretrained_model_name_or_path} locally.")
             logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
             if language_model_class is None:
-                language_model_class = cls.get_language_model_class(pretrained_model_name_or_path)
+                language_model_class = cls.get_language_model_class(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
 
             if language_model_class:
-                language_model = cls.subclasses[language_model_class].load(pretrained_model_name_or_path, **kwargs)
+                language_model = cls.subclasses[language_model_class].load(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
             else:
                 language_model = None
 
@@ -167,11 +190,11 @@ class LanguageModel(nn.Module):
         return language_model
 
     @staticmethod
-    def get_language_model_class(model_name_or_path, **kwargs):
+    def get_language_model_class(model_name_or_path, use_auth_token: Union[str,bool] = None, **kwargs):
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
 
-        config = AutoConfig.from_pretrained(model_name_or_path, **kwargs)
+        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, **kwargs)
         model_type = config.model_type
         if model_type == "xlm-roberta":
             language_model_class = "XLMRoberta"
@@ -426,6 +449,7 @@ class Bert(LanguageModel):
         return bert
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
@@ -460,6 +484,8 @@ class Bert(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -471,19 +497,24 @@ class Bert(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
-        :return: Embeddings for each token in the input sequence.
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
+        :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if specified via the arguments output_hidden_states and output_attentions
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            return_dict=False
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
@@ -503,6 +534,7 @@ class Albert(LanguageModel):
         self.name = "albert"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -584,6 +616,7 @@ class Roberta(LanguageModel):
         self.name = "roberta"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -665,6 +698,7 @@ class XLMRoberta(LanguageModel):
         self.name = "xlm_roberta"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -753,6 +787,7 @@ class DistilBert(LanguageModel):
         self.pooler = None
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
@@ -840,6 +875,7 @@ class XLNet(LanguageModel):
         self.pooler = None
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -946,6 +982,7 @@ class Electra(LanguageModel):
         self.pooler = None
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying
@@ -1037,6 +1074,7 @@ class Camembert(Roberta):
         self.name = "camembert"
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a language model either by supplying
@@ -1080,7 +1118,8 @@ class DPRQuestionEncoder(LanguageModel):
         self.name = "dpr_question_encoder"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    @silence_transformers_logs
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[str,bool] = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1113,15 +1152,15 @@ class DPRQuestionEncoder(LanguageModel):
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder(config=transformers.DPRConfig(**original_config_dict))
-                language_model_class = cls.get_language_model_class(haystack_lm_config)
+                language_model_class = cls.get_language_model_class(haystack_lm_config, use_auth_token, **kwargs)
                 dpr_question_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
             dpr_question_encoder.language = dpr_question_encoder.model.config.language
         else:
-            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token)
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRQuestionEncoder model
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), **kwargs)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs)
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRQuestionEncoder
                 # but keep config values from original architecture
@@ -1133,7 +1172,7 @@ class DPRQuestionEncoder(LanguageModel):
                 original_config_dict.update(kwargs)
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder(config=transformers.DPRConfig(**original_config_dict))
                 dpr_question_encoder.model.base_model.bert_model = AutoModel.from_pretrained(
-                    str(pretrained_model_name_or_path), **original_config_dict)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict)
             dpr_question_encoder.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
 
         return dpr_question_encoder
@@ -1212,7 +1251,8 @@ class DPRContextEncoder(LanguageModel):
         self.name = "dpr_context_encoder"
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    @silence_transformers_logs
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[str,bool] = None, **kwargs):
         """
         Load a pretrained model by supplying
 
@@ -1237,7 +1277,7 @@ class DPRContextEncoder(LanguageModel):
 
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
-                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(haystack_lm_model,config=dpr_config,**kwargs)
+                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(haystack_lm_model,config=dpr_config, use_auth_token=use_auth_token, **kwargs)
             else:
                 if original_model_config.model_type != "bert":
                     logger.warning(
@@ -1246,18 +1286,18 @@ class DPRContextEncoder(LanguageModel):
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
                 dpr_context_encoder.model = transformers.DPRContextEncoder(config=transformers.DPRConfig(**original_config_dict))
-                language_model_class = cls.get_language_model_class(haystack_lm_config)
+                language_model_class = cls.get_language_model_class(haystack_lm_config, **kwargs)
                 dpr_context_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(
-                    str(pretrained_model_name_or_path)).model
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token).model
             dpr_context_encoder.language = dpr_context_encoder.model.config.language
 
         else:
             # Pytorch-transformer Style
-            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token)
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRContextEncoder model
                 dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), **kwargs)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs)
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRContextEncoder
                 # but keep config values from original architecture
@@ -1271,7 +1311,7 @@ class DPRContextEncoder(LanguageModel):
                 dpr_context_encoder.model = transformers.DPRContextEncoder(
                     config=transformers.DPRConfig(**original_config_dict))
                 dpr_context_encoder.model.base_model.bert_model = AutoModel.from_pretrained(
-                    str(pretrained_model_name_or_path), **original_config_dict)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict)
             dpr_context_encoder.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
 
         return dpr_context_encoder
@@ -1364,6 +1404,7 @@ class BigBird(LanguageModel):
         return big_bird
 
     @classmethod
+    @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
         Load a pretrained model by supplying

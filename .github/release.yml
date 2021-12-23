@@ -1,0 +1,36 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking change
+    - title: Pipeline
+      labels:
+        - topic:pipeline
+    - title: Models
+      labels:
+        - topic:models
+    - title: DocumentStores
+      labels:
+        - topic:document_store
+        - topic:elasticsearch
+        - topic:faiss
+        - topic:sql
+    - title: REST API
+      labels:
+        - topic:api
+    - title: UI / Demo
+      labels:
+        - topic:ui
+        - topic:demo
+    - title: Documentation
+      labels:
+        - type:documentation
+    - title: Tutorials
+      labels:
+        - type:tutorial
+    - title: Other Changes
+      labels:
+        - "*"

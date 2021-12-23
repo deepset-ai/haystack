@@ -5,6 +5,7 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from haystack.schema import Document, Answer
 from haystack.nodes.translator import BaseTranslator
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,8 @@ class TransformersTranslator(BaseTranslator):
         model_name_or_path: str,
         tokenizer_name: Optional[str] = None,
         max_seq_len: Optional[int] = None,
-        clean_up_tokenization_spaces: Optional[bool] = True
+        clean_up_tokenization_spaces: Optional[bool] = True,
+        use_gpu: bool = True,
     ):
         """ Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
@@ -55,6 +57,7 @@ class TransformersTranslator(BaseTranslator):
                                tokenizer.
         :param max_seq_len: The maximum sentence length the model accepts. (Optional)
         :param clean_up_tokenization_spaces: Whether or not to clean up the tokenization spaces. (default True)
+        :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
 
         # save init parameters to enable export of component config as YAML
@@ -63,6 +66,7 @@ class TransformersTranslator(BaseTranslator):
             clean_up_tokenization_spaces=clean_up_tokenization_spaces,
         )
 
+        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         tokenizer_name = tokenizer_name or model_name_or_path
@@ -70,6 +74,7 @@ class TransformersTranslator(BaseTranslator):
             tokenizer_name
         )
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.model.to(str(self.devices[0]))
 
     def translate(
         self,
@@ -113,7 +118,7 @@ class TransformersTranslator(BaseTranslator):
             src_texts=text_for_translator,
             return_tensors="pt",
             max_length=self.max_seq_len
-        )
+        ).to(self.devices[0])
         generated_output = self.model.generate(**batch)
         translated_texts = self.tokenizer.batch_decode(
             generated_output,

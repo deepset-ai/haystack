@@ -64,7 +64,7 @@ def convert_files_to_dicts(
                     file_path=path,
                     meta=None,
                     encoding=encoding,
-            )
+            )[0]  # PDFToTextConverter, TextConverter, and DocxToTextConverter return a list containing a single dict
             text = document["content"]
 
             if clean_func:
@@ -119,7 +119,7 @@ def tika_convert_files_to_dicts(
     documents = []
     for path in file_paths:
         logger.info('Converting {}'.format(path))
-        document = converter.convert(path)
+        document = converter.convert(path)[0] # PDFToTextConverter, TextConverter, and DocxToTextConverter return a list containing a single dict
         meta = document["meta"] or {}
         meta["name"] = path.name
         text = document["content"]
