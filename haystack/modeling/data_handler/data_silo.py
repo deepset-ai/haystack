@@ -811,18 +811,3 @@ class DistillationDataSilo(DataSilo):
         }
         checksum = get_dict_checksum(payload_dict)
         return checksum
-
-class TinyBERTDistillationDataSilo(DistillationDataSilo):
-    def _run_teacher(self, batch: dict) -> List[torch.Tensor]:
-        """
-        Run the teacher model on the given batch.
-        """
-        model = self.teacher.inferencer.model
-        logits, hidden_states, attentions = model.forward(**batch, output_attentions=True, output_hidden_states=True)
-        self.hidden_states_len = len(hidden_states)
-        self.attentions_len = len(attentions)
-        return hidden_states + attentions
-    
-    def _teacher_output_names(self) -> List[str]:
-        return [f"teacher_hidden_state_{i}" for i in range(self.hidden_states_len)] + \
-            [f"teacher_attention_{i}" for i in range(self.attentions_len)]
