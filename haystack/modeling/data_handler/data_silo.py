@@ -138,6 +138,7 @@ class DataSilo:
 
         with ExitStack() as stack:
             if self.max_processes > 1:  # use multiprocessing only when max_processes > 1
+                mp.set_sharing_strategy('file_system')
                 p = stack.enter_context(mp.Pool(processes=num_cpus_used))
 
                 logger.info(
