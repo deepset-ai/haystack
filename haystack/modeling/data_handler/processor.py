@@ -1113,7 +1113,7 @@ class TextSimilarityProcessor(Processor):
                     sample.clear_text["passages"] = positive_context + hard_negative_context
                     sample.tokenized["passages_tokens"] = tokenized_passage  # type: ignore
                     sample.features[0]["passage_input_ids"] = ctx_inputs["input_ids"]  # type: ignore
-                    sample.features[0]["passage_segment_ids"] = ctx_segment_ids  # type: ignore
+                    sample.features[0]["passage_segment_ids"] = ctx_segment_ids.tolist()  # type: ignore
                     sample.features[0]["passage_attention_mask"] = ctx_inputs["attention_mask"]  # type: ignore
                     sample.features[0]["label_ids"] = ctx_label  # type: ignore
                 except Exception as e:
