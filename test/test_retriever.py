@@ -345,3 +345,132 @@ def test_table_text_retriever_training(document_store):
 
     # Load trained model
     retriever = TableTextRetriever.load(load_dir="test_table_text_retriever_train", document_store=document_store)
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_highlight():
+    client = Elasticsearch()
+    client.indices.delete(index="haystack_hl_test",  ignore=[404])
+    document_store = ElasticsearchDocumentStore(
+        index="haystack_hl_test", content_field= "title",
+        custom_mapping={
+            "mappings": {
+                "properties": {
+                    "content": {
+                        "analyzer": "custom_analyzer",
+                        "type": "text"
+                    },
+                    "title": {
+                        "analyzer": "custom_analyzer",
+                        "type": "text"
+                    }
+                }
+            },
+            "settings": {
+                "analysis": {
+                    "analyzer": {
+                        "custom_analyzer": {
+                            "filter": [
+                                "lowercase",
+                                "english_stemmer"
+                            ],
+                            "tokenizer": "standard",
+                            "type": "custom"
+                        }
+                    },
+                    "filter": {
+                        "english_stemmer": {
+                            "language": "english",
+                            "type": "kstem"
+                        }
+                    }
+                }
+            }
+        }
+    )
+    documents = [
+        {"title": "Green tea components", "meta":{"content": "The green tea plant contains a range of healthy compounds that make it into the final drink"}, "id":"1"},
+        {"title": "Green tea catechin", "meta":{"content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG)."}, "id":"2"},
+        {"title": "Minerals in Green tea", "meta":{"content": "Green tea also has small amounts of minerals that can benefit your health."}, "id":"3"},
+        {"title": "Green tea Benefits", "meta":{"content": "Green tea does more than just keep you alert, it may also help boost brain function."}, "id":"4"}
+    ]
+    document_store.write_documents(documents)
+
+    retriever = ElasticsearchRetriever(
+        document_store=document_store,
+        custom_query=
+        """{
+            "size": 20,
+            "query": {
+                "bool": {
+                    "should": [
+                        {
+                            "multi_match": {
+                                "query": ${query},
+                                "fields": [
+                                    "content^3",
+                                    "title^5"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "highlight": {
+                "pre_tags": [
+                    "**"
+                ],
+                "post_tags": [
+                    "**"
+                ],
+                "number_of_fragments": 3,
+                "fragment_size": 5,
+                "fields": {
+                    "content": {},
+                    "title": {}
+                }
+            }
+        }""",
+    )
+    results = retriever.retrieve(query="is green tea healthy")
+    assert "hl_title" in results[0].meta
+    assert "hl_content" in results[0].meta
+
+    retriever = ElasticsearchRetriever(
+        document_store=document_store,
+        custom_query=
+        """{
+            "size": 20,
+            "query": {
+                "bool": {
+                    "should": [
+                        {
+                            "multi_match": {
+                                "query": ${query},
+                                "fields": [
+                                    "content^3",
+                                    "title^5"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "highlight": {
+                "pre_tags": [
+                    "**"
+                ],
+                "post_tags": [
+                    "**"
+                ],
+                "number_of_fragments": 3,
+                "fragment_size": 5,
+                "fields": {
+                    "title": {}
+                }
+            }
+        }""",
+    )
+    results = retriever.retrieve(query="is green tea healthy")
+    assert "hl_title" in results[0].meta
+    assert "hl_content" not in results[0].meta

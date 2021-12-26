@@ -919,6 +919,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if name:
             meta_data["name"] = name
 
+        if 'highlight' in hit:
+            {meta_data.update({f'hl_{hl_field}': hit["highlight"][hl_field]}) for hl_field in hit["highlight"]}
+
         score = hit["_score"] if hit["_score"] else None
         if score:
             if adapt_score_for_embedding:
