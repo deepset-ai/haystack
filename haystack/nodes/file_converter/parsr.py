@@ -1,4 +1,8 @@
-from typing import Optional, Dict, List, Any, Literal
+from typing import Optional, Dict, List, Any
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import requests
 import json
