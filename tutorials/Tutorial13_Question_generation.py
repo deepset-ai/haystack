@@ -1,7 +1,7 @@
 from tqdm import tqdm
-from haystack.nodes import QuestionGenerator, ElasticsearchRetriever, FARMReader
+from haystack.nodes import QuestionGenerator, ElasticsearchRetriever, FARMReader, TransformersTranslator
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.pipelines import QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline, QuestionAnswerGenerationPipeline
+from haystack.pipelines import QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline, QuestionAnswerGenerationPipeline, TranslationWrapperPipeline
 from haystack.utils import launch_es, print_questions
 
 """ 
@@ -76,6 +76,33 @@ def tutorial13_question_generation():
 
         print(f"\n * Generating questions and answers for document {idx}: {document.content[:100]}...\n")
         result = qag_pipeline.run(documents=[document])
+        print_questions(result)
+
+
+    """
+    Trained models for Question Answer Generation are not available in many languages other than English.
+    Haystack provides a workaround for that issue by machine-translating a pipeline's inputs and outputs with the TranslationWrapperPipeline.
+    The following example generates German questions and answers on a German text document - by using an English model for Question Answer Generation.
+    """
+
+    # Fill the document store with a German document.
+    text1 = "Python ist eine interpretierte Hochsprachenprogrammiersprache für allgemeine Zwecke. Sie wurde von Guido van Rossum entwickelt und 1991 erstmals veröffentlicht. Die Design-Philosophie von Python legt den Schwerpunkt auf die Lesbarkeit des Codes und die Verwendung von viel Leerraum (Whitespace)."
+    docs = [{"content": text1}]
+    document_store.delete_documents()
+    document_store.write_documents(docs)
+
+    # Load machine translation models
+    in_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
+    out_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
+
+    # Wrap the previously defined QuestionAnswerGenerationPipeline
+    pipeline_with_translation = TranslationWrapperPipeline(input_translator=in_translator,
+                                                           output_translator=out_translator,
+                                                           pipeline=qag_pipeline)
+
+    for idx, document in enumerate(tqdm(document_store)):
+        print(f"\n * Generating questions and answers for document {idx}: {document.content[:100]}...\n")
+        result = pipeline_with_translation.run(documents=[document])
         print_questions(result)
 
 
