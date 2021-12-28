@@ -1102,8 +1102,7 @@ class TextSimilarityProcessor(Processor):
                         return_token_type_ids=True
                     )
 
-                    # TODO check if we need this and potentially remove
-                    ctx_segment_ids = np.zeros_like(ctx_inputs["token_type_ids"], dtype=np.int32)
+                    ctx_segment_ids = [[0] * len(ctx_inputs["token_type_ids"][0])] * len(ctx_inputs["token_type_ids"])
 
                     # get tokens in string format
                     tokenized_passage = [self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in ctx_inputs["input_ids"]]
@@ -1113,7 +1112,7 @@ class TextSimilarityProcessor(Processor):
                     sample.clear_text["passages"] = positive_context + hard_negative_context
                     sample.tokenized["passages_tokens"] = tokenized_passage  # type: ignore
                     sample.features[0]["passage_input_ids"] = ctx_inputs["input_ids"]  # type: ignore
-                    sample.features[0]["passage_segment_ids"] = ctx_segment_ids.tolist()  # type: ignore
+                    sample.features[0]["passage_segment_ids"] = ctx_segment_ids  # type: ignore
                     sample.features[0]["passage_attention_mask"] = ctx_inputs["attention_mask"]  # type: ignore
                     sample.features[0]["label_ids"] = ctx_label  # type: ignore
                 except Exception as e:
