@@ -57,7 +57,7 @@ class ParsrConverter(BaseConverter):
         self.set_config(parsr_url=parsr_url, extractor=extractor, table_detection_mode=table_detection_mode,
                         preceding_context_len=preceding_context_len,  following_context_len=following_context_len,
                         remove_page_headers=remove_page_headers, remove_page_footers=remove_page_footers,
-                        remove_table_of_contents=remove_table_of_contents, valid_languages=valid_languages,)
+                        remove_table_of_contents=remove_table_of_contents, valid_languages=valid_languages)
 
         try:
             ping = requests.get(parsr_url)
@@ -68,8 +68,8 @@ class ParsrConverter(BaseConverter):
             )
         if ping.status_code != 200:
             raise Exception(
-                f"Parsr server is not reachable at the URL '{parsr_url}'. To run it locally "
-                f"with Docker, execute: 'docker run -p 3001:3001 axarev/parsr:v1.2.2'"
+                f"Parsr server is not reachable at the URL '{parsr_url}'. (Status code: {ping.status_code} {ping.reason})\n"
+                f"To run it locally with Docker, execute: 'docker run -p 3001:3001 axarev/parsr:v1.2.2'"
             )
 
         self.parsr_url = parsr_url
@@ -145,9 +145,9 @@ class ParsrConverter(BaseConverter):
         if valid_languages:
             file_text = text + " ".join(
                 [cell for table in tables for row in table["content"] for cell in row])
-            if not self.validate_language(file_text):
+            if not self.validate_language(file_text, valid_languages):
                 logger.warning(
-                    f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
+                    f"The language for {file_path} is not one of {valid_languages}. The file may not have "
                     f"been decoded in the correct text format."
                 )
 
@@ -208,7 +208,7 @@ class ParsrConverter(BaseConverter):
         # Get preceding and following elements of table
         preceding_elements = []
         following_elements = []
-        for cur_page_idx, cur_page in enumerate(all_pages[:page_idx]):
+        for cur_page_idx, cur_page in enumerate(all_pages):
             for cur_elem_index, elem in enumerate(cur_page["elements"]):
                 if (elem["type"] in ["paragraph", "heading"]) \
                         and (self.remove_page_headers and "isHeader" not in elem["properties"]) \
@@ -230,8 +230,8 @@ class ParsrConverter(BaseConverter):
                                          for elem in following_elements])
         following_context = following_context.strip()
 
-        table_meta = copy.deepcopy(meta)
-        if isinstance(table_meta, dict):
+        if meta is not None:
+            table_meta = copy.deepcopy(meta)
             table_meta["preceding_context"] = preceding_context
             table_meta["following_context"] = following_context
         else:
