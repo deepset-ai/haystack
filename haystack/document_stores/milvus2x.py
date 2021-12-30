@@ -164,7 +164,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         super().__init__(
             url=sql_url,
-            index=index
+            index=index,
+            duplicate_documents=duplicate_documents
         )
 
     def _create_collection_and_index_if_not_exist(

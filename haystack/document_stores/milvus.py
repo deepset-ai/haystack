@@ -129,7 +129,8 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         super().__init__(
             url=sql_url,
-            index=index
+            index=index,
+            duplicate_documents=duplicate_documents
         )
 
     def __del__(self):

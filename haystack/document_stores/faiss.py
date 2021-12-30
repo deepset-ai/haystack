@@ -146,7 +146,8 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         super().__init__(
             url=sql_url,
-            index=index
+            index=index,
+            duplicate_documents=duplicate_documents
         )
 
         self._validate_index_sync()
