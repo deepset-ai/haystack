@@ -7,7 +7,6 @@ import logging
 import json
 import numpy as np
 from tqdm import tqdm
-import pandas as pd
 
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
@@ -220,6 +219,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             # Converting JSON-string to original datatype (string or nested list)
             content = json.loads(str(props.get(self.content_field)))
 
+        content_type = None
         if props.get("contenttype") is not None:
             content_type = str(props.pop("contenttype"))
 
