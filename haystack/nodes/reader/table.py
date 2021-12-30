@@ -261,6 +261,10 @@ class RCIReader(BaseReader):
     See the original paper for more details:
     Glass, Michael, et al. (2021): "Capturing Row and Column Semantics in Transformer Based Question Answering over Tables"
     (https://aclanthology.org/2021.naacl-main.96/)
+
+    Each row and each column is given a score with regard to the query by two separate models. The score of each cell
+    is then calculated as the sum of the corresponding row score and column score. Accordingly, the predicted answer is
+    the cell with the highest score.
     """
 
     def __init__(self,
@@ -274,6 +278,29 @@ class RCIReader(BaseReader):
                  top_k: int = 10,
                  max_seq_len: int = 256,
     ):
+        """
+        Load an RCI model from Transformers.
+        Available models include:
+
+        - ``'michaelrglass/albert-base-rci-wikisql-row'`` + ``'michaelrglass/albert-base-rci-wikisql-col'``
+        - ``'michaelrglass/albert-base-rci-wtq-row'`` + ``'michaelrglass/albert-base-rci-wtq-col'``
+
+
+
+        :param row_model_name_or_path: Directory of a saved row scoring model or the name of a public model
+        :param column_model_name_or_path: Directory of a saved column scoring model or the name of a public model
+        :param row_model_version: The version of row model to use from the HuggingFace model hub.
+                                  Can be tag name, branch name, or commit hash.
+        :param column_model_version: The version of column model to use from the HuggingFace model hub.
+                                     Can be tag name, branch name, or commit hash.
+        :param row_tokenizer: Name of the tokenizer for the row model (usually the same as model)
+        :param column_tokenizer: Name of the tokenizer for the column model (usually the same as model)
+        :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
+        :param top_k: The maximum number of answers to return
+        :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
+                            query + table exceed max_seq_len, the table will be truncated by removing rows until the
+                            input size fits the model.
+        """
         # Save init parameters to enable export of component config as YAML
         self.set_config(row_model_name_or_path=row_model_name_or_path,
                         column_model_name_or_path=column_model_name_or_path, row_model_version=row_model_version,
@@ -311,6 +338,20 @@ class RCIReader(BaseReader):
         self.return_no_answers = False
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        """
+        Use loaded RCI models to find answers for a query in the supplied list of Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        The existing RCI models on the HF model hub don"t allow aggregation, therefore, the answer will always be
+        composed of a single cell.
+
+        :param query: Query string
+        :param documents: List of Document in which to search for the answer. Documents should be
+                          of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return
+        :return: Dict containing query and answers
+        """
         if top_k is None:
             top_k = self.top_k
 
@@ -320,7 +361,8 @@ class RCIReader(BaseReader):
                 logger.warning(f"Skipping document with id {document.id} in RCIReader, as it is not of type table.")
                 continue
 
-            table: pd.DataFrame = document.content.astype(str)
+            table: pd.DataFrame = document.content
+            table = table.astype(str)
             # Create row and column representations
             row_reps, column_reps = self._create_row_column_representations(table)
 
@@ -349,8 +391,8 @@ class RCIReader(BaseReader):
             column_logits = self.column_model(**column_inputs)[0].detach().cpu().numpy()[:, 1]
 
             # Calculate cell scores
-            current_answers = []
-            cell_scores_table = []
+            current_answers: List[Answer] = []
+            cell_scores_table: List[List[float]] = []
             for row_idx, row_score in enumerate(row_logits):
                 cell_scores_table.append([])
                 for col_idx, col_score in enumerate(column_logits):
