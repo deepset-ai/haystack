@@ -63,7 +63,7 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
 #### validate\_language
 
 ```python
- | validate_language(text: str) -> bool
+ | validate_language(text: str, valid_languages: Optional[List[str]] = None) -> bool
 ```
 
 Validate if the language of the text is one of valid languages.

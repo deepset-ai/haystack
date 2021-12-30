@@ -65,6 +65,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
           params:
             model_name_or_path: deepset/roberta-base-squad2
             no_ans_boost: -10
+            num_processes: 0
           type: FARMReader
         pipelines:
         - name: query
@@ -127,6 +128,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
           params:
             model_name_or_path: deepset/roberta-base-squad2
             no_ans_boost: -10
+            num_processes: 0
           type: FARMReader
         pipelines:
         - name: query

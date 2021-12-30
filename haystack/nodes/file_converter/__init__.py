@@ -6,3 +6,4 @@ from haystack.nodes.file_converter.pdf import PDFToTextConverter, PDFToTextOCRCo
 from haystack.nodes.file_converter.tika import TikaConverter, TikaXHTMLParser
 from haystack.nodes.file_converter.txt import TextConverter
 from haystack.nodes.file_converter.azure import AzureConverter
+from haystack.nodes.file_converter.parsr import ParsrConverter

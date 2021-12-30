@@ -8,7 +8,7 @@ from typing import Iterable, Dict, Union, List, Optional, Callable
 
 import numpy
 import torch
-from torch import nn
+from torch import nn, set_warn_always
 from transformers import AutoConfig
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
@@ -356,18 +356,29 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self, **kwargs):
+    def forward(self, output_hidden_states: bool = False, output_attentions: bool = False, **kwargs):
         """
         Push data through the whole model and returns logits. The data will
         propagate through the language model and each of the attached prediction heads.
 
         :param kwargs: Holds all arguments that need to be passed to the language model
                        and prediction head(s).
+        :param output_hidden_states: Whether to output hidden states
+        :param output_attentions: Whether to output attentions
         :return: All logits as torch.tensor or multiple tensors.
         """
         # Run forward pass of language model
-        sequence_output, pooled_output = self.forward_lm(**kwargs)
-
+        output_tuple = self.language_model.forward(**kwargs, output_hidden_states=output_hidden_states, output_attentions=output_attentions)
+        if output_hidden_states:
+            if output_attentions:
+                sequence_output, pooled_output, hidden_states, attentions = output_tuple
+            else:
+                sequence_output, pooled_output, hidden_states = output_tuple
+        else:
+            if output_attentions:
+                sequence_output, pooled_output, attentions = output_tuple
+            else:
+                sequence_output, pooled_output = output_tuple
         # Run forward pass of (multiple) prediction heads using the output from above
         all_logits = []
         if len(self.prediction_heads) > 0:
@@ -392,6 +403,13 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # just return LM output (e.g. useful for extracting embeddings at inference time)
             all_logits.append((sequence_output, pooled_output))
 
+        if output_hidden_states:
+            if output_attentions:
+                return all_logits, hidden_states, attentions
+            else:
+                return all_logits, hidden_states
+        elif output_attentions:
+            return all_logits, attentions
         return all_logits
 
     def forward_lm(self, **kwargs):
