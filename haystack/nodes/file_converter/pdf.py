@@ -128,9 +128,9 @@ class PDFToTextConverter(BaseConverter):
 
         if valid_languages:
             document_text = "".join(cleaned_pages)
-            if not self.validate_language(document_text):
+            if not self.validate_language(document_text, valid_languages):
                 logger.warning(
-                    f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
+                    f"The language for {file_path} is not one of {valid_languages}. The file may not have "
                     f"been decoded in the correct text format."
                 )
 

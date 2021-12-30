@@ -15,7 +15,8 @@ from haystack.nodes.file_converter import (
     TikaConverter,
     TikaXHTMLParser,
     TextConverter,
-    AzureConverter
+    AzureConverter,
+    ParsrConverter,
 )
 from haystack.nodes.other import Docs2Answers, JoinDocuments
 from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor

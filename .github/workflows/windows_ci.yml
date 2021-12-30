@@ -96,4 +96,4 @@ jobs:
     # Removing test_ray, test_utils, test_preprocessor, test_knowledge_graph and test_connector
     - name: Run tests
       if: ${{ !contains(fromJSON('["test_ray.py", "test_knowledge_graph.py", "test_connector.py", "test_summarizer_translation.py"]'), matrix.test-path) }}
-      run: cd test && pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -s ${{ matrix.test-path }}
+      run: cd test && pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -k "not test_parsr_converter" -s ${{ matrix.test-path }}
