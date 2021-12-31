@@ -17,7 +17,7 @@ def tutorial12_lfqa():
 
     from haystack.document_stores.faiss import FAISSDocumentStore
 
-    document_store = FAISSDocumentStore(vector_dim=128, faiss_index_factory_str="Flat")
+    document_store = FAISSDocumentStore(embedding_dim=128, faiss_index_factory_str="Flat")
 
     """
     Cleaning & indexing documents:
