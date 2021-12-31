@@ -160,7 +160,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
-        self.duplicate_documents = duplicate_documents
 
         super().__init__(
             url=sql_url,
