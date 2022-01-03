@@ -79,7 +79,9 @@ def tokenize_and_extract_words(text: str, tokenizer: BertTokenizer):
 
     return input_ids, words, word_subword_mapping
 
-def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, glove_vectors: np.ndarray, model: BertForMaskedLM, tokenizer: BertTokenizer, text: str, word_possibilities: int = 20, batch_size: int = 16, device: str = "cpu:0"):
+def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, glove_vectors: np.ndarray,
+    model: BertForMaskedLM, tokenizer: BertTokenizer, text: str, word_possibilities: int = 20,
+    batch_size: int = 16, device: str = "cpu:0"):
     """Returns a list of possible replacements for each word in the text."""
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
 
@@ -90,7 +92,7 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
         input_ids_ = copy(input_ids)
         input_ids_[subword_index] = tokenizer.mask_token_id
         inputs.append(input_ids_)
-    
+        
     # doing batched forward pass
     with torch.no_grad():
         prediction_list = []
@@ -125,9 +127,13 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
 
     return possible_words
 
-def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, model: BertForMaskedLM, tokenizer: BertTokenizer, text: str, multiplication_factor: int = 20, word_possibilities: int = 20, replace_probability: float = 0.4, device: str = "cpu:0"):
+def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, model: BertForMaskedLM,
+    tokenizer: BertTokenizer, text: str, multiplication_factor: int = 20, word_possibilities: int = 20,
+    replace_probability: float = 0.4, batch_size: int = 16, device: str = "cpu:0"):
     # returns a list of different augmented versions of the text
-    replacements = get_replacements(word_id_mapping, id_word_mapping, vectors, model, tokenizer, text, word_possibilities, device)
+    replacements = get_replacements(glove_word_id_mapping=word_id_mapping, glove_id_word_mapping=id_word_mapping,
+        glove_vectors=vectors, model=model, tokenizer=tokenizer, text=text, word_possibilities=word_possibilities,
+        batch_size=batch_size, device=device)
     new_texts = []
     for i in range(multiplication_factor):
         new_text = []
@@ -142,7 +148,9 @@ def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, m
         new_texts.append(" ".join(new_text))
     return new_texts
 
-def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: Path, output_path: Path, glove_path: Path = Path("glove.txt"), multiplication_factor: int = 20, word_possibilities: int = 20, replace_probability: float = 0.4, device: str = "cpu:0"):
+def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: Path, output_path: Path,
+        glove_path: Path = Path("glove.txt"), multiplication_factor: int = 20, word_possibilities: int = 20,
+        replace_probability: float = 0.4, device: str = "cpu:0", batch_size: int = 16):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
     # load glove for words that do not have one distinct token, but are split into subwords
     word_id_mapping, id_word_mapping, vectors = load_glove(glove_path)
@@ -157,7 +165,9 @@ def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: 
         paragraphs = []
         for paragraph in topic["paragraphs"]:
             context = paragraph["context"]
-            contexts = augment(word_id_mapping, id_word_mapping, vectors, model, tokenizer, context, multiplication_factor=multiplication_factor, word_possibilities=word_possibilities, replace_probability=replace_probability, device=device)
+            contexts = augment(word_id_mapping=word_id_mapping, id_word_mapping=id_word_mapping, vectors=vectors,
+                model=model, tokenizer=tokenizer, text=context, multiplication_factor=multiplication_factor,
+                word_possibilities=word_possibilities, replace_probability=replace_probability, device=device, batch_size=batch_size)
             paragraphs_ = []
             for context in contexts:
                 new_paragraph = deepcopy(paragraph)
@@ -180,6 +190,7 @@ if __name__ == "__main__":
     parser.add_argument("--word_possibilities", type=int, default=5, help="Number of possible words to choose from when replacing a word")
     parser.add_argument("--replace_probability", type=float, default=0.4, help="Probability of replacing a word")
     parser.add_argument("--glove_path", type=Path, default="glove.txt", help="Path to the glove file")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for forward pass")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to use")
 
     args = parser.parse_args()
