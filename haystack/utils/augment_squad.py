@@ -112,7 +112,7 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
         if i in word_subword_mapping: # word was not split into subwords so we can use MLM output
             subword_index = word_subword_mapping[i]
             logits = predictions[batch_index, subword_index]
-            ranking = torch.argsort(logits, descending=True)[:word_possibilities]
+            ranking = torch.argsort(logits, descending=True)
             possible_words_ = [word]
             j = 0
             while len(possible_words_) < word_possibilities + 1:
