@@ -265,6 +265,12 @@ class RCIReader(BaseReader):
     Each row and each column is given a score with regard to the query by two separate models. The score of each cell
     is then calculated as the sum of the corresponding row score and column score. Accordingly, the predicted answer is
     the cell with the highest score.
+
+    Pros and Cons of RCIReader compared to TableReader:
+    + Provides meaningful confidence scores
+    + Allows larger tables as input
+    - Does not support aggregation over table cells
+    - Slower
     """
 
     def __init__(self,
