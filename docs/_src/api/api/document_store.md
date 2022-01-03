@@ -130,11 +130,13 @@ object, provided that they have the same product_id (to be found in Label.meta["
 #### normalize\_embedding
 
 ```python
+ | @staticmethod
  | @njit
  | normalize_embedding(emb: np.ndarray) -> None
 ```
 
-Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix (2D array).
+Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix
+(2D array).
 
 <a name="base.BaseDocumentStore.add_eval_data"></a>
 #### add\_eval\_data
