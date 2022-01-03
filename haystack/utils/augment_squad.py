@@ -29,7 +29,9 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 
 def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000):
-    if not glove_path.exists():
+    """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
+
+    if not glove_path.exists(): # download and extract glove if necessary
         zip_path = glove_path.parent / (glove_path.name + ".zip")
         request = requests.get("https://nlp.stanford.edu/data/glove.42B.300d.zip", allow_redirects=True)
         with zip_path.open("wb") as downloaded_file:
@@ -44,7 +46,7 @@ def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000):
     vector_list = []
     with open(glove_path, "r") as f:
         for i, line in enumerate(f):
-            if i == vocab_size:
+            if i == vocab_size: # limit vocab size
                 break
             split = line.split()
             word_id_mapping[split[0]] = i
@@ -52,10 +54,11 @@ def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000):
             vector_list.append(np.array([float(x) for x in split[1:]]))
     vectors = np.stack(vector_list)
     vectors = vectors / np.linalg.norm(vectors, axis=1)[:, np.newaxis]
-    print("loaded glove")
     return word_id_mapping, id_word_mapping, vectors
 
-def tokenize_and_extract_words(text, tokenizer):
+def tokenize_and_extract_words(text: str, tokenizer: BertTokenizer):
+    # tokenizes text and returns, in addition to the tokens, indices and mapping of the words that were not split into subwords
+    # this is important as MLM is not used for subwords
     words = tokenizer.basic_tokenizer.tokenize(text)
 
     subwords = [tokenizer.wordpiece_tokenizer.tokenize(word) for word in words]
@@ -76,9 +79,11 @@ def tokenize_and_extract_words(text, tokenizer):
 
     return input_ids, words, word_subword_mapping
 
-def get_replacements(glove_word_id_mapping, glove_id_word_mapping, glove_vectors, model: BertForMaskedLM, tokenizer: BertTokenizer, text, word_possibilities=20, batch_size=16):
+def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, glove_vectors: np.ndarray, model: BertForMaskedLM, tokenizer: BertTokenizer, text: str, word_possibilities: int = 20, batch_size: int = 16, device: str = "cpu:0"):
+    """Returns a list of possible replacements for each word in the text."""
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
 
+    # masks words which were not split into subwords by the tokenizer
     inputs = []
     for word_index in word_subword_mapping:
         subword_index = word_subword_mapping[word_index]
@@ -86,42 +91,43 @@ def get_replacements(glove_word_id_mapping, glove_id_word_mapping, glove_vectors
         input_ids_[subword_index] = tokenizer.mask_token_id
         inputs.append(input_ids_)
     
+    # doing batched forward pass
     with torch.no_grad():
         prediction_list = []
         while len(inputs) != 0:
             batch_list = inputs[:batch_size]
             batch = torch.tensor(batch_list)
-            batch = batch.to("cuda:0")
+            batch = batch.to(device)
             prediction_list.append(model(input_ids=batch)["logits"].cpu())
             inputs = inputs[batch_size:]
         predictions = torch.cat(prediction_list, dim=0)
 
-
-
+    # creating list of possible replacements for each word
     possible_words = []
 
     batch_index = 0
     for i, word in enumerate(words):
-        if i in word_subword_mapping:
+        if i in word_subword_mapping: # word was not split into subwords so we can use MLM output
             subword_index = word_subword_mapping[i]
             logits = predictions[batch_index, subword_index]
             ranking = torch.argsort(logits, descending=True)[:word_possibilities]
             possible_words.append([word] + tokenizer.convert_ids_to_tokens(ranking))
 
             batch_index += 1
-        elif word in glove_word_id_mapping:
+        elif word in glove_word_id_mapping: # word was split into subwords so we use glove instead
             word_id = glove_word_id_mapping[word]
             glove_vector = glove_vectors[word_id]
             word_similarities = glove_vectors.dot(glove_vector)
             ranking = np.argsort(word_similarities)[-word_possibilities - 1:][::-1]
             possible_words.append([glove_id_word_mapping[id] for id in ranking])
-        else:
+        else: # word was not in glove either so we can't find any replacements
             possible_words.append([word])
 
     return possible_words
 
-def augment(word_id_mapping, id_word_mapping, vectors, model: BertForMaskedLM, tokenizer: BertTokenizer, text, multiplication_factor=20, word_possibilities=20, replace_probability=0.4):
-    replacements = get_replacements(word_id_mapping, id_word_mapping, vectors, model, tokenizer, text, word_possibilities)
+def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, model: BertForMaskedLM, tokenizer: BertTokenizer, text: str, multiplication_factor: int = 20, word_possibilities: int = 20, replace_probability: float = 0.4, device: str = "cpu:0"):
+    # returns a list of different augmented versions of the text
+    replacements = get_replacements(word_id_mapping, id_word_mapping, vectors, model, tokenizer, text, word_possibilities, device)
     new_texts = []
     for i in range(multiplication_factor):
         new_text = []
@@ -136,9 +142,12 @@ def augment(word_id_mapping, id_word_mapping, vectors, model: BertForMaskedLM, t
         new_texts.append(" ".join(new_text))
     return new_texts
 
-def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: Path, output_path: Path, glove_path: Path = Path("glove.txt"), multiplication_factor: int = 20, word_possibilities: int = 20, replace_probability: float = 0.4):
+def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: Path, output_path: Path, glove_path: Path = Path("glove.txt"), multiplication_factor: int = 20, word_possibilities: int = 20, replace_probability: float = 0.4, device: str = "cpu:0"):
+    """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
+    # load glove for words that do not have one distinct token, but are split into subwords
     word_id_mapping, id_word_mapping, vectors = load_glove(glove_path)
 
+    # load squad dataset
     with open(squad_path, "r") as f:
         squad = json.load(f)
         
@@ -148,27 +157,18 @@ def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: 
         paragraphs = []
         for paragraph in topic["paragraphs"]:
             context = paragraph["context"]
-            contexts = augment(word_id_mapping, id_word_mapping, vectors, model, tokenizer, context, multiplication_factor=multiplication_factor, word_possibilities=word_possibilities, replace_probability=replace_probability)
-            qas = []
-            for qa in paragraph["qas"]:
-                question = qa["question"]
-                question = augment(word_id_mapping, id_word_mapping, vectors, model, tokenizer, question, multiplication_factor=multiplication_factor, word_possibilities=word_possibilities, replace_probability=replace_probability)
-                qas_ = []
-                for question_ in question:
-                    new_qa = deepcopy(qa)
-                    new_qa["question"] = question_
-                    qas_.append(new_qa)
-                qas += qas_
+            contexts = augment(word_id_mapping, id_word_mapping, vectors, model, tokenizer, context, multiplication_factor=multiplication_factor, word_possibilities=word_possibilities, replace_probability=replace_probability, device=device)
             paragraphs_ = []
             for context in contexts:
                 new_paragraph = deepcopy(paragraph)
                 new_paragraph["context"] = context
-                new_paragraph["qas"] = qas
                 paragraphs_.append(new_paragraph)
             paragraphs += paragraphs_
         topic["paragraphs"] = paragraphs
         topics.append(topic)
     squad["topics"] = topics
+
+    # save new dataset
     with open(output_path, "w") as f:
         json.dump(squad, f)
 
@@ -176,13 +176,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--squad_path", type=Path, required=True, help="Path to the squad json file")
     parser.add_argument("--output_path", type=Path, required=True, help="Path to save augmented dataaset")
-    parser.add_argument("--multiplication_factor", type=int, default=4, help="Factor by which dataset size is multiplied")
+    parser.add_argument("--multiplication_factor", type=int, default=20, help="Factor by which dataset size is multiplied")
     parser.add_argument("--word_possibilities", type=int, default=5, help="Number of possible words to choose from when replacing a word")
     parser.add_argument("--replace_probability", type=float, default=0.4, help="Probability of replacing a word")
     parser.add_argument("--glove_path", type=Path, default="glove.txt", help="Path to the glove file")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device to use")
+
+    args = parser.parse_args()
 
     model = BertForMaskedLM.from_pretrained("bert-base-uncased")
-    model = model.to("cuda:0")
+    model = model.to(args.device)
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
-    augment_squad(model, tokenizer, **vars(parser.parse_args()))
+    augment_squad(model, tokenizer, **vars(args))
