@@ -113,7 +113,15 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
             subword_index = word_subword_mapping[i]
             logits = predictions[batch_index, subword_index]
             ranking = torch.argsort(logits, descending=True)[:word_possibilities]
-            possible_words.append([word] + tokenizer.convert_ids_to_tokens(ranking))
+            possible_words_ = [word]
+            j = 0
+            while len(possible_words_) < word_possibilities + 1:
+                word = tokenizer.convert_ids_to_tokens([ranking[j]])[0]
+                if not word.startswith("##"):
+                    possible_words_.append(word)
+                j += 1
+
+            possible_words.append(possible_words_)
 
             batch_index += 1
         elif word in glove_word_id_mapping: # word was split into subwords so we use glove instead
