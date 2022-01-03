@@ -1102,8 +1102,7 @@ class TextSimilarityProcessor(Processor):
                         return_token_type_ids=True
                     )
 
-                    # TODO check if we need this and potentially remove
-                    ctx_segment_ids = np.zeros_like(ctx_inputs["token_type_ids"], dtype=np.int32)
+                    ctx_segment_ids = [[0] * len(ctx_inputs["token_type_ids"][0])] * len(ctx_inputs["token_type_ids"])
 
                     # get tokens in string format
                     tokenized_passage = [self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in ctx_inputs["input_ids"]]

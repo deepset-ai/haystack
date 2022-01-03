@@ -12,6 +12,35 @@ from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 from conftest import DOCS_WITH_EMBEDDINGS
 
 
+# Keeping few (retriever,document_store) combination to reduce test time
+@pytest.mark.slow
+@pytest.mark.generator
+@pytest.mark.parametrize(
+    "retriever,document_store",
+    [("embedding", "memory")],
+    indirect=True,
+)
+def test_generator_pipeline_with_translator(
+    document_store,
+    retriever,
+    rag_generator,
+    en_to_de_translator,
+    de_to_en_translator
+):
+    document_store.write_documents(DOCS_WITH_EMBEDDINGS)
+    query = "Was ist die Hauptstadt der Bundesrepublik Deutschland?"
+    base_pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
+    pipeline = TranslationWrapperPipeline(
+        input_translator=de_to_en_translator,
+        output_translator=en_to_de_translator,
+        pipeline=base_pipeline
+    )
+    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
+    answers = output["answers"]
+    assert len(answers) == 2
+    assert "berlin" in answers[0].answer
+
+
 @pytest.mark.slow
 @pytest.mark.generator
 def test_rag_token_generator(rag_generator):
@@ -105,32 +134,3 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever):
     with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
     assert ("does not have a valid __call__ method signature" in str(exception_info.value))
-
-
-# Keeping few (retriever,document_store) combination to reduce test time
-@pytest.mark.slow
-@pytest.mark.generator
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [("embedding", "memory")],
-    indirect=True,
-)
-def test_generator_pipeline_with_translator(
-    document_store,
-    retriever,
-    rag_generator,
-    en_to_de_translator,
-    de_to_en_translator
-):
-    document_store.write_documents(DOCS_WITH_EMBEDDINGS)
-    query = "Was ist die Hauptstadt der Bundesrepublik Deutschland?"
-    base_pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    pipeline = TranslationWrapperPipeline(
-        input_translator=de_to_en_translator,
-        output_translator=en_to_de_translator,
-        pipeline=base_pipeline
-    )
-    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
-    answers = output["answers"]
-    assert len(answers) == 2
-    assert "berlin" in answers[0].answer

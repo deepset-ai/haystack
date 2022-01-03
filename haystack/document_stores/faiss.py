@@ -190,7 +190,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None:
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
+                        headers: Optional[Dict[str, str]] = None) -> None:
         """
         Add new documents to the DocumentStore.
 
@@ -207,6 +208,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+        
         index = index or self.index
         duplicate_documents = duplicate_documents or self.duplicate_documents
         assert duplicate_documents in self.duplicate_documents_options, \
@@ -338,7 +342,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
@@ -351,6 +359,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -364,9 +373,12 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+        
         index = index or self.index
         documents = super(FAISSDocumentStore, self).get_all_documents_generator(
-            index=index, filters=filters, batch_size=batch_size, return_embedding=False,
+            index=index, filters=filters, batch_size=batch_size, return_embedding=False
         )
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -378,10 +390,13 @@ class FAISSDocumentStore(SQLDocumentStore):
             yield doc
 
     def get_documents_by_id(
-        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000
+        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+        
         index = index or self.index
-        documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index)
+        documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if self.return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
@@ -424,10 +439,13 @@ class FAISSDocumentStore(SQLDocumentStore):
         if embeddings:
             self.faiss_indexes[index].train(embeddings)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete all documents from the document store.
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+        
         logger.warning(
                 """DEPRECATION WARNINGS: 
                 1. delete_all_documents() method is deprecated, please use delete_documents method
@@ -436,7 +454,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
@@ -450,6 +468,9 @@ class FAISSDocumentStore(SQLDocumentStore):
             have their ID in the list).
         :return: None
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+        
         index = index or self.index
         if index in self.faiss_indexes.keys():
             if not filters and not ids:
@@ -469,7 +490,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
-        return_embedding: Optional[bool] = None
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -482,6 +504,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param return_embedding: To return document embedding
         :return:
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+        
         if filters:
             logger.warning("Query filters are not implemented for the FAISSDocumentStore.")
 

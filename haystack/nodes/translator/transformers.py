@@ -78,17 +78,24 @@ class TransformersTranslator(BaseTranslator):
 
     def translate(
         self,
+        results: List[Dict[str, Any]] = None,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
     ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
         """
         Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
+        :param results: Generated QA pairs to translate
         :param query: The query string to translate
         :param documents: The documents to translate
         :param dict_key: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
         """
-        if not query and not documents:
+        queries_for_translator = None
+        answers_for_translator = None
+        if results is not None:
+            queries_for_translator = [result["query"] for result in results]
+            answers_for_translator = [result["answers"][0].answer for result in results]
+        if not query and not documents and results is None:
             raise AttributeError("Translator need query or documents to perform translation")
 
         if query and documents:
@@ -100,7 +107,10 @@ class TransformersTranslator(BaseTranslator):
 
         dict_key = dict_key or "content"
 
-        if isinstance(documents, list):
+        if queries_for_translator is not None and answers_for_translator is not None:
+            text_for_translator = queries_for_translator + answers_for_translator
+
+        elif isinstance(documents, list):
             if isinstance(documents[0], Document):
                 text_for_translator = [doc.content for doc in documents]   # type: ignore
             elif isinstance(documents[0], Answer):
@@ -126,7 +136,9 @@ class TransformersTranslator(BaseTranslator):
             clean_up_tokenization_spaces=self.clean_up_tokenization_spaces
         )
 
-        if query:
+        if queries_for_translator is not None and answers_for_translator is not None:
+            return translated_texts
+        elif query:
             return translated_texts[0]
         elif documents:
             if isinstance(documents, list) and isinstance(documents[0], str):
