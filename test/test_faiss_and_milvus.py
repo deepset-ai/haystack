@@ -51,6 +51,10 @@ def test_faiss_index_save_and_load(tmp_path):
     # Check if the init parameters are kept
     assert not new_document_store.progress_bar
 
+    # test saving and loading the loaded faiss index
+    new_document_store.save(tmp_path / "haystack_test_faiss")
+    new_document_store.load(tmp_path / "haystack_test_faiss")
+
     # test loading the index via init
     new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss")
 
@@ -89,6 +93,10 @@ def test_faiss_index_save_and_load_custom_path(tmp_path):
     assert len(new_document_store.get_all_documents()) == len(DOCUMENTS)
     # Check if the init parameters are kept
     assert not new_document_store.progress_bar
+
+    # test saving and loading the loaded faiss index
+    new_document_store.save(tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
+    new_document_store.load(tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
 
     # test loading the index via init
     new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss", faiss_config_path=tmp_path / "custom_path.json")
