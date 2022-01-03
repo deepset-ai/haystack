@@ -1,4 +1,5 @@
 from haystack.schema import Document, Label, Answer, Span
+import pytest
 import numpy as np
 
 LABELS = [
@@ -152,9 +153,18 @@ def test_generate_doc_id_using_custom_list():
     text1 = "text1"
     text2 = "text2"
 
-    doc1_text1 = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["key1", text1])
-    doc2_text1 = Document(content=text1, meta={"name": "doc2"}, id_hash_keys=["key1", text1])
-    doc3_text2 = Document(content=text2, meta={"name": "doc3"}, id_hash_keys=["key1", text2])
+    doc1_meta1_id_by_content = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content"])
+    doc1_meta2_id_by_content = Document(content=text1, meta={"name": "doc2"}, id_hash_keys=["content"])
+    assert doc1_meta1_id_by_content.id == doc1_meta2_id_by_content.id
 
-    assert doc1_text1.id == doc2_text1.id
+    doc1_meta1_id_by_content_and_meta = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content","meta"])
+    doc1_meta2_id_by_content_and_meta = Document(content=text1, meta={"name": "doc2"}, id_hash_keys=["content", "meta"])
+    assert doc1_meta1_id_by_content_and_meta.id != doc1_meta2_id_by_content_and_meta.id
+
+    doc1_text1 = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content"])
+    doc3_text2 = Document(content=text2, meta={"name": "doc3"}, id_hash_keys=["content"])
     assert doc1_text1.id != doc3_text2.id
+
+    
+    with pytest.raises(ValueError):
+        _ = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content","non_existing_field"])
