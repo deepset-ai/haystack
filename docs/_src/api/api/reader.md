@@ -609,3 +609,75 @@ WARNING: The answer scores are not reliable, as they are always extremely high, 
 
 Dict containing query and answers
 
+<a name="table.RCIReader"></a>
+## RCIReader
+
+```python
+class RCIReader(BaseReader)
+```
+
+Table Reader model based on Glass et al. (2021)'s Row-Column-Intersection model.
+See the original paper for more details:
+Glass, Michael, et al. (2021): "Capturing Row and Column Semantics in Transformer Based Question Answering over Tables"
+(https://aclanthology.org/2021.naacl-main.96/)
+
+Each row and each column is given a score with regard to the query by two separate models. The score of each cell
+is then calculated as the sum of the corresponding row score and column score. Accordingly, the predicted answer is
+the cell with the highest score.
+
+<a name="table.RCIReader.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row", column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col", row_model_version: Optional[str] = None, column_model_version: Optional[str] = None, row_tokenizer: Optional[str] = None, column_tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
+```
+
+Load an RCI model from Transformers.
+Available models include:
+
+- ``'michaelrglass/albert-base-rci-wikisql-row'`` + ``'michaelrglass/albert-base-rci-wikisql-col'``
+- ``'michaelrglass/albert-base-rci-wtq-row'`` + ``'michaelrglass/albert-base-rci-wtq-col'``
+
+
+
+**Arguments**:
+
+- `row_model_name_or_path`: Directory of a saved row scoring model or the name of a public model
+- `column_model_name_or_path`: Directory of a saved column scoring model or the name of a public model
+- `row_model_version`: The version of row model to use from the HuggingFace model hub.
+                          Can be tag name, branch name, or commit hash.
+- `column_model_version`: The version of column model to use from the HuggingFace model hub.
+                             Can be tag name, branch name, or commit hash.
+- `row_tokenizer`: Name of the tokenizer for the row model (usually the same as model)
+- `column_tokenizer`: Name of the tokenizer for the column model (usually the same as model)
+- `use_gpu`: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
+- `top_k`: The maximum number of answers to return
+- `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
+                    query + table exceed max_seq_len, the table will be truncated by removing rows until the
+                    input size fits the model.
+
+<a name="table.RCIReader.predict"></a>
+#### predict
+
+```python
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+```
+
+Use loaded RCI models to find answers for a query in the supplied list of Documents
+of content_type ``'table'``.
+
+Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+The existing RCI models on the HF model hub don"t allow aggregation, therefore, the answer will always be
+composed of a single cell.
+
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer. Documents should be
+                  of content_type ``'table'``.
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
+
