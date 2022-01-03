@@ -37,14 +37,13 @@ class BaseTranslator(BaseComponent):
         translation_results = {}
         
         if results is not None:
-            if results is not None:
-                translation_results = {"results":deepcopy(results)}
+            translation_results = {"results":deepcopy(results)}
 
-            translated_queries_answers = self.translate(results=translation_results["results"])
-            for i, result in enumerate(translation_results["results"]):
-                result["query"] = translated_queries_answers[i]
-                result["answers"][0].answer = translated_queries_answers[len(translation_results["results"])+i]
-            return translation_results, "output_1"
+        translated_queries_answers = self.translate(results=translation_results["results"])
+        for i, result in enumerate(translation_results["results"]):
+            result["query"] = translated_queries_answers[i]
+            result["answers"][0].answer = translated_queries_answers[len(translation_results["results"])+i]
+        return translation_results, "output_1"
 
         # This will cover input query stage
         if query:
