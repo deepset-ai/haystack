@@ -168,7 +168,7 @@ from disk and also indexed batchwise to the DocumentStore in order to prevent ou
 #### run
 
 ```python
- | run(documents: List[dict], index: Optional[str] = None, id_hash_keys: Optional[List[str]] = None)
+ | run(documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None)
 ```
 
 Run requests of document stores
@@ -180,6 +180,7 @@ is therefore only an interim solution until the run function also accepts docume
 **Arguments**:
 
 - `documents`: A list of dicts that are documents.
+- `headers`: A list of headers.
 - `index`: Optional name of index where the documents shall be written to.
               If None, the DocumentStore's default index (self.index) will be used.
 - `id_hash_keys`: List of the fields that the hashes of the ids are generated from.
