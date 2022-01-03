@@ -137,14 +137,20 @@ class SQLDocumentStore(BaseDocumentStore):
             if sqlite3.sqlite_version < "3.25":
                 self.use_windowed_query = False
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
         return document
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """Fetch documents by specifying a list of text id strings"""
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         index = index or self.index
 
         documents = []
@@ -179,8 +185,13 @@ class SQLDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
-        documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding))
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
+        documents = list(self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size))
         return documents
 
     def get_all_documents_generator(
@@ -189,6 +200,7 @@ class SQLDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -202,6 +214,9 @@ class SQLDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
         result = self._query(
@@ -285,10 +300,13 @@ class SQLDocumentStore(BaseDocumentStore):
             documents_map[row.document_id].meta[row.name] = row.value
         return documents_map
 
-    def get_all_labels(self, index=None, filters: Optional[dict] = None):
+    def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None):
         """
         Return all labels in the document store
         """
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         index = index or self.label_index
         # TODO: Use batch_size
         label_rows = self.session.query(LabelORM).filter_by(index=index).all()
@@ -297,7 +315,8 @@ class SQLDocumentStore(BaseDocumentStore):
         return labels
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None:
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, 
+                        headers: Optional[Dict[str, str]] = None) -> None:
         """
         Indexes documents for later queries.
 
@@ -318,7 +337,9 @@ class SQLDocumentStore(BaseDocumentStore):
 
         :return: None
         """
-
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         index = index or self.index
         duplicate_documents = duplicate_documents or self.duplicate_documents
         if len(documents) == 0:
@@ -353,9 +374,11 @@ class SQLDocumentStore(BaseDocumentStore):
                 self.session.rollback()
                 raise ex
 
-    def write_labels(self, labels, index=None):
+    def write_labels(self, labels, index=None, headers: Optional[Dict[str, str]] = None):
         """Write annotation labels into document store."""
-
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         labels = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
         index = index or self.label_index
 
@@ -442,10 +465,15 @@ class SQLDocumentStore(BaseDocumentStore):
             self.session.add(m)
         self.session.commit()
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, 
+            only_documents_without_embedding: bool = False, 
+            headers: Optional[Dict[str, str]] = None) -> int:
         """
         Return the number of documents in the document store.
         """
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         index = index or self.index
         query = self.session.query(DocumentORM).filter_by(index=index)
 
@@ -458,13 +486,19 @@ class SQLDocumentStore(BaseDocumentStore):
                         MetaDocumentORM.value.in_(values),
                     )
 
+        if only_documents_without_embedding:
+            query = query.filter(DocumentORM.vector_id.is_(None))
+
         count = query.count()
         return count
 
-    def get_label_count(self, index: Optional[str] = None) -> int:
+    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Return the number of labels in the document store
         """
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         index = index or self.label_index
         return self.session.query(LabelORM).filter_by(index=index).count()
 
@@ -505,13 +539,14 @@ class SQLDocumentStore(BaseDocumentStore):
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None) -> List[Document]:
+                           return_embedding: Optional[bool] = None,
+                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
 
         raise NotImplementedError("SQLDocumentStore is currently not supporting embedding queries. "
                                   "Change the query type (e.g. by choosing a different retriever) "
                                   "or change the DocumentStore (e.g. to ElasticsearchDocumentStore)")
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -519,6 +554,9 @@ class SQLDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         logger.warning(
                 """DEPRECATION WARNINGS: 
                 1. delete_all_documents() method is deprecated, please use delete_documents method
@@ -527,7 +565,7 @@ class SQLDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -562,7 +600,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         self.session.commit()
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete labels from the document store. All labels are deleted if no filters are passed.
 
@@ -573,6 +611,9 @@ class SQLDocumentStore(BaseDocumentStore):
                         Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
         :return: None
         """
+        if headers:
+            raise NotImplementedError("SQLDocumentStore does not support headers.")
+        
         index = index or self.label_index
         if not filters and not ids:
             self.session.query(LabelORM).filter_by(index=index).delete(synchronize_session=False)
