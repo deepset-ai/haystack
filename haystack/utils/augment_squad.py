@@ -32,8 +32,8 @@ def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000):
     if not glove_path.exists():
         zip_path = glove_path.parent / (glove_path.name + ".zip")
         request = requests.get("https://nlp.stanford.edu/data/glove.42B.300d.zip", allow_redirects=True)
-        with zip_path.open("wb") as f:
-            f.write(request.content)
+        with zip_path.open("wb") as downloaded_file:
+            downloaded_file.write(request.content)
         with ZipFile(zip_path, "r") as zip_file:
             glove_file = zip_file.namelist()[0]
             with glove_path.open("wb") as g:
@@ -41,7 +41,7 @@ def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000):
 
     word_id_mapping = {}
     id_word_mapping = {}
-    vectors = []
+    vector_list = []
     with open(glove_path, "r") as f:
         for i, line in enumerate(f):
             if i == vocab_size:
@@ -49,9 +49,10 @@ def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000):
             split = line.split()
             word_id_mapping[split[0]] = i
             id_word_mapping[i] = split[0]
-            vectors.append(np.array([float(x) for x in split[1:]]))
-    vectors = np.stack(vectors)
+            vector_list.append(np.array([float(x) for x in split[1:]]))
+    vectors = np.stack(vector_list)
     vectors = vectors / np.linalg.norm(vectors, axis=1)[:, np.newaxis]
+    print("loaded glove")
     return word_id_mapping, id_word_mapping, vectors
 
 def tokenize_and_extract_words(text, tokenizer):
@@ -75,19 +76,27 @@ def tokenize_and_extract_words(text, tokenizer):
 
     return input_ids, words, word_subword_mapping
 
-def get_replacements(glove_word_id_mapping, glove_id_word_mapping, glove_vectors, model: BertForMaskedLM, tokenizer: BertTokenizer, text, word_possibilities=20):
+def get_replacements(glove_word_id_mapping, glove_id_word_mapping, glove_vectors, model: BertForMaskedLM, tokenizer: BertTokenizer, text, word_possibilities=20, batch_size=16):
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
 
-    batch = []
+    inputs = []
     for word_index in word_subword_mapping:
         subword_index = word_subword_mapping[word_index]
         input_ids_ = copy(input_ids)
         input_ids_[subword_index] = tokenizer.mask_token_id
-        batch.append(input_ids_)
+        inputs.append(input_ids_)
     
-    if batch:
-        batch = torch.tensor(batch)
-        predictions = model(input_ids=batch)
+    with torch.no_grad():
+        prediction_list = []
+        while len(inputs) != 0:
+            batch_list = inputs[:batch_size]
+            batch = torch.tensor(batch_list)
+            batch = batch.to("cuda:0")
+            prediction_list.append(model(input_ids=batch)["logits"].cpu())
+            inputs = inputs[batch_size:]
+        predictions = torch.cat(prediction_list, dim=0)
+
+
 
     possible_words = []
 
@@ -95,7 +104,7 @@ def get_replacements(glove_word_id_mapping, glove_id_word_mapping, glove_vectors
     for i, word in enumerate(words):
         if i in word_subword_mapping:
             subword_index = word_subword_mapping[i]
-            logits = predictions["logits"][batch_index, subword_index]
+            logits = predictions[batch_index, subword_index]
             ranking = torch.argsort(logits, descending=True)[:word_possibilities]
             possible_words.append([word] + tokenizer.convert_ids_to_tokens(ranking))
 
@@ -173,6 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("--glove_path", type=Path, default="glove.txt", help="Path to the glove file")
 
     model = BertForMaskedLM.from_pretrained("bert-base-uncased")
+    model = model.to("cuda:0")
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
     augment_squad(model, tokenizer, **vars(parser.parse_args()))
