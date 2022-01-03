@@ -75,7 +75,7 @@ def _process_request(pipeline, request) -> QueryResponse:
     result = pipeline.run(query=request.query, params=params,debug=request.debug)
     
     # if any of the documents contains an embedding as an ndarray the latter needs to be converted to list of float
-    for document in result['documents']:
+    for document in result['documents'] or []:
         if isinstance(document.embedding, ndarray):
             document.embedding = document.embedding.tolist()
     
