@@ -176,9 +176,9 @@ def augment_squad(model: str, tokenizer: str, squad_path: Path, output_path: Pat
         replace_probability: float = 0.4, device: str = "cpu:0", batch_size: int = 16):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
     # loading model and tokenizer
-    model = AutoModelForMaskedLM.from_pretrained(model)
-    model.to(device)
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer, use_fast=False)
+    transformers_model = AutoModelForMaskedLM.from_pretrained(model)
+    transformers_model.to(device)
+    transformers_tokenizer = AutoTokenizer.from_pretrained(tokenizer, use_fast=False)
     # load glove for words that do not have one distinct token, but are split into subwords
     word_id_mapping, id_word_mapping, vectors = load_glove(glove_path=glove_path, device=device)
 
@@ -197,7 +197,7 @@ def augment_squad(model: str, tokenizer: str, squad_path: Path, output_path: Pat
                 question["is_impossible"] = True
             context = paragraph["context"]
             contexts = augment(word_id_mapping=word_id_mapping, id_word_mapping=id_word_mapping, vectors=vectors,
-                model=model, tokenizer=tokenizer, text=context, multiplication_factor=multiplication_factor,
+                model=transformers_model, tokenizer=transformers_tokenizer, text=context, multiplication_factor=multiplication_factor,
                 word_possibilities=word_possibilities, replace_probability=replace_probability, device=device, batch_size=batch_size)
             paragraphs_ = []
             for context in contexts:
