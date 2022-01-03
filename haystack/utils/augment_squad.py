@@ -4,19 +4,25 @@ It follows the approach oultined in the TinyBERT paper: https://arxiv.org/pdf/19
 Usage:
     python augment_squad.py --squad_path <squad_path> --output_path <output_path> \
         --multiplication_factor <multiplication_factor> --word_possibilities <word_possibilities> \
-        --replace_probability <replace_probability>
+        --replace_probability <replace_probability> --glove_path <glove_path> \
+        --batch_size <batch_size> --device <device> --tokenizer <tokenizer> --model <model>
 Arguments:
     squad_path: Path to the input dataset. Must have the same structure as the official squad json.
     output_path: Path to the output dataset.
     multiplication_factor: Number of times to augment the dataset.
     word_possibilities: Number of possible words to replace a word with.
     replace_probability: Probability of replacing a word with a different word.
+    glove_path: Path to the GloVe vectors. If it does not exist, it will be downloaded.
+    batch_size: Batch size for MLM model.
+    device: Device to use for MLM model. Usually either "cpu:0" or "cuda:0".
+    tokenizer: Huggingface tokenizer identifier.
+    model: Huggingface MLM model identifier.
 """
 
 
 import torch
 from torch.nn import functional as F
-from transformers import BertForMaskedLM, BertTokenizer
+from transformers import AutoModelForMaskedLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
 from copy import copy, deepcopy
 from pathlib import Path
 import requests
@@ -30,7 +36,6 @@ from tqdm import tqdm
 from typing import Tuple, List
 
 logger = logging.getLogger(__name__)
-
 
 def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: str = "cpu:0") -> Tuple[dict, dict, torch.Tensor]:
     """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
@@ -62,7 +67,7 @@ def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, 
         vectors = F.normalize(vectors, dim=1)
     return word_id_mapping, id_word_mapping, vectors
 
-def tokenize_and_extract_words(text: str, tokenizer: BertTokenizer) -> Tuple[torch.Tensor, List[str], dict]:
+def tokenize_and_extract_words(text: str, tokenizer: PreTrainedTokenizerBase) -> Tuple[torch.Tensor, List[str], dict]:
     # tokenizes text and returns, in addition to the tokens, indices and mapping of the words that were not split into subwords
     # this is important as MLM is not used for subwords
     words = tokenizer.basic_tokenizer.tokenize(text)
@@ -89,7 +94,7 @@ def tokenize_and_extract_words(text: str, tokenizer: BertTokenizer) -> Tuple[tor
     return input_ids, words, word_subword_mapping
 
 def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, glove_vectors: np.ndarray,
-    model: BertForMaskedLM, tokenizer: BertTokenizer, text: str, word_possibilities: int = 20,
+    model: PreTrainedModel, tokenizer: PreTrainedTokenizerBase, text: str, word_possibilities: int = 20,
     batch_size: int = 16, device: str = "cpu:0") -> List[List[str]]:
     """Returns a list of possible replacements for each word in the text."""
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
@@ -145,8 +150,8 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
 
     return possible_words
 
-def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, model: BertForMaskedLM,
-    tokenizer: BertTokenizer, text: str, multiplication_factor: int = 20, word_possibilities: int = 20,
+def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizerBase, text: str, multiplication_factor: int = 20, word_possibilities: int = 20,
     replace_probability: float = 0.4, batch_size: int = 16, device: str = "cpu:0") -> List[str]:
     # returns a list of different augmented versions of the text
     replacements = get_replacements(glove_word_id_mapping=word_id_mapping, glove_id_word_mapping=id_word_mapping,
@@ -166,10 +171,14 @@ def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, m
         new_texts.append(" ".join(new_text))
     return new_texts
 
-def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: Path, output_path: Path,
+def augment_squad(model: str, tokenizer: str, squad_path: Path, output_path: Path,
         glove_path: Path = Path("glove.txt"), multiplication_factor: int = 20, word_possibilities: int = 20,
         replace_probability: float = 0.4, device: str = "cpu:0", batch_size: int = 16):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
+    # loading model and tokenizer
+    model = AutoModelForMaskedLM.from_pretrained(model)
+    model.to(device)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer, use_fast=False)
     # load glove for words that do not have one distinct token, but are split into subwords
     word_id_mapping, id_word_mapping, vectors = load_glove(glove_path=glove_path, device=device)
 
@@ -182,6 +191,10 @@ def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: 
     for topic in tqdm(squad["data"]):
         paragraphs = []
         for paragraph in topic["paragraphs"]:
+            # make every question unanswerable as answer strings will probably match and aren't relevant for distillation
+            for question in paragraph["qas"]:
+                question["answers"] = []
+                question["is_impossible"] = True
             context = paragraph["context"]
             contexts = augment(word_id_mapping=word_id_mapping, id_word_mapping=id_word_mapping, vectors=vectors,
                 model=model, tokenizer=tokenizer, text=context, multiplication_factor=multiplication_factor,
@@ -210,11 +223,9 @@ if __name__ == "__main__":
     parser.add_argument("--glove_path", type=Path, default="glove.txt", help="Path to the glove file")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for forward pass")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to use")
+    parser.add_argument("--model", type=str, default="bert-base-uncased", help="Huggingface model identifier for MLM model")
+    parser.add_argument("--tokenizer", type=str, default="bert-base-uncased", help="Huggingface tokenizer identifier for MLM model")
 
     args = parser.parse_args()
 
-    model = BertForMaskedLM.from_pretrained("bert-base-uncased")
-    model = model.to(args.device)
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-
-    augment_squad(model, tokenizer, **vars(args))
+    augment_squad(**vars(args))
