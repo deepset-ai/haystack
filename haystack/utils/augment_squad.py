@@ -67,15 +67,16 @@ def tokenize_and_extract_words(text: str, tokenizer: BertTokenizer):
 
     j = 0
     for i, subwords_ in enumerate(subwords):
-        if i == 510: # sequence length may not be longer than 512 (1 cls + 510 tokens + 1 sep)
+        j += len(subwords_)
+        if j >= 510: # sequence length may not be longer than 512 (1 cls + 510 tokens + 1 sep)
             break
         if len(subwords_) == 1:
-                word_subword_mapping[i] = j + 1
-        j += len(subwords_)
+                word_subword_mapping[i] = j
+        
     
     subwords = [subword for subwords_ in subwords for subword in subwords_] # flatten list of lists
 
-    input_ids = tokenizer.convert_tokens_to_ids(subwords)
+    input_ids = tokenizer.convert_tokens_to_ids(subwords[:510])
     input_ids.insert(0, tokenizer.cls_token_id)
     input_ids.append(tokenizer.sep_token_id)
 
