@@ -7,6 +7,11 @@ from itertools import islice
 from abc import abstractmethod
 from pathlib import Path
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal #type: ignore
+
 from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
 from haystack.errors import DuplicateDocumentError
@@ -342,9 +347,29 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         pass
+    
+    @abstractmethod
+    def _create_document_field_map(self) -> Dict:
+        pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):  # type: ignore
-        self.write_documents(documents=documents, index=index, headers=headers)
+    def run(self, documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None  ):  # type: ignore
+        """
+        Run requests of document stores 
+
+        Comment: We will gradually introduce the primitives. The doument stores also accept dicts and parse them to documents. 
+        In the future, however, only documents themselves will be accepted. Parsing the dictionaries in the run function 
+        is therefore only an interim solution until the run function also accepts documents. 
+
+        :param documents: A list of dicts that are documents.
+        :param headers: A list of headers.
+        :param index: Optional name of index where the documents shall be written to.
+                      If None, the DocumentStore's default index (self.index) will be used.
+        :param id_hash_keys: List of the fields that the hashes of the ids are generated from.
+        """
+        
+        field_map = self._create_document_field_map()
+        doc_objects = [Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) for d in documents]
+        self.write_documents(documents=doc_objects, index=index, headers=headers)
         return {}, "output_1"
 
     @abstractmethod

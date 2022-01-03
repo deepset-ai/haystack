@@ -225,6 +225,12 @@ class SQLDocumentStore(BaseDocumentStore):
             batch_size=batch_size,
         )
         yield from result
+    
+    def _create_document_field_map(self)->Dict:
+        """
+        There is no field mapping required
+        """
+        return {}
 
     def _query(
         self,

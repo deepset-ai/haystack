@@ -40,56 +40,57 @@ def test_init_elastic_client():
 
 
 def test_write_with_duplicate_doc_ids(document_store):
-    documents = [
+    duplicate_documents = [
         Document(
             content="Doc1",
-            id_hash_keys=["key1"]
+            id_hash_keys=["content"]
         ),
         Document(
-            content="Doc2",
-            id_hash_keys=["key1"]
+            content="Doc1",
+            id_hash_keys=["content"]
         )
     ]
-    document_store.write_documents(documents, duplicate_documents="skip")
+    document_store.write_documents(duplicate_documents, duplicate_documents="skip")
     assert len(document_store.get_all_documents()) == 1
     with pytest.raises(Exception):
-        document_store.write_documents(documents, duplicate_documents="fail")
+        document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"], indirect=True)
 def test_write_with_duplicate_doc_ids_custom_index(document_store):
-    documents = [
+    duplicate_documents = [
         Document(
             content="Doc1",
-            id_hash_keys=["key1"]
+            id_hash_keys=["content"]
         ),
         Document(
-            content="Doc2",
-            id_hash_keys=["key1"]
+            content="Doc1",
+            id_hash_keys=["content"]
         )
     ]
     document_store.delete_documents(index="haystack_custom_test")
-    document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="skip")
+    document_store.write_documents(duplicate_documents, index="haystack_custom_test", duplicate_documents="skip")
+    assert len(document_store.get_all_documents(index="haystack_custom_test")) == 1
     with pytest.raises(DuplicateDocumentError):
-        document_store.write_documents(documents, index="haystack_custom_test", duplicate_documents="fail")
+        document_store.write_documents(duplicate_documents, index="haystack_custom_test", duplicate_documents="fail")
 
     # Weaviate manipulates document objects in-place when writing them to an index.
     # It generates a uuid based on the provided id and the index name where the document is added to.
     # We need to get rid of these generated uuids for this test and therefore reset the document objects.
     # As a result, the documents will receive a fresh uuid based on their id_hash_keys and a different index name.
     if isinstance(document_store, WeaviateDocumentStore):
-        documents = [
+        duplicate_documents = [
             Document(
                 content="Doc1",
-                id_hash_keys=["key1"]
+                id_hash_keys=["content"]
             ),
             Document(
-                content="Doc2",
-                id_hash_keys=["key1"]
+                content="Doc1",
+                id_hash_keys=["content"]
             )
         ]
     # writing to the default, empty index should still work
-    document_store.write_documents(documents, duplicate_documents="fail")
+    document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
@@ -105,17 +106,17 @@ def test_get_all_document_filter_duplicate_text_value(document_store):
         Document(
             content="Doc1",
             meta={"f1": "0"},
-            id_hash_keys=["Doc1", "1"]
+            id_hash_keys=["meta"]
         ),
         Document(
             content="Doc1",
             meta={"f1": "1", "meta_id": "0"},
-            id_hash_keys=["Doc1", "2"]
+            id_hash_keys=["meta"]
         ),
         Document(
             content="Doc2",
             meta={"f3": "0"},
-            id_hash_keys=["Doc2", "3"]
+            id_hash_keys=["meta"]
         )
     ]
     document_store.write_documents(documents)
@@ -123,6 +124,16 @@ def test_get_all_document_filter_duplicate_text_value(document_store):
     assert documents[0].content == "Doc1"
     assert len(documents) == 1
     assert {d.meta["meta_id"] for d in documents} == {"0"}
+
+    documents = document_store.get_all_documents(filters={"f1": ["0"]})
+    assert documents[0].content == "Doc1"
+    assert len(documents) == 1
+    assert documents[0].meta.get("meta_id") is None 
+
+    documents = document_store.get_all_documents(filters={"f3": ["0"]})
+    assert documents[0].content == "Doc2"
+    assert len(documents) == 1
+    assert documents[0].meta.get("meta_id") is None
 
 
 def test_get_all_documents_with_correct_filters(document_store_with_docs):
