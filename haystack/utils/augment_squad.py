@@ -1,7 +1,8 @@
 """
-Script to perform data augmentation on a SQuAD like dataset to increase training data. It follows the approach oultined in the TinyBERT paper.
+Script to perform data augmentation on a SQuAD like dataset to increase training data.
+It follows the approach oultined in the TinyBERT paper: https://arxiv.org/pdf/1909.10351.pdf
 Usage:
-    python augment_squad.py --squad_path <squad_path> --output_path <output_patn> \
+    python augment_squad.py --squad_path <squad_path> --output_path <output_path> \
         --multiplication_factor <multiplication_factor> --word_possibilities <word_possibilities> \
         --replace_probability <replace_probability>
 Arguments:
@@ -14,6 +15,7 @@ Arguments:
 
 
 import torch
+from torch.nn import functional as F
 from transformers import BertForMaskedLM, BertTokenizer
 from copy import copy, deepcopy
 from pathlib import Path
@@ -25,10 +27,12 @@ import argparse
 import json
 import logging
 from tqdm import tqdm
+from typing import Tuple, List
 
 logger = logging.getLogger(__name__)
 
-def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000):
+
+def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: str = "cpu:0") -> Tuple[dict, dict, torch.Tensor]:
     """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
 
     if not glove_path.exists(): # download and extract glove if necessary
@@ -51,12 +55,14 @@ def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000):
             split = line.split()
             word_id_mapping[split[0]] = i
             id_word_mapping[i] = split[0]
-            vector_list.append(np.array([float(x) for x in split[1:]]))
-    vectors = np.stack(vector_list)
-    vectors = vectors / np.linalg.norm(vectors, axis=1)[:, np.newaxis]
+            vector_list.append(torch.tensor([float(x) for x in split[1:]]))
+    vectors = torch.stack(vector_list)
+    with torch.no_grad():
+        vectors = vectors.to(device)
+        vectors = F.normalize(vectors, dim=1)
     return word_id_mapping, id_word_mapping, vectors
 
-def tokenize_and_extract_words(text: str, tokenizer: BertTokenizer):
+def tokenize_and_extract_words(text: str, tokenizer: BertTokenizer) -> Tuple[torch.Tensor, List[str], dict]:
     # tokenizes text and returns, in addition to the tokens, indices and mapping of the words that were not split into subwords
     # this is important as MLM is not used for subwords
     words = tokenizer.basic_tokenizer.tokenize(text)
@@ -84,7 +90,7 @@ def tokenize_and_extract_words(text: str, tokenizer: BertTokenizer):
 
 def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, glove_vectors: np.ndarray,
     model: BertForMaskedLM, tokenizer: BertTokenizer, text: str, word_possibilities: int = 20,
-    batch_size: int = 16, device: str = "cpu:0"):
+    batch_size: int = 16, device: str = "cpu:0") -> List[List[str]]:
     """Returns a list of possible replacements for each word in the text."""
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
 
@@ -130,9 +136,10 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
         elif word in glove_word_id_mapping: # word was split into subwords so we use glove instead
             word_id = glove_word_id_mapping[word]
             glove_vector = glove_vectors[word_id]
-            word_similarities = glove_vectors.dot(glove_vector)
-            ranking = np.argsort(word_similarities)[-word_possibilities - 1:][::-1]
-            possible_words.append([glove_id_word_mapping[id] for id in ranking])
+            with torch.no_grad():
+                word_similarities = torch.mm(glove_vectors, glove_vector.unsqueeze(1)).squeeze(1)
+                ranking = torch.argsort(word_similarities, descending=True)[:word_possibilities + 1]
+                possible_words.append([glove_id_word_mapping[int(id_)] for id_ in ranking.cpu()])
         else: # word was not in glove either so we can't find any replacements
             possible_words.append([word])
 
@@ -140,7 +147,7 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
 
 def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, model: BertForMaskedLM,
     tokenizer: BertTokenizer, text: str, multiplication_factor: int = 20, word_possibilities: int = 20,
-    replace_probability: float = 0.4, batch_size: int = 16, device: str = "cpu:0"):
+    replace_probability: float = 0.4, batch_size: int = 16, device: str = "cpu:0") -> List[str]:
     # returns a list of different augmented versions of the text
     replacements = get_replacements(glove_word_id_mapping=word_id_mapping, glove_id_word_mapping=id_word_mapping,
         glove_vectors=vectors, model=model, tokenizer=tokenizer, text=text, word_possibilities=word_possibilities,
@@ -164,7 +171,7 @@ def augment_squad(model: BertForMaskedLM, tokenizer: BertTokenizer, squad_path: 
         replace_probability: float = 0.4, device: str = "cpu:0", batch_size: int = 16):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
     # load glove for words that do not have one distinct token, but are split into subwords
-    word_id_mapping, id_word_mapping, vectors = load_glove(glove_path)
+    word_id_mapping, id_word_mapping, vectors = load_glove(glove_path=glove_path, device=device)
 
     # load squad dataset
     with open(squad_path, "r") as f:
