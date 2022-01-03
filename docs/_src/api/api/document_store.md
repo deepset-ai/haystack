@@ -164,6 +164,27 @@ from disk and also indexed batchwise to the DocumentStore in order to prevent ou
                     same question might be found in different contexts.
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
+<a name="base.BaseDocumentStore.run"></a>
+#### run
+
+```python
+ | run(documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None)
+```
+
+Run requests of document stores
+
+Comment: We will gradually introduce the primitives. The doument stores also accept dicts and parse them to documents.
+In the future, however, only documents themselves will be accepted. Parsing the dictionaries in the run function
+is therefore only an interim solution until the run function also accepts documents.
+
+**Arguments**:
+
+- `documents`: A list of dicts that are documents.
+- `headers`: A list of headers.
+- `index`: Optional name of index where the documents shall be written to.
+              If None, the DocumentStore's default index (self.index) will be used.
+- `id_hash_keys`: List of the fields that the hashes of the ids are generated from.
+
 <a name="base.get_batches_from_generator"></a>
 #### get\_batches\_from\_generator
 
