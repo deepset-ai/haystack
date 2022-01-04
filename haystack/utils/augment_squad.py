@@ -41,10 +41,12 @@ from typing import Tuple, List
 
 logger = logging.getLogger(__name__)
 
-def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: str = "cpu:0") -> Tuple[dict, dict, torch.Tensor]:
+def load_glove(glove_path: Path = Path("glove.txt"), vocab_siaze: int = 100_000, device: str = "cpu:0") -> Tuple[dict, dict, torch.Tensor]:
     """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
 
     if not glove_path.exists(): # download and extract glove if necessary
+        logger.info("Provided glove file not found. Downloading it instead.")
+        glove_path.parent.mkdir(parents=True, exist_ok=True)
         zip_path = glove_path.parent / (glove_path.name + ".zip")
         request = requests.get("https://nlp.stanford.edu/data/glove.42B.300d.zip", allow_redirects=True)
         with zip_path.open("wb") as downloaded_file:
