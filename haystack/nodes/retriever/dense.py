@@ -308,6 +308,7 @@ class DensePassageRetriever(BaseRetriever):
               test_filename: str = None,
               max_samples: int = None,
               max_processes: int = 128,
+              multiprocessing_strategy: str = 'file_descriptor',
               dev_split: float = 0,
               batch_size: int = 2,
               embed_title: bool = True,
@@ -337,6 +338,9 @@ class DensePassageRetriever(BaseRetriever):
         :param max_samples: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
         :param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+        :param multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system.
+                                         If your system has low limits for the number of open file descriptors, and you can’t raise them,
+                                         you should use the file_system strategy.
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
         :param batch_size: total number of samples in 1 batch of data
         :param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
@@ -377,7 +381,13 @@ class DensePassageRetriever(BaseRetriever):
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
-        data_silo = DataSilo(processor=self.processor, batch_size=batch_size, distributed=False, max_processes=max_processes)
+        data_silo = DataSilo(
+            processor=self.processor,
+            batch_size=batch_size,
+            distributed=False,
+            max_processes=max_processes,
+            multiprocessing_strategy=multiprocessing_strategy
+        )
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
