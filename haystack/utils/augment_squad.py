@@ -105,16 +105,19 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
         subword_index = word_subword_mapping[word_index]
         input_ids_ = copy(input_ids)
         input_ids_[subword_index] = tokenizer.mask_token_id
-        inputs.append(input_ids_)
+        inputs.append((input_ids_, subword_index))
         
     # doing batched forward pass
     with torch.no_grad():
         prediction_list = []
         while len(inputs) != 0:
-            batch_list = inputs[:batch_size]
+            batch_list, token_indices = tuple(zip(*inputs[:batch_size]))
             batch = torch.tensor(batch_list)
             batch = batch.to(device)
-            prediction_list.append(model(input_ids=batch)["logits"].cpu())
+            logits = model(input_ids=batch)["logits"]
+            relevant_logits = logits[torch.arange(batch.shape[0]), token_indices]
+            ranking = torch.topk(relevant_logits, word_possibilities, dim=1)
+            prediction_list.append(ranking.indices.cpu())
             inputs = inputs[batch_size:]
         predictions = torch.cat(prediction_list, dim=0)
 
@@ -125,15 +128,12 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
     for i, word in enumerate(words):
         if i in word_subword_mapping: # word was not split into subwords so we can use MLM output
             subword_index = word_subword_mapping[i]
-            logits = predictions[batch_index, subword_index]
-            ranking = torch.argsort(logits, descending=True)
+            ranking = predictions[batch_index]
             possible_words_ = [word]
-            j = 0
-            while len(possible_words_) < word_possibilities + 1:
-                word = tokenizer.convert_ids_to_tokens([ranking[j]])[0]
+            for token in ranking:
+                word = tokenizer.convert_ids_to_tokens([token])[0]
                 if not word.startswith("##"):
                     possible_words_.append(word)
-                j += 1
 
             possible_words.append(possible_words_)
 
