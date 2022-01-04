@@ -34,7 +34,7 @@ jobs:
             latest=true
           tags: |
             type=ref,event=tag
-            type=sha,format=long
+            type=sha,format=long,prefix=
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
