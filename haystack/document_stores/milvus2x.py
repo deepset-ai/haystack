@@ -160,11 +160,11 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
-        self.duplicate_documents = duplicate_documents
 
         super().__init__(
             url=sql_url,
-            index=index
+            index=index,
+            duplicate_documents=duplicate_documents
         )
 
     def _create_collection_and_index_if_not_exist(
