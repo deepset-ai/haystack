@@ -1,6 +1,10 @@
 """
 Script to perform data augmentation on a SQuAD like dataset to increase training data.
-It follows the approach oultined in the TinyBERT paper: https://arxiv.org/pdf/1909.10351.pdf
+It follows the approach oultined in the TinyBERT paper: https://arxiv.org/pdf/1909.10351.pdf.
+It takes a SQuAD like dataset as input and writes the augmented dataset to a new file in the same format.
+There are no answer labels in the augmented dataset and every question is marked impossible.
+This isn't a problem for distillation. However, this means that the augmented dataset is not suitable for training
+a model on its own.
 Usage:
     python augment_squad.py --squad_path <squad_path> --output_path <output_path> \
         --multiplication_factor <multiplication_factor> --word_possibilities <word_possibilities> \
