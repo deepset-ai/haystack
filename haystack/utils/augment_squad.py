@@ -198,7 +198,6 @@ def augment_squad(model: str, tokenizer: str, squad_path: Path, output_path: Pat
             # make every question unanswerable as answer strings will probably not match and aren't relevant for distillation
             for question in paragraph["qas"]:
                 question["answers"] = []
-                question["is_impossible"] = True
             context = paragraph["context"]
             contexts = augment(word_id_mapping=word_id_mapping, id_word_mapping=id_word_mapping, vectors=vectors,
                 model=transformers_model, tokenizer=transformers_tokenizer, text=context, multiplication_factor=multiplication_factor,
