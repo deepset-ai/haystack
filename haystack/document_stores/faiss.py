@@ -141,11 +141,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         self.embedding_field = embedding_field
 
         self.progress_bar = progress_bar
-        self.duplicate_documents = duplicate_documents
 
         super().__init__(
             url=sql_url,
-            index=index
+            index=index,
+            duplicate_documents=duplicate_documents
         )
 
         self._validate_index_sync()

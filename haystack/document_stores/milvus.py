@@ -125,11 +125,11 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
-        self.duplicate_documents = duplicate_documents
 
         super().__init__(
             url=sql_url,
-            index=index
+            index=index,
+            duplicate_documents=duplicate_documents
         )
 
     def __del__(self):
