@@ -195,7 +195,7 @@ def augment_squad(model: str, tokenizer: str, squad_path: Path, output_path: Pat
     for topic in tqdm(squad["data"]):
         paragraphs = []
         for paragraph in topic["paragraphs"]:
-            # make every question unanswerable as answer strings will probably match and aren't relevant for distillation
+            # make every question unanswerable as answer strings will probably not match and aren't relevant for distillation
             for question in paragraph["qas"]:
                 question["answers"] = []
                 question["is_impossible"] = True
