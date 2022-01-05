@@ -941,7 +941,7 @@ def test_elasticsearch_synonyms():
     indexed_settings = client.indices.get_settings(index="haystack_synonym_arg")
 
     assert synonym_type == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['type']
-    assert synonyms == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['synonyms']
+    assert synonyms == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['synonyms'] 
 
 @pytest.mark.parametrize("document_store_with_docs", ["milvus"], indirect=True)
 def test_similarity_score(document_store_with_docs):
