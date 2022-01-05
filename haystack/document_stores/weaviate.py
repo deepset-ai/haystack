@@ -32,6 +32,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
     3. Has less variety of ANN algorithms, as of now only HNSW.
     4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
+    5. Only support cosine similarity.
 
     Weaviate python client is used to connect to the server, more details are here
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
