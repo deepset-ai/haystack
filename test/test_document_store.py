@@ -943,7 +943,7 @@ def test_elasticsearch_synonyms():
     assert synonym_type == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['type']
     assert synonyms == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['synonyms'] 
 
-@pytest.mark.parametrize("document_store_with_docs", ["milvus"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True)
 def test_similarity_score(document_store_with_docs):
     retriever = EmbeddingRetriever(document_store=document_store_with_docs, embedding_model="sentence-transformers/paraphrase-xlm-r-multilingual-v1")
     document_store_with_docs.update_embeddings(retriever)
@@ -952,7 +952,7 @@ def test_similarity_score(document_store_with_docs):
     scores = [document.score for document in prediction["documents"]]
     assert scores == pytest.approx([0.5976194085385423, 0.5321976626876935, 0.5221135745000899], abs=1e-3)
 
-@pytest.mark.parametrize("document_store_cosine_with_docs", ["milvus"], indirect=True)
+@pytest.mark.parametrize("document_store_cosine_with_docs", ["memory", "faiss", "milvus", "elasticsearch"], indirect=True)
 def test_similarity_score_cosine(document_store_cosine_with_docs):
     retriever = EmbeddingRetriever(document_store=document_store_cosine_with_docs, embedding_model="sentence-transformers/paraphrase-xlm-r-multilingual-v1")
     document_store_cosine_with_docs.update_embeddings(retriever)
