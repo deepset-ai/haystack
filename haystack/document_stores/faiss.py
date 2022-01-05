@@ -305,7 +305,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        vector_id = self.faiss_indexes[index].ntotal
+        vector_id = sum([self.faiss_indexes[index].ntotal for index in self.faiss_indexes.keys()])
 
         result = self._query(
             index=index,
@@ -329,7 +329,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
                 vector_id_map = {}
                 for doc in document_batch:
-                    vector_id_map[doc.id] = vector_id
+                    vector_id_map[str(doc.id)] = str(vector_id)
                     vector_id += 1
                 self.update_vector_ids(vector_id_map, index=index)
                 progress_bar.set_description_str("Documents Processed")
