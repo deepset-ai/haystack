@@ -149,7 +149,7 @@ class DataSilo:
                     else:
                         logger.warning(
                             f"{self.multiprocessing_strategy} is unavailable, "
-                            f"falling back to default strategy of your OS."
+                            f"falling back to default multiprocessing sharing strategy of your OS."
                         )
 
                 p = stack.enter_context(mp.Pool(processes=num_cpus_used))
