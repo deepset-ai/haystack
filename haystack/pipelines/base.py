@@ -472,6 +472,13 @@ class Pipeline(BasePipeline):
                 df_answers["rank"] = np.arange(1, len(df_answers)+1)
                 df = pd.concat([df, df_answers])
 
+            # add general info
+            df["node"] = node_name
+            df["query"] = query
+            df = df.reindex(columns=["query", "gold_answers", "answer", "context", "exact_match",
+                             "f1", "rank", "document_id", "gold_document_ids",
+                             "offsets_in_document", "gold_offsets_in_documents", "type", "node"])
+
         # if node returned documents, include document specific info:
         # - the document_id
         # - the content of the document
@@ -502,10 +509,12 @@ class Pipeline(BasePipeline):
                 df_docs["rank"] = np.arange(1, len(df_docs)+1)
                 df = pd.concat([df, df_docs])
 
-        # add general info
-        df["node"] = node_name
-        df["query"] = query
-        df["node_input"] = "prediction"
+            # add general info
+            df["node"] = node_name
+            df["query"] = query
+            df = df.reindex(columns=["query", "gold_document_contents", "content", "gold_id_match", "answer_match",
+                             "gold_id_or_answer_match", "rank", "document_id", "gold_document_ids",
+                                "type", "node"])
 
         return df
 
