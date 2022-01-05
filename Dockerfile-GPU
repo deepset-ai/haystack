@@ -2,50 +2,65 @@ FROM  nvidia/cuda:11.0-runtime-ubuntu20.04
 
 WORKDIR /home/user
 
-RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
-RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-distutils python3-pip curl wget git pkg-config cmake swig
-
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-# Set default Python version
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
-RUN update-alternatives --set python3 /usr/bin/python3.7
+# create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH
+RUN mkdir -p /home/user/file-upload && chmod 777 /home/user/file-upload
 
 # Install PDF converter
-RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && \
-tar -xvf xpdf-tools-linux-4.03.tar.gz && cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
+RUN curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz | tar -xvzf - -C /usr/local/bin --strip-components=2 xpdf-tools-linux-4.03/bin64/pdftotext
 
-RUN apt-get install libpoppler-cpp-dev pkg-config -y --fix-missing
-RUN apt-get install tesseract-ocr libtesseract-dev poppler-utils -y
+# Install software dependencies
+RUN apt-get update && apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && apt-get install -y \
+        cmake \
+        curl \
+        git \
+        libpoppler-cpp-dev \
+        libtesseract-dev \
+        pkg-config \
+        poppler-utils \
+        python3-pip \
+        python3.7 \
+        python3.7-dev \
+        python3.7-distutils \
+        swig \
+        tesseract-ocr \
+        wget
 
-# copy code
-COPY haystack /home/user/haystack
+# Set default Python version
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 && \
+    update-alternatives --set python3 /usr/bin/python3.7
 
-# install as a package
+# Copy package setup files
 COPY setup.py requirements.txt README.md /home/user/
-RUN pip3 install numpy scipy Cython
 
-# Install PyTorch for CUDA 11
-RUN pip3 install torch==1.7.1+cu110 -f https://download.pytorch.org/whl/torch_stable.html
-# Install faiss separately as building latest versions can cause trouble with swig
-RUN pip3 install faiss-cpu==1.6.3
-
-RUN pip3 install -r requirements.txt
-RUN pip3 install -e .
+RUN echo "Install required packages" && \
+    # Install PyTorch for CUDA 11
+    pip3 install torch==1.7.1+cu110 -f https://download.pytorch.org/whl/torch_stable.html && \
+    # Install faiss separately as building latest versions can cause trouble with swig
+    pip3 install faiss-cpu==1.6.3 && \
+    # Install extra packages
+    pip3 install Cython && \
+    # Install from requirements.txt
+    pip3 install -r requirements.txt
 
 # download punkt tokenizer to be included in image
 RUN python3 -c "import nltk;nltk.download('punkt', download_dir='/usr/nltk_data')"
-
-# create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH
-RUN mkdir -p /home/user/file-upload
-RUN chmod 777 /home/user/file-upload
 
 # copy saved models
 COPY README.md models* /home/user/models/
 
 # Copy REST API code
 COPY rest_api /home/user/rest_api
+
+# copy code
+COPY haystack /home/user/haystack
+
+# Install package
+RUN pip3 install -e .
 
 # optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/
