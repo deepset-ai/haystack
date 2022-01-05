@@ -4,7 +4,7 @@ wheel
 # PyTorch
 # Temp. disabled the next line as it gets currently resolved to https://download.pytorch.org/whl/rocm3.8/torch-1.7.1%2Brocm3.8-cp38-cp38-linux_x86_64.whl
 # --find-links=https://download.pytorch.org/whl/torch_stable.html
-torch>1.5,<1.11
+torch>1.9,<1.11
 # progress bars in model download and training scripts
 tqdm
 # Used for downloading models over HTTP
