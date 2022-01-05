@@ -42,7 +42,7 @@ which is why we recommend using the `PreProcessor` class to clean and split your
 
 For **sparse retrievers**, very long documents pose a challenge since the signal of the relevant section of text
 can get washed out by the rest of the document.
-To get a good balance between Reader speed and Retriever performance, we splitting documents to a maximum of 500 words. 
+To get a good balance between Reader speed and Retriever performance, we split documents to a maximum of 500 words. 
 If there is no Reader in the pipeline following the Retriever, we recommend that **documents be no longer than 10,000 words**.
 
 **Dense retrievers** are limited in the length of text that they can read in one pass.

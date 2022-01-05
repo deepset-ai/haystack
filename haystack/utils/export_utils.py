@@ -48,15 +48,16 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     elif details == "all":  
         filtered_answers = answers
     else:
-        logging.warn(f"print_answers received details='{details}', which was not understood. "
-                     "Valid values are 'minimum', 'medium', and 'all'. Using 'all'.")
+        valid_values = ", ".join(fields_to_keep_by_level.keys()) + " and 'all'"
+        logging.warn(f"print_answers received details='{details}', which was not understood. ")
+        logging.warn(f"Valid values are {valid_values}. Using 'all'.")
         filtered_answers = answers
 
     # Shorten long text fields
     if max_text_len is not None:
         for ans in answers:
-            if getattr(ans, "context") and len(ans.context) > 50:
-                ans.context = ans.context[:50] + "..."
+            if getattr(ans, "context") and len(ans.context) > max_text_len:
+                ans.context = ans.context[:max_text_len] + "..."
 
     pp.pprint(filtered_answers) 
 
@@ -146,9 +147,9 @@ def export_answers_to_csv(agg_results: list, output_file):
         for i in range(len(res["answers"])):
             temp = res["answers"][i]
             data["query"].append(res["query"])
-            data["prediction"].append(temp["answer"])
+            data["prediction"].append(temp.answer)
             data["prediction_rank"].append(i + 1)
-            data["prediction_context"].append(temp["context"])
+            data["prediction_context"].append(temp.context)
 
     df = pd.DataFrame(data)
     df.to_csv(output_file, index=False)
