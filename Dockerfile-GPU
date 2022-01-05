@@ -1,4 +1,4 @@
-FROM  nvidia/cuda:11.0-runtime-ubuntu20.04
+FROM  nvidia/cuda:11.1-runtime-ubuntu20.04
 
 WORKDIR /home/user
 
@@ -39,7 +39,7 @@ COPY setup.py requirements.txt README.md /home/user/
 
 RUN echo "Install required packages" && \
     # Install PyTorch for CUDA 11
-    pip3 install torch==1.7.1+cu110 -f https://download.pytorch.org/whl/torch_stable.html && \
+    pip3 install torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html && \
     # Install faiss separately as building latest versions can cause trouble with swig
     pip3 install faiss-cpu==1.6.3 && \
     # Install extra packages
