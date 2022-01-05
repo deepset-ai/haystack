@@ -161,7 +161,7 @@ None
 #### distil\_from
 
 ```python
- | distil_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0)
+ | distil_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0, tinybert_loss: bool = False, tinybert_epochs: int = 1)
 ```
 
 Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -218,8 +218,10 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 :param caching whether or not to use caching for preprocessed dataset and teacher logits
 - `cache_path`: Path to cache the preprocessed dataset and teacher logits
 - `distillation_loss_weight`: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
-- `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
+- `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
 - `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+- `tinybert_loss`: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
+- `tinybert_epochs`: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
 
 **Returns**:
 
@@ -595,6 +597,84 @@ of content_type ``'table'``.
 Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
 WARNING: The answer scores are not reliable, as they are always extremely high, even if
          a question cannot be answered by a given table.
+
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer. Documents should be
+                  of content_type ``'table'``.
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
+
+<a name="table.RCIReader"></a>
+## RCIReader
+
+```python
+class RCIReader(BaseReader)
+```
+
+Table Reader model based on Glass et al. (2021)'s Row-Column-Intersection model.
+See the original paper for more details:
+Glass, Michael, et al. (2021): "Capturing Row and Column Semantics in Transformer Based Question Answering over Tables"
+(https://aclanthology.org/2021.naacl-main.96/)
+
+Each row and each column is given a score with regard to the query by two separate models. The score of each cell
+is then calculated as the sum of the corresponding row score and column score. Accordingly, the predicted answer is
+the cell with the highest score.
+
+Pros and Cons of RCIReader compared to TableReader:
++ Provides meaningful confidence scores
++ Allows larger tables as input
+- Does not support aggregation over table cells
+- Slower
+
+<a name="table.RCIReader.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row", column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col", row_model_version: Optional[str] = None, column_model_version: Optional[str] = None, row_tokenizer: Optional[str] = None, column_tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
+```
+
+Load an RCI model from Transformers.
+Available models include:
+
+- ``'michaelrglass/albert-base-rci-wikisql-row'`` + ``'michaelrglass/albert-base-rci-wikisql-col'``
+- ``'michaelrglass/albert-base-rci-wtq-row'`` + ``'michaelrglass/albert-base-rci-wtq-col'``
+
+
+
+**Arguments**:
+
+- `row_model_name_or_path`: Directory of a saved row scoring model or the name of a public model
+- `column_model_name_or_path`: Directory of a saved column scoring model or the name of a public model
+- `row_model_version`: The version of row model to use from the HuggingFace model hub.
+                          Can be tag name, branch name, or commit hash.
+- `column_model_version`: The version of column model to use from the HuggingFace model hub.
+                             Can be tag name, branch name, or commit hash.
+- `row_tokenizer`: Name of the tokenizer for the row model (usually the same as model)
+- `column_tokenizer`: Name of the tokenizer for the column model (usually the same as model)
+- `use_gpu`: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
+- `top_k`: The maximum number of answers to return
+- `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
+                    query + table exceed max_seq_len, the table will be truncated by removing rows until the
+                    input size fits the model.
+
+<a name="table.RCIReader.predict"></a>
+#### predict
+
+```python
+ | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+```
+
+Use loaded RCI models to find answers for a query in the supplied list of Documents
+of content_type ``'table'``.
+
+Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+The existing RCI models on the HF model hub don"t allow aggregation, therefore, the answer will always be
+composed of a single cell.
 
 **Arguments**:
 

@@ -4,7 +4,7 @@ import os
 import pytest
 
 from haystack.nodes import MarkdownConverter, DocxToTextConverter, PDFToTextConverter, PDFToTextOCRConverter, \
-    TikaConverter, AzureConverter
+    TikaConverter, AzureConverter, ParsrConverter
 
 
 @pytest.mark.tika
@@ -87,3 +87,19 @@ def test_azure_converter():
 
         assert docs[1]["content_type"] == "text"
         assert docs[1]["content"].startswith("A sample PDF file")
+
+
+def test_parsr_converter():
+    converter = ParsrConverter()
+
+    docs = converter.convert(file_path="samples/pdf/sample_pdf_1.pdf")
+    assert len(docs) == 2
+    assert docs[0]["content_type"] == "table"
+    assert len(docs[0]["content"]) == 5  # number of rows
+    assert len(docs[0]["content"][0]) == 4  # number of columns
+    assert docs[0]["content"][0] == ['', 'Column 1', 'Column 2', 'Column 3']
+    assert docs[0]["content"][4] == ['D', '$54.35', '$6345.', '']
+
+    assert docs[1]["content_type"] == "text"
+    assert docs[1]["content"].startswith("A sample PDF ﬁle")
+    assert docs[1]["content"].endswith("Page 4 of Sample PDF\n… the page 3 is empty.")

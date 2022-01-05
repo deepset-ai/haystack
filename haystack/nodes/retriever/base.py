@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import logging
 from abc import abstractmethod
@@ -48,7 +48,13 @@ class BaseRetriever(BaseComponent):
     retrieve_time = 0.0
 
     @abstractmethod
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(
+        self, 
+        query: str, 
+        filters: dict = None, 
+        top_k: Optional[int] = None, 
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -57,6 +63,7 @@ class BaseRetriever(BaseComponent):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
         pass
 
@@ -81,6 +88,7 @@ class BaseRetriever(BaseComponent):
         top_k: int = 10,
         open_domain: bool = False,
         return_preds: bool = False,
+        headers: Optional[Dict[str, str]] = None
     ) -> dict:
         """
         Performs evaluation on the Retriever.
@@ -107,6 +115,7 @@ class BaseRetriever(BaseComponent):
                             are within ids explicitly stated in the labels.
         :param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                              contains the keys "predictions" and "metrics".
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
 
         # Extract all questions for evaluation
@@ -117,7 +126,8 @@ class BaseRetriever(BaseComponent):
         labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters,
                                                                                  open_domain=open_domain,
                                                                                  drop_negative_labels=True,
-                                                                                 drop_no_answers=False)
+                                                                                 drop_no_answers=False,
+                                                                                 headers=headers)
 
         correct_retrievals = 0
         summed_avg_precision = 0.0
@@ -142,7 +152,7 @@ class BaseRetriever(BaseComponent):
         logger.info("Performing eval queries...")
         if open_domain:
             for (_, question), gold_answers in tqdm(question_label_dict.items()):
-                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
+                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index, headers=headers)
                 if return_preds:
                     predictions.append({"question": question, "retrieved_docs": retrieved_docs})
                 # check if correct doc in retrieved docs
@@ -164,7 +174,7 @@ class BaseRetriever(BaseComponent):
         # Option 2: Strict evaluation by document ids that are listed in the labels
         else:
             for (_, question), gold_ids in tqdm(question_label_dict.items()):
-                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index)
+                retrieved_docs = timed_retrieve(question, top_k=top_k, index=doc_index, headers=headers)
                 if return_preds:
                     predictions.append({"question": question, "retrieved_docs": retrieved_docs})
                 # check if correct doc in retrieved docs
@@ -215,11 +225,12 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         documents: Optional[List[dict]] = None,
         index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None
     ):
         if root_node == "Query":
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
-            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index)
+            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
             run_indexing = self.timing(self.run_indexing, "index_time")
@@ -234,8 +245,9 @@ class BaseRetriever(BaseComponent):
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None
     ):
-        documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index)
+        documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {"documents": documents}

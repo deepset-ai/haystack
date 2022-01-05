@@ -26,7 +26,7 @@ e = MarkdownExporter(exclude_output=True)
 for i, nb in enumerate(notebooks):
     body, resources = e.from_filename(dir / nb)
     print(f"Processing {dir}/{nb}")
-    with open(str(i + 1) + ".md", "w") as f:
+    with open(str(i + 1) + ".md", "w", encoding='utf-8') as f:
         f.write(headers[i + 1] + "\n\n")
         f.write(body)
 

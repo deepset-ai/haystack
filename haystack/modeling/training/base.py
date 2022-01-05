@@ -1,9 +1,6 @@
 from typing import Optional, Union, Tuple, List, Callable
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from haystack.nodes import FARMReader
-    from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import _LRScheduler
 
 import sys
 import shutil
@@ -14,7 +11,7 @@ import torch
 from tqdm import tqdm
 from pathlib import Path
 
-from torch.nn import MSELoss
+from torch.nn import MSELoss, Linear
 import torch.nn.functional as F
 from torch.optim import Optimizer
 
@@ -630,7 +627,7 @@ class DistillationTrainer(Trainer):
     """
     def __init__(
         self,
-        model: "FARMReader",
+        model: "AdaptiveModel",
         optimizer: Optimizer,
         data_silo: DistillationDataSilo,
         epochs: int,
@@ -731,3 +728,164 @@ class DistillationTrainer(Trainer):
         distillation_loss = self.distillation_loss_fn(student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature)
         combined_loss = distillation_loss * self.distillation_loss_weight * (self.temperature ** 2) + student_loss * (1 - self.distillation_loss_weight)
         return self.backward_propagate(combined_loss, step)
+
+class TinyBERTDistillationTrainer(Trainer):
+    """
+    This Trainer implements the first stage of task specific distillation as described in the TinyBERT paper.
+    The standard DistillationTrainer can be used for the second stage. Unlike the DistillationTrainer, this Trainer does not use
+    cached teacher outputs as it would be too memory expensive. This means it is much slower than the DistillationTrainer.
+
+    **Example**
+    ```python
+    student = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D")
+    teacher = FARMReader(model_name_or_path="twmkn9/bert-base-uncased-squad2")
+
+    processor = SquadProcessor(tokenizer=student.inferencer.processor.tokenizer, max_seq_len=384)
+    student, optimizer, _ = initialize_optimizer(student, n_batches=len(data_silo.loaders["train"]), n_epochs=3, device="cuda:0", learning_rate=3e-5)
+
+    data_silo = DataSilo(teacher_model=teacher, batch_size=8, device="cuda:0", processor=processor)
+    trainer = TinyBertDistillationTrainer(student=student, optimizer=optimizer, data_silo=data_silo, epochs=3, n_gpu=1, device="cuda:0")
+
+    trainer.train()
+    ```
+    """
+    def __init__(
+        self,
+        model: AdaptiveModel,
+        teacher_model: AdaptiveModel,
+        optimizer: Optimizer,
+        data_silo: DistillationDataSilo,
+        epochs: int,
+        n_gpu: int,
+        device: str,
+        lr_schedule: Optional["_LRScheduler"]=None,
+        evaluate_every: int = 100,
+        eval_report: bool = True,
+        use_amp: Optional[str] = None,
+        grad_acc_steps: int = 1,
+        local_rank: int = -1,
+        early_stopping: Optional[EarlyStopping] = None,
+        log_learning_rate: bool = False,
+        log_loss_every: int = 10,
+        checkpoint_on_sigterm: bool = False,
+        checkpoint_every: Optional[int] = None,
+        checkpoint_root_dir: Optional[Path] = None,
+        checkpoints_to_keep: int = 3,
+        from_epoch: int = 0,
+        from_step: int = 0,
+        global_step: int = 0,
+        evaluator_test: bool = True,
+        disable_tqdm: bool = False,
+        max_grad_norm: float = 1.0,
+    ):
+        """
+        :param optimizer: An optimizer object that determines the learning strategy to be used during training
+        :param model: The model to be trained. It needs to be a TinyBERT model.
+        :param teacher_model: The teacher model used for distillation. This has to be based on bert-base-uncased.
+        :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
+        :param epochs: How many times the training procedure will loop through the train dataset
+        :param n_gpu: The number of gpus available for training and evaluation.
+        :param device: The device on which the train, dev and test tensors should be hosted. Choose from "cpu" and "cuda".
+        :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
+        :param evaluate_every: Perform dev set evaluation after this many steps of training.
+        :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
+        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
+                        "O1" is recommended in almost all cases.
+        :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
+                               Useful to achieve larger effective batch sizes that would not fit in GPU memory.
+        :param local_rank: Local rank of process when distributed training via DDP is used.
+        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param log_learning_rate: Whether to log learning rate to Mlflow
+        :param log_loss_every: Log current train loss after this many train steps.
+        :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
+               can be used to resume training. It is useful in frameworks like AWS SageMaker with Spot instances where
+               a SIGTERM notifies to save the training state and subsequently the instance is terminated.
+        :param checkpoint_every: save a train checkpoint after this many steps of training.
+        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+               checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoints_to_keep: maximum number of train checkpoints to save.
+        :param from_epoch: the epoch number to start the training from. In the case when training resumes from a saved
+               checkpoint, it is used to fast-forward training to the last epoch in the checkpoint.
+        :param from_step: the step number to start the training from. In the case when training resumes from a saved
+               checkpoint, it is used to fast-forward training to the last step in the checkpoint.
+        :param global_step: the global step number across the training epochs.
+        :param evaluator_test: whether to perform evaluation on the test set
+        :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
+        :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
+        :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)
+        :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+        """
+        super().__init__(model=model, optimizer=optimizer,
+        data_silo=data_silo, epochs=epochs,
+        n_gpu=n_gpu, device=device,
+        lr_schedule=lr_schedule, evaluate_every=evaluate_every,
+        eval_report=eval_report, use_amp=use_amp,
+        grad_acc_steps=grad_acc_steps, local_rank=local_rank,
+        early_stopping=early_stopping, log_learning_rate=log_learning_rate,
+        log_loss_every=log_loss_every, checkpoint_on_sigterm=checkpoint_on_sigterm,
+        checkpoint_every=checkpoint_every, checkpoint_root_dir=checkpoint_root_dir,
+        checkpoints_to_keep=checkpoints_to_keep, from_epoch=from_epoch,
+        from_step=from_step, global_step=global_step,
+        evaluator_test=evaluator_test, disable_tqdm=disable_tqdm,
+        max_grad_norm=max_grad_norm)
+        self.teacher_model = teacher_model
+
+        # creating dummy inputs to get the shapes of hidden states and attention of teacher and student model
+        dummy_inputs = teacher_model.language_model.model.dummy_inputs
+        dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)
+        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)
+        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)
+
+        with torch.no_grad():
+            _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
+            _, hidden_states, attentions = self.model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
+        
+        if len(teacher_attentions) % len(attentions) != 0:
+            raise ValueError("Teacher and student model do not seem to be compatible. Have you made sure that the student is a TinyBERT model and that the teacher is a BERT model?")
+        
+        self.teacher_block_size = len(teacher_attentions) // len(attentions)
+
+        teacher_dims = [hidden_state.shape[-1] for hidden_state in teacher_hidden_states]
+        student_dims = [hidden_state.shape[-1] for hidden_state in hidden_states]
+
+        # creating linear mappings in case the teacher and student model have different hidden state dimensions
+        self.dim_mappings: List[Optional[Linear]] = []
+
+        for teacher_dim, student_dim in zip(teacher_dims, student_dims):
+            if teacher_dim != student_dim:
+                self.dim_mappings.append(Linear(student_dim, teacher_dim, bias=False))
+            else:
+                self.dim_mappings.append(None)
+
+    
+    def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
+        with torch.no_grad():
+            _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(**batch, output_attentions=True, output_hidden_states=True)
+
+        _, hidden_states, attentions = self.model.forward(**batch, output_attentions=True, output_hidden_states=True)
+
+        loss = torch.tensor(0., device=self.device)
+
+        # calculating attention loss
+        for student_attention, teacher_attention, dim_mapping in zip(attentions,
+                teacher_attentions[self.teacher_block_size - 1::self.teacher_block_size],
+                self.dim_mappings):
+
+            # this wasn't described in the paper, but it was used in the original implementation
+            student_attention = torch.where(student_attention <= -1e2, torch.zeros_like(student_attention),
+                student_attention)
+            teacher_attention = torch.where(teacher_attention <= -1e2, torch.zeros_like(teacher_attention),
+                teacher_attention)
+            
+            loss += F.mse_loss(student_attention, teacher_attention)
+        
+        # calculating hidden state loss
+        for student_hidden_state, teacher_hidden_state in zip(hidden_states, teacher_hidden_states[::self.teacher_block_size]):
+            # linear mapping in case the teacher and student model have different hidden state dimensions, not necessary for attention as attention shape is determined by number of attention heads and sequence length
+            if dim_mapping:
+                student_hidden_state = dim_mapping(student_hidden_state)
+                
+            loss += F.mse_loss(student_hidden_state, teacher_hidden_state)
+
+        return self.backward_propagate(loss, step)
