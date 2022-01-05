@@ -1685,6 +1685,7 @@ Some of the key differences in contrast to FAISS & Milvus:
 2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
+5. Only support cosine similarity.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -1700,7 +1701,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1716,7 +1717,7 @@ The current implementation is not supporting the storage of labels, so you canno
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                    If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
-- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default.
+- `similarity`: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
                    'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                    Currently, HSNW is only supported.
