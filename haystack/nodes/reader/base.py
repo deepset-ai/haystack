@@ -7,7 +7,7 @@ from copy import deepcopy
 from functools import wraps
 from time import perf_counter
 
-from haystack.schema import Document, Answer, Span
+from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
 
 
@@ -55,7 +55,7 @@ class BaseReader(BaseComponent):
 
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None):  # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
@@ -75,6 +75,26 @@ class BaseReader(BaseComponent):
                     break
             # append to "own" meta
             ans.meta.update(meta_from_doc)
+
+        # run closed-domain evaluation on labeled ground-truth relevant documents
+        if self.debug and labels is not None:
+            relevant_documents = [doc for doc in labels.labels.document]
+            results_perfect_retriever = predict(query=query, documents=relevant_documents, top_k=top_k)
+
+            # Add corresponding document_name and more meta data, if an answer contains the document_id
+            for ans in results_perfect_retriever["answers"]:
+                if ans.meta is None:
+                    ans.meta = {}
+                # get meta from doc
+                meta_from_doc = {}
+                for doc in documents:
+                    if doc.id == ans.document_id:
+                        meta_from_doc = deepcopy(doc.meta)
+                        break
+                # append to "own" meta
+                ans.meta.update(meta_from_doc)
+
+            results["answers_perfect_retriever"] = results_perfect_retriever["answers"]
 
         return results, "output_1"
 
