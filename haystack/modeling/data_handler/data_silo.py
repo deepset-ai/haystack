@@ -143,7 +143,7 @@ class DataSilo:
 
         with ExitStack() as stack:
             if self.max_processes > 1:  # use multiprocessing only when max_processes > 1
-                if self.multiprocessing_strategy and self.multiprocessing_strategy in ['file_descriptor', 'file_system']:
+                if self.multiprocessing_strategy and self.multiprocessing_strategy in mp.get_all_sharing_strategies():
                     mp.set_sharing_strategy(self.multiprocessing_strategy)
                 else:
                     logger.warning(
