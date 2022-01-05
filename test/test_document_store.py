@@ -3,15 +3,18 @@ import pandas as pd
 import pytest
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
+from sqlalchemy.sql.expression import text
 
 
 from conftest import get_document_store
+from haystack import pipelines
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
-
+from haystack.nodes import EmbeddingRetriever
+from haystack.pipelines import DocumentSearchPipeline
 
 @pytest.mark.elasticsearch
 def test_init_elastic_client():
@@ -941,3 +944,21 @@ def test_elasticsearch_synonyms():
 
     assert synonym_type == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['type']
     assert synonyms == indexed_settings['haystack_synonym_arg']['settings']['index']['analysis']['filter']['synonym']['synonyms']
+
+@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_similarity_score(document_store_with_docs):
+    retriever = EmbeddingRetriever(document_store=document_store_with_docs, embedding_model="sentence-transformers/paraphrase-xlm-r-multilingual-v1")
+    document_store_with_docs.update_embeddings(retriever)
+    pipeline = DocumentSearchPipeline(retriever)
+    prediction = pipeline.run("Paul lives in New York")
+    scores = [document.score for document in prediction["documents"]]
+    assert scores == pytest.approx([0.5976194085385423, 0.5321976626876935, 0.5221135745000899], abs=1e-3)
+
+@pytest.mark.parametrize("document_store_cosine_with_docs", ["weaviate"], indirect=True)
+def test_similarity_score_cosine(document_store_cosine_with_docs):
+    retriever = EmbeddingRetriever(document_store=document_store_cosine_with_docs, embedding_model="sentence-transformers/paraphrase-xlm-r-multilingual-v1")
+    document_store_cosine_with_docs.update_embeddings(retriever)
+    pipeline = DocumentSearchPipeline(retriever)
+    prediction = pipeline.run("Paul lives in New York")
+    scores = [document.score for document in prediction["documents"]]
+    assert scores == pytest.approx([0.889251321554184, 0.6259660720825195, 0.5868852734565735], abs=1e-3)
