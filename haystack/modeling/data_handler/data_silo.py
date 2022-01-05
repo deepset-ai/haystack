@@ -44,7 +44,7 @@ class DataSilo:
         automatic_loading: bool = True,
         max_multiprocessing_chunksize: int = 2000,
         max_processes: int = 128,
-        multiprocessing_strategy: str = 'file_descriptor',
+        multiprocessing_strategy: Optional[str] = None,
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
     ):
@@ -60,7 +60,7 @@ class DataSilo:
             values are rather large that might cause memory issues.
         :param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
-        :multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system.
+        :multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
                                    If your system has low limits for the number of open file descriptors, and you can’t raise them,
                                    you should use the file_system strategy.
         :param caching: save the processed datasets on disk to save time/compute if the same train data is used to run
@@ -143,13 +143,14 @@ class DataSilo:
 
         with ExitStack() as stack:
             if self.max_processes > 1:  # use multiprocessing only when max_processes > 1
-                if self.multiprocessing_strategy and self.multiprocessing_strategy in ['file_descriptor', 'file_system']:
-                    mp.set_sharing_strategy(self.multiprocessing_strategy)
-                else:
-                    logger.warning(
-                        f"{self.multiprocessing_strategy} is an invalid strategy, "
-                        f"falling back to default (file_descriptor) strategy."
-                    )
+                if self.multiprocessing_strategy:
+                    if self.multiprocessing_strategy in mp.get_all_sharing_strategies():
+                        mp.set_sharing_strategy(self.multiprocessing_strategy)
+                    else:
+                        logger.warning(
+                            f"{self.multiprocessing_strategy} is unavailable, "
+                            f"falling back to default multiprocessing sharing strategy of your OS."
+                        )
 
                 p = stack.enter_context(mp.Pool(processes=num_cpus_used))
 
