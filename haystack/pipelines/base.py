@@ -475,9 +475,10 @@ class Pipeline(BasePipeline):
             # add general info
             df["node"] = node_name
             df["query"] = query
+            df["node_input"] = "prediction"
             df = df.reindex(columns=["query", "gold_answers", "answer", "context", "exact_match",
                              "f1", "rank", "document_id", "gold_document_ids",
-                             "offsets_in_document", "gold_offsets_in_documents", "type", "node"])
+                             "offsets_in_document", "gold_offsets_in_documents", "type", "node", "node_input"])
 
         # if node returned documents, include document specific info:
         # - the document_id
@@ -512,9 +513,10 @@ class Pipeline(BasePipeline):
             # add general info
             df["node"] = node_name
             df["query"] = query
+            df["node_input"] = "prediction"
             df = df.reindex(columns=["query", "gold_document_contents", "content", "gold_id_match", "answer_match",
                              "gold_id_or_answer_match", "rank", "document_id", "gold_document_ids",
-                                "type", "node"])
+                                "type", "node", "node_input"])
 
         return df
 
