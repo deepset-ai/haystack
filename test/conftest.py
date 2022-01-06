@@ -485,14 +485,14 @@ def document_store_with_docs(request, test_docs_xs):
     document_store.delete_documents()
 
 
-@pytest.fixture
+@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "weaviate"])
 def document_store(request, test_docs_xs):
     vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
     document_store = get_document_store(request.param, vector_dim.args[0])
     yield document_store
     document_store.delete_documents()
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "weaviate"])
+@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
 def document_store_dot_product(request, test_docs_xs):
     vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
     document_store = get_document_store(request.param, vector_dim.args[0], similarity="dot_product")
