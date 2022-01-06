@@ -493,28 +493,28 @@ def document_store(request, test_docs_xs):
     document_store.delete_documents()
 
 @pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "weaviate"])
-def document_store_cosine(request, test_docs_xs):
+def document_store_dot_product(request, test_docs_xs):
     vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+    document_store = get_document_store(request.param, vector_dim.args[0], similarity="dot_product")
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
-def document_store_cosine_with_docs(request, test_docs_xs):
+def document_store_dot_product_with_docs(request, test_docs_xs):
     vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+    document_store = get_document_store(request.param, vector_dim.args[0], similarity="dot_product")
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
-def document_store_cosine_small(request, test_docs_xs):
+def document_store_small(request, test_docs_xs):
     vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
     document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
     yield document_store
     document_store.delete_documents()
 
-def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="dot_product"):
+def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="cosine"): # cosine is default similarity as dot product is not supported by Weaviate
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url="sqlite://", index=index)
     elif document_store_type == "memory":
