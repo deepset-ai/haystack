@@ -138,7 +138,7 @@ def test_faiss_index_mutual_exclusive_args(tmp_path):
         )
 
 
-@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
+@pytest.mark.parametrize("document_store_dot_product", ["faiss"], indirect=True)
 @pytest.mark.parametrize("index_buffer_size", [10_000, 2])
 @pytest.mark.parametrize("batch_size", [2])
 def test_faiss_write_docs(document_store_dot_product, index_buffer_size, batch_size):
@@ -162,7 +162,7 @@ def test_faiss_write_docs(document_store_dot_product, index_buffer_size, batch_s
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-@pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store_dot_product", ["faiss", "milvus"], indirect=True)
 @pytest.mark.parametrize("batch_size", [4, 6])
 def test_update_docs(document_store_dot_product, retriever, batch_size):
     # initial write
