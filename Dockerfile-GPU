@@ -8,9 +8,6 @@ ENV LANG=C.UTF-8
 # create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH
 RUN mkdir -p /home/user/file-upload && chmod 777 /home/user/file-upload
 
-# Install PDF converter
-RUN curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz | tar -xvzf - -C /usr/local/bin --strip-components=2 xpdf-tools-linux-4.03/bin64/pdftotext
-
 # Install software dependencies
 RUN apt-get update && apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa && \
@@ -30,6 +27,9 @@ RUN apt-get update && apt-get install -y software-properties-common && \
         tesseract-ocr \
         wget
 
+# Install PDF converter
+RUN curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz | tar -xvzf - -C /usr/local/bin --strip-components=2 xpdf-tools-linux-4.03/bin64/pdftotext
+
 # Set default Python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 && \
     update-alternatives --set python3 /usr/bin/python3.7
@@ -40,11 +40,7 @@ COPY setup.py requirements.txt README.md /home/user/
 RUN echo "Install required packages" && \
     # Install PyTorch for CUDA 11
     pip3 install torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html && \
-    # Install faiss separately as building latest versions can cause trouble with swig
-    pip3 install faiss-cpu==1.6.3 && \
-    # Install extra packages
-    pip3 install Cython && \
-    # Install from requirements.txt
+    # Install from requirements.txt		
     pip3 install -r requirements.txt
 
 # download punkt tokenizer to be included in image
