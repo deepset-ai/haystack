@@ -58,6 +58,26 @@ def pytest_generate_tests(metafunc):
         return
     params = None
     for marker in metafunc.definition.iter_markers('parametrize'):
+
+        # sometimes combinations of different parameters are specified
+        # in that case marker.args[0] looks like: "retriever,document_store" (just an example)
+        # and marker.args[1] looks like: [("embedding", "memory"), ("embedding", "elasticsearch")]
+        # where marker.args[1] is a list of tuples where each tuple is a combination of parameters
+        if "," in marker.args[0]:
+            parameter_names = marker.args[0].split(",")
+            if "document_store" in parameter_names:
+                return
+            index_to_copy_from = None
+            for i, param in enumerate(parameter_names):
+                if "document_store" in param:
+                    index_to_copy_from = i
+                    break
+            if not index_to_copy_from:
+                continue
+            marker.args[0] += ",document_store"
+            marker.args[1] = [p + (p[index_to_copy_from]) for p in marker.args[1]]
+            return
+
         # check if the parameters are already provided for document_store
         if "document_store" == marker.args[0]:
             return
