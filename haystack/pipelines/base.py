@@ -413,7 +413,24 @@ class Pipeline(BasePipeline):
                                                 sas_model_name_or_path=sas_model_name_or_path)
                     df["sas"] = sas
 
+        # reorder columns for better qualitative evaluation
+        for key, df in eval_result.node_results.items():
+            desired_col_order = ["query", # generic
+                                "gold_answers", "answer", "context", "exact_match", "f1", "sas", # answer-specific
+                                "gold_document_contents", "content", "gold_id_match", "answer_match", "gold_id_or_answer_match", # doc-specific
+                                "rank", "document_id", "gold_document_ids", # generic
+                                "offsets_in_document", "gold_offsets_in_documents", # answer-specific
+                                "type", "node", "node_input"] # generic
+            eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
+
         return eval_result
+
+    def _reorder_columns(self, df: DataFrame, desired_order: List[str]) -> DataFrame:
+        filtered_order = [col for col in desired_order if col in df.columns]
+        missing_columns = [col for col in df.columns if col not in desired_order]
+        reordered_columns = filtered_order + missing_columns
+        assert len(reordered_columns) == len(df.columns)
+        return df.reindex(columns=reordered_columns)
 
     def _build_eval_dataframe(self, 
         query: str, 
@@ -472,14 +489,6 @@ class Pipeline(BasePipeline):
                 df_answers["rank"] = np.arange(1, len(df_answers)+1)
                 df = pd.concat([df, df_answers])
 
-            # add general info
-            df["node"] = node_name
-            df["query"] = query
-            df["node_input"] = "prediction"
-            df = df.reindex(columns=["query", "gold_answers", "answer", "context", "exact_match",
-                             "f1", "rank", "document_id", "gold_document_ids",
-                             "offsets_in_document", "gold_offsets_in_documents", "type", "node", "node_input"])
-
         # if node returned documents, include document specific info:
         # - the document_id
         # - the content of the document
@@ -510,13 +519,10 @@ class Pipeline(BasePipeline):
                 df_docs["rank"] = np.arange(1, len(df_docs)+1)
                 df = pd.concat([df, df_docs])
 
-            # add general info
-            df["node"] = node_name
-            df["query"] = query
-            df["node_input"] = "prediction"
-            df = df.reindex(columns=["query", "gold_document_contents", "content", "gold_id_match", "answer_match",
-                             "gold_id_or_answer_match", "rank", "document_id", "gold_document_ids",
-                                "type", "node", "node_input"])
+        # add general info
+        df["node"] = node_name
+        df["query"] = query
+        df["node_input"] = "prediction"
 
         return df
 
