@@ -284,3 +284,10 @@ Thanks so much to all those who have contributed to our project!
 <a href="https://github.com/deepset-ai/haystack/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=deepset-ai/haystack" />
 </a>
+
+
+## Who uses Haystack
+
+Here's a list of organizations who use Haystack. Don't hessitate to send a PR to let the world know that you use Haystack. Join our growing community!
+
+- 
