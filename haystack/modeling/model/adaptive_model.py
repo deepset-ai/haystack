@@ -637,7 +637,9 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
         # Use OpenMP optimizations. Only useful for CPU, has little impact for GPUs.
         sess_options.intra_op_num_threads = multiprocessing.cpu_count()
-        onnx_session = onnxruntime.InferenceSession(str(load_dir / "model.onnx"), sess_options)
+
+        providers = kwargs.get("providers", ["CPUExecutionProvider"] if device.type == "cpu" else ["CUDAExecutionProvider"])
+        onnx_session = onnxruntime.InferenceSession(str(load_dir / "model.onnx"), sess_options, providers=providers)
 
         # Prediction heads
         _, ph_config_files = cls._get_prediction_head_files(load_dir, strict=False)
