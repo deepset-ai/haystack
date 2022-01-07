@@ -52,14 +52,25 @@ def pytest_generate_tests(metafunc):
     # parametrize document_store fixture if it's in the test function argument list
     # but does not have an explicit parametrize annotation e.g
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
-    found_mark_parametrize_document_store = False
+
+    # first check if we need to provide document_store parameters
+    if "document_store" not in metafunc.fixturenames:
+        return
+    params = None
     for marker in metafunc.definition.iter_markers('parametrize'):
-        if ('document_store' in marker.args[0] or 'document_store_with_docs' in marker.args[0] or 'document_store_type' in marker.args[0]) and not 'document_store_dot_product' in marker.args[0]:
-            found_mark_parametrize_document_store = True
-            break
+        # check if the parameters are already provided for document_store
+        if "document_store" == marker.args[0]:
+            return
+        
+        # check if different document store is used to apply same parameters to standard doc store
+        # this is necessary for e.g. retriever tests as they use the same doc store 
+        if 'document_store' in marker.args[0]:
+            params = marker.args[1]
+    if params:
+        metafunc.parametrize("document_store", params, indirect=True)
+        return
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
-    if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
-        metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
+    metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
 
 
 def _sql_session_rollback(self, attr):
