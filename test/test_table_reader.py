@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from haystack.schema import Document
 from haystack.pipelines.base import Pipeline
@@ -7,28 +8,17 @@ from haystack.pipelines.base import Pipeline
 def test_table_reader(table_reader):
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
-        "age": ["57", "46", "60"],
+        "age": ["58", "47", "60"],
         "number of movies": ["87", "53", "69"],
-        "date of birth": ["7 february 1967", "10 june 1996", "28 november 1967"],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
     }
     table = pd.DataFrame(data)
 
-    query = "When was DiCaprio born?"
+    query = "When was Di Caprio born?"
     prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
-    assert prediction["answers"][0].answer == "10 june 1996"
+    assert prediction["answers"][0].answer == "11 november 1974"
     assert prediction["answers"][0].offsets_in_context[0].start == 7
     assert prediction["answers"][0].offsets_in_context[0].end == 8
-
-    # test aggregation
-    query = "How old are DiCaprio and Pitt on average?"
-    prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
-    assert prediction["answers"][0].answer == "51.5"
-    assert prediction["answers"][0].meta["answer_cells"] == ["57", "46"]
-    assert prediction["answers"][0].meta["aggregation_operator"] == "AVERAGE"
-    assert prediction["answers"][0].offsets_in_context[0].start == 1
-    assert prediction["answers"][0].offsets_in_context[0].end == 2
-    assert prediction["answers"][0].offsets_in_context[1].start == 5
-    assert prediction["answers"][0].offsets_in_context[1].end == 6
 
 
 def test_table_reader_in_pipeline(table_reader):
@@ -36,24 +26,21 @@ def test_table_reader_in_pipeline(table_reader):
     pipeline.add_node(table_reader, "TableReader", ["Query"])
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
-        "age": ["57", "46", "60"],
+        "age": ["58", "47", "60"],
         "number of movies": ["87", "53", "69"],
-        "date of birth": ["7 february 1967", "10 june 1996", "28 november 1967"],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
     }
 
     table = pd.DataFrame(data)
-    query = "Which actors played in more than 60 movies?"
+    query = "When was Di Caprio born?"
 
     prediction = pipeline.run(query=query, documents=[Document(content=table, content_type="table")])
 
-    assert prediction["answers"][0].answer == "brad pitt, george clooney"
-    assert prediction["answers"][0].meta["aggregation_operator"] == "NONE"
-    assert prediction["answers"][0].offsets_in_context[0].start == 0
-    assert prediction["answers"][0].offsets_in_context[0].end == 1
-    assert prediction["answers"][0].offsets_in_context[1].start == 8
-    assert prediction["answers"][0].offsets_in_context[1].end == 9
+    assert prediction["answers"][0].answer == "11 november 1974"
+    assert prediction["answers"][0].offsets_in_context[0].start == 7
+    assert prediction["answers"][0].offsets_in_context[0].end == 8
 
-
+@pytest.mark.parametrize("table_reader", ["tapas"], indirect=True)
 def test_table_reader_aggregation(table_reader):
     data = {
         "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
@@ -72,4 +59,3 @@ def test_table_reader_aggregation(table_reader):
     assert prediction["answers"][0].answer == "43046.0 m"
     assert prediction["answers"][0].meta["aggregation_operator"] == "SUM"
     assert prediction["answers"][0].meta["answer_cells"] == ['8848m', '8,611 m', '8 586m', '8 516 m', '8,485m']
-

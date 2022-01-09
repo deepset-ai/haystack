@@ -34,7 +34,7 @@ from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
-from haystack.nodes.reader.table import TableReader
+from haystack.nodes.reader.table import TableReader, RCIReader
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
@@ -338,9 +338,13 @@ def reader(request):
         )
 
 
-@pytest.fixture(scope="function")
-def table_reader():
-    return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+@pytest.fixture(params=["tapas", "rci"], scope="function")
+def table_reader(request):
+    if request.param == "tapas":
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+    elif request.param == "rci":
+        return RCIReader(row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
+                         column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col")
 
 
 @pytest.fixture(scope="function")

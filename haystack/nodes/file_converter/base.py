@@ -71,11 +71,14 @@ class BaseConverter(BaseComponent):
         """
         pass
 
-    def validate_language(self, text: str) -> bool:
+    def validate_language(self, text: str, valid_languages: Optional[List[str]] = None) -> bool:
         """
         Validate if the language of the text is one of valid languages.
         """
-        if not self.valid_languages:
+        if valid_languages is None:
+            valid_languages = self.valid_languages
+
+        if not valid_languages:
             return True
 
         try:
@@ -83,7 +86,7 @@ class BaseConverter(BaseComponent):
         except langdetect.lang_detect_exception.LangDetectException:
             lang = None
 
-        if lang in self.valid_languages:
+        if lang in valid_languages:
             return True
         else:
             return False
