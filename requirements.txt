@@ -11,7 +11,7 @@ tqdm
 requests
 # Scipy & sklearn for stats in run_classifier
 scipy>=1.3.2
-sklearn
+scikit-learn>=1.0.0
 # Metrics or logging related
 seqeval
 mlflow<=1.13.1
