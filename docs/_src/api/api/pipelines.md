@@ -162,7 +162,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None) -> EvaluationResult
+ | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, simulate_perfect_retriever: bool = False) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -186,6 +186,7 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
             - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
             - Large model for German only: "deepset/gbert-large-sts"
+- `simulate_perfect_retriever`: Whether to additionally evaluate the reader with input documents from a simulated perfect retriever (pass only relevant documents as input)
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
