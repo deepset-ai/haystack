@@ -23,7 +23,7 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
         name="Retriever", 
         inputs=["Query"])
     pipeline.add_node(
-        component=FARMReader(model_name_or_path="deepset/minilm-uncased-squad2"), 
+        component=FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0), 
         name="Reader", 
         inputs=["Retriever"])
 
@@ -50,7 +50,7 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
 def test_debug_attributes_global(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -81,7 +81,7 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
 def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -111,7 +111,7 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 def test_global_debug_attributes_override_node_ones(document_store_with_docs, tmp_path):
 
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
-    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2")
+    reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])

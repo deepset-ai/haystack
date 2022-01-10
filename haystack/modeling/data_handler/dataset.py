@@ -43,7 +43,7 @@ def convert_features_to_dataset(features):
     all_tensors = []
     for t_name in tensor_names:
         try:
-            # Checking weather a non-integer will be silently converted to torch.long
+            # Checking whether a non-integer will be silently converted to torch.long
             check = features[0][t_name]
             if isinstance(check, numbers.Number):
                 base = check
@@ -62,7 +62,7 @@ def convert_features_to_dataset(features):
                            "Converting now to a tensor of default type long.")
 
         # Convert all remaining python objects to torch long tensors
-        cur_tensor = torch.tensor([sample[t_name] for sample in features], dtype=torch.long)
+        cur_tensor = torch.as_tensor(np.array([sample[t_name] for sample in features]), dtype=torch.long)
 
         all_tensors.append(cur_tensor)
 

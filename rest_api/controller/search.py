@@ -1,5 +1,6 @@
 import logging
 import time
+import json
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -72,7 +73,7 @@ def _process_request(pipeline, request) -> QueryResponse:
 
     result = pipeline.run(query=request.query, params=params,debug=request.debug)
     end_time = time.time()
-    logger.info({"request": request.dict(), "response": result, "time": f"{(end_time - start_time):.2f}"})
+    logger.info(json.dumps({"request": request, "response": result, "time": f"{(end_time - start_time):.2f}"}, default=str))
 
     return result
 

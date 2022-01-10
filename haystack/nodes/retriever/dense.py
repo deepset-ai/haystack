@@ -194,7 +194,7 @@ class DensePassageRetriever(BaseRetriever):
         if len(self.devices) > 1:
             self.model = DataParallel(self.model, device_ids=self.devices)
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -212,7 +212,7 @@ class DensePassageRetriever(BaseRetriever):
         if index is None:
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])
-        documents = self.document_store.query_by_embedding(query_emb=query_emb[0], top_k=top_k, filters=filters, index=index)
+        documents = self.document_store.query_by_embedding(query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers)
         return documents
 
     def _get_predictions(self, dicts):
@@ -308,6 +308,7 @@ class DensePassageRetriever(BaseRetriever):
               test_filename: str = None,
               max_samples: int = None,
               max_processes: int = 128,
+              multiprocessing_strategy: Optional[str] = None,
               dev_split: float = 0,
               batch_size: int = 2,
               embed_title: bool = True,
@@ -337,6 +338,9 @@ class DensePassageRetriever(BaseRetriever):
         :param max_samples: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
         :param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+        :param multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
+                                         If your system has low limits for the number of open file descriptors, and you can’t raise them,
+                                         you should use the file_system strategy.
         :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
         :param batch_size: total number of samples in 1 batch of data
         :param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
@@ -377,7 +381,13 @@ class DensePassageRetriever(BaseRetriever):
         else:
             self.model.connect_heads_with_processor(self.processor.tasks, require_labels=True)
 
-        data_silo = DataSilo(processor=self.processor, batch_size=batch_size, distributed=False, max_processes=max_processes)
+        data_silo = DataSilo(
+            processor=self.processor,
+            batch_size=batch_size,
+            distributed=False,
+            max_processes=max_processes,
+            multiprocessing_strategy=multiprocessing_strategy
+        )
 
         # 5. Create an optimizer
         self.model, optimizer, lr_schedule = initialize_optimizer(
@@ -413,7 +423,8 @@ class DensePassageRetriever(BaseRetriever):
         self.query_tokenizer.save_pretrained(f"{save_dir}/{query_encoder_save_dir}")
         self.passage_tokenizer.save_pretrained(f"{save_dir}/{passage_encoder_save_dir}")
 
-        self.model = DataParallel(self.model, device_ids=self.devices)
+        if len(self.devices) > 1 and not isinstance(self.model, DataParallel):
+            self.model = DataParallel(self.model, device_ids=self.devices)
 
     def save(self, save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder",
              passage_encoder_dir: str = "passage_encoder"):
@@ -642,7 +653,7 @@ class TableTextRetriever(BaseRetriever):
         if len(self.devices) > 1:
             self.model = DataParallel(self.model, device_ids=self.devices)
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
         if not self.document_store:
@@ -652,7 +663,7 @@ class TableTextRetriever(BaseRetriever):
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(query_emb=query_emb[0], top_k=top_k, filters=filters,
-                                                           index=index)
+                                                           index=index, headers=headers)
         return documents
 
     def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
@@ -1028,7 +1039,7 @@ class EmbeddingRetriever(BaseRetriever):
             raise ValueError(f"Unknown retriever embedding model format {model_format}")
         self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -1044,7 +1055,7 @@ class EmbeddingRetriever(BaseRetriever):
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(query_emb=query_emb[0], filters=filters,
-                                                           top_k=top_k, index=index)
+                                                           top_k=top_k, index=index, headers=headers)
         return documents
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:

@@ -17,3 +17,13 @@ def test_load_pipeline(document_store_with_docs):
     assert ray.serve.get_deployment(name="Reader").num_replicas == 1
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"
+
+
+@pytest.fixture(scope="function", autouse=True)
+def shutdown_ray():
+    yield
+    try:
+        import ray
+        ray.shutdown()
+    except:
+        pass
