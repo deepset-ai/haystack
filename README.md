@@ -292,4 +292,5 @@ Here's a list of organizations who use Haystack. Don't hessitate to send a PR to
 
 - [Airbus](https://www.airbus.com/en)
 - [Alcatel-Lucent](https://www.al-enterprise.com/)
+- [Deepset](https://deepset.ai/)
 - [Etalab](https://www.etalab.gouv.fr/)
