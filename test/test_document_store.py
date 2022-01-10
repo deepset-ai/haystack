@@ -375,7 +375,7 @@ def test_update_embeddings(document_store, retriever):
 
 
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
-@pytest.mark.vector_dim(512)
+@pytest.mark.embedding_dim(512)
 def test_update_embeddings_table_text_retriever(document_store, retriever):
     documents = []
     for i in range(3):
