@@ -55,7 +55,7 @@ class BaseReader(BaseComponent):
 
         return no_ans_prediction, max_no_ans_gap
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, simulate_perfect_retriever: bool = False):  # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, use_labels_as_input: bool = False):  # type: ignore
         self.query_count += 1
         if documents:
             predict = self.timing(self.predict, "query_time")
@@ -77,7 +77,7 @@ class BaseReader(BaseComponent):
             ans.meta.update(meta_from_doc)
 
         # run closed-domain evaluation on labeled ground-truth relevant documents
-        if simulate_perfect_retriever and labels is not None:
+        if use_labels_as_input and labels is not None:
             relevant_documents = [label.document for label in labels.labels]
             results_perfect_retriever = predict(query=query, documents=relevant_documents, top_k=top_k)
 
@@ -94,7 +94,7 @@ class BaseReader(BaseComponent):
                 # append to "own" meta
                 ans.meta.update(meta_from_doc)
 
-            results["answers_perfect_retriever"] = results_perfect_retriever["answers"]
+            results["answers_with_labels_as_input"] = results_perfect_retriever["answers"]
 
         return results, "output_1"
 
