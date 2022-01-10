@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
+import warnings
 
 try:
     import faiss
@@ -37,7 +38,8 @@ class FAISSDocumentStore(SQLDocumentStore):
     def __init__(
         self,
         sql_url: str = "sqlite:///faiss_document_store.db",
-        vector_dim: int = 768,
+        vector_dim: int = None,
+        embedding_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
         faiss_index: Optional["faiss.swigfaiss.Index"] = None,
         return_embedding: bool = False,
@@ -53,7 +55,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
-        :param vector_dim: the embedding vector size.
+        :param vector_dim: Deprecated. Use embedding_dim instead.
+        :param embedding_dim: The embedding vector size. Default: 768.
         :param faiss_index_factory_str: Create a new FAISS index of the specified type.
                                         The type is determined from the given string following the conventions
                                         of the original FAISS index factory.
@@ -75,7 +78,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
-                   In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+                   In both cases, the returned values in Document.score are normalized to be in range [0,1]:
                    For `dot_product`: expit(np.asarray(raw_score / 100))
                    FOr `cosine`: (raw_score + 1) / 2
         :param embedding_field: Name of field containing an embedding vector.
@@ -89,7 +92,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     exists.
         :param faiss_index_path: Stored FAISS index file. Can be created via calling `save()`.
             If specified no other params besides faiss_config_path must be specified.
-        :param faiss_config_path: Stored FAISS initial configuration parameters. 
+        :param faiss_config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
         """
         # special case if we want to load an existing index from disk
@@ -103,14 +106,15 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            sql_url=sql_url, 
-            vector_dim=vector_dim, 
+            sql_url=sql_url,
+            vector_dim=vector_dim,
+            embedding_dim=embedding_dim,
             faiss_index_factory_str=faiss_index_factory_str,
             return_embedding=return_embedding,
-            duplicate_documents=duplicate_documents, 
-            index=index, 
+            duplicate_documents=duplicate_documents,
+            index=index,
             similarity=similarity,
-            embedding_field=embedding_field, 
+            embedding_field=embedding_field,
             progress_bar=progress_bar
         )
 
@@ -124,14 +128,20 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise ValueError("The FAISS document store can currently only support dot_product, cosine and l2 similarity. "
                              "Please set similarity to one of the above.")
 
-        self.vector_dim = vector_dim
+        if vector_dim is not None:
+            warnings.warn("The 'vector_dim' parameter is deprecated, "
+                          "use 'embedding_dim' instead.", DeprecationWarning, 2)
+            self.embedding_dim = vector_dim
+        else:
+            self.embedding_dim = embedding_dim
+
         self.faiss_index_factory_str = faiss_index_factory_str
         self.faiss_indexes: Dict[str, faiss.swigfaiss.Index] = {}
         if faiss_index:
             self.faiss_indexes[index] = faiss_index
         else:
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index_factory=faiss_index_factory_str,
                 metric_type=self.metric_type,
                 **kwargs
@@ -158,7 +168,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             if param.name not in allowed_params and param.default != locals[param.name]:
                     invalid_param_set = True
                     break
-        
+
         if invalid_param_set or len(kwargs) > 0:
             raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
 
@@ -172,12 +182,12 @@ class FAISSDocumentStore(SQLDocumentStore):
                              "configuration file correctly points to the same database that "
                              "was used when creating the original index.")
 
-    def _create_new_index(self, vector_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
+    def _create_new_index(self, embedding_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
         if index_factory == "HNSW":
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
             n_links = kwargs.get("n_links", 64)
-            index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
+            index = faiss.IndexHNSWFlat(embedding_dim, n_links, metric_type)
             index.hnsw.efSearch = kwargs.get("efSearch", 20)#20
             index.hnsw.efConstruction = kwargs.get("efConstruction", 80)#80
             if "ivf" in index_factory.lower():  # enable reconstruction of vectors for inverted index
@@ -185,7 +195,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
             logger.info(f"HNSW params: n_links: {n_links}, efSearch: {index.hnsw.efSearch}, efConstruction: {index.hnsw.efConstruction}")
         else:
-            index = faiss.index_factory(vector_dim, index_factory, metric_type)
+            index = faiss.index_factory(embedding_dim, index_factory, metric_type)
         return index
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
@@ -217,7 +227,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         if not self.faiss_indexes.get(index):
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index_factory=self.faiss_index_factory_str,
                 metric_type=faiss.METRIC_INNER_PRODUCT,
             )
@@ -544,7 +554,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param config_path: Path to save the initial configuration parameters to. 
             Defaults to the same as the file path, save the extension (.json).
             This file contains all the parameters passed to FAISSDocumentStore()
-            at creation time (for example the SQL path, vector_dim, etc), and will be 
+            at creation time (for example the SQL path, embedding_dim, etc), and will be
             used by the `load` method to restore the index with the appropriate configuration.
         :return: None
         """
@@ -574,7 +584,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         # Add other init params to override the ones defined in the init params file
         init_params["faiss_index"] = faiss_index
-        init_params["vector_dim"] = faiss_index.d
+        init_params["embedding_dim"] = faiss_index.d
 
         return init_params
 
