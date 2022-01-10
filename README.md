@@ -290,4 +290,6 @@ Thanks so much to all those who have contributed to our project!
 
 Here's a list of organizations who use Haystack. Don't hessitate to send a PR to let the world know that you use Haystack. Join our growing community!
 
-- 
+- [Airbus](https://www.airbus.com/en)
+- [Alcatel-Lucent](https://www.al-enterprise.com/)
+- [Etalab](https://www.etalab.gouv.fr/)
