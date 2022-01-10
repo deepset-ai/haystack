@@ -107,11 +107,14 @@ class MilvusDocumentStore(SQLDocumentStore):
         )
 
         self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)
+
         if vector_dim is not None:
             warnings.warn("The 'vector_dim' parameter is deprecated, "
-                          "use 'embedding_dim' instead", DeprecationWarning, 2)
+                          "use 'embedding_dim' instead.", DeprecationWarning, 2)
+            self.embedding_dim = vector_dim
+        else:
+            self.embedding_dim = embedding_dim
 
-        self.embedding_dim = vector_dim if vector_dim is not None else embedding_dim
         self.index_file_size = index_file_size
 
         if similarity in ("dot_product", "cosine"):

@@ -130,9 +130,11 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         if vector_dim is not None:
             warnings.warn("The 'vector_dim' parameter is deprecated, "
-                          "use 'embedding_dim' instead", DeprecationWarning, 2)
+                          "use 'embedding_dim' instead.", DeprecationWarning, 2)
+            self.embedding_dim = vector_dim
+        else:
+            self.embedding_dim = embedding_dim
 
-        self.embedding_dim = vector_dim if vector_dim is not None else embedding_dim
         self.faiss_index_factory_str = faiss_index_factory_str
         self.faiss_indexes: Dict[str, faiss.swigfaiss.Index] = {}
         if faiss_index:
