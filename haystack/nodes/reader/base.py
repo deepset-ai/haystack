@@ -78,7 +78,7 @@ class BaseReader(BaseComponent):
 
         # run closed-domain evaluation on labeled ground-truth relevant documents
         if self.debug and labels is not None:
-            relevant_documents = [label.document for multilabel in labels for label in multilabel.labels]
+            relevant_documents = [label.document for label in labels.labels]
             results_perfect_retriever = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
