@@ -368,7 +368,8 @@ class Pipeline(BasePipeline):
         self,
         labels: List[MultiLabel],
         params: Optional[dict] = None,
-        sas_model_name_or_path: str = None
+        sas_model_name_or_path: str = None,
+        simulate_perfect_retriever: bool = False
     ) -> EvaluationResult:
         """
             Evaluates the pipeline by running the pipeline once per query in debug mode 
@@ -390,8 +391,11 @@ class Pipeline(BasePipeline):
                         - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                         - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
                         - Large model for German only: "deepset/gbert-large-sts"
+            :param simulate_perfect_retriever: Whether to additionally evaluate the reader with input documents from a simulated perfect retriever (pass only relevant documents as input)
         """    
         eval_result = EvaluationResult()
+        if simulate_perfect_retriever:
+            params["simulate_perfect_retriever"] = True
         queries = [label.query for label in labels]
         for query, label in zip(queries, labels):
             predictions = self.run(query=query, labels=label, params=params, debug=True)
