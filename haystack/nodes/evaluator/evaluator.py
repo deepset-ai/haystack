@@ -393,15 +393,21 @@ def semantic_answer_similarity(predictions: List[List[str]],
     # Similarity computation changes for both approaches
     if cross_encoder_used:
         model = CrossEncoder(sas_model_name_or_path)
-        for preds, labels in zip (predictions,gold_labels):
-            # TODO add efficient batch mode: put all texts and labels into grid and extract scores afterwards
-            grid = []
+        lengths: List[Tuple[int,int]] = []
+        grid = []
+        for preds, labels in zip (predictions,gold_labels):          
             for p in preds:
                 for l in labels:
                     grid.append((p,l))
-            scores = model.predict(grid)
-            top_1_sas.append(np.max(scores[:len(labels)]))
-            top_k_sas.append(np.max(scores))
+            lengths.append((len(preds), len(labels)))
+        scores = model.predict(grid)
+
+        current_position = 0
+        for len_p, len_l in lengths:
+            scores_window = scores[current_position:current_position+len_p*len_l]
+            top_1_sas.append(np.max(scores_window[:len_l]))
+            top_k_sas.append(np.max(scores_window))
+            current_position += len_p*len_l
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
         model = SentenceTransformer(sas_model_name_or_path)
@@ -417,7 +423,7 @@ def semantic_answer_similarity(predictions: List[List[str]],
 
         # then select which embeddings will be used for similarity computations
         current_position = 0
-        for i, (len_p, len_l) in enumerate(lengths):
+        for len_p, len_l in lengths:
             pred_embeddings = embeddings[current_position:current_position + len_p, :]
             current_position += len_p
             label_embeddings = embeddings[current_position:current_position + len_l, :]
