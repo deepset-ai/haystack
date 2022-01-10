@@ -388,12 +388,12 @@ def semantic_answer_similarity(predictions: List[List[str]],
     # Compute similarities
     top_1_sas = []
     top_k_sas = []
+    lengths: List[Tuple[int,int]] = []
 
     # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
     # Similarity computation changes for both approaches
     if cross_encoder_used:
-        model = CrossEncoder(sas_model_name_or_path)
-        lengths: List[Tuple[int,int]] = []
+        model = CrossEncoder(sas_model_name_or_path)        
         grid = []
         for preds, labels in zip (predictions,gold_labels):          
             for p in preds:
@@ -411,7 +411,6 @@ def semantic_answer_similarity(predictions: List[List[str]],
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
         model = SentenceTransformer(sas_model_name_or_path)
-        lengths: List[Tuple[int,int]] = []
         all_texts: List[str] = []
         for p, l in zip(predictions, gold_labels):                                  # type: ignore
             # TODO potentially exclude (near) exact matches from computations
