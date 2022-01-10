@@ -43,9 +43,6 @@ RUN echo "Install required packages" && \
     # Install from requirements.txt		
     pip3 install -r requirements.txt
 
-# download punkt tokenizer to be included in image
-RUN python3 -c "import nltk;nltk.download('punkt', download_dir='/usr/nltk_data')"
-
 # copy saved models
 COPY README.md models* /home/user/models/
 
@@ -57,6 +54,9 @@ COPY haystack /home/user/haystack
 
 # Install package
 RUN pip3 install -e .
+
+# Cache Roberta and NLTK data
+RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"
 
 # optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/
