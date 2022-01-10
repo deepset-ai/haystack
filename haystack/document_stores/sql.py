@@ -20,7 +20,7 @@ Base = declarative_base()  # type: Any
 class ORMBase(Base):
     __abstract__ = True
 
-    id = Column(String(100), default=lambda: str(uuid4()), primary_key=True)
+    id = Column(String(100), default=lambda: str(uuid4()), unique=True, primary_key=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
