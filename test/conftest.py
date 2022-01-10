@@ -487,22 +487,22 @@ def document_store_with_docs(request, test_docs_xs):
 
 @pytest.fixture
 def document_store(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0])
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0])
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["faiss", "milvus", "weaviate"])
 def document_store_cosine(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="cosine")
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_cosine_small(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="cosine")
     yield document_store
     document_store.delete_documents()    
 
@@ -522,7 +522,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
-            vector_dim=embedding_dim,
+            embedding_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
@@ -531,7 +531,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         )
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
-            vector_dim=embedding_dim,
+            embedding_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
