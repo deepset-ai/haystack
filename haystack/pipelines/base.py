@@ -395,6 +395,8 @@ class Pipeline(BasePipeline):
         """    
         eval_result = EvaluationResult()
         if simulate_perfect_retriever:
+            if params is None:
+                params = {}
             params["simulate_perfect_retriever"] = True
         queries = [label.query for label in labels]
         for query, label in zip(queries, labels):
