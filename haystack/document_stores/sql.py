@@ -124,6 +124,8 @@ class SQLDocumentStore(BaseDocumentStore):
         create_engine_params = {}
         if isolation_level:
             create_engine_params["isolation_level"] = isolation_level
+        
+        logging.warning(f"create engine params: {create_engine_params}")
         if "sqlite" in url:
             engine = create_engine(url, connect_args={'check_same_thread': check_same_thread}, **create_engine_params)
         else:

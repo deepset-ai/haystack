@@ -105,6 +105,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             embedding_dim=embedding_dim, index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
             search_param=search_param, duplicate_documents=duplicate_documents,
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
+            isolation_level=isolation_level
         )
 
         self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)

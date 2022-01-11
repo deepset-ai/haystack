@@ -42,6 +42,11 @@ from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
 
 
+# To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
+SQL_TYPE = "sqlite"
+# SQL_TYPE = "postgres"
+
+
 def pytest_addoption(parser):
     parser.addoption("--document_store_type", action="store", default="elasticsearch, faiss, memory, milvus, weaviate")
 
@@ -508,11 +513,6 @@ def document_store_cosine_small(request, tmp_path):
         document_store.delete_documents()
 
 
-
-SQL_TYPE = "sqlite"
-# SQL_TYPE = "postgres"
-
-
 @pytest.fixture
 def sql_url(tmp_path):
     if SQL_TYPE == "postgres":
@@ -559,10 +559,11 @@ def teardown_postgres():
 def get_document_store(document_store_type, tmp_path, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="dot_product"):
     
     if SQL_TYPE == "postgres" and document_store_type in ["faiss", "milvus"]:
+        logging.warning("Setting up PostgreSQL...")
         setup_postgres()
     
     if document_store_type == "sql":
-        document_store = SQLDocumentStore(url="sqlite://", index=index)
+        document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
 
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(
@@ -584,7 +585,7 @@ def get_document_store(document_store_type, tmp_path, embedding_dim=768, embeddi
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
-            isolation_level="AUTOCOMMIT" if SQL_TYPE == "postgres" else None
+            isolation_level="AUTOCOMMIT"# if SQL_TYPE == "postgres" else None
         )
 
     elif document_store_type == "milvus":
@@ -595,7 +596,7 @@ def get_document_store(document_store_type, tmp_path, embedding_dim=768, embeddi
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
-            isolation_level="AUTOCOMMIT" if SQL_TYPE == "postgres" else None
+            isolation_level="AUTOCOMMIT"# if SQL_TYPE == "postgres" else None
         )
         _, collections = document_store.milvus_server.list_collections()
         for collection in collections:
@@ -617,6 +618,7 @@ def get_document_store(document_store_type, tmp_path, embedding_dim=768, embeddi
     yield document_store
 
     if SQL_TYPE == "postgres" and document_store_type in ["faiss", "milvus"]:
+        logging.warning("Tearing down PostgreSQL...")
         teardown_postgres()
 
 

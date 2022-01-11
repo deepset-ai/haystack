@@ -116,7 +116,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             index=index,
             similarity=similarity,
             embedding_field=embedding_field,
-            progress_bar=progress_bar
+            progress_bar=progress_bar,
+            isolation_level=isolation_level
         )
 
         if similarity in ("dot_product", "cosine"):

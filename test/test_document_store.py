@@ -1,4 +1,6 @@
 from unittest import mock
+import uuid
+import math
 import numpy as np
 import pandas as pd
 import pytest
@@ -14,6 +16,18 @@ from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
+
+
+
+DOCUMENTS = [
+    {"meta": {"name": "name_1", "year": "2020", "month": "01"}, "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_2", "year": "2020", "month": "02"}, "content": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_3", "year": "2020", "month": "03"}, "content": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
+    {"meta": {"name": "name_4", "year": "2021", "month": "01"}, "content": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_5", "year": "2021", "month": "02"}, "content": "text_5", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_6", "year": "2021", "month": "03"}, "content": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
+]
+
 
 
 @pytest.mark.elasticsearch
@@ -147,8 +161,8 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs):
-    document_store_with_docs = get_document_store("sql")
+def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs, tmp_path):
+    document_store_with_docs = get_document_store("sql", tmp_path)
     document_store_with_docs.write_documents(test_docs_xs)
 
     document_store_with_docs.use_windowed_query = False
@@ -819,7 +833,7 @@ def test_update_meta(document_store):
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type):
     document_store = get_document_store(
-        document_store_type=document_store_type, embedding_field="custom_embedding_field"
+        document_store_type=document_store_type, tmp_path=tmp_path, embedding_field="custom_embedding_field"
     )
     doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
     document_store.write_documents([doc_to_write])
@@ -974,3 +988,82 @@ def test_custom_headers(document_store_with_docs: BaseDocumentStore):
         assert "headers" in kwargs
         assert kwargs["headers"] == custom_headers
         assert len(documents) > 0
+
+
+def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
+    # Weaviate currently only supports UUIDs
+    if type(document_store)==WeaviateDocumentStore:
+        for d in docs:
+            d["id"] = str(uuid.uuid4())
+
+    
+def test_cosine_similarity(document_store_cosine):
+    # below we will write documents to the store and then query it to see if vectors were normalized
+
+    ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store_cosine)
+    document_store_cosine.write_documents(documents=DOCUMENTS)
+
+    # note that the same query will be used later when querying after updating the embeddings
+    query = np.random.rand(768).astype(np.float32)
+
+    query_results = document_store_cosine.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+
+    # check if search with cosine similarity returns the correct number of results
+    assert len(query_results) == len(DOCUMENTS)
+    indexed_docs = {}
+    for doc in DOCUMENTS:
+        indexed_docs[doc["content"]] = doc["embedding"]
+
+    for doc in query_results:
+        result_emb = doc.embedding
+        original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
+        document_store_cosine.normalize_embedding(original_emb[0])
+
+        # check if the stored embedding was normalized
+        assert np.allclose(original_emb[0], result_emb, rtol=0.01)
+        
+        # check if the score is plausible for cosine similarity
+        assert 0 <= doc.score <= 1.0
+
+    # now check if vectors are normalized when updating embeddings
+    class MockRetriever():
+        def embed_documents(self, docs):
+            return [np.random.rand(768).astype(np.float32) for doc in docs]
+
+    retriever = MockRetriever()
+    document_store_cosine.update_embeddings(retriever=retriever)
+    query_results = document_store_cosine.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+
+    for doc in query_results:
+        original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
+        document_store_cosine.normalize_embedding(original_emb[0])
+        # check if the original embedding has changed after updating the embeddings
+        assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
+
+
+def test_normalize_embeddings_diff_shapes(document_store_cosine_small):
+    VEC_1 = np.array([.1, .2, .3], dtype="float32")
+    document_store_cosine_small.normalize_embedding(VEC_1)
+    assert np.linalg.norm(VEC_1) - 1 < 0.01
+
+    VEC_1 = np.array([.1, .2, .3], dtype="float32").reshape(1, -1)
+    document_store_cosine_small.normalize_embedding(VEC_1)
+    assert np.linalg.norm(VEC_1) - 1 < 0.01
+
+
+def test_cosine_sanity_check(document_store_cosine_small):
+    VEC_1 = np.array([.1, .2, .3], dtype="float32")
+    VEC_2 = np.array([.4, .5, .6], dtype="float32")
+
+    # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
+    # The score is normalized to yield a value between 0 and 1.
+    KNOWN_COSINE = (0.9746317 + 1) / 2
+
+    docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
+    ensure_ids_are_correct_uuids(docs=docs,document_store=document_store_cosine_small)
+    document_store_cosine_small.write_documents(documents=docs)
+
+    query_results = document_store_cosine_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
+
+    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
+    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.00002)

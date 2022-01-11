@@ -128,6 +128,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             search_param=search_param, duplicate_documents=duplicate_documents, id_field=id_field,
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
             custom_fields=custom_fields,
+            isolation_level=isolation_level
         )
 
         logger.warning("Milvus2DocumentStore is in experimental state until Milvus 2.0 is released")
