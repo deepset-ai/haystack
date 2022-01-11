@@ -809,7 +809,9 @@ class EvaluationResult:
         answer_metrics = self._calculate_answer_metrics(df, 
             simulated_top_k_reader=simulated_top_k_reader, 
             simulated_top_k_retriever=simulated_top_k_retriever)
-        
+
+        if node_input != "prediction":
+            return {**answer_metrics}
         document_metrics = self._calculate_document_metrics(df,
             simulated_top_k_retriever=simulated_top_k_retriever,
             doc_relevance_col=doc_relevance_col)
