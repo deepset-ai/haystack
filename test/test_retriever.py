@@ -169,7 +169,7 @@ def test_dpr_embedding(document_store, retriever, docs):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
-@pytest.mark.vector_dim(128)
+@pytest.mark.embedding_dim(128)
 def test_retribert_embedding(document_store, retriever, docs):
     if isinstance(document_store, WeaviateDocumentStore):
         # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
@@ -197,7 +197,7 @@ def test_retribert_embedding(document_store, retriever, docs):
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-@pytest.mark.vector_dim(512)
+@pytest.mark.embedding_dim(512)
 def test_table_text_retriever_embedding(document_store, retriever, docs):
 
     document_store.return_embedding = True
@@ -277,7 +277,7 @@ def test_dpr_saving_and_loading(retriever, document_store):
 
 
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
-@pytest.mark.vector_dim(512)
+@pytest.mark.embedding_dim(512)
 def test_table_text_retriever_saving_and_loading(retriever, document_store):
     retriever.save("test_table_text_retriever_save")
 
@@ -325,7 +325,7 @@ def test_table_text_retriever_saving_and_loading(retriever, document_store):
     assert loaded_retriever.query_tokenizer.model_max_length == 512
 
 
-@pytest.mark.vector_dim(128)
+@pytest.mark.embedding_dim(128)
 def test_table_text_retriever_training(document_store):
     retriever = TableTextRetriever(
         document_store=document_store,

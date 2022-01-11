@@ -488,22 +488,22 @@ def document_store_with_docs(request, test_docs_xs, tmp_path):
 
 @pytest.fixture
 def document_store(request, tmp_path):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    for document_store in get_document_store(request.param, embedding_dim=vector_dim.args[0], tmp_path=tmp_path):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    for document_store in get_document_store(request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path):
         yield document_store
         document_store.delete_documents()
 
 @pytest.fixture(params=["faiss", "milvus", "weaviate"])
 def document_store_cosine(request, tmp_path):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    for document_store in get_document_store(request.param, embedding_dim=vector_dim.args[0], similarity="cosine", tmp_path=tmp_path):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    for document_store in get_document_store(request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path):
         yield document_store
         document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_cosine_small(request, tmp_path):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
-    for document_store in get_document_store(request.param, embedding_dim=vector_dim.args[0], similarity="cosine", tmp_path=tmp_path):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
+    for document_store in get_document_store(request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path):
         yield document_store
         document_store.delete_documents()
 
@@ -578,7 +578,7 @@ def get_document_store(document_store_type, tmp_path, embedding_dim=768, embeddi
 
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
-            vector_dim=embedding_dim,
+            embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
             return_embedding=True,
             embedding_field=embedding_field,
@@ -589,7 +589,7 @@ def get_document_store(document_store_type, tmp_path, embedding_dim=768, embeddi
 
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
-            vector_dim=embedding_dim,
+            embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
             return_embedding=True,
             embedding_field=embedding_field,
