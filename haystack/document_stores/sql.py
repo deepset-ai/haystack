@@ -96,7 +96,8 @@ class SQLDocumentStore(BaseDocumentStore):
         index: str = "document",
         label_index: str = "label",
         duplicate_documents: str = "overwrite",
-        check_same_thread: bool = False
+        check_same_thread: bool = False,
+        isolation_level: str = None
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -112,6 +113,7 @@ class SQLDocumentStore(BaseDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior) 
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()`
         """
 
         # save init parameters to enable export of component config as YAML
@@ -119,10 +121,13 @@ class SQLDocumentStore(BaseDocumentStore):
                 url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents, check_same_thread=check_same_thread
         )
 
+        create_engine_params = {}
+        if isolation_level:
+            create_engine_params["isolation_level"] = isolation_level
         if "sqlite" in url:
-            engine = create_engine(url, connect_args={'check_same_thread': check_same_thread})
+            engine = create_engine(url, connect_args={'check_same_thread': check_same_thread}, **create_engine_params)
         else:
-            engine = create_engine(url)
+            engine = create_engine(url, **create_engine_params)
         ORMBase.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()

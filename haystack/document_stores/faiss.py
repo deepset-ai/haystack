@@ -48,6 +48,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         duplicate_documents: str = 'overwrite',
         faiss_index_path: Union[str, Path] = None,
         faiss_config_path: Union[str, Path] = None,
+        isolation_level: str = None,
         **kwargs,
     ):
         """
@@ -145,7 +146,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         super().__init__(
             url=sql_url,
             index=index,
-            duplicate_documents=duplicate_documents
+            duplicate_documents=duplicate_documents,
+            isolation_level=isolation_level
         )
 
         self._validate_index_sync()

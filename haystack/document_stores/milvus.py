@@ -51,6 +51,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             embedding_field: str = "embedding",
             progress_bar: bool = True,
             duplicate_documents: str = 'overwrite',
+            isolation_level: str = None,
             **kwargs,
     ):
         """
@@ -129,7 +130,8 @@ class MilvusDocumentStore(SQLDocumentStore):
         super().__init__(
             url=sql_url,
             index=index,
-            duplicate_documents=duplicate_documents
+            duplicate_documents=duplicate_documents,
+            isolation_level=isolation_level,
         )
 
     def __del__(self):

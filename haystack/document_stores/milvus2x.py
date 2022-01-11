@@ -71,6 +71,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             custom_fields: Optional[List[Any]] = None,
             progress_bar: bool = True,
             duplicate_documents: str = 'overwrite',
+            isolation_level: str = None,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -165,6 +166,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             url=sql_url,
             index=index,
             duplicate_documents=duplicate_documents
+            isolation_level=isolation_level,
         )
 
     def _create_collection_and_index_if_not_exist(

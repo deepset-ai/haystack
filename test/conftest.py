@@ -3,6 +3,8 @@ import time
 from subprocess import run
 from sys import platform
 import gc
+import logging
+from sqlalchemy import create_engine, text
 
 import numpy as np
 import psutil
@@ -478,41 +480,94 @@ def get_retriever(retriever_type, document_store):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
-def document_store_with_docs(request, test_docs_xs):
-    document_store = get_document_store(request.param)
-    document_store.write_documents(test_docs_xs)
-    yield document_store
-    document_store.delete_documents()
+def document_store_with_docs(request, test_docs_xs, tmp_path):
+    for document_store in get_document_store(request.param, tmp_path=tmp_path):
+        document_store.write_documents(test_docs_xs)
+        yield document_store
+        document_store.delete_documents()
+
+@pytest.fixture
+def document_store(request, tmp_path):
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
+    for document_store in get_document_store(request.param, embedding_dim=vector_dim.args[0], tmp_path=tmp_path):
+        yield document_store
+        document_store.delete_documents()
+
+@pytest.fixture(params=["faiss", "milvus", "weaviate"])
+def document_store_cosine(request, tmp_path):
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
+    for document_store in get_document_store(request.param, embedding_dim=vector_dim.args[0], similarity="cosine", tmp_path=tmp_path):
+        yield document_store
+        document_store.delete_documents()
+
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
+def document_store_cosine_small(request, tmp_path):
+    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
+    for document_store in get_document_store(request.param, embedding_dim=vector_dim.args[0], similarity="cosine", tmp_path=tmp_path):
+        yield document_store
+        document_store.delete_documents()
+
+
+
+SQL_TYPE = "sqlite"
+# SQL_TYPE = "postgres"
 
 
 @pytest.fixture
-def document_store(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0])
-    yield document_store
-    document_store.delete_documents()
+def sql_url(tmp_path):
+    if SQL_TYPE == "postgres":
+        try:
+            setup_postgres()
+            yield get_sql_url(tmp_path)
+        finally:
+            teardown_postgres()
+    else:
+        yield get_sql_url(tmp_path)
 
-@pytest.fixture(params=["faiss", "milvus", "weaviate"])
-def document_store_cosine(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
-    yield document_store
-    document_store.delete_documents()
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
-def document_store_cosine_small(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
-    yield document_store
-    document_store.delete_documents()    
+def get_sql_url(tmp_path):
+    if SQL_TYPE == "postgres":
+        return "postgresql://postgres:postgres@127.0.0.1/postgres"
+    else:
+        return f"sqlite:///{tmp_path}/haystack_test.db"
 
-def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="dot_product"):
+
+def setup_postgres():
+    # status = subprocess.run(["docker run --name postgres_test -d -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 postgres"], shell=True)
+    # if status.returncode:
+    #     logging.warning("Tried to start PostgreSQL through Docker but this failed. It is likely that there is already an existing instance running.")
+    # else:
+    #     sleep(5)
+    engine = create_engine('postgresql://postgres:postgres@127.0.0.1/postgres', isolation_level='AUTOCOMMIT')
+
+    with engine.connect() as connection:
+        try:
+            connection.execute(text('DROP SCHEMA public CASCADE'))
+        except Exception as e:
+            logging.error(e)
+        connection.execute(text('CREATE SCHEMA public;'))
+        connection.execute(text('SET SESSION idle_in_transaction_session_timeout = "1s";'))
+
+        
+def teardown_postgres():
+    engine = create_engine('postgresql://postgres:postgres@127.0.0.1/postgres', isolation_level='AUTOCOMMIT')
+    with engine.connect() as connection:
+        connection.execute(text('DROP SCHEMA public CASCADE'))
+        connection.close()
+
+
+def get_document_store(document_store_type, tmp_path, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="dot_product"):
+    
+    if SQL_TYPE == "postgres" and document_store_type in ["faiss", "milvus"]:
+        setup_postgres()
+    
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url="sqlite://", index=index)
+
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(
-            return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, index=index, similarity=similarity
-        )
+            return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, index=index, similarity=similarity)
+        
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
@@ -520,28 +575,33 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         document_store = ElasticsearchDocumentStore(
             index=index, return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, similarity=similarity
         )
+
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
             vector_dim=embedding_dim,
-            sql_url="sqlite://",
+            sql_url=get_sql_url(tmp_path),
             return_embedding=True,
             embedding_field=embedding_field,
             index=index,
-            similarity=similarity
+            similarity=similarity,
+            isolation_level="AUTOCOMMIT" if SQL_TYPE == "postgres" else None
         )
+
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
             vector_dim=embedding_dim,
-            sql_url="sqlite://",
+            sql_url=get_sql_url(tmp_path),
             return_embedding=True,
             embedding_field=embedding_field,
             index=index,
-            similarity=similarity
+            similarity=similarity,
+            isolation_level="AUTOCOMMIT" if SQL_TYPE == "postgres" else None
         )
         _, collections = document_store.milvus_server.list_collections()
         for collection in collections:
             if collection.startswith(index):
                 document_store.milvus_server.drop_collection(collection)
+    
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
             weaviate_url="http://localhost:8080",
@@ -554,7 +614,10 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
-    return document_store
+    yield document_store
+
+    if SQL_TYPE == "postgres" and document_store_type in ["faiss", "milvus"]:
+        teardown_postgres()
 
 
 @pytest.fixture(scope="function")
