@@ -70,7 +70,7 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
-@pytest.mark.vector_dim(128)
+@pytest.mark.embedding_dim(128)
 def test_lfqa_pipeline(document_store, retriever, eli5_generator):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
@@ -90,7 +90,7 @@ def test_lfqa_pipeline(document_store, retriever, eli5_generator):
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
-@pytest.mark.vector_dim(128)
+@pytest.mark.embedding_dim(128)
 def test_lfqa_pipeline_unknown_converter(document_store, retriever):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
@@ -112,7 +112,7 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever):
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
-@pytest.mark.vector_dim(128)
+@pytest.mark.embedding_dim(128)
 def test_lfqa_pipeline_invalid_converter(document_store, retriever):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
