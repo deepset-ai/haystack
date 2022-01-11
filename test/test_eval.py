@@ -611,9 +611,16 @@ def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         labels=labels,
-        params={"Retriever": {"top_k": 5}}, 
+        params={"Retriever": {"top_k": 5}}
     )
+    pipeline.print_eval_report(eval_result)
 
+    # in addition with labels as input to reader node rather than output of retriever node
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=labels,
+        params={"Retriever": {"top_k": 5}},
+        use_labels_as_input=True
+    )
     pipeline.print_eval_report(eval_result)
 
 
