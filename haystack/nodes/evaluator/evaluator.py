@@ -405,6 +405,8 @@ def semantic_answer_similarity(predictions: List[List[str]],
         current_position = 0
         for len_p, len_l in lengths:
             scores_window = scores[current_position:current_position+len_p*len_l]
+            # Per predicted doc there are len_l entries comparing it to all len_l labels.
+            # So to only consider the first doc we have to take the first len_l entries
             top_1_sas.append(np.max(scores_window[:len_l]))
             top_k_sas.append(np.max(scores_window))
             current_position += len_p*len_l
