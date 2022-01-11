@@ -957,7 +957,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if name:
             meta_data["name"] = name
 
-        score = hit["_score"] if hit["_score"] else None
+        score = hit["_score"]
         if score:
             if adapt_score_for_embedding:
                 score = self._scale_embedding_score(score)
