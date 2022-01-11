@@ -4,7 +4,7 @@ import logging
 import itertools
 import numpy as np
 from uuid import uuid4
-from sqlalchemy import and_, func, create_engine, Column, String, DateTime, ForeignKey, Boolean, Text, text, JSON
+from sqlalchemy import and_, func, create_engine, Column, String, DateTime, ForeignKey, Boolean, Text, text, JSON, ForeignKeyConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
@@ -20,7 +20,7 @@ Base = declarative_base()  # type: Any
 class ORMBase(Base):
     __abstract__ = True
 
-    id = Column(String(100), default=lambda: str(uuid4()), unique=True, primary_key=True)
+    id = Column(String(100), default=lambda: str(uuid4()), primary_key=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
@@ -33,9 +33,6 @@ class DocumentORM(ORMBase):
     # primary key in combination with id to allow the same doc in different indices
     index = Column(String(100), nullable=False, primary_key=True)
     vector_id = Column(String(100), unique=True, nullable=True)
-
-    # labels = relationship("LabelORM", back_populates="document")
-
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
 
@@ -45,35 +42,17 @@ class MetaDocumentORM(ORMBase):
 
     name = Column(String(100), index=True)
     value = Column(String(1000), index=True)
-    document_id = Column(
-        String(100),
-        ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
-        index=True
-    )
-
     documents = relationship("DocumentORM", back_populates="meta")
 
-
-class MetaLabelORM(ORMBase):
-    __tablename__ = "meta_label"
-
-    name = Column(String(100), index=True)
-    value = Column(String(1000), index=True)
-    label_id = Column(
-        String(100),
-        ForeignKey("label.id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
-        index=True
-    )
-
-    labels = relationship("LabelORM", back_populates="meta")
+    document_id = Column(String(100), nullable=False, index=True)
+    document_index = Column(String(100), nullable=False, index=True)
+    __table_args__ = (ForeignKeyConstraint([document_id, document_index],
+                                           [DocumentORM.id, DocumentORM.index],
+                                           ondelete="CASCADE", onupdate="CASCADE"), {})
 
 
 class LabelORM(ORMBase):
     __tablename__ = "label"
-
-    # document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
     index = Column(String(100), nullable=False, primary_key=True)
     query = Column(Text, nullable=False)
@@ -86,7 +65,21 @@ class LabelORM(ORMBase):
     pipeline_id = Column(String(500), nullable=True)
 
     meta = relationship("MetaLabelORM", back_populates="labels", lazy="joined")
-    # document = relationship("DocumentORM", back_populates="labels")
+
+
+class MetaLabelORM(ORMBase):
+    __tablename__ = "meta_label"
+
+    name = Column(String(100), index=True)
+    value = Column(String(1000), index=True)
+    labels = relationship("LabelORM", back_populates="meta")
+
+    label_id = Column(String(100), nullable=False, index=True)
+    label_index = Column(String(100), nullable=False, index=True)
+    __table_args__ = (ForeignKeyConstraint([label_id, label_index],
+                                           [LabelORM.id, LabelORM.index],
+                                           ondelete="CASCADE", onupdate="CASCADE"), {})
+
 
 
 class SQLDocumentStore(BaseDocumentStore):
@@ -130,7 +123,7 @@ class SQLDocumentStore(BaseDocumentStore):
             engine = create_engine(url, connect_args={'check_same_thread': check_same_thread}, **create_engine_params)
         else:
             engine = create_engine(url, **create_engine_params)
-        ORMBase.metadata.create_all(engine)
+        Base.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
         self.index: str = index

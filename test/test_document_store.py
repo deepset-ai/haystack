@@ -162,18 +162,18 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
 
 
 def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs, tmp_path):
-    document_store_with_docs = get_document_store("sql", tmp_path)
-    document_store_with_docs.write_documents(test_docs_xs)
+    for document_store_with_docs in get_document_store("sql", tmp_path):
+        document_store_with_docs.write_documents(test_docs_xs)
 
-    document_store_with_docs.use_windowed_query = False
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
-    assert len(documents) == 1
-    assert documents[0].meta["name"] == "filename2"
+        document_store_with_docs.use_windowed_query = False
+        documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
+        assert len(documents) == 1
+        assert documents[0].meta["name"] == "filename2"
 
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test3"]})
-    assert len(documents) == 2
-    assert {d.meta["name"] for d in documents} == {"filename1", "filename3"}
-    assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
+        documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test3"]})
+        assert len(documents) == 2
+        assert {d.meta["name"] for d in documents} == {"filename1", "filename3"}
+        assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
 def test_get_all_documents_with_incorrect_filter_name(document_store_with_docs):
@@ -831,7 +831,7 @@ def test_update_meta(document_store):
 
 
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
-def test_custom_embedding_field(document_store_type):
+def test_custom_embedding_field(document_store_type, tmp_path):
     document_store = get_document_store(
         document_store_type=document_store_type, tmp_path=tmp_path, embedding_field="custom_embedding_field"
     )
