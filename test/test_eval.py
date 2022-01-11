@@ -534,7 +534,40 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_3["Retriever"]["recall_single_hit"] == 0.5
     assert metrics_top_3["Retriever"]["precision"] == 1.0/6
-    
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_label_input(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS,
+        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+        use_labels_as_input=True
+    )
+
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1)
+
+    assert metrics_top_1["Reader"]["exact_match"] == 0.5
+    assert metrics_top_1["Reader"]["f1"] == 0.5
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6208, abs=1e-4)
+    assert metrics_top_1["Retriever"]["mrr"] == 0.5
+    assert metrics_top_1["Retriever"]["map"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["precision"] == 1.0 / 6
+
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, node_input="label")
+
+    assert metrics_top_1["Reader"]["exact_match"] == 1.0
+    assert metrics_top_1["Reader"]["f1"] == 1.0
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
+    assert metrics_top_1["Retriever"]["mrr"] == 0.5
+    assert metrics_top_1["Retriever"]["map"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["precision"] == 1.0 / 6
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)

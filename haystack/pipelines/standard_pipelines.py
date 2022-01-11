@@ -152,8 +152,9 @@ class BaseStandardPipeline(ABC):
 
     def eval(self,
             labels: List[MultiLabel],
-            params: Optional[dict],
-            sas_model_name_or_path: str = None) -> EvaluationResult:
+            params: Optional[dict] = None,
+            sas_model_name_or_path: Optional[str] = None,
+            use_labels_as_input: bool = False) -> EvaluationResult:
             
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode 
@@ -164,9 +165,10 @@ class BaseStandardPipeline(ABC):
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
         :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
                                     should be path or string pointing to downloadable models.
+        :param use_labels_as_input: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
         """
         output = self.pipeline.eval(labels=labels, params=params, 
-            sas_model_name_or_path=sas_model_name_or_path)
+            sas_model_name_or_path=sas_model_name_or_path, use_labels_as_input=use_labels_as_input)
         return output
 
     def print_eval_report(
