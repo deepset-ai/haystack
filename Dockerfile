@@ -18,6 +18,7 @@ COPY haystack /home/user/haystack
 
 # install as a package
 COPY setup.py requirements.txt README.md /home/user/
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 RUN pip install -e .
 RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"

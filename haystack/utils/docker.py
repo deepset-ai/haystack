@@ -1,3 +1,4 @@
+import logging
 
 def cache_models():
     """
@@ -5,10 +6,12 @@ def cache_models():
     Used only in the Dockerfile to include these caches in the images.
     """
     # download punkt tokenizer
+    logging.info("Caching punkt data")
     import nltk
-    nltk.download('punkt', download_dir='/usr/nltk_data')
+    nltk.download('punkt', download_dir='/root/nltk_data')
     
     # Cache roberta-base-squad2 model
+    logging.info("Caching deepset/roberta-base-squad2")
     import transformers
     model_to_cache='deepset/roberta-base-squad2'
     transformers.AutoTokenizer.from_pretrained(model_to_cache)
