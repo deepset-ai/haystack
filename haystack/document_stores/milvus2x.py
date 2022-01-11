@@ -165,7 +165,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         super().__init__(
             url=sql_url,
             index=index,
-            duplicate_documents=duplicate_documents
+            duplicate_documents=duplicate_documents,
             isolation_level=isolation_level,
         )
 
