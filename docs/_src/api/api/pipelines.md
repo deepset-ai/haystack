@@ -162,7 +162,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, simulate_perfect_retriever: bool = False) -> EvaluationResult
+ | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, use_labels_as_input: bool = False) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -186,7 +186,7 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
             - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
             - Large model for German only: "deepset/gbert-large-sts"
-- `simulate_perfect_retriever`: Whether to additionally evaluate the reader with input documents from a simulated perfect retriever (pass only relevant documents as input)
+- `use_labels_as_input`: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
@@ -628,7 +628,7 @@ Instance of DocumentStore or None
 #### eval
 
 ```python
- | eval(labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
+ | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, use_labels_as_input: bool = False) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -641,6 +641,7 @@ and putting together all data that is needed for evaluation, e.g. calculating me
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
 - `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
                             should be path or string pointing to downloadable models.
+- `use_labels_as_input`: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
 
 <a name="standard_pipelines.ExtractiveQAPipeline"></a>
 ## ExtractiveQAPipeline
