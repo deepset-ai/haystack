@@ -48,7 +48,7 @@ class MetaDocumentORM(ORMBase):
     document_index = Column(String(100), nullable=False, index=True)
     __table_args__ = (ForeignKeyConstraint([document_id, document_index],
                                            [DocumentORM.id, DocumentORM.index],
-                                           ondelete="CASCADE", onupdate="CASCADE"), {})
+                                           ondelete="CASCADE", onupdate="CASCADE"), {})  #type: ignore
 
 
 class LabelORM(ORMBase):
@@ -78,7 +78,7 @@ class MetaLabelORM(ORMBase):
     label_index = Column(String(100), nullable=False, index=True)
     __table_args__ = (ForeignKeyConstraint([label_id, label_index],
                                            [LabelORM.id, LabelORM.index],
-                                           ondelete="CASCADE", onupdate="CASCADE"), {})
+                                           ondelete="CASCADE", onupdate="CASCADE"), {})  #type: ignore
 
 
 
