@@ -970,7 +970,7 @@ An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL bac
                             fail: an error is raised if the document ID of the document being added already
                             exists.
 - `check_same_thread`: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
-- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()`
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="sql.SQLDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -1249,6 +1249,7 @@ the vector embeddings are indexed in a FAISS Index.
     If specified no other params besides faiss_config_path must be specified.
 - `faiss_config_path`: Stored FAISS initial configuration parameters.
     Can be created via calling `save()`
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -1526,6 +1527,7 @@ Note that an overly large index_file_size value may cause failure to load a segm
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="milvus.MilvusDocumentStore.write_documents"></a>
 #### write\_documents
