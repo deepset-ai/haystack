@@ -95,6 +95,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             If specified no other params besides faiss_config_path must be specified.
         :param faiss_config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again

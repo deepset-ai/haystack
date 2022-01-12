@@ -106,7 +106,7 @@ class SQLDocumentStore(BaseDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior) 
-        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()`
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
 
         # save init parameters to enable export of component config as YAML
