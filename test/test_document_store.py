@@ -804,7 +804,7 @@ def test_multilabel_no_answer(document_store):
     assert len(multi_labels[0].answers) == 1
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus", "weaviate"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
@@ -832,15 +832,13 @@ def test_update_meta(document_store):
 
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type, tmp_path):
-    document_store = get_document_store(
-        document_store_type=document_store_type, tmp_path=tmp_path, embedding_field="custom_embedding_field"
-    )
-    doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
-    document_store.write_documents([doc_to_write])
-    documents = document_store.get_all_documents(return_embedding=True)
-    assert len(documents) == 1
-    assert documents[0].content == "test"
-    np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
+    for document_store in get_document_store(document_store_type=document_store_type, tmp_path=tmp_path, embedding_field="custom_embedding_field"):
+        doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
+        document_store.write_documents([doc_to_write])
+        documents = document_store.get_all_documents(return_embedding=True)
+        assert len(documents) == 1
+        assert documents[0].content == "test"
+        np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)

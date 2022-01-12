@@ -44,7 +44,7 @@ from haystack.nodes.question_generator import QuestionGenerator
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
-# SQL_TYPE = "postgres"
+#SQL_TYPE = "postgres"
 
 
 def pytest_addoption(parser):

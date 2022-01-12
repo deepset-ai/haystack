@@ -113,12 +113,9 @@ class SQLDocumentStore(BaseDocumentStore):
         self.set_config(
                 url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents, check_same_thread=check_same_thread
         )
-
         create_engine_params = {}
         if isolation_level:
             create_engine_params["isolation_level"] = isolation_level
-        
-        logging.warning(f"create engine params: {create_engine_params}")
         if "sqlite" in url:
             engine = create_engine(url, connect_args={'check_same_thread': check_same_thread}, **create_engine_params)
         else:
@@ -461,12 +458,14 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: null()})
         self.session.commit()
 
-    def update_document_meta(self, id: str, meta: Dict[str, str]):
+    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
-        self.session.query(MetaDocumentORM).filter_by(document_id=id).delete()
-        meta_orms = [MetaDocumentORM(name=key, value=value, document_id=id) for key, value in meta.items()]
+        if not index:
+            index = self.index
+        self.session.query(MetaDocumentORM).filter_by(document_id=id, document_index=index).delete()
+        meta_orms = [MetaDocumentORM(name=key, value=value, document_id=id, document_index=index) for key, value in meta.items()]
         for m in meta_orms:
             self.session.add(m)
         self.session.commit()
