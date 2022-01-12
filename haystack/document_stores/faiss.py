@@ -74,7 +74,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                                         Benchmarks: XXX
         :param faiss_index: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                             or one with docs that you used in Haystack before and want to load again.
-        :param return_embedding: To return document embedding
+        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
@@ -379,7 +379,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                       DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :param return_embedding: Whether to return the document embeddings.
+        :param return_embedding: Whether to return the document embeddings. Unlike other document stores, FAISS will return normalized embeddings
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:
@@ -510,7 +510,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
-        :param return_embedding: To return document embedding
+        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
         :return:
         """
         if headers:
