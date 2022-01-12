@@ -157,7 +157,8 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         original_doc = [d for d in DOCUMENTS if d["content"] == doc.content][0]
         stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(original_doc["embedding"], stored_emb, rtol=0.01)
+        # original input vec is normalized as faiss only stores normalized vectors
+        assert np.allclose(original_doc["embedding"] / np.linalg.norm(original_doc["embedding"]), stored_emb, rtol=0.01)
         
 
 @pytest.mark.slow
@@ -178,7 +179,8 @@ def test_update_docs(document_store, retriever, batch_size):
         updated_embedding = retriever.embed_documents([Document.from_dict(original_doc)])
         stored_doc = document_store.get_all_documents(filters={"name": [doc.meta["name"]]})[0]
         # compare original input vec with stored one (ignore extra dim added by hnsw)
-        assert np.allclose(updated_embedding, stored_doc.embedding, rtol=0.01)
+        # original input vec is normalized as faiss only stores normalized vectors
+        assert np.allclose(updated_embedding / np.linalg.norm(updated_embedding), stored_doc.embedding, rtol=0.01)
 
 
 @pytest.mark.slow
@@ -441,16 +443,16 @@ def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
         for d in docs:
             d["id"] = str(uuid.uuid4())
 
-def test_cosine_similarity(document_store_cosine):
+def test_cosine_similarity(document_store):
     # below we will write documents to the store and then query it to see if vectors were normalized
 
-    ensure_ids_are_correct_uuids(docs=DOCUMENTS,document_store=document_store_cosine)
-    document_store_cosine.write_documents(documents=DOCUMENTS)
+    ensure_ids_are_correct_uuids(docs=DOCUMENTS,document_store=document_store)
+    document_store.write_documents(documents=DOCUMENTS)
 
     # note that the same query will be used later when querying after updating the embeddings
     query = np.random.rand(768).astype(np.float32)
 
-    query_results = document_store_cosine.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+    query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
 
     # check if search with cosine similarity returns the correct number of results
     assert len(query_results) == len(DOCUMENTS)
@@ -461,7 +463,7 @@ def test_cosine_similarity(document_store_cosine):
     for doc in query_results:
         result_emb = doc.embedding
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        document_store_cosine.normalize_embedding(original_emb[0])
+        document_store.normalize_embedding(original_emb[0])
 
         # check if the stored embedding was normalized
         assert np.allclose(original_emb[0], result_emb, rtol=0.01)
@@ -475,27 +477,27 @@ def test_cosine_similarity(document_store_cosine):
             return [np.random.rand(768).astype(np.float32) for doc in docs]
 
     retriever = MockRetriever()
-    document_store_cosine.update_embeddings(retriever=retriever)
-    query_results = document_store_cosine.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+    document_store.update_embeddings(retriever=retriever)
+    query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
 
     for doc in query_results:
         original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        document_store_cosine.normalize_embedding(original_emb[0])
+        document_store.normalize_embedding(original_emb[0])
         # check if the original embedding has changed after updating the embeddings
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
 
-def test_normalize_embeddings_diff_shapes(document_store_cosine_small):
+def test_normalize_embeddings_diff_shapes(document_store_dot_product_small):
     VEC_1 = np.array([.1, .2, .3], dtype="float32")
-    document_store_cosine_small.normalize_embedding(VEC_1)
+    document_store_dot_product_small.normalize_embedding(VEC_1)
     assert np.linalg.norm(VEC_1) - 1 < 0.01
 
     VEC_1 = np.array([.1, .2, .3], dtype="float32").reshape(1, -1)
-    document_store_cosine_small.normalize_embedding(VEC_1)
+    document_store_dot_product_small.normalize_embedding(VEC_1)
     assert np.linalg.norm(VEC_1) - 1 < 0.01
 
 
-def test_cosine_sanity_check(document_store_cosine_small):
+def test_cosine_sanity_check(document_store_small):
     VEC_1 = np.array([.1, .2, .3], dtype="float32")
     VEC_2 = np.array([.4, .5, .6], dtype="float32")
 
@@ -504,10 +506,10 @@ def test_cosine_sanity_check(document_store_cosine_small):
     KNOWN_COSINE = (0.9746317 + 1) / 2
 
     docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
-    ensure_ids_are_correct_uuids(docs=docs,document_store=document_store_cosine_small)
-    document_store_cosine_small.write_documents(documents=docs)
+    ensure_ids_are_correct_uuids(docs=docs,document_store=document_store_small)
+    document_store_small.write_documents(documents=docs)
 
-    query_results = document_store_cosine_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
+    query_results = document_store_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
     assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.00002)
