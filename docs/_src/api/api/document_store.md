@@ -1202,14 +1202,15 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, **kwargs, ,)
 ```
 
 **Arguments**:
 
 - `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                 deployment, Postgres is recommended.
-- `vector_dim`: the embedding vector size.
+- `vector_dim`: Deprecated. Use embedding_dim instead.
+- `embedding_dim`: The embedding vector size. Default: 768.
 - `faiss_index_factory_str`: Create a new FAISS index of the specified type.
                                 The type is determined from the given string following the conventions
                                 of the original FAISS index factory.
@@ -1231,7 +1232,7 @@ the vector embeddings are indexed in a FAISS Index.
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
-           In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+           In both cases, the returned values in Document.score are normalized to be in range [0,1]:
            For `dot_product`: expit(np.asarray(raw_score / 100))
            FOr `cosine`: (raw_score + 1) / 2
 - `embedding_field`: Name of field containing an embedding vector.
@@ -1424,7 +1425,7 @@ Save FAISS Index to the specified file.
 - `config_path`: Path to save the initial configuration parameters to.
     Defaults to the same as the file path, save the extension (.json).
     This file contains all the parameters passed to FAISSDocumentStore()
-    at creation time (for example the SQL path, vector_dim, etc), and will be 
+    at creation time (for example the SQL path, embedding_dim, etc), and will be
     used by the `load` method to restore the index with the appropriate configuration.
 
 **Returns**:
@@ -1478,7 +1479,7 @@ Usage:
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1491,7 +1492,8 @@ Usage:
                    See https://milvus.io/docs/v1.0.0/install_milvus.md for instructions to start a Milvus instance.
 - `connection_pool`: Connection pool type to connect with Milvus server. Default: "SingletonThread".
 - `index`: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
-- `vector_dim`: The embedding vector size. Default: 768.
+- `vector_dim`: Deprecated. Use embedding_dim instead.
+- `embedding_dim`: The embedding vector size. Default: 768.
 - `index_file_size`: Specifies the size of each segment file that is stored by Milvus and its default value is 1024 MB.
 When the size of newly inserted vectors reaches the specified volume, Milvus packs these vectors into a new segment.
 Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
