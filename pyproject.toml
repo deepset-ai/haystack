@@ -1,0 +1,8 @@
+[build-system]
+requires = [
+    "setuptools>=51.0",
+    "wheel",
+    "setuptools_scm>=1.15",
+    "setuptools_scm_git_archive>=1.0",
+]
+build-backend = "setuptools.build_meta"
