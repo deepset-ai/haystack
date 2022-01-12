@@ -11,6 +11,22 @@ from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
 
 
+def add_doc_meta_data_to_answer(documents: List[Document], pred_results):
+    # Add corresponding document_name and more meta data, if an answer contains the document_id
+    for ans in pred_results["answers"]:
+        if ans.meta is None:
+            ans.meta = {}
+        # get meta from doc
+        meta_from_doc = {}
+        for doc in documents:
+            if doc.id == ans.document_id:
+                meta_from_doc = deepcopy(doc.meta)
+                break
+        # append to "own" meta
+        ans.meta.update(meta_from_doc)
+    return pred_results
+
+
 class BaseReader(BaseComponent):
     return_no_answers: bool
     outgoing_edges = 1
@@ -64,37 +80,16 @@ class BaseReader(BaseComponent):
             results = {"answers": []}
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
-        for ans in results["answers"]:
-            if ans.meta is None:
-                ans.meta = {}
-            # get meta from doc
-            meta_from_doc = {}
-            for doc in documents:
-                if doc.id == ans.document_id:
-                    meta_from_doc = deepcopy(doc.meta)
-                    break
-            # append to "own" meta
-            ans.meta.update(meta_from_doc)
+        results = add_doc_meta_data_to_answer(documents=documents, pred_results=results)
 
-        # run closed-domain evaluation on labeled ground-truth relevant documents
+        # run evaluation with labels as node inputs
         if use_labels_as_input and labels is not None:
             relevant_documents = [label.document for label in labels.labels]
-            results_perfect_retriever = predict(query=query, documents=relevant_documents, top_k=top_k)
+            results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
-            for ans in results_perfect_retriever["answers"]:
-                if ans.meta is None:
-                    ans.meta = {}
-                # get meta from doc
-                meta_from_doc = {}
-                for doc in documents:
-                    if doc.id == ans.document_id:
-                        meta_from_doc = deepcopy(doc.meta)
-                        break
-                # append to "own" meta
-                ans.meta.update(meta_from_doc)
-
-            results["answers_with_labels_as_input"] = results_perfect_retriever["answers"]
+            results_label_input = add_doc_meta_data_to_answer(documents=documents, pred_results=results_label_input)
+            results["answers_with_labels_as_input"] = results_label_input["answers"]
 
         return results, "output_1"
 

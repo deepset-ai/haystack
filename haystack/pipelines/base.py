@@ -748,26 +748,23 @@ class Pipeline(BasePipeline):
 
     def _format_wrong_samples_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
         examples = {
-            node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples) 
+            node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
                 for node in eval_result.node_results.keys()
         }
         examples_formatted = {
-            node: "\n".join([self._format_wrong_sample(example) for example in examples]) 
+            node: "\n".join([self._format_wrong_sample(example) for example in examples])
                 for node, examples in examples.items()
         }
 
         return "\n".join([self._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()])
 
-    def _format_pipeline_node(self, node: str, metrics: dict, metrics_top_1: dict, metrics_top_n_label: dict = None, metrics_top_1_label: dict = None):
-        metrics = metrics.get(node, {})
-        metrics_top_1 = {f"{metric}_top_1": value for metric, value in metrics_top_1.get(node, {}).items()}
-        if metrics_top_n_label is not None and metrics_top_1_label is not None:
-            metrics_top_n_label = {f"{metric} upper bound with perfect predecessor": value for metric, value in metrics_top_n_label.get(node, {}).items()}
-            metrics_top_1_label = {f"{metric}_top_1 upper bound with perfect predecessor": value for metric, value in metrics_top_1_label.get(node, {}).items()}
-            node_metrics = {**metrics, **metrics_top_1, **metrics_top_n_label, **metrics_top_1_label}
-        else:
-            node_metrics = {**metrics, **metrics_top_1}
-        node_metrics_formatted = "\n".join(sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()])) 
+    def _format_pipeline_node(self, node: str, calculated_metrics: dict):
+        node_metrics = {}
+        for metric_mode in calculated_metrics:
+            node_metrics = {**node_metrics, **{f"{metric}{metric_mode}": value for metric, value in calculated_metrics[metric_mode].get(node, {}).items()}}
+
+        #node_metrics = {k:v for calculated_metric in joined for k,v in calculated_metric.items()}
+        node_metrics_formatted = "\n".join(sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()]))
         node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""
         s = (
             f"                      {node}\n"
@@ -777,8 +774,8 @@ class Pipeline(BasePipeline):
         )
         return s
 
-    def _format_pipeline_overview(self, metrics: dict, metrics_top_1: dict, metrics_top_n_label: dict = None, metrics_top_1_label: dict = None):
-        pipeline_overview = "\n".join([self._format_pipeline_node(node, metrics, metrics_top_1, metrics_top_n_label, metrics_top_1_label) for node in self.graph.nodes])
+    def _format_pipeline_overview(self, calculated_metrics: dict):
+        pipeline_overview = "\n".join([self._format_pipeline_node(node, calculated_metrics) for node in self.graph.nodes])
         s = (
             f"================== Evaluation Report ==================\n"
             f"=======================================================\n"
@@ -805,26 +802,18 @@ class Pipeline(BasePipeline):
         if any(degree > 1 for node, degree in self.graph.out_degree):
             logger.warning("Pipelines with junctions are currently not supported.")
             return
-        
-        metrics_top_n = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
-        metrics_top_1 = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1)
-        metrics_top_n_label = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", node_input="label")
-        metrics_top_1_label = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match",
-                                                      simulated_top_k_reader=1, node_input="label")
+
+        calculated_metrics = {"": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match"),
+                              "_top_1": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1),
+                              " upper bound with perfect node input": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", node_input="label")}
+
         if metrics_filter is not None:
-            metrics_top_n = {node: metrics if node not in metrics_filter 
-                                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]} 
-                                    for node, metrics in metrics_top_n.items()}
-            metrics_top_1 = {node: metrics if node not in metrics_filter 
-                                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]} 
-                                    for node, metrics in metrics_top_1.items()}
-            metrics_top_n_label = {node: metrics if node not in metrics_filter
+            for metric_mode in calculated_metrics:
+                calculated_metrics[metric_mode] = {node: metrics if node not in metrics_filter
                                     else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]}
-                                    for node, metrics in metrics_top_n_label.items()}
-            metrics_top_1_label = {node: metrics if node not in metrics_filter
-                                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]}
-                                    for node, metrics in metrics_top_1_label.items()}
-        pipeline_overview = self._format_pipeline_overview(metrics_top_n, metrics_top_1, metrics_top_n_label, metrics_top_1_label)
+                                    for node, metrics in calculated_metrics[metric_mode].items()}
+
+        pipeline_overview = self._format_pipeline_overview(calculated_metrics)
         wrong_samples_report = self._format_wrong_samples_report(eval_result=eval_result, n_wrong_examples=n_wrong_examples)
 
         print(

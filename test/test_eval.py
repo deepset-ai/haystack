@@ -562,11 +562,6 @@ def test_extractive_qa_eval_label_input(reader, retriever_with_docs):
     assert metrics_top_1["Reader"]["exact_match"] == 1.0
     assert metrics_top_1["Reader"]["f1"] == 1.0
     assert metrics_top_1["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
-    assert metrics_top_1["Retriever"]["mrr"] == 0.5
-    assert metrics_top_1["Retriever"]["map"] == 0.5
-    assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_1["Retriever"]["precision"] == 1.0 / 6
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
