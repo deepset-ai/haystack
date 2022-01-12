@@ -1228,7 +1228,7 @@ the vector embeddings are indexed in a FAISS Index.
                                 Benchmarks: XXX
 - `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                     or one with docs that you used in Haystack before and want to load again.
-- `return_embedding`: To return document embedding
+- `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
@@ -1322,7 +1322,7 @@ a large number of documents without having to load all documents in memory.
               DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `return_embedding`: Whether to return the document embeddings.
+- `return_embedding`: Whether to return the document embeddings. Unlike other document stores, FAISS will return normalized embeddings
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="faiss.FAISSDocumentStore.get_embedding_count"></a>
@@ -1404,7 +1404,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name to query the document from.
-- `return_embedding`: To return document embedding
+- `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
 
 **Returns**:
 
