@@ -214,8 +214,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             elif self.similarity == "cosine":
                 # cosine similarity score = 1 - cosine distance
                 score = 1 - cosine(query_emb, doc.embedding)
-            score = self.finalize_raw_score(score, self.similarity)
-            new_document.score = score
+            new_document.score = self.finalize_raw_score(score, self.similarity)
             candidate_docs.append(new_document)
 
         return sorted(candidate_docs, key=lambda x: x.score if x.score is not None else 0.0, reverse=True)[0:top_k]
