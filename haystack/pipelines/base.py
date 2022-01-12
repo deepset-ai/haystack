@@ -761,7 +761,8 @@ class Pipeline(BasePipeline):
     def _format_pipeline_node(self, node: str, calculated_metrics: dict):
         node_metrics: dict = {}
         for metric_mode in calculated_metrics:
-            node_metrics = {**node_metrics, **{f"{metric}{metric_mode}": value for metric, value in calculated_metrics[metric_mode].get(node, {}).items()}}
+            for metric, value in calculated_metrics[metric_mode].get(node, {}).items():
+                node_metrics[f"{metric}{metric_mode}"] = value
 
         node_metrics_formatted = "\n".join(sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()]))
         node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""

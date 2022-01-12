@@ -11,20 +11,19 @@ from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
 
 
-def add_doc_meta_data_to_answer(documents: List[Document], pred_results):
-    # Add corresponding document_name and more meta data, if an answer contains the document_id
-    for ans in pred_results["answers"]:
-        if ans.meta is None:
-            ans.meta = {}
-        # get meta from doc
-        meta_from_doc = {}
-        for doc in documents:
-            if doc.id == ans.document_id:
-                meta_from_doc = deepcopy(doc.meta)
-                break
-        # append to "own" meta
-        ans.meta.update(meta_from_doc)
-    return pred_results
+def add_doc_meta_data_to_answer(documents: List[Document], answer):
+    # Add corresponding document_name and more meta data, if the answer contains the document_id
+    if answer.meta is None:
+        answer.meta = {}
+    # get meta from doc
+    meta_from_doc = {}
+    for doc in documents:
+        if doc.id == answer.document_id:
+            meta_from_doc = deepcopy(doc.meta)
+            break
+    # append to "own" meta
+    answer.meta.update(meta_from_doc)
+    return answer
 
 
 class BaseReader(BaseComponent):
@@ -80,7 +79,7 @@ class BaseReader(BaseComponent):
             results = {"answers": []}
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
-        results = add_doc_meta_data_to_answer(documents=documents, pred_results=results)
+        results["answers"] = [add_doc_meta_data_to_answer(documents=documents, answer=answer) for answer in results["answers"]]
 
         # run evaluation with labels as node inputs
         if use_labels_as_input and labels is not None:
@@ -88,8 +87,7 @@ class BaseReader(BaseComponent):
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
-            results_label_input = add_doc_meta_data_to_answer(documents=documents, pred_results=results_label_input)
-            results["answers_with_labels_as_input"] = results_label_input["answers"]
+            results["answers_with_labels_as_input"] = [add_doc_meta_data_to_answer(documents=documents, answer=answer) for answer in results_label_input["answers"]]
 
         return results, "output_1"
 
