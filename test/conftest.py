@@ -479,7 +479,8 @@ def get_retriever(retriever_type, document_store):
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_with_docs(request, test_docs_xs):
-    document_store = get_document_store(request.param)
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0])
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
