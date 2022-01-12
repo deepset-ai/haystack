@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from quantulum3 import parser
 from transformers import TapasTokenizer, TapasForQuestionAnswering, AutoTokenizer, AutoModelForSequenceClassification, \
-    BatchEncoding, AutoConfig
+    BatchEncoding, AutoConfig, TapasModel, TapasConfig
+from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
 
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
@@ -74,12 +75,17 @@ class TableReader(BaseReader):
         """
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
+        if model_name_or_path in ["../../../Models/tapas_nq_hn_reader", "tapas_nq_hn_reader"]:
+            self.model = self.TapasForScoredQA.from_pretrained(model_name_or_path)
+        else:
+            self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
         self.model.to(str(self.devices[0]))
+
         if tokenizer is None:
             self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path)
         else:
             self.tokenizer = TapasTokenizer.from_pretrained(tokenizer)
+
         self.top_k = top_k
         self.max_seq_len = max_seq_len
         self.return_no_answers = False
@@ -116,59 +122,13 @@ class TableReader(BaseReader):
                                     return_tensors="pt",
                                     truncation=True)
             inputs.to(self.devices[0])
-            # Forward query and table through model and convert logits to predictions
-            outputs = self.model(**inputs)
-            inputs.to("cpu")
-            if self.model.config.num_aggregation_labels > 0:
-                aggregation_logits = outputs.logits_aggregation.cpu().detach()
-            else:
-                aggregation_logits = None
 
-            predicted_output = self.tokenizer.convert_logits_to_predictions(
-                inputs,
-                outputs.logits.cpu().detach(),
-                aggregation_logits
-            )
-            if len(predicted_output) == 1:
-                predicted_answer_coordinates = predicted_output[0]
-            else:
-                predicted_answer_coordinates, predicted_aggregation_indices = predicted_output
-
-            # Get cell values
-            current_answer_coordinates = predicted_answer_coordinates[0]
-            current_answer_cells = []
-            for coordinate in current_answer_coordinates:
-                current_answer_cells.append(table.iat[coordinate])
-
-            # Get aggregation operator
-            if self.model.config.aggregation_labels is not None:
-                current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
-            else:
-                current_aggregation_operator = "NONE"
-            
-            # Calculate answer score
-            current_score = self._calculate_answer_score(outputs.logits.cpu().detach(), inputs, current_answer_coordinates)
-
-            if current_aggregation_operator == "NONE":
-                answer_str = ", ".join(current_answer_cells)
-            else:
-                answer_str = self._aggregate_answers(current_aggregation_operator, current_answer_cells)
-
-            answer_offsets = self._calculate_answer_offsets(current_answer_coordinates, table)
-
-            answers.append(
-                Answer(
-                    answer=answer_str,
-                    type="extractive",
-                    score=current_score,
-                    context=table,
-                    offsets_in_document=answer_offsets,
-                    offsets_in_context=answer_offsets,
-                    document_id=document.id,
-                    meta={"aggregation_operator": current_aggregation_operator,
-                          "answer_cells": current_answer_cells}
-                )
-            )
+            if isinstance(self.model, TapasForQuestionAnswering):
+                current_answer = self._predict_tapas_for_qa(inputs, document)
+                answers.append(current_answer)
+            elif isinstance(self.model, self.TapasForScoredQA):
+                current_answers = self._predict_tapas_for_scored_qa(inputs, document, top_k)
+                answers.extend(current_answers)
 
         # Sort answers by score and select top-k answers
         answers = sorted(answers, reverse=True)
@@ -178,6 +138,132 @@ class TableReader(BaseReader):
                    "answers": answers}
 
         return results
+
+    def _predict_tapas_for_qa(self, inputs: BatchEncoding, document: Document) -> Answer:
+        # Forward query and table through model and convert logits to predictions
+        outputs = self.model(**inputs)
+        inputs.to("cpu")
+        if self.model.config.num_aggregation_labels > 0:
+            aggregation_logits = outputs.logits_aggregation.cpu().detach()
+        else:
+            aggregation_logits = None
+
+        predicted_output = self.tokenizer.convert_logits_to_predictions(
+            inputs,
+            outputs.logits.cpu().detach(),
+            aggregation_logits
+        )
+        if len(predicted_output) == 1:
+            predicted_answer_coordinates = predicted_output[0]
+        else:
+            predicted_answer_coordinates, predicted_aggregation_indices = predicted_output
+
+        # Get cell values
+        current_answer_coordinates = predicted_answer_coordinates[0]
+        current_answer_cells = []
+        for coordinate in current_answer_coordinates:
+            current_answer_cells.append(document.content.iat[coordinate])
+
+        # Get aggregation operator
+        if self.model.config.aggregation_labels is not None:
+            current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
+        else:
+            current_aggregation_operator = "NONE"
+
+        # Calculate answer score
+        current_score = self._calculate_answer_score(outputs.logits.cpu().detach(), inputs, current_answer_coordinates)
+
+        if current_aggregation_operator == "NONE":
+            answer_str = ", ".join(current_answer_cells)
+        else:
+            answer_str = self._aggregate_answers(current_aggregation_operator, current_answer_cells)
+
+        answer_offsets = self._calculate_answer_offsets(current_answer_coordinates, document.content)
+
+        answer = Answer(
+            answer=answer_str,
+            type="extractive",
+            score=current_score,
+            context=document.content,
+            offsets_in_document=answer_offsets,
+            offsets_in_context=answer_offsets,
+            document_id=document.id,
+            meta={"aggregation_operator": current_aggregation_operator,
+                  "answer_cells": current_answer_cells}
+        )
+
+        return answer
+
+    def _predict_tapas_for_scored_qa(self, inputs: BatchEncoding, document: Document, top_k: int) -> List[Answer]:
+        # Forward pass through model
+        outputs = self.model.tapas(**inputs)
+
+        # Get general table score
+        cls_score = self.model.classifier(outputs.pooler_output)
+        cls_score = cls_score[0][1] - cls_score[0][0]
+
+        # Get possible answer spans
+        token_types = [
+            "segment_ids",
+            "column_ids",
+            "row_ids",
+            "prev_labels",
+            "column_ranks",
+            "inv_column_ranks",
+            "numeric_relations",
+        ]
+        row_ids = inputs.token_type_ids[:, :, token_types.index("row_ids")].tolist()[0]
+        column_ids = inputs.token_type_ids[:, :, token_types.index("column_ids")].tolist()[0]
+
+        possible_answer_spans = []  # List of tuples: (row_idx, col_idx, start_token, end_token)
+        current_start_indices = []
+        current_column_idx = -1
+        for idx, (row_id, column_id) in enumerate(zip(row_ids, column_ids)):
+            if row_id == 0 or column_id == 0:
+                continue
+            if column_id != current_column_idx:
+                current_column_idx = column_id
+                current_start_indices = []
+            current_start_indices.append(idx)
+            for start_idx in current_start_indices:
+                possible_answer_spans.append((row_id-1, column_id-1, start_idx, idx))
+
+        # Concat logits of start token and end token of possible answer spans
+        sequence_output = outputs.last_hidden_state
+        concatenated_logits = []
+        for possible_span in possible_answer_spans:
+            start_token_logits = sequence_output[0, possible_span[2], :]
+            end_token_logits = sequence_output[0, possible_span[3], :]
+            concatenated_logits.append(torch.cat((start_token_logits, end_token_logits)))
+        concatenated_logits = torch.unsqueeze(torch.stack(concatenated_logits), dim=0)
+
+        span_logits = torch.einsum("bsj,j->bs", concatenated_logits, self.model.span_output_weights) \
+                      + self.model.span_output_bias
+
+        top_k_answer_spans = torch.topk(span_logits[0], top_k)
+
+        answers = []
+        for answer_span_idx in top_k_answer_spans.indices:
+            current_answer_span = possible_answer_spans[answer_span_idx]
+            answer_str = self.tokenizer.decode(inputs.input_ids[0, current_answer_span[2]:current_answer_span[3]+1])
+            answer_offsets = self._calculate_answer_offsets([current_answer_span[:2]], document.content)
+            current_score = span_logits[0, answer_span_idx].item()
+
+            answers.append(
+                Answer(
+                    answer=answer_str,
+                    type="extractive",
+                    score=current_score,
+                    context=document.content,
+                    offsets_in_document=answer_offsets,
+                    offsets_in_context=answer_offsets,
+                    document_id=document.id,
+                    meta={"aggregation_operator": "NONE",
+                          "answer_cells": document.content.iat[current_answer_span[:2]]}
+                )
+            )
+
+        return answers
     
     def _calculate_answer_score(self, logits: torch.Tensor, inputs: BatchEncoding,
                                 answer_coordinates: List[Tuple[int, int]]) -> float:
@@ -253,6 +339,27 @@ class TableReader(BaseReader):
 
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         raise NotImplementedError("Batch prediction not yet available in TableReader.")
+
+    class TapasForScoredQA(TapasPreTrainedModel):
+
+        def __init__(self, config):
+            super().__init__(config)
+
+            # base model
+            self.tapas = TapasModel(config)
+
+            # dropout (only used when training)
+            self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
+
+            # answer selection head
+            self.span_output_weights = torch.nn.Parameter(torch.zeros(2 * config.hidden_size))
+            self.span_output_bias = torch.nn.Parameter(torch.zeros([]))
+
+            # table scoring head
+            self.classifier = torch.nn.Linear(config.hidden_size, 2)
+
+            # Initialize weights
+            self.init_weights()
 
 
 class RCIReader(BaseReader):
