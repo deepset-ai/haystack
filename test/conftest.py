@@ -558,7 +558,7 @@ def teardown_postgres():
 
 def get_document_store(document_store_type, tmp_path, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="dot_product"):
     
-    if SQL_TYPE == "postgres" and document_store_type in ["faiss", "milvus"]:
+    if SQL_TYPE == "postgres" and document_store_type in ["faiss", "milvus", "sql"]:
         logging.warning("Setting up PostgreSQL...")
         setup_postgres()
     
