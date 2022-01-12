@@ -54,7 +54,7 @@ def pytest_generate_tests(metafunc):
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
     found_mark_parametrize_document_store = False
     for marker in metafunc.definition.iter_markers('parametrize'):
-        if 'document_store' == marker.args[0]:
+        if 'document_store' in marker.args[0]:
             found_mark_parametrize_document_store = True
             break
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
@@ -494,30 +494,30 @@ def document_store(request, test_docs_xs):
 
 @pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
 def document_store_dot_product(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="dot_product")
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
 def document_store_dot_product_with_docs(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="dot_product")
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
 def document_store_dot_product_small(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="dot_product")
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_small(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="cosine")
     yield document_store
     document_store.delete_documents()
 
