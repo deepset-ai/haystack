@@ -1228,7 +1228,7 @@ the vector embeddings are indexed in a FAISS Index.
                                 Benchmarks: XXX
 - `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                     or one with docs that you used in Haystack before and want to load again.
-- `return_embedding`: To return document embedding
+- `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
@@ -1322,7 +1322,7 @@ a large number of documents without having to load all documents in memory.
               DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `return_embedding`: Whether to return the document embeddings.
+- `return_embedding`: Whether to return the document embeddings. Unlike other document stores, FAISS will return normalized embeddings
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="faiss.FAISSDocumentStore.get_embedding_count"></a>
@@ -1404,7 +1404,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name to query the document from.
-- `return_embedding`: To return document embedding
+- `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
 
 **Returns**:
 
@@ -1761,6 +1761,7 @@ Some of the key differences in contrast to FAISS & Milvus:
 2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
+5. Only support cosine similarity.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -1776,7 +1777,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1792,7 +1793,7 @@ The current implementation is not supporting the storage of labels, so you canno
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                    If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
-- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default.
+- `similarity`: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
                    'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                    Currently, HSNW is only supported.

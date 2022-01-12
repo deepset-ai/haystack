@@ -31,6 +31,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
     3. Has less variety of ANN algorithms, as of now only HNSW.
     4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
+    5. Only support cosine similarity.
 
     Weaviate python client is used to connect to the server, more details are here
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -53,7 +54,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             embedding_dim: int = 768,
             content_field: str = "content",
             name_field: str = "name",
-            similarity: str = "dot_product",
+            similarity: str = "cosine",
             index_type: str = "hnsw",
             custom_schema: Optional[dict] = None,
             return_embedding: bool = False,
@@ -74,7 +75,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default.
+        :param similarity: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
@@ -93,6 +94,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already exists.
         """
+        if similarity != "cosine":
+            raise ValueError(f"Weaviate only supports cosine similarity, but you provided {similarity}")
         # save init parameters to enable export of component config as YAML
         self.set_config(
             host=host, port=port, timeout_config=timeout_config, username=username, password=password,
