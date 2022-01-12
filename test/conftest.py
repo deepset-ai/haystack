@@ -52,45 +52,14 @@ def pytest_generate_tests(metafunc):
     # parametrize document_store fixture if it's in the test function argument list
     # but does not have an explicit parametrize annotation e.g
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
-
-    # first check if we need to provide document_store parameters
-    if "document_store" not in metafunc.fixturenames:
-        return
-    params = None
+    found_mark_parametrize_document_store = False
     for marker in metafunc.definition.iter_markers('parametrize'):
-
-        # sometimes combinations of different parameters are specified
-        # in that case marker.args[0] looks like: "retriever,document_store" (just an example)
-        # and marker.args[1] looks like: [("embedding", "memory"), ("embedding", "elasticsearch")]
-        # where marker.args[1] is a list of tuples where each tuple is a combination of parameters
-        if "," in marker.args[0]:
-            parameter_names = marker.args[0].split(",")
-            if "document_store" in parameter_names:
-                return
-            index_to_copy_from = None
-            for i, param in enumerate(parameter_names):
-                if "document_store" in param:
-                    index_to_copy_from = i
-                    break
-            if not index_to_copy_from:
-                continue
-            marker.args[0] += ",document_store"
-            marker.args[1] = [p + (p[index_to_copy_from]) for p in marker.args[1]]
-            return
-
-        # check if the parameters are already provided for document_store
-        if "document_store" == marker.args[0]:
-            return
-        
-        # check if different document store is used to apply same parameters to standard doc store
-        # this is necessary for e.g. retriever tests as they use the same doc store 
-        if 'document_store' in marker.args[0]:
-            params = marker.args[1]
-    if params:
-        metafunc.parametrize("document_store", params, indirect=True)
-        return
+        if 'document_store' == marker.args[0]:
+            found_mark_parametrize_document_store = True
+            break
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
-    metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
+    if 'document_store' in metafunc.fixturenames and not found_mark_parametrize_document_store:
+        metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
 
 
 def _sql_session_rollback(self, attr):

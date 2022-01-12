@@ -147,24 +147,24 @@ def test_elasticsearch_custom_query():
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_dpr_embedding(document_store_dot_product, retriever, docs):
+def test_dpr_embedding(document_store, retriever, docs):
 
-    document_store_dot_product.return_embedding = True
-    document_store_dot_product.write_documents(docs)
-    document_store_dot_product.update_embeddings(retriever=retriever)
+    document_store.return_embedding = True
+    document_store.write_documents(docs)
+    document_store.update_embeddings(retriever=retriever)
     time.sleep(1)
 
-    doc_1 = document_store_dot_product.get_document_by_id("1")
+    doc_1 = document_store.get_document_by_id("1")
     assert len(doc_1.embedding) == 768
-    assert abs(doc_1.embedding[0] - (-0.3063)) < 0.001
-    doc_2 = document_store_dot_product.get_document_by_id("2")
-    assert abs(doc_2.embedding[0] - (-0.3914)) < 0.001
-    doc_3 = document_store_dot_product.get_document_by_id("3")
-    assert abs(doc_3.embedding[0] - (-0.2470)) < 0.001
-    doc_4 = document_store_dot_product.get_document_by_id("4")
-    assert abs(doc_4.embedding[0] - (-0.0802)) < 0.001
-    doc_5 = document_store_dot_product.get_document_by_id("5")
-    assert abs(doc_5.embedding[0] - (-0.0551)) < 0.001
+    assert abs(doc_1.embedding[0] - (-0.0250)) < 0.001
+    doc_2 = document_store.get_document_by_id("2")
+    assert abs(doc_2.embedding[0] - (-0.0314)) < 0.001
+    doc_3 = document_store.get_document_by_id("3")
+    assert abs(doc_3.embedding[0] - (-0.0200)) < 0.001
+    doc_4 = document_store.get_document_by_id("4")
+    assert abs(doc_4.embedding[0] - (-0.0070)) < 0.001
+    doc_5 = document_store.get_document_by_id("5")
+    assert abs(doc_5.embedding[0] - (-0.0049)) < 0.001
 
 
 @pytest.mark.slow
