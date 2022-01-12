@@ -53,8 +53,9 @@ COPY rest_api /home/user/rest_api
 # copy code
 COPY haystack /home/user/haystack
 
-# Install package
-RUN pip3 install -e .
+# Install package  
+# FIXME Add GPU deps!
+RUN pip install -e .[elasticsearch,faiss,milvus,weaviate,graphdb,ray,rest]
 
 # Cache Roberta and NLTK data
 RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"

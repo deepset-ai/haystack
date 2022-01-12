@@ -19,8 +19,7 @@ COPY haystack /home/user/haystack
 # install as a package
 COPY setup.py requirements.txt README.md /home/user/
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
-RUN pip install -e .
+RUN pip install -e .[elasticsearch,faiss,milvus,weaviate,graphdb,ray,rest]
 RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"
 
 # create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH

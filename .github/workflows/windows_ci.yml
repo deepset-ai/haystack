@@ -43,9 +43,7 @@ jobs:
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager -r requirements-dev.txt -e .
-          pip install --upgrade --upgrade-strategy eager -r ui/requirements.txt -e .
-          pip install --upgrade --upgrade-strategy eager -f https://download.pytorch.org/whl/torch_stable.html -r requirements.txt -e .
+          pip install --upgrade --upgrade-strategy eager .[elasticsearch,faiss,milvus,weaviate,graphdb,ray,rest,ui,dev]
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
