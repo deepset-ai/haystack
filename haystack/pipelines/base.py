@@ -759,11 +759,10 @@ class Pipeline(BasePipeline):
         return "\n".join([self._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()])
 
     def _format_pipeline_node(self, node: str, calculated_metrics: dict):
-        node_metrics = {}
+        node_metrics: dict = {}
         for metric_mode in calculated_metrics:
             node_metrics = {**node_metrics, **{f"{metric}{metric_mode}": value for metric, value in calculated_metrics[metric_mode].get(node, {}).items()}}
 
-        #node_metrics = {k:v for calculated_metric in joined for k,v in calculated_metric.items()}
         node_metrics_formatted = "\n".join(sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()]))
         node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""
         s = (
