@@ -963,7 +963,7 @@ def test_similarity_score(document_store_with_docs):
     retriever = EmbeddingRetriever(document_store=document_store_with_docs, embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2")
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
-    prediction = pipeline.run("Paul lives in New York")
+    prediction = pipeline.run("Paul lives in New York"
     scores = [document.score for document in prediction["documents"]]
     assert scores == pytest.approx([0.9102500000000191, 0.6491700000000264, 0.6321699999999737], abs=1e-3)
 
