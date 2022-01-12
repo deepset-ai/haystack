@@ -967,8 +967,9 @@ def test_similarity_score(document_store_with_docs):
     assert scores == pytest.approx([0.889251321554184, 0.6259660720825195, 0.5868852734565735], abs=1e-3)
 
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["memory", "faiss", "milvus", "elasticsearch"], indirect=True)
+@pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product(document_store_dot_product_with_docs):
-    retriever = EmbeddingRetriever(document_store=document_store_dot_product_with_docs, embedding_model="sentence-transformers/paraphrase-xlm-r-multilingual-v1")
+    retriever = EmbeddingRetriever(document_store=document_store_dot_product_with_docs, embedding_model="paraphrase-MiniLM-L3-v2")
     document_store_dot_product_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
     prediction = pipeline.run("Paul lives in New York")
