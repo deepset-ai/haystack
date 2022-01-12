@@ -87,7 +87,14 @@ class DCDocumentStore(BaseDocumentStore):
         if index is None:
             index = self.index
 
-        response = requests.get(f"{self._get_index_endpoint(index)}/documents", stream=True, headers=headers)
+        body: dict = {}
+        if filters is not None:
+            body["filters"] = filters
+        if return_embedding is not None:
+            body["return_embedding"] = return_embedding
+        
+        url = f"{self._get_index_endpoint(index)}/documents-stream"
+        response = requests.post(url=url, json=body, stream=True, headers=headers)
         for raw_doc in response.iter_lines():
             dict_doc = json.loads(raw_doc.decode('utf-8'))
             yield Document.from_dict(dict_doc)
