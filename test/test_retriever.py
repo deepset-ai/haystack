@@ -154,6 +154,7 @@ def test_dpr_embedding(document_store, retriever, docs):
     document_store.update_embeddings(retriever=retriever)
     time.sleep(1)
 
+    # always normalize vector as faiss returns normalized vectors and other document stores do not
     doc_1 = document_store.get_document_by_id("1").embedding
     doc_1 /= np.linalg.norm(doc_1)
     assert len(doc_1) == 768

@@ -157,6 +157,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         original_doc = [d for d in DOCUMENTS if d["content"] == doc.content][0]
         stored_emb = document_store.faiss_indexes[document_store.index].reconstruct(int(doc.meta["vector_id"]))
         # compare original input vec with stored one (ignore extra dim added by hnsw)
+        # original input vec is normalized as faiss only stores normalized vectors
         assert np.allclose(original_doc["embedding"] / np.linalg.norm(original_doc["embedding"]), stored_emb, rtol=0.01)
         
 
@@ -178,6 +179,7 @@ def test_update_docs(document_store, retriever, batch_size):
         updated_embedding = retriever.embed_documents([Document.from_dict(original_doc)])
         stored_doc = document_store.get_all_documents(filters={"name": [doc.meta["name"]]})[0]
         # compare original input vec with stored one (ignore extra dim added by hnsw)
+        # original input vec is normalized as faiss only stores normalized vectors
         assert np.allclose(updated_embedding / np.linalg.norm(updated_embedding), stored_doc.embedding, rtol=0.01)
 
 
