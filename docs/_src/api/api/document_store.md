@@ -380,7 +380,7 @@ Write annotation labels into document store.
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None)
+ | update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -1095,7 +1095,7 @@ Set vector IDs for all documents as None
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str])
+ | update_document_meta(id: str, meta: Dict[str, str], index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -1863,7 +1863,7 @@ None
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str])
+ | update_document_meta(id: str, meta: Dict[str, str], index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id.
