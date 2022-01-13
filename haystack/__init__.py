@@ -1,4 +1,6 @@
 import logging
+import importlib.metadata
+__version__ = importlib.metadata.version('haystack')
 
 # This configuration must be done before any import to apply to all submodules
 logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING)
@@ -8,7 +10,6 @@ from haystack import pipelines
 from haystack.schema import Document, Answer, Label, MultiLabel, Span
 from haystack.nodes import BaseComponent
 from haystack.pipelines import Pipeline
-from haystack._version import __version__
 
 import pandas as pd
 pd.options.display.max_colwidth = 80
