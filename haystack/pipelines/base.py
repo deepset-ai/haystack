@@ -426,7 +426,7 @@ class Pipeline(BasePipeline):
                                 "gold_document_contents", "content", "gold_id_match", "answer_match", "gold_id_or_answer_match", # doc-specific
                                 "rank", "document_id", "gold_document_ids", # generic
                                 "offsets_in_document", "gold_offsets_in_documents", # answer-specific
-                                "type", "node", "node_input"] # generic
+                                "type", "node", "eval_mode"] # generic
             eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
 
         return eval_result
