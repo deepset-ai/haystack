@@ -61,7 +61,7 @@ def pytest_generate_tests(metafunc):
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
     found_mark_parametrize_document_store = False
     for marker in metafunc.definition.iter_markers('parametrize'):
-        if 'document_store' in marker.args[0] or 'document_store_with_docs' in marker.args[0] or 'document_store_type' in marker.args[0]:
+        if 'document_store' in marker.args[0]:
             found_mark_parametrize_document_store = True
             break
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
@@ -486,7 +486,8 @@ def get_retriever(retriever_type, document_store):
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_with_docs(request, test_docs_xs, tmp_path):
-    document_store = get_document_store(request.param, tmp_path=tmp_path)
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0], tmp_path=tmp_path)
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
@@ -498,10 +499,25 @@ def document_store(request, tmp_path):
     yield document_store
     document_store.delete_documents()
 
-@pytest.fixture(params=["faiss", "milvus", "weaviate"])
-def document_store_cosine(request, tmp_path):
+@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
+def document_store_dot_product(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path)
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
+    yield document_store
+    document_store.delete_documents()
+
+@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
+def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
+    document_store.write_documents(test_docs_xs)
+    yield document_store
+    document_store.delete_documents()
+
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
+def document_store_dot_product_small(request, tmp_path):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
@@ -522,17 +538,6 @@ def postgres_fixture():
     else:
         yield
 
-
-# @pytest.fixture
-# def sql_url(tmp_path):
-#     if SQL_TYPE == "postgres":
-#         try:
-#             setup_postgres()
-#             yield get_sql_url(tmp_path)
-#         finally:
-#             teardown_postgres()
-#     else:
-#         yield get_sql_url(tmp_path)
 
 @pytest.fixture
 def sql_url(tmp_path):
@@ -570,12 +575,7 @@ def teardown_postgres():
         connection.close()
 
 
-def get_document_store(document_store_type, tmp_path, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="dot_product"):
-    
-    # if SQL_TYPE == "postgres" and document_store_type in ["faiss", "milvus", "sql"]:
-    #     logging.warning("Setting up PostgreSQL...")
-    #     setup_postgres()
-    
+def get_document_store(document_store_type, tmp_path, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="cosine"): # cosine is default similarity as dot product is not supported by Weaviate
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
 
@@ -599,7 +599,7 @@ def get_document_store(document_store_type, tmp_path, embedding_dim=768, embeddi
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
-            isolation_level="AUTOCOMMIT"# if SQL_TYPE == "postgres" else None
+            isolation_level="AUTOCOMMIT"
         )
 
     elif document_store_type == "milvus":
@@ -610,7 +610,7 @@ def get_document_store(document_store_type, tmp_path, embedding_dim=768, embeddi
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
-            isolation_level="AUTOCOMMIT"# if SQL_TYPE == "postgres" else None
+            isolation_level="AUTOCOMMIT"
         )
         _, collections = document_store.milvus_server.list_collections()
         for collection in collections:
@@ -630,10 +630,6 @@ def get_document_store(document_store_type, tmp_path, embedding_dim=768, embeddi
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
     return document_store
-
-    # if SQL_TYPE == "postgres" and document_store_type in ["faiss", "milvus"]:
-    #     logging.warning("Tearing down PostgreSQL...")
-    #     teardown_postgres()
 
 
 @pytest.fixture(scope="function")
