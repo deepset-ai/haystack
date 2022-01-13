@@ -6,6 +6,7 @@ components:
     params:
       no_ans_boost: -10
       model_name_or_path: deepset/roberta-base-squad2
+      num_processes: 0
   - name: ESRetriever
     type: ElasticsearchRetriever
     params:

@@ -15,14 +15,15 @@ from haystack.nodes.file_converter import (
     TikaConverter,
     TikaXHTMLParser,
     TextConverter,
-    AzureConverter
+    AzureConverter,
+    ParsrConverter,
 )
 from haystack.nodes.other import Docs2Answers, JoinDocuments
 from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
 from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker
-from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader
+from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader, RCIReader
 from haystack.nodes.retriever import (
     BaseRetriever,
     DensePassageRetriever,

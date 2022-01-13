@@ -125,17 +125,17 @@ def test_most_similar_documents_pipeline(retriever, document_store):
 
 
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_join_document_pipeline(document_store_with_docs, reader):
-    es = ElasticsearchRetriever(document_store=document_store_with_docs)
+def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
-        document_store=document_store_with_docs,
+        document_store=document_store_dot_product_with_docs,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
         passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
         use_gpu=False,
     )
-    document_store_with_docs.update_embeddings(dpr)
+    document_store_dot_product_with_docs.update_embeddings(dpr)
 
     query = "Where does Carla live?"
 

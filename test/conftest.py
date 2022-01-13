@@ -2,6 +2,7 @@ import subprocess
 import time
 from subprocess import run
 from sys import platform
+import gc
 
 import numpy as np
 import psutil
@@ -33,7 +34,7 @@ from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
-from haystack.nodes.reader.table import TableReader
+from haystack.nodes.reader.table import TableReader, RCIReader
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
@@ -53,7 +54,7 @@ def pytest_generate_tests(metafunc):
     # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
     found_mark_parametrize_document_store = False
     for marker in metafunc.definition.iter_markers('parametrize'):
-        if 'document_store' in marker.args[0] or 'document_store_with_docs' in marker.args[0] or 'document_store_type' in marker.args[0]:
+        if 'document_store' in marker.args[0]:
             found_mark_parametrize_document_store = True
             break
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
@@ -115,6 +116,15 @@ def pytest_collection_modifyitems(config,items):
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"')
                 item.add_marker(skip_docstore)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def gc_cleanup(request):
+    """
+    Run garbage collector between tests in order to reduce memory footprint for CI.
+    """
+    yield
+    gc.collect()
 
 
 @pytest.fixture(scope="session")
@@ -247,7 +257,7 @@ def xpdf_fixture():
             )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def rag_generator():
     return RAGenerator(
         model_name_or_path="facebook/rag-token-nq",
@@ -256,17 +266,17 @@ def rag_generator():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def eli5_generator():
     return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", max_length=20)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def summarizer():
     return TransformersSummarizer(
         model_name_or_path="google/pegasus-xsum",
@@ -274,21 +284,21 @@ def summarizer():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def en_to_de_translator():
     return TransformersTranslator(
         model_name_or_path="Helsinki-NLP/opus-mt-en-de",
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def de_to_en_translator():
     return TransformersTranslator(
         model_name_or_path="Helsinki-NLP/opus-mt-de-en",
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def test_docs_xs():
     return [
         # current "dict" format for a document
@@ -300,7 +310,7 @@ def test_docs_xs():
     ]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def reader_without_normalized_scores():
     return FARMReader(
         model_name_or_path="distilbert-base-uncased-distilled-squad",
@@ -311,7 +321,7 @@ def reader_without_normalized_scores():
     )
 
 
-@pytest.fixture(params=["farm", "transformers"], scope="module")
+@pytest.fixture(params=["farm", "transformers"], scope="function")
 def reader(request):
     if request.param == "farm":
         return FARMReader(
@@ -328,32 +338,36 @@ def reader(request):
         )
 
 
-@pytest.fixture(scope="module")
-def table_reader():
-    return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+@pytest.fixture(params=["tapas", "rci"], scope="function")
+def table_reader(request):
+    if request.param == "tapas":
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+    elif request.param == "rci":
+        return RCIReader(row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
+                         column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def ranker_two_logits():
     return SentenceTransformersRanker(
         model_name_or_path="deepset/gbert-base-germandpr-reranking",
     )
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def ranker():
     return SentenceTransformersRanker(
         model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
         use_gpu=False
     )
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def zero_shot_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="cross-encoder/nli-distilroberta-base",
@@ -362,7 +376,7 @@ def zero_shot_document_classifier():
         labels=["negative", "positive"]
     )
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def batched_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
@@ -370,7 +384,7 @@ def batched_document_classifier():
         batch_size=16
     )
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def indexing_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
@@ -381,7 +395,7 @@ def indexing_document_classifier():
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
-@pytest.fixture(params=["farm"], scope="module")
+@pytest.fixture(params=["farm"], scope="function")
 def no_answer_reader(request):
     if request.param == "farm":
         return FARMReader(
@@ -401,14 +415,14 @@ def no_answer_reader(request):
         )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def prediction(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     return prediction
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def no_answer_prediction(no_answer_reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
@@ -465,34 +479,50 @@ def get_retriever(retriever_type, document_store):
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_with_docs(request, test_docs_xs):
-    document_store = get_document_store(request.param)
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0])
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
 
 
 @pytest.fixture
-def document_store(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0])
+def document_store(request):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0])
     yield document_store
     document_store.delete_documents()
 
-@pytest.fixture(params=["faiss", "milvus", "weaviate"])
-def document_store_cosine(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(768))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
+def document_store_dot_product(request):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
+    yield document_store
+    document_store.delete_documents()
+
+@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
+def document_store_dot_product_with_docs(request, test_docs_xs):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
+    document_store.write_documents(test_docs_xs)
+    yield document_store
+    document_store.delete_documents()
+
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
+def document_store_dot_product_small(request):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
-def document_store_cosine_small(request, test_docs_xs):
-    vector_dim = request.node.get_closest_marker("vector_dim", pytest.mark.vector_dim(3))
-    document_store = get_document_store(request.param, vector_dim.args[0], similarity="cosine")
+def document_store_small(request):
+    embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
+    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="cosine")
     yield document_store
-    document_store.delete_documents()    
+    document_store.delete_documents()
 
-def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="dot_product"):
+def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="cosine"): # cosine is default similarity as dot product is not supported by Weaviate
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url="sqlite://", index=index)
     elif document_store_type == "memory":
@@ -508,7 +538,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         )
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
-            vector_dim=embedding_dim,
+            embedding_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
@@ -517,7 +547,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         )
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
-            vector_dim=embedding_dim,
+            embedding_dim=embedding_dim,
             sql_url="sqlite://",
             return_embedding=True,
             embedding_field=embedding_field,
@@ -543,7 +573,7 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
     return document_store
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def adaptive_model_qa(num_processes):
     """
     PyTest Fixture for a Question Answering Inferencer based on PyTorch.
@@ -571,7 +601,7 @@ def adaptive_model_qa(num_processes):
     assert len(children) == 0
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def bert_base_squad2(request):
     model = QAInferencer.load(
             "deepset/minilm-uncased-squad2",
