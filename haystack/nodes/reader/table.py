@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Dict, Union
+from typing import List, Optional, Tuple, Dict
 
 import logging
 from statistics import mean
@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from quantulum3 import parser
 from transformers import TapasTokenizer, TapasForQuestionAnswering, AutoTokenizer, AutoModelForSequenceClassification, \
-    BatchEncoding, AutoConfig, TapasModel, TapasConfig
+    BatchEncoding, TapasModel
 from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
 
 from haystack.schema import Document, Answer, Span
