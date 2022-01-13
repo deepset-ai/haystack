@@ -558,7 +558,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if not index:
             index = self.index
         body = {"doc": meta}
-        self.client.update(index=self.index, id=id, body=body, refresh=self.refresh_type, headers=headers)
+        self.client.update(index=index, id=id, body=body, refresh=self.refresh_type, headers=headers)
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None,
                            only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int:

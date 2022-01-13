@@ -489,7 +489,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         if not index:
             index = self.index
-        self.weaviate_client.data_object.update(meta, class_name=self.index, uuid=id)
+        self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
     def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         """
