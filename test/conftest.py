@@ -495,7 +495,7 @@ def document_store_with_docs(request, test_docs_xs, tmp_path):
 @pytest.fixture
 def document_store(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim=embedding_dim.args[0], tmp_path=tmp_path)
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
