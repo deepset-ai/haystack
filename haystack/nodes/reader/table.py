@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union
 
 import logging
 from statistics import mean
@@ -59,9 +59,15 @@ class TableReader(BaseReader):
 
         - ``'google/tapas-base-finetuned-wtq`'``
         - ``'google/tapas-base-finetuned-wikisql-supervised``'
+        - ``'deepset/tapas-large-nq-hn-reader'``
+        - ``'deepset/tapas-large-nq-reader'``
 
         See https://huggingface.co/models?pipeline_tag=table-question-answering
         for full list of available TableQA models.
+
+        The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
+        over multiple cells. All the other models can handle aggregation questions, but don't provide reasonable
+        confidence scores.
 
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
         See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
@@ -75,7 +81,7 @@ class TableReader(BaseReader):
         """
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        if model_name_or_path in ["../../../Models/tapas_nq_hn_reader", "tapas_nq_hn_reader"]:
+        if model_name_or_path in ["deepset/tapas-large-nq-hn-reader", "deepset/tapas-large-nq-reader", "../../../Models/tapas_nq_hn_reader"]:
             self.model = self.TapasForScoredQA.from_pretrained(model_name_or_path)
         else:
             self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
@@ -140,6 +146,8 @@ class TableReader(BaseReader):
         return results
 
     def _predict_tapas_for_qa(self, inputs: BatchEncoding, document: Document) -> Answer:
+        table: pd.DataFrame = document.content
+
         # Forward query and table through model and convert logits to predictions
         outputs = self.model(**inputs)
         inputs.to("cpu")
@@ -162,7 +170,7 @@ class TableReader(BaseReader):
         current_answer_coordinates = predicted_answer_coordinates[0]
         current_answer_cells = []
         for coordinate in current_answer_coordinates:
-            current_answer_cells.append(document.content.iat[coordinate])
+            current_answer_cells.append(table.iat[coordinate])
 
         # Get aggregation operator
         if self.model.config.aggregation_labels is not None:
@@ -195,6 +203,8 @@ class TableReader(BaseReader):
         return answer
 
     def _predict_tapas_for_scored_qa(self, inputs: BatchEncoding, document: Document, top_k: int) -> List[Answer]:
+        table: pd.DataFrame = document.content
+
         # Forward pass through model
         outputs = self.model.tapas(**inputs)
 
@@ -215,18 +225,20 @@ class TableReader(BaseReader):
         row_ids = inputs.token_type_ids[:, :, token_types.index("row_ids")].tolist()[0]
         column_ids = inputs.token_type_ids[:, :, token_types.index("column_ids")].tolist()[0]
 
-        possible_answer_spans = []  # List of tuples: (row_idx, col_idx, start_token, end_token)
-        current_start_indices = []
-        current_column_idx = -1
+        possible_answer_spans: List[Tuple[int, int, int, int]] = []  # List of tuples: (row_idx, col_idx, start_token, end_token)
+        current_start_idx = None
+        current_column_id = None
         for idx, (row_id, column_id) in enumerate(zip(row_ids, column_ids)):
             if row_id == 0 or column_id == 0:
                 continue
-            if column_id != current_column_idx:
-                current_column_idx = column_id
-                current_start_indices = []
-            current_start_indices.append(idx)
-            for start_idx in current_start_indices:
-                possible_answer_spans.append((row_id-1, column_id-1, start_idx, idx))
+            # Beginning of new cell
+            if column_id != current_column_id:
+                if current_start_idx is not None:
+                    possible_answer_spans.append(
+                        (row_ids[current_start_idx]-1, column_ids[current_start_idx]-1, current_start_idx, idx-1)
+                    )
+                current_start_idx = idx
+                current_column_id = column_id
 
         # Concat logits of start token and end token of possible answer spans
         sequence_output = outputs.last_hidden_state
@@ -235,17 +247,18 @@ class TableReader(BaseReader):
             start_token_logits = sequence_output[0, possible_span[2], :]
             end_token_logits = sequence_output[0, possible_span[3], :]
             concatenated_logits.append(torch.cat((start_token_logits, end_token_logits)))
-        concatenated_logits = torch.unsqueeze(torch.stack(concatenated_logits), dim=0)
+        concatenated_logit_tensors = torch.unsqueeze(torch.stack(concatenated_logits), dim=0)
 
-        span_logits = torch.einsum("bsj,j->bs", concatenated_logits, self.model.span_output_weights) \
+        # Calculate score for each possible span
+        span_logits = torch.einsum("bsj,j->bs", concatenated_logit_tensors, self.model.span_output_weights) \
                       + self.model.span_output_bias
 
-        top_k_answer_spans = torch.topk(span_logits[0], top_k)
+        top_k_answer_spans = torch.topk(span_logits[0], min(top_k, len(possible_answer_spans)))
 
         answers = []
         for answer_span_idx in top_k_answer_spans.indices:
             current_answer_span = possible_answer_spans[answer_span_idx]
-            answer_str = self.tokenizer.decode(inputs.input_ids[0, current_answer_span[2]:current_answer_span[3]+1])
+            answer_str = table.iat[current_answer_span[:2]]
             answer_offsets = self._calculate_answer_offsets([current_answer_span[:2]], document.content)
             current_score = span_logits[0, answer_span_idx].item()
 
@@ -259,7 +272,7 @@ class TableReader(BaseReader):
                     offsets_in_context=answer_offsets,
                     document_id=document.id,
                     meta={"aggregation_operator": "NONE",
-                          "answer_cells": document.content.iat[current_answer_span[:2]]}
+                          "answer_cells": table.iat[current_answer_span[:2]]}
                 )
             )
 
