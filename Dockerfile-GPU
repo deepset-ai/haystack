@@ -1,4 +1,4 @@
-FROM  nvidia/cuda:11.0-runtime-ubuntu20.04
+FROM  nvidia/cuda:11.1-runtime-ubuntu20.04
 
 WORKDIR /home/user
 
@@ -7,9 +7,6 @@ ENV LANG=C.UTF-8
 
 # create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH
 RUN mkdir -p /home/user/file-upload && chmod 777 /home/user/file-upload
-
-# Install PDF converter
-RUN curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz | tar -xvzf - -C /usr/local/bin --strip-components=2 xpdf-tools-linux-4.03/bin64/pdftotext
 
 # Install software dependencies
 RUN apt-get update && apt-get install -y software-properties-common && \
@@ -30,6 +27,9 @@ RUN apt-get update && apt-get install -y software-properties-common && \
         tesseract-ocr \
         wget
 
+# Install PDF converter
+RUN curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz | tar -xvzf - -C /usr/local/bin --strip-components=2 xpdf-tools-linux-4.03/bin64/pdftotext
+
 # Set default Python version
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 && \
     update-alternatives --set python3 /usr/bin/python3.7
@@ -37,18 +37,12 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 
 # Copy package setup files
 COPY setup.py requirements.txt README.md /home/user/
 
+RUN pip install --upgrade pip
 RUN echo "Install required packages" && \
     # Install PyTorch for CUDA 11
-    pip3 install torch==1.7.1+cu110 -f https://download.pytorch.org/whl/torch_stable.html && \
-    # Install faiss separately as building latest versions can cause trouble with swig
-    pip3 install faiss-cpu==1.6.3 && \
-    # Install extra packages
-    pip3 install Cython && \
-    # Install from requirements.txt
+    pip3 install torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html && \
+    # Install from requirements.txt		
     pip3 install -r requirements.txt
-
-# download punkt tokenizer to be included in image
-RUN python3 -c "import nltk;nltk.download('punkt', download_dir='/usr/nltk_data')"
 
 # copy saved models
 COPY README.md models* /home/user/models/
@@ -61,6 +55,9 @@ COPY haystack /home/user/haystack
 
 # Install package
 RUN pip3 install -e .
+
+# Cache Roberta and NLTK data
+RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"
 
 # optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/

@@ -210,13 +210,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
             new_document.embedding = doc.embedding if return_embedding is True else None
 
             if self.similarity == "dot_product":
-                score = np.dot(query_emb, doc.embedding) / (
-                    np.linalg.norm(query_emb) * np.linalg.norm(doc.embedding)
-                )
+                score = np.dot(query_emb, doc.embedding)
             elif self.similarity == "cosine":
                 # cosine similarity score = 1 - cosine distance
                 score = 1 - cosine(query_emb, doc.embedding)
-            new_document.score = (score + 1) / 2
+            new_document.score = self.finalize_raw_score(score, self.similarity)
             candidate_docs.append(new_document)
 
         return sorted(candidate_docs, key=lambda x: x.score if x.score is not None else 0.0, reverse=True)[0:top_k]

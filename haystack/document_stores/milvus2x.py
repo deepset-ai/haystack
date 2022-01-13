@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 
 if TYPE_CHECKING:
@@ -59,7 +60,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
             port: str = "19530",
             connection_pool: str = "SingletonThread",
             index: str = "document",
-            vector_dim: int = 768,
+            vector_dim: int = None,
+            embedding_dim: int = 768,
             index_file_size: int = 1024,
             similarity: str = "dot_product",
             index_type: str = "IVF_FLAT",
@@ -81,7 +83,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                            See https://milvus.io/docs/v1.0.0/install_milvus.md for instructions to start a Milvus instance.
         :param connection_pool: Connection pool type to connect with Milvus server. Default: "SingletonThread".
         :param index: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
-        :param vector_dim: The embedding vector size. Default: 768.
+        :param vector_dim: Deprecated. Use embedding_dim instead.
+        :param embedding_dim: The embedding vector size. Default: 768.
         :param index_file_size: Specifies the size of each segment file that is stored by Milvus and its default value is 1024 MB.
          When the size of newly inserted vectors reaches the specified volume, Milvus packs these vectors into a new segment.
          Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
@@ -120,7 +123,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             sql_url=sql_url, host=host, port=port, connection_pool=connection_pool, index=index, vector_dim=vector_dim,
-            index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
+            embedding_dim=embedding_dim, index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
             search_param=search_param, duplicate_documents=duplicate_documents, id_field=id_field,
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
             custom_fields=custom_fields,
@@ -135,7 +138,13 @@ class Milvus2DocumentStore(SQLDocumentStore):
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
 
-        self.vector_dim = vector_dim
+        if vector_dim is not None:
+            warnings.warn("The 'vector_dim' parameter is deprecated, "
+                          "use 'embedding_dim' instead.", DeprecationWarning, 2)
+            self.embedding_dim = vector_dim
+        else:
+            self.embedding_dim = embedding_dim
+
         self.index_file_size = index_file_size
 
         if similarity == "dot_product":
@@ -187,7 +196,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if not has_collection:
             fields = [
                 FieldSchema(name=self.id_field, dtype=DataType.INT64, is_primary=True, auto_id=True),
-                FieldSchema(name=self.embedding_field, dtype=DataType.FLOAT_VECTOR, dim=self.vector_dim)
+                FieldSchema(name=self.embedding_field, dtype=DataType.FLOAT_VECTOR, dim=self.embedding_dim)
             ]
 
             for field in custom_fields:
