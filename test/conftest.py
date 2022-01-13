@@ -487,7 +487,7 @@ def get_retriever(retriever_type, document_store):
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim.args[0], tmp_path=tmp_path)
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path)
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
@@ -495,21 +495,21 @@ def document_store_with_docs(request, test_docs_xs, tmp_path):
 @pytest.fixture
 def document_store(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path)
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim=embedding_dim.args[0], tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
 def document_store_dot_product(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
 def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
@@ -517,14 +517,14 @@ def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
 def document_store_dot_product_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
-    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
 def document_store_cosine_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
-    document_store = get_document_store(request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path)
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
