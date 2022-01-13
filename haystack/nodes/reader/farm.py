@@ -407,6 +407,8 @@ class FARMReader(BaseReader):
         temperature: float = 1.0,
         tinybert_loss: bool = False,
         tinybert_epochs: int = 1,
+        tinybert_learning_rate: float = 5e-5,
+        tinybert_train_filename: Optional[str] = None,
     ):
         """
         Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -465,13 +467,15 @@ class FARMReader(BaseReader):
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         :param tinybert_loss: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
         :param tinybert_epochs: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
+        :param tinybert_learning_rate: Learning rate to use when training the student model with the TinyBERT loss function.
+        :param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
         :return: None
         """
         if tinybert_loss: # do hidden state and attention distillation as additional stage
-            self._training_procedure(data_dir=data_dir, train_filename=train_filename,
+            self._training_procedure(data_dir=data_dir, train_filename=tinybert_train_filename if tinybert_train_filename else train_filename,
             dev_filename=dev_filename, test_filename=test_filename,
             use_gpu=use_gpu, batch_size=student_batch_size,
-            n_epochs=tinybert_epochs, learning_rate=learning_rate,
+            n_epochs=tinybert_epochs, learning_rate=tinybert_learning_rate,
             max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
             dev_split=dev_split, evaluate_every=evaluate_every,
             save_dir=save_dir, num_processes=num_processes,
