@@ -568,9 +568,15 @@ Available models include:
 
 - ``'google/tapas-base-finetuned-wtq`'``
 - ``'google/tapas-base-finetuned-wikisql-supervised``'
+- ``'deepset/tapas-large-nq-hn-reader'``
+- ``'deepset/tapas-large-nq-reader'``
 
 See https://huggingface.co/models?pipeline_tag=table-question-answering
 for full list of available TableQA models.
+
+The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
+over multiple cells. All the other models can handle aggregation questions, but don't provide reasonable
+confidence scores.
 
 **Arguments**:
 
