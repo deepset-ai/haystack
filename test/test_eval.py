@@ -538,12 +538,12 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_extractive_qa_eval_label_input(reader, retriever_with_docs):
+def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
         sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-        use_labels_as_input=True
+        add_isolated_node_eval=True
     )
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1)
@@ -557,7 +557,7 @@ def test_extractive_qa_eval_label_input(reader, retriever_with_docs):
     assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
     assert metrics_top_1["Retriever"]["precision"] == 1.0 / 6
 
-    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, node_input="label")
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, eval_mode="isolated")
 
     assert metrics_top_1["Reader"]["exact_match"] == 1.0
     assert metrics_top_1["Reader"]["f1"] == 1.0
@@ -614,7 +614,7 @@ def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
     eval_result: EvaluationResult = pipeline.eval(
         labels=labels,
         params={"Retriever": {"top_k": 5}},
-        use_labels_as_input=True
+        add_isolated_node_eval=True
     )
     pipeline.print_eval_report(eval_result)
 

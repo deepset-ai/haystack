@@ -369,7 +369,7 @@ class Pipeline(BasePipeline):
         labels: List[MultiLabel],
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
-        use_labels_as_input: bool = False
+        add_isolated_node_eval: bool = False
     ) -> EvaluationResult:
         """
             Evaluates the pipeline by running the pipeline once per query in debug mode 
@@ -391,13 +391,13 @@ class Pipeline(BasePipeline):
                         - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                         - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
                         - Large model for German only: "deepset/gbert-large-sts"
-            :param use_labels_as_input: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
+            :param add_isolated_node_eval: Whether to additionally evaluate individual nodes based on labels as input instead of the output of the previous node in the pipeline
         """    
         eval_result = EvaluationResult()
-        if use_labels_as_input:
+        if add_isolated_node_eval:
             if params is None:
                 params = {}
-            params["use_labels_as_input"] = True
+            params["add_isolated_node_eval"] = True
         queries = [label.query for label in labels]
         for query, label in zip(queries, labels):
             predictions = self.run(query=query, labels=label, params=params, debug=True)
@@ -455,15 +455,15 @@ class Pipeline(BasePipeline):
         # - the position or offsets within the document the answer was found
         # - the surrounding context of the answer within the document
         # - the gold answers
-        # - the positon or offsets of the gold answer within the document
+        # - the position or offsets of the gold answer within the document
         # - the gold document ids containing the answer
         # - the exact_match metric depicting if the answer exactly matches the gold label
         # - the f1 metric depicting how well the answer overlaps with the gold label on token basis
-        # - the sas metric depciting how well the answer matches the gold label on a semantic basis.
+        # - the sas metric depicting how well the answer matches the gold label on a semantic basis.
         #   this will be calculated on all queries in eval() for performance reasons if a sas model has been provided
 
         partial_dfs = []
-        for field_name in ["answers", "answers_with_labels_as_input"]:
+        for field_name in ["answers", "answers_isolated"]:
             df = pd.DataFrame()
             answers = node_output.get(field_name, None)
             if answers is not None:
@@ -481,15 +481,23 @@ class Pipeline(BasePipeline):
                     df_answers["rank"] = np.arange(1, len(df_answers)+1)
                     df = pd.concat([df, df_answers])
 
-            # if node returned documents, include document specific info:
-            # - the document_id
-            # - the content of the document
-            # - the gold document ids
-            # - the gold document contents
-            # - the gold_id_match metric depicting whether one of the gold document ids matches the document
-            # - the answer_match metric depicting whether the document contains the answer
-            # - the gold_id_or_answer_match metric depicting whether one of the former two conditions are met
-            documents = node_output.get("documents", None)
+            # add general info
+            df["node"] = node_name
+            df["query"] = query
+            df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
+            partial_dfs.append(df)
+
+        # if node returned documents, include document specific info:
+        # - the document_id
+        # - the content of the document
+        # - the gold document ids
+        # - the gold document contents
+        # - the gold_id_match metric depicting whether one of the gold document ids matches the document
+        # - the answer_match metric depicting whether the document contains the answer
+        # - the gold_id_or_answer_match metric depicting whether one of the former two conditions are met
+        for field_name in ["documents", "documents_isolated"]:
+            df = pd.DataFrame()
+            documents = node_output.get(field_name, None)
             if documents is not None:
                 document_cols_to_keep = ["content", "id"]
                 df_docs = pd.DataFrame(documents, columns=document_cols_to_keep)
@@ -514,7 +522,7 @@ class Pipeline(BasePipeline):
             # add general info
             df["node"] = node_name
             df["query"] = query
-            df["node_input"] = "prediction" if field_name == "answers" else "label"
+            df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
         return pd.concat(partial_dfs, ignore_index=True)
@@ -805,7 +813,7 @@ class Pipeline(BasePipeline):
 
         calculated_metrics = {"": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match"),
                               "_top_1": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1),
-                              " upper bound with perfect node input": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", node_input="label")}
+                              " upper bound": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", eval_mode="isolated")}
 
         if metrics_filter is not None:
             for metric_mode in calculated_metrics:
