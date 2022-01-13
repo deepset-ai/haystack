@@ -10,10 +10,7 @@ from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
 import warnings
 
-try:
-    import faiss
-except ImportError:
-    faiss = None
+import faiss
 import numpy as np
 
 from haystack.schema import Document

@@ -8,6 +8,8 @@ import logging
 import importlib
 from pathlib import Path
 
+from haystack.document_stores.base import BaseDocumentStore
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ def _missing_dependency_stub_factory(classname, dep_group, import_error):
     Create custom versions of MissingDependency using the given parameters.
     See `safe_import()`
     """
-    class MissingDependency:
+    class MissingDependency(BaseDocumentStore):
 
         def __init__(self, *args, **kwargs):
             raise ImportError(f"Failed to import {classname}. "
