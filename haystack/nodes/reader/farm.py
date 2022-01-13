@@ -203,6 +203,8 @@ class FARMReader(BaseReader):
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
+            if tinybert:
+                save_dir += "_tinybert_stage_1"
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
         label_list = ["start_token", "end_token"]
@@ -406,7 +408,7 @@ class FARMReader(BaseReader):
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
         tinybert_loss: bool = False,
-        tinybert_epochs: int = 1,
+        tinybert_epochs: int = 5,
         tinybert_learning_rate: float = 5e-5,
         tinybert_train_filename: Optional[str] = None,
     ):
