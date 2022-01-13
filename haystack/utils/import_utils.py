@@ -5,10 +5,46 @@ import tarfile
 import zipfile
 import requests
 import logging
+import importlib
 from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
+
+
+def safe_import(import_path, classname, dep_group):
+    """
+    Method that allows the import of "non-existing" document stores.
+    Doc stores can be installed one by one with extras_require (see setup.cfg)
+    but they need to be all imported in haystack.document_stores.__init__()
+    
+    Therefore, in case of an ImportError, the class to import is replaced by
+    a hollow MissingDependency function, which will throw an error when
+    inizialized.
+    """
+    try:
+        module = importlib.import_module(import_path)
+    except ImportError as ie:
+        module = _missing_dependency_stub_factory(classname, dep_group, ie)
+    return module
+
+
+def _missing_dependency_stub_factory(classname, dep_group, import_error):
+    """
+    Create custom versions of MissingDependency using the given parameters.
+    See `safe_import()`
+    """
+    class MissingDependency:
+
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"Failed to import {classname}. "
+                            f"Make sure you installed the proper dependencies by executing "
+                            f"'pip install farm-haystack[{dep_group}]'") from import_error
+
+        def __getattr__(self, *a, **k):
+            return None
+
+    return MissingDependency
 
 
 def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None) -> bool:

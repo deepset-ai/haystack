@@ -5,15 +5,19 @@ import logging
 import pandas as pd
 from json import JSONDecodeError
 from pathlib import Path
-import streamlit as st
-from annotated_text import annotation
-from markdown import markdown
 
-# streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
-# and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
-# here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
-import SessionState
-from utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
+try:
+    import streamlit as st
+    from annotated_text import annotation
+    from markdown import markdown
+    # streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
+    # and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
+    # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
+    import SessionState
+
+    from utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
+except ImportError as ie:
+    raise ImportError("Failed to load the Streamlit app due to missing dependencies. Run 'pip install farm-haystack[ui]' to install them.") from ie
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:

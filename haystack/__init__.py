@@ -1,5 +1,6 @@
 import logging
 import importlib.metadata
+
 __version__ = importlib.metadata.version('haystack')
 
 # This configuration must be done before any import to apply to all submodules
@@ -13,6 +14,7 @@ from haystack.pipelines import Pipeline
 
 import pandas as pd
 pd.options.display.max_colwidth = 80
+
 
 
 # ###########################################
@@ -58,9 +60,23 @@ from haystack.nodes import (
     summarizer,
     translator
 )
-from haystack import document_stores
-from haystack.nodes.retriever import text2sparql as graph_retriever
-from haystack.document_stores import graphdb as knowledge_graph
+
+# Note that we ignore the ImportError here because if the user did not install
+# the correct dependency group for a document store, we don't need to setup 
+# import warnings for that, so the import here is useless and should fail silently.
+try:
+    from haystack import document_stores
+except ImportError:
+    document_stores = None
+try:
+    from haystack.nodes.retriever import text2sparql as graph_retriever
+except ImportError:
+    graph_retriever = None
+try:
+    from haystack.document_stores import graphdb as knowledge_graph
+except ImportError:
+    knowledge_graph = None
+
 from haystack.modeling.evaluation import eval
 from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogger
 from haystack.nodes.other import JoinDocuments, Docs2Answers
@@ -74,8 +90,9 @@ import haystack.utils.cleaning as cleaning
 # modules need to be set as attributes of their parent model.
 # To make chain imports work (`from haystack.reader import FARMReader`) the module
 # needs to be also present in sys.modules with its complete import path.
-setattr(knowledge_graph, "graphdb", DeprecatedModule(knowledge_graph))
-sys.modules["haystack.knowledge_graph.graphdb"] = DeprecatedModule(knowledge_graph)
+if knowledge_graph:
+    setattr(knowledge_graph, "graphdb", DeprecatedModule(knowledge_graph))
+    sys.modules["haystack.knowledge_graph.graphdb"] = DeprecatedModule(knowledge_graph)
 
 setattr(preprocessor, "utils", DeprecatedModule(preprocessing))
 setattr(preprocessor, "cleaning", DeprecatedModule(cleaning))
@@ -89,7 +106,6 @@ setattr(haystack, "document_classifier", DeprecatedModule(document_classifier))
 setattr(haystack, "extractor", DeprecatedModule(extractor))
 setattr(haystack, "eval", DeprecatedModule(eval))
 setattr(haystack, "file_converter", DeprecatedModule(file_converter, deprecated_attributes=["FileTypeClassifier"]))
-setattr(haystack, "graph_retriever", DeprecatedModule(graph_retriever))
 setattr(haystack, "knowledge_graph", DeprecatedModule(knowledge_graph, deprecated_attributes=["graphdb"]))
 setattr(haystack, "pipeline", DeprecatedModule(pipelines, deprecated_attributes=["JoinDocuments", "Docs2Answers", "SklearnQueryClassifier", "TransformersQueryClassifier"]))
 setattr(haystack, "preprocessor", DeprecatedModule(preprocessor, deprecated_attributes=["utils", "cleaning"]))
@@ -106,7 +122,6 @@ sys.modules["haystack.document_classifier"] = DeprecatedModule(document_classifi
 sys.modules["haystack.extractor"] = DeprecatedModule(extractor)
 sys.modules["haystack.eval"] = DeprecatedModule(eval)
 sys.modules["haystack.file_converter"] = DeprecatedModule(file_converter)
-sys.modules["haystack.graph_retriever"] = DeprecatedModule(graph_retriever)
 sys.modules["haystack.knowledge_graph"] = DeprecatedModule(knowledge_graph)
 sys.modules["haystack.pipeline"] = DeprecatedModule(pipelines)
 sys.modules["haystack.preprocessor"] = DeprecatedModule(preprocessor, deprecated_attributes=["utils", "cleaning"])
@@ -116,6 +131,9 @@ sys.modules["haystack.reader"] = DeprecatedModule(reader)
 sys.modules["haystack.retriever"] = DeprecatedModule(retriever)
 sys.modules["haystack.summarizer"] = DeprecatedModule(summarizer)
 sys.modules["haystack.translator"] = DeprecatedModule(translator)
+if graph_retriever:
+    setattr(haystack, "graph_retriever", DeprecatedModule(graph_retriever))
+    sys.modules["haystack.graph_retriever"] = DeprecatedModule(graph_retriever)
 
 # To be imported from modules, classes need only to be set as attributes, 
 # they don't need to be present in sys.modules too.
@@ -139,7 +157,6 @@ deprecated_attributes=[
     "extractor",
     "eval",
     "file_converter",
-    "graph_retriever",
     "knowledge_graph",
     "pipeline",
     "preprocessor",
@@ -150,4 +167,6 @@ deprecated_attributes=[
     "summarizer",
     "translator"
 ]
+if graph_retriever:
+    deprecated_attributes.append("graph_retriever")
 sys.modules["haystack"] = DeprecatedModule(haystack, is_module_deprecated=False, deprecated_attributes=deprecated_attributes)

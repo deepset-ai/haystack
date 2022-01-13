@@ -1,22 +1,24 @@
 import logging
-
 from pathlib import Path
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.routing import APIRoute
-from starlette.middleware.cors import CORSMiddleware
-
-from rest_api.controller.errors.http_error import http_error_handler
-from rest_api.config import ROOT_PATH
-
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 logger = logging.getLogger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
 
+try:
+    import uvicorn
+    from fastapi import FastAPI, HTTPException
+    from fastapi.routing import APIRoute
+    from starlette.middleware.cors import CORSMiddleware
 
-from rest_api.controller.router import router as api_router
+    from rest_api.controller.errors.http_error import http_error_handler
+    from rest_api.config import ROOT_PATH
+    from rest_api.controller.router import router as api_router
+
+except ImportError as ie:
+    raise ImportError("Failed to import the REST API due to missing dependencies. Run 'pip install farm-haystack[rest]' to install them.") from ie
+
 
 
 def get_application() -> FastAPI:
