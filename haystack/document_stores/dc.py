@@ -20,6 +20,23 @@ class DCDocumentStore(BaseDocumentStore):
         workspace: str = "default", 
         index: str = "default", 
         duplicate_documents: str = 'overwrite'):
+        """
+        A DocumentStore facade enabling you to interact with the documents stored in DC.
+        Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
+        
+        DCDocumentStore is not intended to be used in production-like scenarios.
+
+        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param workspace: workspace in DC
+        :param index: index to access within the DC workspace
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+
+        """
         self.api_key = api_key
         self.workspace = workspace
         self.index = index
