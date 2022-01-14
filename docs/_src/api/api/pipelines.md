@@ -186,7 +186,14 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
             - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
             - Large model for German only: "deepset/gbert-large-sts"
-- `add_isolated_node_eval`: Whether to additionally evaluate individual nodes based on labels as input instead of the output of the previous node in the pipeline
+- `add_isolated_node_eval`: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+            This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+            If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+            If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+            The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+            To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+            The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+            values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
