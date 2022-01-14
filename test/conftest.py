@@ -3,6 +3,9 @@ import time
 from subprocess import run
 from sys import platform
 import gc
+import uuid
+import logging
+from sqlalchemy import create_engine, text
 
 import numpy as np
 import psutil
@@ -38,6 +41,11 @@ from haystack.nodes.reader.table import TableReader, RCIReader
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
+
+
+# To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
+SQL_TYPE = "sqlite"
+# SQL_TYPE = "postgres"
 
 
 def pytest_addoption(parser):
@@ -477,58 +485,112 @@ def get_retriever(retriever_type, document_store):
     return retriever
 
 
+def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
+    # Weaviate currently only supports UUIDs
+    if type(document_store)==WeaviateDocumentStore:
+        for d in docs:
+            d["id"] = str(uuid.uuid4())
+
+
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
-def document_store_with_docs(request, test_docs_xs):
+def document_store_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim.args[0])
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path)
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
 
-
 @pytest.fixture
-def document_store(request):
+def document_store(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim.args[0])
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
-def document_store_dot_product(request):
+def document_store_dot_product(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
-def document_store_dot_product_with_docs(request, test_docs_xs):
+def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
-    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
-def document_store_dot_product_small(request):
+def document_store_dot_product_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
-    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="dot_product")
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="dot_product", tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
-def document_store_small(request):
+def document_store_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
-    document_store = get_document_store(request.param, embedding_dim.args[0], similarity="cosine")
+    document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 
-def get_document_store(document_store_type, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="cosine"): # cosine is default similarity as dot product is not supported by Weaviate
+
+@pytest.fixture(scope="function", autouse=True)
+def postgres_fixture():
+    if SQL_TYPE == "postgres":
+        setup_postgres()
+        yield
+        teardown_postgres()
+    else:
+        yield
+
+
+@pytest.fixture
+def sql_url(tmp_path):
+    return  get_sql_url(tmp_path)
+
+
+def get_sql_url(tmp_path):
+    if SQL_TYPE == "postgres":
+        return "postgresql://postgres:postgres@127.0.0.1/postgres"
+    else:
+        return f"sqlite:///{tmp_path}/haystack_test.db"
+
+
+def setup_postgres():
+    # status = subprocess.run(["docker run --name postgres_test -d -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 postgres"], shell=True)
+    # if status.returncode:
+    #     logging.warning("Tried to start PostgreSQL through Docker but this failed. It is likely that there is already an existing instance running.")
+    # else:
+    #     sleep(5)
+    engine = create_engine('postgresql://postgres:postgres@127.0.0.1/postgres', isolation_level='AUTOCOMMIT')
+
+    with engine.connect() as connection:
+        try:
+            connection.execute(text('DROP SCHEMA public CASCADE'))
+        except Exception as e:
+            logging.error(e)
+        connection.execute(text('CREATE SCHEMA public;'))
+        connection.execute(text('SET SESSION idle_in_transaction_session_timeout = "1s";'))
+
+        
+def teardown_postgres():
+    engine = create_engine('postgresql://postgres:postgres@127.0.0.1/postgres', isolation_level='AUTOCOMMIT')
+    with engine.connect() as connection:
+        connection.execute(text('DROP SCHEMA public CASCADE'))
+        connection.close()
+
+
+def get_document_store(document_store_type, tmp_path, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="cosine"): # cosine is default similarity as dot product is not supported by Weaviate
     if document_store_type == "sql":
-        document_store = SQLDocumentStore(url="sqlite://", index=index)
+        document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
+
     elif document_store_type == "memory":
         document_store = InMemoryDocumentStore(
-            return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, index=index, similarity=similarity
-        )
+            return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, index=index, similarity=similarity)
+        
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         client = Elasticsearch()
@@ -536,28 +598,33 @@ def get_document_store(document_store_type, embedding_dim=768, embedding_field="
         document_store = ElasticsearchDocumentStore(
             index=index, return_embedding=True, embedding_dim=embedding_dim, embedding_field=embedding_field, similarity=similarity
         )
+
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
             embedding_dim=embedding_dim,
-            sql_url="sqlite://",
+            sql_url=get_sql_url(tmp_path),
             return_embedding=True,
             embedding_field=embedding_field,
             index=index,
-            similarity=similarity
+            similarity=similarity,
+            isolation_level="AUTOCOMMIT"
         )
+
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
             embedding_dim=embedding_dim,
-            sql_url="sqlite://",
+            sql_url=get_sql_url(tmp_path),
             return_embedding=True,
             embedding_field=embedding_field,
             index=index,
-            similarity=similarity
+            similarity=similarity,
+            isolation_level="AUTOCOMMIT"
         )
         _, collections = document_store.milvus_server.list_collections()
         for collection in collections:
             if collection.startswith(index):
                 document_store.milvus_server.drop_collection(collection)
+    
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
             weaviate_url="http://localhost:8080",

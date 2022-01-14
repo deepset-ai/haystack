@@ -50,6 +50,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         duplicate_documents: str = 'overwrite',
         faiss_index_path: Union[str, Path] = None,
         faiss_config_path: Union[str, Path] = None,
+        isolation_level: str = None,
         **kwargs,
     ):
         """
@@ -94,6 +95,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             If specified no other params besides faiss_config_path must be specified.
         :param faiss_config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again
@@ -115,7 +117,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             index=index,
             similarity=similarity,
             embedding_field=embedding_field,
-            progress_bar=progress_bar
+            progress_bar=progress_bar,
+            isolation_level=isolation_level
         )
 
         if similarity in ("dot_product", "cosine"):
@@ -155,7 +158,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         super().__init__(
             url=sql_url,
             index=index,
-            duplicate_documents=duplicate_documents
+            duplicate_documents=duplicate_documents,
+            isolation_level=isolation_level
         )
 
         self._validate_index_sync()
