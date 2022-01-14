@@ -162,7 +162,7 @@ Runs the pipeline, one node at a time.
 #### eval
 
 ```python
- | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None) -> EvaluationResult
+ | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -186,6 +186,14 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
             - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
             - Large model for German only: "deepset/gbert-large-sts"
+- `add_isolated_node_eval`: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+            This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+            If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+            If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+            The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+            To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+            The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+            values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
 
 <a name="base.Pipeline.get_nodes_by_class"></a>
 #### get\_nodes\_by\_class
@@ -627,7 +635,7 @@ Instance of DocumentStore or None
 #### eval
 
 ```python
- | eval(labels: List[MultiLabel], params: Optional[dict], sas_model_name_or_path: str = None) -> EvaluationResult
+ | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, add_isolated_node_eval: bool = False) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -640,6 +648,7 @@ and putting together all data that is needed for evaluation, e.g. calculating me
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
 - `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
                             should be path or string pointing to downloadable models.
+- `add_isolated_node_eval`: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
 
 <a name="standard_pipelines.ExtractiveQAPipeline"></a>
 ## ExtractiveQAPipeline

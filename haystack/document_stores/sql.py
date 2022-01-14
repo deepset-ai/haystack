@@ -4,7 +4,7 @@ import logging
 import itertools
 import numpy as np
 from uuid import uuid4
-from sqlalchemy import and_, func, create_engine, Column, String, DateTime, ForeignKey, Boolean, Text, text, JSON
+from sqlalchemy import and_, func, create_engine, Column, String, DateTime, ForeignKey, Boolean, Text, text, JSON, ForeignKeyConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.sql import case, null
@@ -33,9 +33,6 @@ class DocumentORM(ORMBase):
     # primary key in combination with id to allow the same doc in different indices
     index = Column(String(100), nullable=False, primary_key=True)
     vector_id = Column(String(100), unique=True, nullable=True)
-
-    # labels = relationship("LabelORM", back_populates="document")
-
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
 
@@ -45,35 +42,17 @@ class MetaDocumentORM(ORMBase):
 
     name = Column(String(100), index=True)
     value = Column(String(1000), index=True)
-    document_id = Column(
-        String(100),
-        ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
-        index=True
-    )
-
     documents = relationship("DocumentORM", back_populates="meta")
 
-
-class MetaLabelORM(ORMBase):
-    __tablename__ = "meta_label"
-
-    name = Column(String(100), index=True)
-    value = Column(String(1000), index=True)
-    label_id = Column(
-        String(100),
-        ForeignKey("label.id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
-        index=True
-    )
-
-    labels = relationship("LabelORM", back_populates="meta")
+    document_id = Column(String(100), nullable=False, index=True)
+    document_index = Column(String(100), nullable=False, index=True)
+    __table_args__ = (ForeignKeyConstraint([document_id, document_index],
+                                           [DocumentORM.id, DocumentORM.index],
+                                           ondelete="CASCADE", onupdate="CASCADE"), {})  #type: ignore
 
 
 class LabelORM(ORMBase):
     __tablename__ = "label"
-
-    # document_id = Column(String(100), ForeignKey("document.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
     index = Column(String(100), nullable=False, primary_key=True)
     query = Column(Text, nullable=False)
@@ -86,7 +65,21 @@ class LabelORM(ORMBase):
     pipeline_id = Column(String(500), nullable=True)
 
     meta = relationship("MetaLabelORM", back_populates="labels", lazy="joined")
-    # document = relationship("DocumentORM", back_populates="labels")
+
+
+class MetaLabelORM(ORMBase):
+    __tablename__ = "meta_label"
+
+    name = Column(String(100), index=True)
+    value = Column(String(1000), index=True)
+    labels = relationship("LabelORM", back_populates="meta")
+
+    label_id = Column(String(100), nullable=False, index=True)
+    label_index = Column(String(100), nullable=False, index=True)
+    __table_args__ = (ForeignKeyConstraint([label_id, label_index],
+                                           [LabelORM.id, LabelORM.index],
+                                           ondelete="CASCADE", onupdate="CASCADE"), {})  #type: ignore
+
 
 
 class SQLDocumentStore(BaseDocumentStore):
@@ -96,7 +89,8 @@ class SQLDocumentStore(BaseDocumentStore):
         index: str = "document",
         label_index: str = "label",
         duplicate_documents: str = "overwrite",
-        check_same_thread: bool = False
+        check_same_thread: bool = False,
+        isolation_level: str = None
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -112,18 +106,21 @@ class SQLDocumentStore(BaseDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior) 
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
                 url=url, index=index, label_index=label_index, duplicate_documents=duplicate_documents, check_same_thread=check_same_thread
         )
-
+        create_engine_params = {}
+        if isolation_level:
+            create_engine_params["isolation_level"] = isolation_level
         if "sqlite" in url:
-            engine = create_engine(url, connect_args={'check_same_thread': check_same_thread})
+            engine = create_engine(url, connect_args={'check_same_thread': check_same_thread}, **create_engine_params)
         else:
-            engine = create_engine(url)
-        ORMBase.metadata.create_all(engine)
+            engine = create_engine(url, **create_engine_params)
+        Base.metadata.create_all(engine)
         Session = sessionmaker(bind=engine)
         self.session = Session()
         self.index: str = index
@@ -461,12 +458,14 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: null()})
         self.session.commit()
 
-    def update_document_meta(self, id: str, meta: Dict[str, str]):
+    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
-        self.session.query(MetaDocumentORM).filter_by(document_id=id).delete()
-        meta_orms = [MetaDocumentORM(name=key, value=value, document_id=id) for key, value in meta.items()]
+        if not index:
+            index = self.index
+        self.session.query(MetaDocumentORM).filter_by(document_id=id, document_index=index).delete()
+        meta_orms = [MetaDocumentORM(name=key, value=value, document_id=id, document_index=index) for key, value in meta.items()]
         for m in meta_orms:
             self.session.add(m)
         self.session.commit()
