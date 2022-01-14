@@ -142,7 +142,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     if col2.button("Random question"):
         reset_results()
         new_row = df.sample(1)
-        while new_row["Question Text"].values[0] == state.question:  # Avoid picking the same question twice (the change is not visible on the UI)
+        while new_row["Question Text"].values[0] == st.session_state.question:  # Avoid picking the same question twice (the change is not visible on the UI)
             new_row = df.sample(1)
         st.session_state.question = new_row["Question Text"].values[0]
         st.session_state.answer = new_row["Answer"].values[0]
@@ -166,7 +166,6 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     if run_query and question:
         reset_results()
         st.session_state.question = question
-        print(st.session_state.question)
 
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
@@ -174,8 +173,8 @@ Ask any question on this topic and see if Haystack can find the correct answer t
             "Check out the docs: https://haystack.deepset.ai/usage/optimization "
         ):
             try:
-                state.results, state.raw_json = query(question, top_k_reader=top_k_reader,
-                                                      top_k_retriever=top_k_retriever)
+                st.session_state.results, st.session_state.raw_json = query(question, top_k_reader=top_k_reader,
+                                                                            top_k_retriever=top_k_retriever)
             except JSONDecodeError as je:
                 st.error("👓 &nbsp;&nbsp; An error occurred reading the results. Is the document store working?")
                 return
@@ -187,16 +186,16 @@ Ask any question on this topic and see if Haystack can find the correct answer t
                     st.error("🐞 &nbsp;&nbsp; An error occurred during the request.")
                 return
 
-    if state.results:
+    if st.session_state.results:
 
         # Show the gold answer if we use a question of the given set
-        if eval_mode and state.answer:
+        if eval_mode and st.session_state.answer:
             st.write("## Correct answer:")
-            st.write(state.answer)
+            st.write(st.session_state.answer)
 
         st.write("## Results:")
 
-        for count, result in enumerate(state.results):
+        for count, result in enumerate(st.session_state.results):
             if result["answer"]:
                 answer, context = result["answer"], result["context"]
                 start_idx = context.find(answer)
@@ -251,6 +250,6 @@ Ask any question on this topic and see if Haystack can find the correct answer t
 
         if debug:
             st.subheader("REST API JSON response")
-            st.write(state.raw_json)
+            st.write(st.session_state.raw_json)
 
 main()
