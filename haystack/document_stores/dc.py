@@ -10,6 +10,9 @@ from haystack.schema import Document, Label, MultiLabel
 DC_BASE_URL = "https://dccloud"
 DC_API = f"{DC_BASE_URL}/v1"
 
+logger = logging.getLogger(__name__)
+
+
 class DCDocumentStore(BaseDocumentStore):   
     def __init__(
         self, 
@@ -104,8 +107,13 @@ class DCDocumentStore(BaseDocumentStore):
             index = self.index
         
         url = f"{self._get_index_endpoint(index)}/documents/{id}"
-        doc_dict = requests.get(url=url, headers=headers).json()
-        return Document.from_dict(doc_dict)
+        response = requests.get(url=url, headers=headers)
+        if response.status_code == 200:
+            doc_dict = response.json()
+            return Document.from_dict(doc_dict)
+        else:
+            logger.warning(f"Document {id} could not be fetched from DC: HTTP {response.status_code} - {response.reason}")
+            return None
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
                             batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
