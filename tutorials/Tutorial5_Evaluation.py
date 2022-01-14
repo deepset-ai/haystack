@@ -179,7 +179,18 @@ def tutorial5_evaluation():
     metrics = advanced_eval_result.calculate_metrics()
     print(metrics["Reader"]["sas"])
 
+    ## Isolated Evaluation Mode to Understand Upper Bounds of the Reader's Performance
+    # The isolated node evaluation uses labels as input to the reader node instead of the output of the preceeding retriever node.
+    # Thereby, we can additionally calculate the upper bounds of the evaluation metrics of the reader.
+    eval_result_with_upper_bounds = pipeline.eval(
+        labels=eval_labels,
+        params={"Retriever": {"top_k": 1}},
+        add_isolated_node_eval=True
+    )
+    pipeline.print_eval_report(eval_result_with_upper_bounds)
 
+    ## Evaluation of Individual Components
+    # Sometimes you might want to evaluate individual components, for example, if you don't have a pipeline but only a retriever or a reader with a model that you trained yourself.
     # Evaluate Retriever on its own
     # Here we evaluate only the retriever, based on whether the gold_label document is retrieved.
     retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
