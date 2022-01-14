@@ -3,6 +3,7 @@ import time
 from subprocess import run
 from sys import platform
 import gc
+import uuid
 import logging
 from sqlalchemy import create_engine, text
 
@@ -482,6 +483,13 @@ def get_retriever(retriever_type, document_store):
         raise Exception(f"No retriever fixture for '{retriever_type}'")
 
     return retriever
+
+
+def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
+    # Weaviate currently only supports UUIDs
+    if type(document_store)==WeaviateDocumentStore:
+        for d in docs:
+            d["id"] = str(uuid.uuid4())
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])

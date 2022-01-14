@@ -9,7 +9,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
 
-from conftest import get_document_store
+from conftest import get_document_store, ensure_ids_are_correct_uuids
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.errors import DuplicateDocumentError
@@ -1008,13 +1008,6 @@ def test_custom_headers(document_store_with_docs: BaseDocumentStore):
         assert len(documents) > 0
 
 
-def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
-    # Weaviate currently only supports UUIDs
-    if type(document_store)==WeaviateDocumentStore:
-        for d in docs:
-            d["id"] = str(uuid.uuid4())
-
-
 def test_cosine_similarity(document_store):
     # below we will write documents to the store and then query it to see if vectors were normalized
 
@@ -1068,21 +1061,3 @@ def test_normalize_embeddings_diff_shapes(document_store_dot_product_small):
     document_store_dot_product_small.normalize_embedding(VEC_1)
     assert np.linalg.norm(VEC_1) - 1 < 0.01
 
-
-@pytest.mark.parametrize("document_store_small", ["faiss", "milvus", "weaviate"], indirect=True)
-def test_cosine_sanity_check(document_store_small):
-    VEC_1 = np.array([.1, .2, .3], dtype="float32")
-    VEC_2 = np.array([.4, .5, .6], dtype="float32")
-
-    # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
-    # The score is normalized to yield a value between 0 and 1.
-    KNOWN_COSINE = (0.9746317 + 1) / 2
-
-    docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
-    ensure_ids_are_correct_uuids(docs=docs,document_store=document_store_small)
-    document_store_small.write_documents(documents=docs)
-
-    query_results = document_store_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
-
-    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
-    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.00002)
