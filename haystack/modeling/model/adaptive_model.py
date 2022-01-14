@@ -623,7 +623,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         self.device = device
 
     @classmethod
-    def load(cls, load_dir: Union[str, Path], device: str, **kwargs):  # type: ignore
+    def load(cls, load_dir: Union[str, Path], device: torch.device, **kwargs):  # type: ignore
         """
         Loads an ONNXAdaptiveModel from a directory.
 
