@@ -494,7 +494,7 @@ def test_cosine_similarity(document_store):
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
 
-@pytest.mark.parametrize("document_store_dot_product_small", ["faiss", "milvus", "weaviate"], indirect=True)
+@pytest.mark.parametrize("document_store_dot_product_small", ["faiss", "milvus"], indirect=True)
 def test_normalize_embeddings_diff_shapes(document_store_dot_product_small):
     VEC_1 = np.array([.1, .2, .3], dtype="float32")
     document_store_dot_product_small.normalize_embedding(VEC_1)
