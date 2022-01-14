@@ -179,12 +179,13 @@ def tutorial5_evaluation():
     metrics = advanced_eval_result.calculate_metrics()
     print(metrics["Reader"]["sas"])
 
-    ## Evaluation of Upper Bounds of the Reader
-    # By using labels as input to the reader node instead of the output of the preceeding retriever node, we can additionally calculate the upper bounds of the evaluation metrics of the reader.
+    ## Isolated Evaluation Mode to Understand Upper Bounds of the Reader's Performance
+    # The isolated node evaluation uses labels as input to the reader node instead of the output of the preceeding retriever node.
+    # Thereby, we can additionally calculate the upper bounds of the evaluation metrics of the reader.
     eval_result_with_upper_bounds = pipeline.eval(
         labels=eval_labels,
         params={"Retriever": {"top_k": 1}},
-        use_labels_as_input=True
+        add_isolated_node_eval=True
     )
     pipeline.print_eval_report(eval_result_with_upper_bounds)
 
