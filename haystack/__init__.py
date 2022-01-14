@@ -4,7 +4,7 @@ from types import ModuleType
 import logging
 try:
     import importlib.metadata as metadata
-except ImportError:
+except ModuleNotFoundError:
     # Python <= 3.7
     import importlib_metadata as metadata  # type: ignore
 
