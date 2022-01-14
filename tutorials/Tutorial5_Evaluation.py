@@ -189,6 +189,8 @@ def tutorial5_evaluation():
     )
     pipeline.print_eval_report(eval_result_with_upper_bounds)
 
+    ## Evaluation of Individual Components
+    # Sometimes you might want to evaluate individual components, for example, if you don't have a pipeline but only a retriever or a reader with a model that you trained yourself.
     # Evaluate Retriever on its own
     # Here we evaluate only the retriever, based on whether the gold_label document is retrieved.
     retriever_eval_results = retriever.eval(top_k=10, label_index=label_index, doc_index=doc_index)
