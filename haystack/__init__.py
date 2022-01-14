@@ -2,9 +2,12 @@ from typing import Union
 from types import ModuleType
 
 import logging
-import importlib.metadata
+try:
+    import importlib.metadata as metadata
+except ImportError:
+    import importlib_metadata as metadata  # Python <= 3.7
 
-__version__ = importlib.metadata.version('haystack')
+__version__ = metadata.version('haystack')
 
 # This configuration must be done before any import to apply to all submodules
 logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING)
