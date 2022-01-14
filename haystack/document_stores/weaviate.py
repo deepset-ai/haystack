@@ -486,11 +486,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 progress_bar.update(batch_size)
         progress_bar.close()
 
-    def update_document_meta(self, id: str, meta: Dict[str, str]):
+    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
         """
         Update the metadata dictionary of a document by specifying its string id.
         """
-        self.weaviate_client.data_object.update(meta, class_name=self.index, uuid=id)
+        if not index:
+            index = self.index
+        self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
     def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         """

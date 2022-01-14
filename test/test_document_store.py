@@ -1,4 +1,6 @@
 from unittest import mock
+import uuid
+import math
 import numpy as np
 import pandas as pd
 import pytest
@@ -7,7 +9,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
 
-from conftest import get_document_store
+from conftest import get_document_store, ensure_ids_are_correct_uuids
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.errors import DuplicateDocumentError
@@ -16,6 +18,18 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.nodes import EmbeddingRetriever
 from haystack.pipelines import DocumentSearchPipeline
+
+
+DOCUMENTS = [
+    {"meta": {"name": "name_1", "year": "2020", "month": "01"}, "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_2", "year": "2020", "month": "02"}, "content": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_3", "year": "2020", "month": "03"}, "content": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
+    {"meta": {"name": "name_4", "year": "2021", "month": "01"}, "content": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_5", "year": "2021", "month": "02"}, "content": "text_5", "embedding": np.random.rand(768).astype(np.float32)},
+    {"meta": {"name": "name_6", "year": "2021", "month": "03"}, "content": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
+]
+
+
 
 @pytest.mark.elasticsearch
 def test_init_elastic_client():
@@ -148,8 +162,8 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs):
-    document_store_with_docs = get_document_store("sql")
+def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs, tmp_path):
+    document_store_with_docs = get_document_store("sql", tmp_path)
     document_store_with_docs.write_documents(test_docs_xs)
 
     document_store_with_docs.use_windowed_query = False
@@ -791,7 +805,7 @@ def test_multilabel_no_answer(document_store):
     assert len(multi_labels[0].answers) == 1
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus", "weaviate"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
@@ -818,10 +832,8 @@ def test_update_meta(document_store):
 
 
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
-def test_custom_embedding_field(document_store_type):
-    document_store = get_document_store(
-        document_store_type=document_store_type, embedding_field="custom_embedding_field"
-    )
+def test_custom_embedding_field(document_store_type, tmp_path):
+    document_store = get_document_store(document_store_type=document_store_type, tmp_path=tmp_path, embedding_field="custom_embedding_field")
     doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
     document_store.write_documents([doc_to_write])
     documents = document_store.get_all_documents(return_embedding=True)
@@ -994,3 +1006,4 @@ def test_custom_headers(document_store_with_docs: BaseDocumentStore):
         assert "headers" in kwargs
         assert kwargs["headers"] == custom_headers
         assert len(documents) > 0
+
