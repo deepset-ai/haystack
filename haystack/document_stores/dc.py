@@ -99,6 +99,22 @@ class DCDocumentStore(BaseDocumentStore):
             dict_doc = json.loads(raw_doc.decode('utf-8'))
             yield Document.from_dict(dict_doc)
 
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
+        if index is None:
+            index = self.index
+        
+        url = f"{self._get_index_endpoint(index)}/documents/{id}"
+        doc_dict = requests.get(url=url, headers=headers).json()
+        return Document.from_dict(doc_dict)
+
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
+                            batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
+        if batch_size != 10_000:
+            raise ValueError("DCDocumentStore does not support batching")
+        
+        docs = (self.get_document_by_id(id, index=index, headers=headers) for id in ids)
+        return [doc for doc in docs if doc is not None]
+
     def _get_index_endpoint(self, index: Optional[str] = None) -> str:
         if index is None:
             index = self.index
