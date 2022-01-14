@@ -576,7 +576,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
     assert metrics_top_1["Retriever"]["precision"] == 1.0 / 6
-    assert metrics_top_3["Retriever"]["ndcg"] == 0.5
+    assert metrics_top_1["Retriever"]["ndcg"] == 0.5
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, eval_mode="isolated")
 
