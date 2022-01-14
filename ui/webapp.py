@@ -9,10 +9,6 @@ import streamlit as st
 from annotated_text import annotation
 from markdown import markdown
 
-# streamlit does not support any states out of the box. On every button click, streamlit reload the whole page
-# and every value gets lost. To keep track of our feedback state we use the official streamlit gist mentioned
-# here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
-import SessionState
 from utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
 
 
@@ -36,19 +32,17 @@ def main():
     st.set_page_config(page_title='Haystack Demo', page_icon="https://haystack.deepset.ai/img/HaystackIcon.png")
 
     # Persistent state
-    state = SessionState.get(
-        question=DEFAULT_QUESTION_AT_STARTUP,
-        answer=DEFAULT_ANSWER_AT_STARTUP,
-        results=None,
-        raw_json=None,
-        random_question_requested=False
-    )
+    st.session_state.question = DEFAULT_QUESTION_AT_STARTUP
+    st.session_state.answer = DEFAULT_ANSWER_AT_STARTUP
+    st.session_state.results = None
+    st.session_state.raw_json = None
+    st.session_state.random_question_requested = False
 
     # Small callback to reset the interface in case the text of the question changes
     def reset_results(*args):
-        state.answer = None
-        state.results = None
-        state.raw_json = None
+        st.session_state.answer = None
+        st.session_state.results = None
+        st.session_state.raw_json = None
 
     # Title
     st.write("# Haystack Demo - Explore the world")
@@ -133,7 +127,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
 
     # Search bar
     question = st.text_input("",
-        value=state.question,
+        value=st.session_state.question,
         max_chars=100,
         on_change=reset_results
     )
@@ -150,16 +144,16 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         new_row = df.sample(1)
         while new_row["Question Text"].values[0] == state.question:  # Avoid picking the same question twice (the change is not visible on the UI)
             new_row = df.sample(1)
-        state.question = new_row["Question Text"].values[0]
-        state.answer = new_row["Answer"].values[0]
-        state.random_question_requested = True
+        st.session_state.question = new_row["Question Text"].values[0]
+        st.session_state.answer = new_row["Answer"].values[0]
+        st.session_state.random_question_requested = True
         # Re-runs the script setting the random question as the textbox value
         # Unfortunately necessary as the Random Question button is _below_ the textbox
         raise st.script_runner.RerunException(st.script_request_queue.RerunData(None))
     else:
-        state.random_question_requested = False
+        st.session_state.random_question_requested = False
     
-    run_query = (run_pressed or question != state.question) and not state.random_question_requested
+    run_query = (run_pressed or question != st.session_state.question) and not st.session_state.random_question_requested
     
     # Check the connection
     with st.spinner("⌛️ &nbsp;&nbsp; Haystack is starting..."):
@@ -171,14 +165,17 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     # Get results for query
     if run_query and question:
         reset_results()
-        state.question = question
+        st.session_state.question = question
+        print(st.session_state.question)
+
         with st.spinner(
             "🧠 &nbsp;&nbsp; Performing neural search on documents... \n "
             "Do you want to optimize speed or accuracy? \n"
             "Check out the docs: https://haystack.deepset.ai/usage/optimization "
         ):
             try:
-                state.results, state.raw_json = query(question, top_k_reader=top_k_reader, top_k_retriever=top_k_retriever)
+                state.results, state.raw_json = query(question, top_k_reader=top_k_reader,
+                                                      top_k_retriever=top_k_retriever)
             except JSONDecodeError as je:
                 st.error("👓 &nbsp;&nbsp; An error occurred reading the results. Is the document store working?")
                 return
