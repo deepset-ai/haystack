@@ -1069,7 +1069,7 @@ def test_normalize_embeddings_diff_shapes(document_store_dot_product_small):
     assert np.linalg.norm(VEC_1) - 1 < 0.01
 
 
-@pytest.mark.parametrize("document_store", ["faiss", "milvus", "weaviate"], indirect=True)
+@pytest.mark.parametrize("document_store_small", ["faiss", "milvus", "weaviate"], indirect=True)
 def test_cosine_sanity_check(document_store_small):
     VEC_1 = np.array([.1, .2, .3], dtype="float32")
     VEC_2 = np.array([.4, .5, .6], dtype="float32")
