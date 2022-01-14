@@ -358,7 +358,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
         params={"Retriever": {"top_k": 5}}, 
-        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2"
     )
 
     metrics = eval_result.calculate_metrics()
@@ -399,14 +399,14 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
         params={"Retriever": {"top_k": 5}},
-        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2"
     )
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1)
     
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
-    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6208, abs=1e-4)
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
@@ -417,7 +417,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     
     assert metrics_top_2["Reader"]["exact_match"] == 0.5
     assert metrics_top_2["Reader"]["f1"] == 0.5
-    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.7192, abs=1e-4)
+    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
     assert metrics_top_2["Retriever"]["mrr"] == 0.5
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_multi_hit"] == 0.5
@@ -534,7 +534,35 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_3["Retriever"]["recall_single_hit"] == 0.5
     assert metrics_top_3["Retriever"]["precision"] == 1.0/6
-    
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS,
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        add_isolated_node_eval=True
+    )
+
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1)
+
+    assert metrics_top_1["Reader"]["exact_match"] == 0.5
+    assert metrics_top_1["Reader"]["f1"] == 0.5
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
+    assert metrics_top_1["Retriever"]["mrr"] == 0.5
+    assert metrics_top_1["Retriever"]["map"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_1["Retriever"]["precision"] == 1.0 / 6
+
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, eval_mode="isolated")
+
+    assert metrics_top_1["Reader"]["exact_match"] == 1.0
+    assert metrics_top_1["Reader"]["f1"] == 1.0
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
@@ -578,9 +606,16 @@ def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         labels=labels,
-        params={"Retriever": {"top_k": 5}}, 
+        params={"Retriever": {"top_k": 5}}
     )
+    pipeline.print_eval_report(eval_result)
 
+    # in addition with labels as input to reader node rather than output of retriever node
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=labels,
+        params={"Retriever": {"top_k": 5}},
+        add_isolated_node_eval=True
+    )
     pipeline.print_eval_report(eval_result)
 
 
