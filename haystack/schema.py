@@ -670,7 +670,7 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         doc_relevance_col: str = "gold_id_match",
-        node_input: str = "prediction"
+        eval_mode: str = "integrated"
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
@@ -698,19 +698,19 @@ class EvaluationResult:
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
         :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
             values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
-        :param node_input: the input on which the node was evaluated on.
-            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='prediction').
+        :param eval_mode: the input on which the node was evaluated on.
+            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
             you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
-            For example when evaluating the reader use value='label' to simulate a perfect retriever in an ExtractiveQAPipeline.
-            Values can be 'prediction', 'label'. 
-            Default value is 'prediction'.
+            For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
+            Values can be 'integrated', 'isolated'.
+            Default value is 'integrated'.
         """
-        return {node: self._calculate_node_metrics(df, 
-                    simulated_top_k_reader=simulated_top_k_reader, 
-                    simulated_top_k_retriever=simulated_top_k_retriever,
-                    doc_relevance_col=doc_relevance_col,
-                    node_input=node_input) 
+        return {node: self._calculate_node_metrics(df,
+                                                   simulated_top_k_reader=simulated_top_k_reader,
+                                                   simulated_top_k_retriever=simulated_top_k_retriever,
+                                                   doc_relevance_col=doc_relevance_col,
+                                                   eval_mode=eval_mode)
             for node, df in self.node_results.items()}
 
     def wrong_examples(
@@ -722,7 +722,7 @@ class EvaluationResult:
         doc_relevance_col: str = "gold_id_match",
         document_metric: str = "recall_single_hit",
         answer_metric: str = "f1",
-        node_input: str = "prediction"
+        eval_mode: str = "integrated"
     ) -> List[Dict]:
         """
         Returns the worst performing queries. 
@@ -741,16 +741,16 @@ class EvaluationResult:
             values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
         :param document_metric: the answer metric worst queries are calculated with.
             values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
-        :param node_input: the input on which the node was evaluated on.
-            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='prediction').
+        :param eval_mode: the input on which the node was evaluated on.
+            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
             you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
-            For example when evaluating the reader use value='label' to simulate a perfect retriever in an ExtractiveQAPipeline.
-            Values can be 'prediction', 'label'. 
-            Default value is 'prediction'.
+            For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
+            Values can be 'integrated', 'isolated'. 
+            Default value is 'integrated'.
         """
         node_df = self.node_results[node]
-        node_df = self._filter_node_input(node_df, node_input)
+        node_df = self._filter_eval_mode(node_df, eval_mode)
 
         answers = node_df[node_df["type"] == "answer"]
         if len(answers) > 0:
@@ -802,25 +802,25 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         doc_relevance_col: str = "gold_id_match",
-        node_input: str = "prediction"
+        eval_mode: str = "integrated"
     ) -> Dict[str, float]:
-        df = self._filter_node_input(df, node_input)
+        df = self._filter_eval_mode(df, eval_mode)
 
         answer_metrics = self._calculate_answer_metrics(df, 
             simulated_top_k_reader=simulated_top_k_reader, 
             simulated_top_k_retriever=simulated_top_k_retriever)
-        
+
         document_metrics = self._calculate_document_metrics(df,
             simulated_top_k_retriever=simulated_top_k_retriever,
             doc_relevance_col=doc_relevance_col)
         
         return {**answer_metrics, **document_metrics}
 
-    def _filter_node_input(self, df: pd.DataFrame, node_input: str) -> pd.DataFrame:
-        if "node_input" in df.columns:
-            df = df[df["node_input"] == node_input]
+    def _filter_eval_mode(self, df: pd.DataFrame, eval_mode: str) -> pd.DataFrame:
+        if "eval_mode" in df.columns:
+            df = df[df["eval_mode"] == eval_mode]
         else:
-            logger.warning("eval dataframe has no node_input column. node_input param will be ignored.")
+            logger.warning("eval dataframe has no eval_mode column. eval_mode param will be ignored.")
         return df
 
     def _calculate_answer_metrics(
@@ -939,7 +939,7 @@ class EvaluationResult:
             num_relevants = len(set(gold_ids + relevance_criteria_ids))
             num_retrieved_relevants = query_df[doc_relevance_col].values.sum()
             rank_retrieved_relevants = query_df[query_df[doc_relevance_col] == 1]["rank"].values
-            avp_retrieved_relevants = [query_df[doc_relevance_col].values[:rank].sum() / rank 
+            avp_retrieved_relevants = [query_df[doc_relevance_col].values[:int(rank)].sum() / rank
                                             for rank in rank_retrieved_relevants]
 
             avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
