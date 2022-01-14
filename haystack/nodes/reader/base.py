@@ -11,21 +11,6 @@ from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
 
 
-def add_doc_meta_data_to_answer(documents: List[Document], answer):
-    # Add corresponding document_name and more meta data, if the answer contains the document_id
-    if answer.meta is None:
-        answer.meta = {}
-    # get meta from doc
-    meta_from_doc = {}
-    for doc in documents:
-        if doc.id == answer.document_id:
-            meta_from_doc = deepcopy(doc.meta)
-            break
-    # append to "own" meta
-    answer.meta.update(meta_from_doc)
-    return answer
-
-
 class BaseReader(BaseComponent):
     return_no_answers: bool
     outgoing_edges = 1
@@ -70,6 +55,21 @@ class BaseReader(BaseComponent):
 
         return no_ans_prediction, max_no_ans_gap
 
+    @staticmethod
+    def add_doc_meta_data_to_answer(documents: List[Document], answer):
+        # Add corresponding document_name and more meta data, if the answer contains the document_id
+        if answer.meta is None:
+            answer.meta = {}
+        # get meta from doc
+        meta_from_doc = {}
+        for doc in documents:
+            if doc.id == answer.document_id:
+                meta_from_doc = deepcopy(doc.meta)
+                break
+        # append to "own" meta
+        answer.meta.update(meta_from_doc)
+        return answer
+
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
         self.query_count += 1
         if documents:
@@ -79,7 +79,7 @@ class BaseReader(BaseComponent):
             results = {"answers": []}
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
-        results["answers"] = [add_doc_meta_data_to_answer(documents=documents, answer=answer) for answer in results["answers"]]
+        results["answers"] = [BaseReader.add_doc_meta_data_to_answer(documents=documents, answer=answer) for answer in results["answers"]]
 
         # run evaluation with labels as node inputs
         if add_isolated_node_eval and labels is not None:
@@ -87,7 +87,7 @@ class BaseReader(BaseComponent):
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id
-            results["answers_isolated"] = [add_doc_meta_data_to_answer(documents=documents, answer=answer) for answer in results_label_input["answers"]]
+            results["answers_isolated"] = [BaseReader.add_doc_meta_data_to_answer(documents=documents, answer=answer) for answer in results_label_input["answers"]]
 
         return results, "output_1"
 

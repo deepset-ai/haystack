@@ -358,7 +358,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
         params={"Retriever": {"top_k": 5}}, 
-        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2"
     )
 
     metrics = eval_result.calculate_metrics()
@@ -399,14 +399,14 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
         params={"Retriever": {"top_k": 5}},
-        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2"
     )
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1)
     
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
-    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6208, abs=1e-4)
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
@@ -417,7 +417,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     
     assert metrics_top_2["Reader"]["exact_match"] == 0.5
     assert metrics_top_2["Reader"]["f1"] == 0.5
-    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.7192, abs=1e-4)
+    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
     assert metrics_top_2["Retriever"]["mrr"] == 0.5
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_multi_hit"] == 0.5
@@ -542,7 +542,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
-        sas_model_name_or_path="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
         add_isolated_node_eval=True
     )
 
@@ -550,7 +550,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
 
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
-    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6208, abs=1e-4)
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
