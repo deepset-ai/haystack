@@ -44,7 +44,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade --upgrade-strategy eager .[ci]
-          pip install --upgrade --upgrade-strategy eager ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
