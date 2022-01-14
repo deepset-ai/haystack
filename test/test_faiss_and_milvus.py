@@ -13,6 +13,9 @@ from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.pipelines import Pipeline
 from haystack.nodes.retriever.dense import EmbeddingRetriever
 
+from conftest import ensure_ids_are_correct_uuids
+
+
 DOCUMENTS = [
     {"meta": {"name": "name_1", "year": "2020", "month": "01"}, "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
     {"meta": {"name": "name_2", "year": "2020", "month": "02"}, "content": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
@@ -23,12 +26,14 @@ DOCUMENTS = [
 ]
 
 
+
 @pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
-def test_faiss_index_save_and_load(tmp_path):
+def test_faiss_index_save_and_load(tmp_path, sql_url):
     document_store = FAISSDocumentStore(
-        sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
+        sql_url=sql_url,
         index="haystack_test",
-        progress_bar=False  # Just to check if the init parameters are kept
+        progress_bar=False,  # Just to check if the init parameters are kept
+        isolation_level="AUTOCOMMIT"
     )
     document_store.write_documents(DOCUMENTS)
 
@@ -74,11 +79,12 @@ def test_faiss_index_save_and_load(tmp_path):
 
 
 @pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
-def test_faiss_index_save_and_load_custom_path(tmp_path):
+def test_faiss_index_save_and_load_custom_path(tmp_path, sql_url):
     document_store = FAISSDocumentStore(
-        sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
+        sql_url=sql_url,
         index="haystack_test",
-        progress_bar=False  # Just to check if the init parameters are kept
+        progress_bar=False,  # Just to check if the init parameters are kept
+        isolation_level="AUTOCOMMIT"
     )
     document_store.write_documents(DOCUMENTS)
 
@@ -128,13 +134,15 @@ def test_faiss_index_mutual_exclusive_args(tmp_path):
     with pytest.raises(ValueError):
         FAISSDocumentStore(
             sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
-            faiss_index_path=f"{tmp_path/'haystack_test'}"
+            faiss_index_path=f"{tmp_path/'haystack_test'}",
+            isolation_level="AUTOCOMMIT"
         )
 
     with pytest.raises(ValueError):
         FAISSDocumentStore(
             f"sqlite:////{tmp_path/'haystack_test.db'}",
-            faiss_index_path=f"{tmp_path/'haystack_test'}"
+            faiss_index_path=f"{tmp_path/'haystack_test'}",
+            isolation_level="AUTOCOMMIT"
         )
 
 
@@ -227,7 +235,9 @@ def test_update_with_empty_store(document_store, retriever):
 @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
 def test_faiss_retrieving(index_factory, tmp_path):
     document_store = FAISSDocumentStore(
-        sql_url=f"sqlite:////{tmp_path/'test_faiss_retrieving.db'}", faiss_index_factory_str=index_factory
+        sql_url=f"sqlite:////{tmp_path/'test_faiss_retrieving.db'}", 
+        faiss_index_factory_str=index_factory,
+        isolation_level="AUTOCOMMIT"
     )
 
     document_store.delete_all_documents(index="document")
@@ -396,7 +406,6 @@ def test_get_docs_with_many_filters(document_store, retriever):
     assert "2020" == documents[0].meta["year"]
 
 
-
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus"], indirect=True)
 def test_pipeline(document_store, retriever):
@@ -423,7 +432,9 @@ def test_faiss_passing_index_from_outside(tmp_path):
     faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
     faiss_index.nprobe = 2
     document_store = FAISSDocumentStore(
-        sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", faiss_index=faiss_index, index=index
+        sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", 
+        faiss_index=faiss_index, index=index,
+        isolation_level="AUTOCOMMIT"
     )
 
     document_store.delete_documents()
@@ -437,12 +448,8 @@ def test_faiss_passing_index_from_outside(tmp_path):
     for doc in documents_indexed:
         assert 0 <= int(doc.meta["vector_id"]) <= 7
 
-def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
-    # Weaviate currently only supports UUIDs
-    if type(document_store)==WeaviateDocumentStore:
-        for d in docs:
-            d["id"] = str(uuid.uuid4())
 
+@pytest.mark.parametrize("document_store", ["faiss", "milvus", "weaviate"], indirect=True)
 def test_cosine_similarity(document_store):
     # below we will write documents to the store and then query it to see if vectors were normalized
 
@@ -487,6 +494,7 @@ def test_cosine_similarity(document_store):
         assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
 
+@pytest.mark.parametrize("document_store_dot_product_small", ["faiss", "milvus"], indirect=True)
 def test_normalize_embeddings_diff_shapes(document_store_dot_product_small):
     VEC_1 = np.array([.1, .2, .3], dtype="float32")
     document_store_dot_product_small.normalize_embedding(VEC_1)
@@ -497,6 +505,7 @@ def test_normalize_embeddings_diff_shapes(document_store_dot_product_small):
     assert np.linalg.norm(VEC_1) - 1 < 0.01
 
 
+@pytest.mark.parametrize("document_store_small", ["faiss", "milvus", "weaviate"], indirect=True)
 def test_cosine_sanity_check(document_store_small):
     VEC_1 = np.array([.1, .2, .3], dtype="float32")
     VEC_2 = np.array([.4, .5, .6], dtype="float32")

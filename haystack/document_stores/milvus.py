@@ -53,6 +53,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             embedding_field: str = "embedding",
             progress_bar: bool = True,
             duplicate_documents: str = 'overwrite',
+            isolation_level: str = None,
             **kwargs,
     ):
         """
@@ -97,6 +98,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -104,6 +106,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             embedding_dim=embedding_dim, index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
             search_param=search_param, duplicate_documents=duplicate_documents,
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
+            isolation_level=isolation_level
         )
 
         self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)
@@ -139,7 +142,8 @@ class MilvusDocumentStore(SQLDocumentStore):
         super().__init__(
             url=sql_url,
             index=index,
-            duplicate_documents=duplicate_documents
+            duplicate_documents=duplicate_documents,
+            isolation_level=isolation_level,
         )
 
     def __del__(self):
