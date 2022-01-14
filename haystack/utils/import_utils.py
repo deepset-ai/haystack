@@ -25,10 +25,11 @@ def safe_import(import_path, classname, dep_group):
     inizialized.
     """
     try:
-        module = importlib.import_module(import_path)
+        module = importlib.import_module(f"{import_path}")
+        classs = vars(module).get(classname)
     except ImportError as ie:
-        module = _missing_dependency_stub_factory(classname, dep_group, ie)
-    return module
+        classs = _missing_dependency_stub_factory(classname, dep_group, ie)
+    return classs
 
 
 def _missing_dependency_stub_factory(classname, dep_group, import_error):
@@ -40,8 +41,7 @@ def _missing_dependency_stub_factory(classname, dep_group, import_error):
 
         def __init__(self, *args, **kwargs):
             raise ImportError(f"Failed to import {classname}. "
-                            f"Make sure you installed the proper dependencies by executing "
-                            f"'pip install farm-haystack[{dep_group}]'") from import_error
+                            f"Run 'pip install farm-haystack[{dep_group}]' to install them.") from import_error
 
         def __getattr__(self, *a, **k):
             return None
