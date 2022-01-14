@@ -947,13 +947,17 @@ class EvaluationResult:
             recall_single_hit = min(num_retrieved_relevants, 1)
             precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
             rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
+            dcg = np.sum([1.0 / np.log2(rank+1) for rank in rank_retrieved_relevants]) if len(rank_retrieved_relevants) > 0 else 0.0
+            idcg = np.sum([1.0 / np.log2(rank+1) for rank in range(1, num_relevants+1)]) if num_relevants > 0 else 1.0
+            ndcg = dcg / idcg
 
             metrics.append({
                 "recall_multi_hit": recall_multi_hit,
                 "recall_single_hit": recall_single_hit,
                 "precision": precision,
                 "map": avg_precision,
-                "mrr": rr
+                "mrr": rr,
+                "ndcg": ndcg
             })
 
         metrics_df = pd.DataFrame.from_records(metrics, index=queries)
