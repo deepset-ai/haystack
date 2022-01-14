@@ -1,3 +1,6 @@
+from typing import Union
+from types import ModuleType
+
 import logging
 import importlib.metadata
 
@@ -64,18 +67,24 @@ from haystack.nodes import (
 # Note that we ignore the ImportError here because if the user did not install
 # the correct dependency group for a document store, we don't need to setup 
 # import warnings for that, so the import here is useless and should fail silently.
+
+document_stores: Union[ModuleType, None] = None
 try:
     from haystack import document_stores
 except ImportError:
-    document_stores = None
+    pass
+
+graph_retriever: Union[ModuleType, None] = None
 try:
     from haystack.nodes.retriever import text2sparql as graph_retriever
 except ImportError:
-    graph_retriever = None
+    pass
+
+knowledge_graph: Union[ModuleType, None] = None
 try:
     from haystack.document_stores import graphdb as knowledge_graph
 except ImportError:
-    knowledge_graph = None
+    pass
 
 from haystack.modeling.evaluation import eval
 from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogger
