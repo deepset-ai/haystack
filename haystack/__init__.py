@@ -5,7 +5,8 @@ import logging
 try:
     import importlib.metadata as metadata
 except ImportError:
-    import importlib_metadata as metadata  # Python <= 3.7
+    # Python <= 3.7
+    import importlib_metadata as metadata  # type: ignore
 
 __version__ = metadata.version('haystack')
 
