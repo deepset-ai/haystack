@@ -7,10 +7,17 @@ import requests
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Document, Label, MultiLabel
 
-DC_BASE_URL = "https://dccloud"
-DC_API = f"{DC_BASE_URL}/v1"
+DEFAULT_API_ENDPOINT = f"DC_API/v1"
 
 logger = logging.getLogger(__name__)
+
+
+class BearerAuth(requests.auth.AuthBase):
+    def __init__(self, token):
+        self.token = token
+    def __call__(self, r):
+        r.headers["authorization"] = "Bearer " + self.token
+        return r
 
 
 class DCDocumentStore(BaseDocumentStore):   
@@ -19,7 +26,8 @@ class DCDocumentStore(BaseDocumentStore):
         api_key: str, 
         workspace: str = "default", 
         index: str = "default", 
-        duplicate_documents: str = 'overwrite'):
+        duplicate_documents: str = 'overwrite',
+        api_endpoint: Optional[str] = None):
         """
         A DocumentStore facade enabling you to interact with the documents stored in DC.
         Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
@@ -43,14 +51,22 @@ class DCDocumentStore(BaseDocumentStore):
         self.label_index = index
         self.duplicate_documents = duplicate_documents
 
+        if api_endpoint is None:
+            api_endpoint = DEFAULT_API_ENDPOINT
+        self.api_endpoint = api_endpoint
+
         init_url = self._get_index_endpoint()       
-        res = requests.get(init_url).json()
-        self.similarity = res.similarity
-        self.return_embedding = res.return_embedding
+        response = requests.get(init_url, auth=BearerAuth(self.api_key))
+        if response.status_code != 200:
+            raise Exception(f"Could not connect to DC: HTTP {response.status_code} - {response.reason}")
+
+        res = response.json()
+        self.similarity = res["similarity"]
+        self.return_embedding = res["return_embedding"]
 
         self.set_config(
-            api_key=api_key, workspace=workspace, index=index, duplicate_documents=duplicate_documents,
-            similarity=self.similarity
+            workspace=workspace, index=index, duplicate_documents=duplicate_documents,
+            api_endpoint=self.api_endpoint
         )
 
     def get_all_documents(
@@ -114,7 +130,7 @@ class DCDocumentStore(BaseDocumentStore):
             body["return_embedding"] = return_embedding
         
         url = f"{self._get_index_endpoint(index)}/documents-stream"
-        response = requests.post(url=url, json=body, stream=True, headers=headers)
+        response = requests.post(url=url, json=body, stream=True, headers=headers, auth=BearerAuth(self.api_key))
         for raw_doc in response.iter_lines():
             dict_doc = json.loads(raw_doc.decode('utf-8'))
             yield Document.from_dict(dict_doc)
@@ -124,7 +140,7 @@ class DCDocumentStore(BaseDocumentStore):
             index = self.index
         
         url = f"{self._get_index_endpoint(index)}/documents/{id}"
-        response = requests.get(url=url, headers=headers)
+        response = requests.get(url=url, headers=headers, auth=BearerAuth(self.api_key))
         if response.status_code == 200:
             doc_dict = response.json()
             return Document.from_dict(doc_dict)
@@ -144,4 +160,4 @@ class DCDocumentStore(BaseDocumentStore):
         if index is None:
             index = self.index
         
-        return f"{DC_API}/workspaces/{self.workspace}/indexes/{index}"
+        return f"{self.api_endpoint}/workspaces/{self.workspace}/indexes/{index}"
