@@ -1012,8 +1012,8 @@ DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = ""
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_responses():
+@pytest.fixture(scope="function")
+def setup_dc_responses():
     responses.add_passthru(DC_API_ENDPOINT)
     if not DC_API_KEY:
         with open('samples/dc/documents-stream.response', 'r') as f:
@@ -1041,6 +1041,7 @@ def setup_responses():
                     body="Not Found", status=404)
 
 
+@pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
 def test_dcdocumentstore_init():
     document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
@@ -1048,6 +1049,7 @@ def test_dcdocumentstore_init():
     assert document_store.similarity == "dot_product"
 
 
+@pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
 def test_dcdocumentstore_documents():
     document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
@@ -1074,6 +1076,7 @@ def test_dcdocumentstore_documents():
         assert doc.meta["file_id"] == first_doc.meta["file_id"]
 
 
+@pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
 def test_dcdocumentstore_connect_failed():
     with pytest.raises(Exception, match="Could not connect to DC: HTTP 404 - Not Found"):
