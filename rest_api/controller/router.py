@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from . import file_upload, search, feedback, document
+from rest_api.controller import file_upload, search, feedback, document
 
 router = APIRouter()
 

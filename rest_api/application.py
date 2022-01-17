@@ -12,9 +12,9 @@ try:
     from fastapi.routing import APIRoute
     from starlette.middleware.cors import CORSMiddleware
 
-    from .controller.errors.http_error import http_error_handler
-    from .config import ROOT_PATH
-    from .controller.router import router as api_router
+    from rest_api.controller.errors.http_error import http_error_handler
+    from rest_api.config import ROOT_PATH
+    from rest_api.controller.router import router as api_router
 
 except (ImportError, ModuleNotFoundError) as ie:
     raise ImportError("Failed to import the REST API due to missing dependencies. Run 'pip install farm-haystack[rest]' to install them.") from ie

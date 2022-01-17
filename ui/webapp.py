@@ -15,7 +15,7 @@ try:
     # here https://gist.github.com/tvst/036da038ab3e999a64497f42de966a92
     import SessionState
 
-    from .utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
+    from ui.utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
 except (ImportError, ModuleNotFoundError) as ie:
     raise ImportError("Failed to load the Streamlit app due to missing dependencies. Run 'pip install farm-haystack[ui]' to install them.") from ie
 

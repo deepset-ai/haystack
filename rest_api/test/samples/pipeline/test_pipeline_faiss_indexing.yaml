@@ -1,0 +1,31 @@
+version: '0.7'
+
+components:
+  - name: DPRRetriever
+    type: DensePassageRetriever
+    params:
+      document_store: NewFAISSDocumentStore
+  - name: PDFConverter
+    type: PDFToTextConverter
+    params:
+      remove_numeric_tables: false
+  - name: Preprocessor
+    type: PreProcessor
+    params:
+      clean_whitespace: true
+  - name: NewFAISSDocumentStore
+    type: FAISSDocumentStore
+
+
+pipelines:
+  - name: indexing_pipeline
+    type: Pipeline
+    nodes:
+      - name: PDFConverter
+        inputs: [File]
+      - name: Preprocessor
+        inputs: [PDFConverter]
+      - name: DPRRetriever
+        inputs: [Preprocessor]
+      - name: NewFAISSDocumentStore
+        inputs: [DPRRetriever]

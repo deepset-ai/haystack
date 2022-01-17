@@ -7,10 +7,10 @@ from fastapi import APIRouter
 
 import haystack
 from haystack.pipelines.base import Pipeline
-from ..config import PIPELINE_YAML_PATH, QUERY_PIPELINE_NAME
-from ..config import LOG_LEVEL, CONCURRENT_REQUEST_PER_WORKER
-from ..schema import QueryRequest, QueryResponse
-from .utils import RequestLimiter
+from rest_api.config import PIPELINE_YAML_PATH, QUERY_PIPELINE_NAME
+from rest_api.config import LOG_LEVEL, CONCURRENT_REQUEST_PER_WORKER
+from rest_api.schema import QueryRequest, QueryResponse
+from rest_api.controller.utils import RequestLimiter
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)

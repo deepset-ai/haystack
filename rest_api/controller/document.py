@@ -4,9 +4,9 @@ import logging
 
 from fastapi import APIRouter
 
-from .search import DOCUMENT_STORE
-from ..config import LOG_LEVEL
-from ..schema import FilterRequest, DocumentSerialized
+from rest_api.controller.search import DOCUMENT_STORE
+from rest_api.config import LOG_LEVEL
+from rest_api.schema import FilterRequest, DocumentSerialized
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
