@@ -8,30 +8,33 @@ import numpy as np
 import psutil
 import pytest
 import requests
-from elasticsearch import Elasticsearch
+
+try:
+    from elasticsearch import Elasticsearch
+    from milvus import Milvus
+    import weaviate
+    
+    from haystack.document_stores.weaviate import WeaviateDocumentStore
+    from haystack.document_stores.milvus import MilvusDocumentStore
+    from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
+    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+    from haystack.document_stores.faiss import FAISSDocumentStore
+    from haystack.document_stores.sql import SQLDocumentStore
+    
+except (ImportError, ModuleNotFoundError) as ie:
+    raise ImportError("Some test dependencies are missing. Run 'pip install -e .[dev,docstores]' to install them.") from ie
+
+from haystack.document_stores.memory import InMemoryDocumentStore
 
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
-from milvus import Milvus
 
-import weaviate
-from haystack.document_stores.weaviate import WeaviateDocumentStore
-
-from haystack.document_stores.milvus import MilvusDocumentStore
 from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-
 from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
-
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
-
 from haystack.schema import Document
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.memory import InMemoryDocumentStore
-from haystack.document_stores.sql import SQLDocumentStore
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader, RCIReader

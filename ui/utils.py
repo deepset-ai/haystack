@@ -5,7 +5,11 @@ import logging
 import requests
 from time import sleep
 from uuid import uuid4
-import streamlit as st
+
+try:
+    import streamlit as st
+except (ImportError, ModuleNotFoundError) as ie:
+    raise ImportError("Failed to load the Streamlit app due to missing dependencies. Run 'pip install farm-haystack[ui]' to install them.") from ie
 
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
