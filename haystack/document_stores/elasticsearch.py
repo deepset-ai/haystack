@@ -13,7 +13,7 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import pandas as pd
 
-from haystack.document_stores import BaseDocumentStore
+from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 
@@ -21,7 +21,7 @@ from haystack.document_stores.base import get_batches_from_generator
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchDocumentStore(BaseDocumentStore):
+class ElasticsearchDocumentStore(KeywordDocumentStore):
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",

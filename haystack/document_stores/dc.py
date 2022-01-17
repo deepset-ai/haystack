@@ -4,8 +4,9 @@ import json
 import logging
 import requests
 import os
+import numpy as np
 
-from haystack.document_stores import BaseDocumentStore
+from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label, MultiLabel
 
 DEFAULT_API_ENDPOINT = f"DC_API/v1"
@@ -21,7 +22,7 @@ class BearerAuth(requests.auth.AuthBase):
         return r
 
 
-class DCDocumentStore(BaseDocumentStore):   
+class DCDocumentStore(KeywordDocumentStore):   
     def __init__(
         self, 
         api_key: str = None, 
@@ -164,6 +165,91 @@ class DCDocumentStore(BaseDocumentStore):
         
         docs = (self.get_document_by_id(id, index=index, headers=headers) for id in ids)
         return [doc for doc in docs if doc is not None]
+
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Optional[Dict[str, List[str]]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None
+    ) -> List[Document]:
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param top_k: How many documents to return
+        :param index: Index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :param headers: Custom HTTP headers to pass to requests
+        :return:
+        """
+        return self._query_documents(query_emb=query_emb, 
+                                    filters=filters, 
+                                    top_k=top_k, 
+                                    index=index,
+                                    return_embedding=return_embedding,
+                                    headers=headers)
+
+    def query(
+        self,
+        query: Optional[str],
+        filters: Optional[Dict[str, List[str]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None
+    ) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query as defined by the BM25 algorithm.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to requests
+        """
+        return self._query_documents(query=query, 
+                                    filters=filters, 
+                                    top_k=top_k,
+                                    custom_query=custom_query,
+                                    index=index,
+                                    headers=headers)
+
+    def _query_documents(
+        self,
+        query: Optional[str] = None,
+        query_emb: Optional[np.ndarray] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None
+    ) -> List[Document]:
+        if index is None:
+            index = self.index
+        
+        body = {
+            "query": query,
+            "query_emb": query_emb,
+            "filters": filters,
+            "top_k": top_k,
+            "return_embedding": return_embedding,
+            "custom_query": custom_query
+        }
+        url = f"{self._get_index_endpoint(index)}/documents-query"
+        response = requests.post(url=url, json=body, headers=headers, auth=BearerAuth(self.api_key))
+        if response.status_code != 200:
+            raise Exception(f"error during query: HTTP {response.status_code} - {response.reason}")
+        
+        doc_dicts = response.json()
+        docs = [Document.from_dict(doc) for doc in doc_dicts]
+        return docs
 
     def _get_index_endpoint(self, index: Optional[str] = None) -> str:
         if index is None:
