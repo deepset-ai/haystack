@@ -9,8 +9,12 @@ from urllib.parse import urlparse
 
 from haystack.nodes.base import BaseComponent
 
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium import webdriver
+try:
+    from webdriver_manager.chrome import ChromeDriverManager
+    from selenium import webdriver
+except (ImportError, ModuleNotFoundError) as ie:
+    raise ImportError(f"Failed to import the 'crawler' Haystack module. "
+                      f"Run 'pip install farm-haystack[crawler]' to fix this error.") from ie
 
 
 logger = logging.getLogger(__name__)

@@ -4,10 +4,15 @@ import logging
 import itertools
 import numpy as np
 from uuid import uuid4
-from sqlalchemy import and_, func, create_engine, Column, String, DateTime, ForeignKey, Boolean, Text, text, JSON
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy.sql import case, null
+
+try:
+    from sqlalchemy import and_, func, create_engine, Column, String, DateTime, ForeignKey, Boolean, Text, text, JSON
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship, sessionmaker
+    from sqlalchemy.sql import case, null
+except (ImportError, ModuleNotFoundError) as ie:
+    raise ImportError(f"Failed to import the 'sql' Haystack module. "
+                      f"Run 'pip install farm-haystack[sql]' to fix this error.") from ie
 
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore

@@ -9,14 +9,18 @@ from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
 import warnings
-
-import faiss
 import numpy as np
+from inspect import Signature, signature
+
+try:
+    import faiss
+    from haystack.document_stores.sql import SQLDocumentStore  # its deps are optional, but get installed with the `faiss` extra
+except (ImportError, ModuleNotFoundError) as ie:
+    raise ImportError(f"Failed to import the 'faiss' Haystack module. "
+                      f"Run 'pip install farm-haystack[faiss]' to fix this error.") from ie
 
 from haystack.schema import Document
-from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
-from inspect import Signature, signature
 
 
 logger = logging.getLogger(__name__)

@@ -12,9 +12,12 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 
-from weaviate import client, AuthClientPassword
-from weaviate import ObjectsBatchRequest
-
+try:
+    from weaviate import client, AuthClientPassword
+    from weaviate import ObjectsBatchRequest
+except (ImportError, ModuleNotFoundError) as ie:
+    raise ImportError(f"Failed to import the 'weaviate' Haystack module. "
+                      f"Run 'pip install farm-haystack[weaviate]' to fix this error.") from ie
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r'^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$', re.IGNORECASE)

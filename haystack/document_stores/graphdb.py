@@ -3,8 +3,13 @@ from typing import Dict, Optional
 
 import requests
 from pathlib import Path
-from SPARQLWrapper import SPARQLWrapper, JSON
 from requests.auth import HTTPBasicAuth
+
+try:
+    from SPARQLWrapper import SPARQLWrapper, JSON
+except (ImportError, ModuleNotFoundError) as ie:
+    raise ImportError(f"Failed to import the 'graphdb' Haystack module. "
+                      f"Run 'pip install farm-haystack[graphdb]' to fix this error.") from ie
 
 from haystack.document_stores import BaseKnowledgeGraph
 
