@@ -380,7 +380,7 @@ Write annotation labels into document store.
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None)
+ | update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -952,7 +952,7 @@ class SQLDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", duplicate_documents: str = "overwrite", check_same_thread: bool = False)
+ | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", duplicate_documents: str = "overwrite", check_same_thread: bool = False, isolation_level: str = None)
 ```
 
 An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -970,6 +970,7 @@ An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL bac
                             fail: an error is raised if the document ID of the document being added already
                             exists.
 - `check_same_thread`: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="sql.SQLDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -1094,7 +1095,7 @@ Set vector IDs for all documents as None
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str])
+ | update_document_meta(id: str, meta: Dict[str, str], index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -1202,7 +1203,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1228,7 +1229,7 @@ the vector embeddings are indexed in a FAISS Index.
                                 Benchmarks: XXX
 - `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                     or one with docs that you used in Haystack before and want to load again.
-- `return_embedding`: To return document embedding
+- `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
 - `index`: Name of index in document store to use.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
@@ -1248,6 +1249,7 @@ the vector embeddings are indexed in a FAISS Index.
     If specified no other params besides faiss_config_path must be specified.
 - `faiss_config_path`: Stored FAISS initial configuration parameters.
     Can be created via calling `save()`
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -1322,7 +1324,7 @@ a large number of documents without having to load all documents in memory.
               DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `return_embedding`: Whether to return the document embeddings.
+- `return_embedding`: Whether to return the document embeddings. Unlike other document stores, FAISS will return normalized embeddings
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="faiss.FAISSDocumentStore.get_embedding_count"></a>
@@ -1404,7 +1406,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name to query the document from.
-- `return_embedding`: To return document embedding
+- `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
 
 **Returns**:
 
@@ -1479,7 +1481,7 @@ Usage:
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', isolation_level: str = None, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1525,6 +1527,7 @@ Note that an overly large index_file_size value may cause failure to load a segm
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="milvus.MilvusDocumentStore.write_documents"></a>
 #### write\_documents
@@ -1761,6 +1764,7 @@ Some of the key differences in contrast to FAISS & Milvus:
 2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
+5. Only support cosine similarity.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -1776,7 +1780,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1792,7 +1796,7 @@ The current implementation is not supporting the storage of labels, so you canno
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                    If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
-- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default.
+- `similarity`: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
                    'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                    Currently, HSNW is only supported.
@@ -1862,7 +1866,7 @@ None
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str])
+ | update_document_meta(id: str, meta: Dict[str, str], index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id.

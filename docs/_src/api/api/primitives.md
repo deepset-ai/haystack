@@ -294,7 +294,7 @@ The DataFrames have the following schema:
 #### calculate\_metrics
 
 ```python
- | calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", node_input: str = "prediction") -> Dict[str, Dict[str, float]]
+ | calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", eval_mode: str = "integrated") -> Dict[str, Dict[str, float]]
 ```
 
 Calculates proper metrics for each node.
@@ -324,19 +324,19 @@ as there are situations the result can heavily differ from an actual eval run wi
     remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
 - `doc_relevance_col`: column in the underlying eval table that contains the relevance criteria for documents.
     values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
-- `node_input`: the input on which the node was evaluated on.
-    Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='prediction').
+- `eval_mode`: the input on which the node was evaluated on.
+    Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
     However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
     you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
-    For example when evaluating the reader use value='label' to simulate a perfect retriever in an ExtractiveQAPipeline.
-    Values can be 'prediction', 'label'. 
-    Default value is 'prediction'.
+    For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
+    Values can be 'integrated', 'isolated'.
+    Default value is 'integrated'.
 
 <a name="schema.EvaluationResult.wrong_examples"></a>
 #### wrong\_examples
 
 ```python
- | wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_single_hit", answer_metric: str = "f1", node_input: str = "prediction") -> List[Dict]
+ | wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: str = "integrated") -> List[Dict]
 ```
 
 Returns the worst performing queries.
@@ -357,13 +357,13 @@ See calculate_metrics() for more information.
     values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
 - `document_metric`: the answer metric worst queries are calculated with.
     values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
-- `node_input`: the input on which the node was evaluated on.
-    Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='prediction').
+- `eval_mode`: the input on which the node was evaluated on.
+    Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
     However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
     you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
-    For example when evaluating the reader use value='label' to simulate a perfect retriever in an ExtractiveQAPipeline.
-    Values can be 'prediction', 'label'. 
-    Default value is 'prediction'.
+    For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
+    Values can be 'integrated', 'isolated'. 
+    Default value is 'integrated'.
 
 <a name="schema.EvaluationResult.save"></a>
 #### save
