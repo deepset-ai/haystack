@@ -154,17 +154,23 @@ def test_dpr_embedding(document_store, retriever, docs):
     document_store.update_embeddings(retriever=retriever)
     time.sleep(1)
 
-    doc_1 = document_store.get_document_by_id("1")
-    assert len(doc_1.embedding) == 768
-    assert abs(doc_1.embedding[0] - (-0.3063)) < 0.001
-    doc_2 = document_store.get_document_by_id("2")
-    assert abs(doc_2.embedding[0] - (-0.3914)) < 0.001
-    doc_3 = document_store.get_document_by_id("3")
-    assert abs(doc_3.embedding[0] - (-0.2470)) < 0.001
-    doc_4 = document_store.get_document_by_id("4")
-    assert abs(doc_4.embedding[0] - (-0.0802)) < 0.001
-    doc_5 = document_store.get_document_by_id("5")
-    assert abs(doc_5.embedding[0] - (-0.0551)) < 0.001
+    # always normalize vector as faiss returns normalized vectors and other document stores do not
+    doc_1 = document_store.get_document_by_id("1").embedding
+    doc_1 /= np.linalg.norm(doc_1)
+    assert len(doc_1) == 768
+    assert abs(doc_1[0] - (-0.0250)) < 0.001
+    doc_2 = document_store.get_document_by_id("2").embedding
+    doc_2 /= np.linalg.norm(doc_2)
+    assert abs(doc_2[0] - (-0.0314)) < 0.001
+    doc_3 = document_store.get_document_by_id("3").embedding
+    doc_3 /= np.linalg.norm(doc_3)
+    assert abs(doc_3[0] - (-0.0200)) < 0.001
+    doc_4 = document_store.get_document_by_id("4").embedding
+    doc_4 /= np.linalg.norm(doc_4)
+    assert abs(doc_4[0] - (-0.0070)) < 0.001
+    doc_5 = document_store.get_document_by_id("5").embedding
+    doc_5 /= np.linalg.norm(doc_5)
+    assert abs(doc_5[0] - (-0.0049)) < 0.001
 
 
 @pytest.mark.slow
