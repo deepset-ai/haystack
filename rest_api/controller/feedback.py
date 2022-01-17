@@ -2,8 +2,8 @@ import json
 import logging
 
 from fastapi import APIRouter
-from rest_api.schema import FilterRequest, LabelSerialized
-from rest_api.controller.search import DOCUMENT_STORE
+from ..schema import FilterRequest, LabelSerialized
+from .search import DOCUMENT_STORE
 
 
 router = APIRouter()

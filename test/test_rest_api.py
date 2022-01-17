@@ -5,7 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-from rest_api.application import app
+from ..rest_api.application import app
+
 
 FEEDBACK={
         "id": "123",
