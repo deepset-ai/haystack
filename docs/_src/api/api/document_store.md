@@ -187,6 +187,32 @@ is therefore only an interim solution until the run function also accepts docume
               If None, the DocumentStore's default index (self.index) will be used.
 - `id_hash_keys`: List of the fields that the hashes of the ids are generated from.
 
+<a name="base.KeywordDocumentStore"></a>
+## KeywordDocumentStore
+
+```python
+class KeywordDocumentStore(BaseDocumentStore)
+```
+
+<a name="base.KeywordDocumentStore.query"></a>
+#### query
+
+```python
+ | @abstractmethod
+ | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query as defined by the BM25 algorithm.
+
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
 <a name="base.get_batches_from_generator"></a>
 #### get\_batches\_from\_generator
 
@@ -203,7 +229,7 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 ## ElasticsearchDocumentStore
 
 ```python
-class ElasticsearchDocumentStore(BaseDocumentStore)
+class ElasticsearchDocumentStore(KeywordDocumentStore)
 ```
 
 <a name="elasticsearch.ElasticsearchDocumentStore.__init__"></a>
@@ -2205,7 +2231,7 @@ query result
 ## DCDocumentStore
 
 ```python
-class DCDocumentStore(BaseDocumentStore)
+class DCDocumentStore(KeywordDocumentStore)
 ```
 
 <a name="dc.DCDocumentStore.__init__"></a>
@@ -2271,4 +2297,45 @@ a large number of documents without having to load all documents in memory.
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
+<a name="dc.DCDocumentStore.query_by_embedding"></a>
+#### query\_by\_embedding
+
+```python
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Optional[Dict[str, List[str]]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `filters`: Optional filters to narrow down the search space.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `top_k`: How many documents to return
+- `index`: Index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
+- `headers`: Custom HTTP headers to pass to requests
+
+**Returns**:
+
+
+
+<a name="dc.DCDocumentStore.query"></a>
+#### query
+
+```python
+ | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query as defined by the BM25 algorithm.
+
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to requests
 
