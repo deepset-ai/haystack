@@ -51,6 +51,7 @@ class TableReader(BaseReader):
             tokenizer: Optional[str] = None,
             use_gpu: bool = True,
             top_k: int = 10,
+            top_k_per_candidate: int = 1,
             max_seq_len: int = 256,
     ):
         """
@@ -66,22 +67,29 @@ class TableReader(BaseReader):
         for full list of available TableQA models.
 
         The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
-        over multiple cells. All the other models can handle aggregation questions, but don't provide reasonable
-        confidence scores.
+        over multiple cells. The returned answers are sorted first by a general table score and then by answer span
+        scores.
+        All the other models can handle aggregation questions, but don't provide reasonable confidence scores.
 
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
         See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
-        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
+                              or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
         :param top_k: The maximum number of answers to return
+        :param top_k_per_candidate: How many answers to extract for each candidate table that is coming from
+                                    the retriever.
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
         """
+        # Save init parameters to enable export of component config as YAML
+        self.set_config(model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
+                        use_gpu=use_gpu, top_k=top_k, top_k_per_candidate=top_k_per_candidate, max_seq_len=max_seq_len)
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        if model_name_or_path in ["deepset/tapas-large-nq-hn-reader", "deepset/tapas-large-nq-reader", "../../../Models/tapas_nq_hn_reader"]:
+        if model_name_or_path in ["deepset/tapas-large-nq-hn-reader", "deepset/tapas-large-nq-reader"]:
             self.model = self.TapasForScoredQA.from_pretrained(model_name_or_path)
         else:
             self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
@@ -93,6 +101,7 @@ class TableReader(BaseReader):
             self.tokenizer = TapasTokenizer.from_pretrained(tokenizer)
 
         self.top_k = top_k
+        self.top_k_per_candidate = top_k_per_candidate
         self.max_seq_len = max_seq_len
         self.return_no_answers = False
 
@@ -133,11 +142,15 @@ class TableReader(BaseReader):
                 current_answer = self._predict_tapas_for_qa(inputs, document)
                 answers.append(current_answer)
             elif isinstance(self.model, self.TapasForScoredQA):
-                current_answers = self._predict_tapas_for_scored_qa(inputs, document, top_k)
+                current_answers = self._predict_tapas_for_scored_qa(inputs, document)
                 answers.extend(current_answers)
 
         # Sort answers by score and select top-k answers
-        answers = sorted(answers, reverse=True)
+        if isinstance(self.model, self.TapasForScoredQA):
+            # Answers are sorted first by the general score for the tables and then by the answer span score
+            answers = sorted(answers, reverse=True, key=lambda ans: (ans.meta["table_score"], ans.score))
+        else:
+            answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
         results = {"query": query,
@@ -202,15 +215,15 @@ class TableReader(BaseReader):
 
         return answer
 
-    def _predict_tapas_for_scored_qa(self, inputs: BatchEncoding, document: Document, top_k: int) -> List[Answer]:
+    def _predict_tapas_for_scored_qa(self, inputs: BatchEncoding, document: Document) -> List[Answer]:
         table: pd.DataFrame = document.content
 
         # Forward pass through model
         outputs = self.model.tapas(**inputs)
 
         # Get general table score
-        cls_score = self.model.classifier(outputs.pooler_output)
-        cls_score = cls_score[0][1] - cls_score[0][0]
+        table_score = self.model.classifier(outputs.pooler_output)
+        table_score = table_score[0][1] - table_score[0][0]
 
         # Get possible answer spans
         token_types = [
@@ -239,6 +252,9 @@ class TableReader(BaseReader):
                     )
                 current_start_idx = idx
                 current_column_id = column_id
+        possible_answer_spans.append(
+            (row_ids[current_start_idx]-1, column_ids[current_start_idx]-1, current_start_idx, len(row_ids)-1)
+        )
 
         # Concat logits of start token and end token of possible answer spans
         sequence_output = outputs.last_hidden_state
@@ -252,15 +268,16 @@ class TableReader(BaseReader):
         # Calculate score for each possible span
         span_logits = torch.einsum("bsj,j->bs", concatenated_logit_tensors, self.model.span_output_weights) \
                       + self.model.span_output_bias
+        span_logits_softmax = torch.nn.functional.softmax(span_logits, dim=1)
 
-        top_k_answer_spans = torch.topk(span_logits[0], min(top_k, len(possible_answer_spans)))
+        top_k_answer_spans = torch.topk(span_logits[0], min(self.top_k_per_candidate, len(possible_answer_spans)))
 
         answers = []
         for answer_span_idx in top_k_answer_spans.indices:
             current_answer_span = possible_answer_spans[answer_span_idx]
             answer_str = table.iat[current_answer_span[:2]]
             answer_offsets = self._calculate_answer_offsets([current_answer_span[:2]], document.content)
-            current_score = span_logits[0, answer_span_idx].item()
+            current_score = span_logits_softmax[0, answer_span_idx].item()
 
             answers.append(
                 Answer(
@@ -272,7 +289,8 @@ class TableReader(BaseReader):
                     offsets_in_context=answer_offsets,
                     document_id=document.id,
                     meta={"aggregation_operator": "NONE",
-                          "answer_cells": table.iat[current_answer_span[:2]]}
+                          "answer_cells": table.iat[current_answer_span[:2]],
+                          "table_score": table_score.item()}
                 )
             )
 
