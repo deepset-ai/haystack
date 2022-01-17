@@ -96,7 +96,7 @@ class ElasticsearchRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: ElasticsearchDocumentStore, top_k: int = 10, custom_query: str = None)
+ | __init__(document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None)
 ```
 
 **Arguments**:
