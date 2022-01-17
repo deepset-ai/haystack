@@ -119,7 +119,7 @@ class BasePipeline:
         if DEFAULT_API_ENDPOINT is None: 
             raise Exception("Missing environment variable 'DEFAULT_API_ENDPOINT'. Cannot communicate with DC without specifying the endpoint.")
         
-        # overwrite api_key if Environment variable is set
+        # overwrite api_key if environment variable is set
         api_key = os.getenv("DEEPSET_CLOUD_API_KEY", api_key)
         if api_key is None:
             raise Exception("Could not authenticate at deepset cloud: No 'api_key' or envorionment 'DEEPSET_CLOUD_API_KEY' variable defined.")
