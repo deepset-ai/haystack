@@ -148,7 +148,7 @@ class TableReader(BaseReader):
         # Sort answers by score and select top-k answers
         if isinstance(self.model, self.TapasForScoredQA):
             # Answers are sorted first by the general score for the tables and then by the answer span score
-            answers = sorted(answers, reverse=True, key=lambda ans: (ans.meta["table_score"], ans.score))
+            answers = sorted(answers, reverse=True, key=lambda ans: (ans.meta["table_score"], ans.score))  # type: ignore
         else:
             answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
@@ -235,18 +235,18 @@ class TableReader(BaseReader):
             "inv_column_ranks",
             "numeric_relations",
         ]
-        row_ids = inputs.token_type_ids[:, :, token_types.index("row_ids")].tolist()[0]
-        column_ids = inputs.token_type_ids[:, :, token_types.index("column_ids")].tolist()[0]
+        row_ids: List[int] = inputs.token_type_ids[:, :, token_types.index("row_ids")].tolist()[0]
+        column_ids: List[int] = inputs.token_type_ids[:, :, token_types.index("column_ids")].tolist()[0]
 
         possible_answer_spans: List[Tuple[int, int, int, int]] = []  # List of tuples: (row_idx, col_idx, start_token, end_token)
-        current_start_idx = None
-        current_column_id = None
+        current_start_idx = -1
+        current_column_id = -1
         for idx, (row_id, column_id) in enumerate(zip(row_ids, column_ids)):
             if row_id == 0 or column_id == 0:
                 continue
             # Beginning of new cell
             if column_id != current_column_id:
-                if current_start_idx is not None:
+                if current_start_idx != -1:
                     possible_answer_spans.append(
                         (row_ids[current_start_idx]-1, column_ids[current_start_idx]-1, current_start_idx, idx-1)
                     )
