@@ -3,6 +3,8 @@ from typing import Dict, List, Optional, Any, Union
 import copy
 import inspect
 import logging
+import requests
+import tempfile
 import os
 import traceback
 import numpy as np
@@ -28,7 +30,7 @@ from haystack.document_stores.base import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)
-
+DEFAULT_API_ENDPOINT = os.getenv("DEFAULT_API_ENDPOINT",f"DC_API/v1")
 
 class RootNode(BaseComponent):
     """
@@ -104,6 +106,40 @@ class BasePipeline:
         else:
             raise KeyError(f"Pipeline Type '{pipeline_config['type']}' is not a valid. The available types are"
                            f"'Pipeline' and 'RayPipeline'.")
+
+    @classmethod
+    def load_from_dc(
+        cls,
+        file_name: str,
+        pipeline_name: str,
+        api_key: Optional[str] = None,
+        workspace_name: Optional[str] = "default",
+        **kwargs,
+    ):
+        if DEFAULT_API_ENDPOINT is None: 
+            raise Exception("Missing environment variable 'DEFAULT_API_ENDPOINT'. Cannot communicate with DC without specifying the endpoint.")
+        
+        # overwrite api_key if Environment variable is set
+        api_key = os.getenv("DEEPSET_CLOUD_API_KEY", api_key)
+        if api_key is None:
+            raise Exception("Could not authenticate at deepset cloud: No 'api_key' or envorionment 'DEEPSET_CLOUD_API_KEY' variable defined.")
+        
+        response = requests.get(
+            f"{DEFAULT_API_ENDPOINT}/workspaces/{workspace_name}/pipelines/{file_name}/yaml", 
+            headers={
+                'Authorization': f'Bearer {api_key}'
+            }
+        )
+        with tempfile.NamedTemporaryFile(suffix=".yaml") as temp:
+            temp.write(response.json()["yaml"].encode())
+            temp.seek(0)
+            pipeline = Pipeline.load_from_yaml(
+                path=temp.name, pipeline_name=pipeline_name, **kwargs)
+
+        return pipeline
+
+
+
 
     @classmethod
     def _get_pipeline_config_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None):
