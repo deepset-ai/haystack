@@ -1,14 +1,17 @@
-from unittest import mock
 import numpy as np
 import pandas as pd
 import pytest
+import json
+import responses
+from responses import matchers
 from unittest.mock import Mock
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
 
 from conftest import get_document_store
-from haystack.document_stores import WeaviateDocumentStore
+from haystack.document_stores import WeaviateDocumentStore, DCDocumentStore
+from haystack.document_stores.dc import requests as DCDocumentStoreRequests
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
@@ -974,3 +977,82 @@ def test_custom_headers(document_store_with_docs: BaseDocumentStore):
         assert "headers" in kwargs
         assert kwargs["headers"] == custom_headers
         assert len(documents) > 0
+
+
+DC_API_ENDPOINT = "https://DC_API/v1"
+DC_TEST_INDEX = "document_retrieval_1"
+DC_API_KEY = ""
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_responses():
+    responses.add_passthru(DC_API_ENDPOINT)
+    if not DC_API_KEY:
+        with open('samples/dc/documents-stream.response', 'r') as f:
+            documents_stream_response = f.read()
+            docs = [json.loads(l) for l in documents_stream_response.splitlines()]
+            filtered_docs = [doc for doc in docs if doc["meta"]["file_id"] == docs[0]["meta"]["file_id"]]
+            documents_stream_filtered_response = "\n".join([json.dumps(d) for d in filtered_docs])
+        
+        responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
+                    match=[matchers.header_matcher({"authorization": "Bearer invalid_token"})],
+                    body="Internal Server Error", status=500)
+        responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
+                    json={"return_embedding": False, "similarity": "dot_product"}, status=200)
+        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-stream",
+                    body=documents_stream_response, status=200)
+        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-stream",
+                    match=[matchers.json_params_matcher({"filters": {"file_id": [docs[0]["meta"]["file_id"]]}})],
+                    body=documents_stream_filtered_response, status=200)
+        for doc in filtered_docs:
+            responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents/{doc['id']}",
+                        json=doc, status=200)
+        responses.add(responses.GET, f"{DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX}",
+                    body="Not Found", status=404)
+        responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index",
+                    body="Not Found", status=404)
+
+
+@responses.activate
+def test_dcdocumentstore_init():
+    document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
+    assert document_store.return_embedding == False
+    assert document_store.similarity == "dot_product"
+
+
+@responses.activate
+def test_dcdocumentstore_documents():
+    document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
+    docs = document_store.get_all_documents()
+    assert len(docs) > 1
+    assert isinstance(docs[0], Document)
+
+    first_doc = next(document_store.get_all_documents_generator())
+    assert isinstance(first_doc, Document)
+    assert first_doc.meta["file_id"] is not None
+    
+    filtered_docs = document_store.get_all_documents(filters={"file_id": [first_doc.meta["file_id"]]})
+    assert len(filtered_docs) > 0
+    assert len(filtered_docs) < len(docs)
+
+    ids = [doc.id for doc in filtered_docs]
+    single_doc_by_id = document_store.get_document_by_id(ids[0])
+    assert single_doc_by_id is not None
+    assert single_doc_by_id.meta["file_id"] == first_doc.meta["file_id"]
+
+    docs_by_id = document_store.get_documents_by_id(ids)
+    assert len(docs_by_id) == len(filtered_docs)
+    for doc in docs_by_id:
+        assert doc.meta["file_id"] == first_doc.meta["file_id"]
+
+
+@responses.activate
+def test_dcdocumentstore_connect_failed():
+    with pytest.raises(Exception, match="Could not connect to DC: HTTP 404 - Not Found"):
+        DCDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
+
+    with pytest.raises(Exception, match="Could not connect to DC: HTTP 500 - Internal Server Error"):
+        DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
+
+    with pytest.raises(Exception, match="Could not connect to DC: HTTP 404 - Not Found"):
+        DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
