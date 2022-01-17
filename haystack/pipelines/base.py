@@ -30,7 +30,6 @@ from haystack.document_stores.base import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)
-DEFAULT_API_ENDPOINT = os.getenv("DEFAULT_API_ENDPOINT",f"DC_API/v1")
 
 class RootNode(BaseComponent):
     """
@@ -113,10 +112,11 @@ class BasePipeline:
         file_name: str,
         pipeline_name: str,
         api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
         workspace_name: Optional[str] = "default",
-        **kwargs,
     ):
-        if DEFAULT_API_ENDPOINT is None: 
+        api_endpoint = os.getenv("DEFAULT_API_ENDPOINT", api_endpoint)
+        if api_endpoint is None: 
             raise Exception("Missing environment variable 'DEFAULT_API_ENDPOINT'. Cannot communicate with DC without specifying the endpoint.")
         
         # overwrite api_key if environment variable is set
@@ -125,7 +125,7 @@ class BasePipeline:
             raise Exception("Could not authenticate at deepset cloud: No 'api_key' or envorionment 'DEEPSET_CLOUD_API_KEY' variable defined.")
         
         response = requests.get(
-            f"{DEFAULT_API_ENDPOINT}/workspaces/{workspace_name}/pipelines/{file_name}/yaml", 
+            f"{api_endpoint}/workspaces/{workspace_name}/pipelines/{file_name}/yaml", 
             headers={
                 'Authorization': f'Bearer {api_key}'
             }
