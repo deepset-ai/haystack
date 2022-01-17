@@ -5,6 +5,9 @@
 # Note: these two lines are incompatible with the existence of a pyproject.toml file, as it will not involve pip
 # in the execution of setup.py and therefore break this check. Re evaluate later if this is still the case, and
 # if this check is still needed.
+import sys
+print(sys.argv)
+
 import pkg_resources
 try:
     pkg_resources.require(['pip >= 21.3.0'])
