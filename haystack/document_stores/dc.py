@@ -227,12 +227,16 @@ class DCDocumentStore(KeywordDocumentStore):
         
         body = {
             "query": query,
-            "query_emb": query_emb,
+            "query_emb": query_emb.tolist() if query_emb is not None else None,
             "filters": filters,
             "top_k": top_k,
             "return_embedding": return_embedding,
             "custom_query": custom_query
         }
+
+        # remove null values from json
+        body = {k:v for k,v in body.items() if v is not None}
+        
         url = f"{self._get_index_endpoint(index)}/documents-query"
         response = requests.post(url=url, json=body, headers=headers, auth=BearerAuth(self.api_key))
         if response.status_code != 200:

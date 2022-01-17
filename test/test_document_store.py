@@ -1010,6 +1010,7 @@ def test_custom_headers(document_store_with_docs: BaseDocumentStore):
 DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = ""
+QUERY_EMB = np.random.randn(768)
 
 
 @pytest.fixture(scope="function")
@@ -1021,6 +1022,12 @@ def setup_dc_responses():
             docs = [json.loads(l) for l in documents_stream_response.splitlines()]
             filtered_docs = [doc for doc in docs if doc["meta"]["file_id"] == docs[0]["meta"]["file_id"]]
             documents_stream_filtered_response = "\n".join([json.dumps(d) for d in filtered_docs])
+
+        with open('samples/dc/query_winterfell.response', 'r') as f:
+            query_winterfell_response = f.read()
+            query_winterfell_docs = json.loads(query_winterfell_response)
+            query_winterfell_filtered_docs = [doc for doc in query_winterfell_docs if doc["meta"]["file_id"] == query_winterfell_docs[0]["meta"]["file_id"]]
+            query_winterfell_filtered_response = json.dumps(query_winterfell_filtered_docs)
         
         responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
                     match=[matchers.header_matcher({"authorization": "Bearer invalid_token"})],
@@ -1039,6 +1046,15 @@ def setup_dc_responses():
                     body="Not Found", status=404)
         responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index",
                     body="Not Found", status=404)
+        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
+                    match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 10})],
+                    body=query_winterfell_response, status=200)
+        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
+                    match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 10, "filters": {"file_id": query_winterfell_docs[0]["meta"]["file_id"]}})],
+                    body=query_winterfell_filtered_response, status=200)
+        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
+                    match=[matchers.json_params_matcher({"query_emb": QUERY_EMB.tolist(), "top_k": 10})],
+                    body=query_winterfell_response, status=200)
 
 
 @pytest.mark.usefixtures("setup_dc_responses")
@@ -1087,3 +1103,20 @@ def test_dcdocumentstore_connect_failed():
 
     with pytest.raises(Exception, match="Could not connect to DC: HTTP 404 - Not Found"):
         DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
+
+
+@pytest.mark.usefixtures("setup_dc_responses")
+@responses.activate
+def test_dcdocumentstore_query():
+    document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
+    docs = document_store.query("winterfell")
+    assert docs is not None
+    assert len(docs) > 0
+
+    first_doc = docs[0]
+    filtered_docs = document_store.query("winterfell", filters={"file_id": first_doc.meta["file_id"]})
+    assert len(filtered_docs) > 0
+    assert len(filtered_docs) < len(docs)
+
+    emb_docs = document_store.query_by_embedding(QUERY_EMB)
+    assert len(emb_docs) > 0
