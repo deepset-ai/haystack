@@ -134,7 +134,7 @@ class BasePipeline:
             temp.write(response.json()["yaml"].encode())
             temp.seek(0)
             pipeline = Pipeline.load_from_yaml(
-                path=temp.name, pipeline_name=pipeline_name, **kwargs)
+                path=temp.name, pipeline_name=pipeline_name)
 
         return pipeline
 
