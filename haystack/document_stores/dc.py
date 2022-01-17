@@ -3,6 +3,7 @@ from typing import List, Optional, Union, Dict, Any, Generator
 import json
 import logging
 import requests
+import os
 
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Document, Label, MultiLabel
@@ -23,7 +24,7 @@ class BearerAuth(requests.auth.AuthBase):
 class DCDocumentStore(BaseDocumentStore):   
     def __init__(
         self, 
-        api_key: str, 
+        api_key: str = None, 
         workspace: str = "default", 
         index: str = "default", 
         duplicate_documents: str = 'overwrite',
@@ -34,7 +35,8 @@ class DCDocumentStore(BaseDocumentStore):
         
         DCDocumentStore is not intended to be used in production-like scenarios.
 
-        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key. 
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
         :param workspace: workspace in DC
         :param index: index to access within the DC workspace
         :param duplicate_documents: Handle duplicates document based on parameter options.
@@ -43,16 +45,23 @@ class DCDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param api_endpoint: The URL of the DC API. 
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 
         """
-        self.api_key = api_key
         self.workspace = workspace
         self.index = index
         self.label_index = index
         self.duplicate_documents = duplicate_documents
 
+        if api_key is None:
+            api_key = os.getenv("DEEPSET_CLOUD_API_KEY")
+            if api_key is None:
+                raise ValueError("No api_key specified. Please set api_key param or DEEPSET_CLOUD_API_KEY environment variable.")
+        self.api_key = api_key
+
         if api_endpoint is None:
-            api_endpoint = DEFAULT_API_ENDPOINT
+            api_endpoint = os.getenv("DEEPSET_CLOUD_API_ENDPOINT", DEFAULT_API_ENDPOINT)
         self.api_endpoint = api_endpoint
 
         init_url = self._get_index_endpoint()       
