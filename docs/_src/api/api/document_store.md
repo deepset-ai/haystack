@@ -2198,3 +2198,77 @@ Execute a SPARQL query on the given index in the GraphDB instance
 
 query result
 
+<a name="dc"></a>
+# Module dc
+
+<a name="dc.DCDocumentStore"></a>
+## DCDocumentStore
+
+```python
+class DCDocumentStore(BaseDocumentStore)
+```
+
+<a name="dc.DCDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(api_key: str, workspace: str = "default", index: str = "default", duplicate_documents: str = 'overwrite', api_endpoint: Optional[str] = None)
+```
+
+A DocumentStore facade enabling you to interact with the documents stored in DC.
+Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
+
+DCDocumentStore is not intended to be used in production-like scenarios.
+
+**Arguments**:
+
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth)
+- `workspace`: workspace in DC
+- `index`: index to access within the DC workspace
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+
+<a name="dc.DCDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+              DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: Number of documents that are passed to bulk function at a time.
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
+<a name="dc.DCDocumentStore.get_all_documents_generator"></a>
+#### get\_all\_documents\_generator
+
+```python
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
+```
+
+Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+document store and yielded as individual documents. This method can be used to iteratively process
+a large number of documents without having to load all documents in memory.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+              DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
