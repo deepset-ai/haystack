@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v2
       - id: set-matrix
         run: |
-          echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py -printf "%f\n" | jq -SR . | jq -cs .)"
+          echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
@@ -94,4 +94,4 @@ jobs:
     # Removing test_ray, test_utils, test_preprocessor, test_knowledge_graph and test_connector
     - name: Run tests
       if: ${{ !contains(fromJSON('["test_ray.py", "test_knowledge_graph.py", "test_connector.py", "test_summarizer_translation.py"]'), matrix.test-path) }}
-      run: cd test && pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -k "not test_parsr_converter" -s ${{ matrix.test-path }}
+      run: pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -k "not test_parsr_converter" -s ${{ matrix.test-path }}
