@@ -16,8 +16,8 @@ try:
     from pymilvus.client.abstract import QueryResult
     from pymilvus.client.types import DataType
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError(f"Failed to import the 'milvus2x' Haystack module. "
-                      f"Run 'pip install farm-haystack[milvus2]' to fix this error.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "milvus2", ie)
 
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore

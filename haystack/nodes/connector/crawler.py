@@ -13,8 +13,8 @@ try:
     from webdriver_manager.chrome import ChromeDriverManager
     from selenium import webdriver
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError(f"Failed to import the 'crawler' Haystack module. "
-                      f"Run 'pip install farm-haystack[crawler]' to fix this error.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "crawler", ie)
 
 
 logger = logging.getLogger(__name__)

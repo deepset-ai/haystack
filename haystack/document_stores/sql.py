@@ -11,8 +11,8 @@ try:
     from sqlalchemy.orm import relationship, sessionmaker
     from sqlalchemy.sql import case, null
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError(f"Failed to import the 'sql' Haystack module. "
-                      f"Run 'pip install farm-haystack[sql]' to fix this error.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "sql", ie)
 
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore

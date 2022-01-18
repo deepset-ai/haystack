@@ -16,8 +16,9 @@ try:
     import faiss
     from haystack.document_stores.sql import SQLDocumentStore  # its deps are optional, but get installed with the `faiss` extra
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError(f"Failed to import the 'faiss' Haystack module. "
-                      f"Run 'pip install farm-haystack[faiss]' to fix this error.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "faiss", ie)
+
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator

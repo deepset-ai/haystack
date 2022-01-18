@@ -17,7 +17,8 @@ try:
     from rest_api.controller.router import router as api_router
 
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError("Failed to import the REST API due to missing dependencies. Run 'pip install farm-haystack[rest]' to install them.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "rest", ie)
 
 
 

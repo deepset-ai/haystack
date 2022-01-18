@@ -38,13 +38,19 @@ def _missing_dependency_stub_factory(classname, dep_group, import_error):
     class MissingDependency:
 
         def __init__(self, *args, **kwargs):
-            raise ImportError(f"Failed to import {classname}. "
-                            f"Run 'pip install farm-haystack[{dep_group}]' to fix this error.") from import_error
+            _optional_component_not_installed(classname, dep_group, import_error)
 
         def __getattr__(self, *a, **k):
             return None
 
     return MissingDependency
+
+
+def _optional_component_not_installed(component, dep_group, source_error): 
+    raise ImportError (f"Failed to import '{component}', " \
+           "which is an optional component in Haystack.\n" \
+           f"Run 'pip install farm-haystack[{dep_group}]' " \
+           "to install the required dependencies and make this component available.") from source_error
 
 
 def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None) -> bool:

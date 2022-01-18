@@ -23,9 +23,10 @@ try:
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
     from haystack.document_stores.faiss import FAISSDocumentStore
     from haystack.document_stores.sql import SQLDocumentStore
-    
+
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError("Some test dependencies are missing. Run 'pip install -e .[dev,docstores]' to install them.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "test", ie)
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 

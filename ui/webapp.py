@@ -13,7 +13,8 @@ try:
 
     from ui.utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError("Failed to load the Streamlit app due to missing dependencies. Run 'pip install farm-haystack[ui]' to install them.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "ui", ie)
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:

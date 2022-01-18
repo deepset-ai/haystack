@@ -13,8 +13,8 @@ try:
     from milvus import IndexType, MetricType, Milvus, Status
     from haystack.document_stores.sql import SQLDocumentStore
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError(f"Failed to import the 'milvus' Haystack module. "
-                      f"Run 'pip install farm-haystack[milvus]' to fix this error.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "milvus", ie)
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator

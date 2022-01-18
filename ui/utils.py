@@ -9,7 +9,8 @@ from uuid import uuid4
 try:
     import streamlit as st
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError("Failed to load the Streamlit app due to missing dependencies. Run 'pip install farm-haystack[ui]' to install them.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "ui", ie)
 
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")

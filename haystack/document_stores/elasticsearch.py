@@ -16,8 +16,8 @@ try:
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
 except (ImportError, ModuleNotFoundError) as ie:
-    raise ImportError(f"Failed to import the 'elasticsearch' Haystack module. "
-                      f"Run 'pip install farm-haystack[elasticsearch]' to fix this error.") from ie
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Document, Label
