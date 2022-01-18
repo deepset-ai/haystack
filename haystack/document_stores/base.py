@@ -472,7 +472,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
-        that are most relevant to the query as defined by the BM25 algorithm.
+        that are most relevant to the query as defined by keyword matching algorithms like BM25.
 
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
