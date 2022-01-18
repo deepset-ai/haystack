@@ -12,7 +12,6 @@ RUN pip install -r requirements.txt
 COPY utils.py /home/user/
 COPY webapp.py /home/user/
 COPY eval_labels_example.csv /home/user/
-COPY SessionState.py /home/user/
 
 EXPOSE 8501
 
