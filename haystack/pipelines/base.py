@@ -25,6 +25,7 @@ except:
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.elasticsearch import OpenSearchDocumentStore, OpenDistroElasticsearchDocumentStore, ElasticsearchDocumentStore
 
 
 logger = logging.getLogger(__name__)
@@ -717,7 +718,16 @@ class Pipeline(BasePipeline):
             component_type = component_instance.pipeline_config["type"]
             component_params = component_instance.pipeline_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
-            component_signature = inspect.signature(type(component_instance)).parameters
+            if type(component_instance) in [OpenSearchDocumentStore, OpenDistroElasticsearchDocumentStore]:
+                # The 'OpenSearchDocumentStore' and 'OpenDistroElasticsearchDocumentStore' are extensions of 
+                # the 'ElasticsearchDocumentStore'. There are no parameters added within the constructor. 
+                # However, since 'inspect.signature' only returns the parameters defined in the respective 
+                # constructor, only explicitly overwritten arguments are returned. Therefore we need to use the parent class
+                # to fetch the parameters. 
+                component_signature = inspect.signature(ElasticsearchDocumentStore).parameters 
+            else:
+                component_signature = inspect.signature(type(component_instance)).parameters
+            
             for key, value in component_params.items():
                 # A parameter for a Component could be another Component. For instance, a Retriever has
                 # the DocumentStore as a parameter.
