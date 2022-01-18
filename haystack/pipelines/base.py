@@ -723,7 +723,7 @@ class Pipeline(BasePipeline):
                 # the 'ElasticsearchDocumentStore'. There are no parameters added within the constructor. 
                 # However, since 'inspect.signature' only returns the parameters defined in the respective 
                 # constructor, only explicitly overwritten arguments are returned. Therefore we need to use the parent class
-                # to fetch the parameters. 
+                # to fetch the parameters. See https://github.com/deepset-ai/haystack/issues/2012 for additional information.
                 component_signature = inspect.signature(ElasticsearchDocumentStore).parameters 
             else:
                 component_signature = inspect.signature(type(component_instance)).parameters
