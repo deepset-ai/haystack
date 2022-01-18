@@ -1033,11 +1033,20 @@ def setup_dc_responses():
                     match=[matchers.header_matcher({"authorization": "Bearer invalid_token"})],
                     body="Internal Server Error", status=500)
         responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
-                    json={"return_embedding": False, "similarity": "dot_product"}, status=200)
+                    json={
+                            "indexing": 
+                                {
+                                    "status": "NOT_INDEXED",
+                                    "pending_file_count": 31,
+                                    "total_file_count": 31
+                                }
+                         }, status=200)
         responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-stream",
                     body=documents_stream_response, status=200)
         responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-stream",
-                    match=[matchers.json_params_matcher({"filters": {"file_id": [docs[0]["meta"]["file_id"]]}})],
+                    match=[matchers.json_params_matcher({
+                        "filters": {"file_id": [docs[0]["meta"]["file_id"]]},
+                        "return_embedding": False})],
                     body=documents_stream_filtered_response, status=200)
         for doc in filtered_docs:
             responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents/{doc['id']}",
@@ -1047,14 +1056,20 @@ def setup_dc_responses():
         responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index",
                     body="Not Found", status=404)
         responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-                    match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 10})],
+                    match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50})],
                     body=query_winterfell_response, status=200)
         responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-                    match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 10, "filters": {"file_id": query_winterfell_docs[0]["meta"]["file_id"]}})],
+                    match=[matchers.json_params_matcher({
+                        "query": "winterfell", 
+                        "top_k": 50, 
+                        "filters": {"file_id": [query_winterfell_docs[0]["meta"]["file_id"]]}})],
                     body=query_winterfell_filtered_response, status=200)
         responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-                    match=[matchers.json_params_matcher({"query_emb": QUERY_EMB.tolist(), "top_k": 10})],
-                    body=query_winterfell_response, status=200)
+                    match=[matchers.json_params_matcher({"query_emb": QUERY_EMB.tolist(), 
+                        "top_k": 10, 
+                        "return_embedding": False, 
+                        "similarity": "dot_product"})],
+                    json=[], status=200)
 
 
 @pytest.mark.usefixtures("setup_dc_responses")
@@ -1063,6 +1078,10 @@ def test_dcdocumentstore_init():
     document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
     assert document_store.return_embedding == False
     assert document_store.similarity == "dot_product"
+
+    document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX, similarity="cosine", return_embedding=True)
+    assert document_store.return_embedding == True
+    assert document_store.similarity == "cosine"
 
 
 @pytest.mark.usefixtures("setup_dc_responses")
@@ -1109,14 +1128,14 @@ def test_dcdocumentstore_connect_failed():
 @responses.activate
 def test_dcdocumentstore_query():
     document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
-    docs = document_store.query("winterfell")
+    docs = document_store.query("winterfell", top_k=50)
     assert docs is not None
     assert len(docs) > 0
 
     first_doc = docs[0]
-    filtered_docs = document_store.query("winterfell", filters={"file_id": first_doc.meta["file_id"]})
+    filtered_docs = document_store.query("winterfell", top_k=50, filters={"file_id": [first_doc.meta["file_id"]]})
     assert len(filtered_docs) > 0
     assert len(filtered_docs) < len(docs)
 
     emb_docs = document_store.query_by_embedding(QUERY_EMB)
-    assert len(emb_docs) > 0
+    assert len(emb_docs) == 0
