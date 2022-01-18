@@ -203,7 +203,7 @@ class KeywordDocumentStore(BaseDocumentStore)
 ```
 
 Scan through documents in DocumentStore and return a small number documents
-that are most relevant to the query as defined by the BM25 algorithm.
+that are most relevant to the query as defined by keyword matching algorithms like BM25.
 
 **Arguments**:
 
