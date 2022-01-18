@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - docker-build
+      - docker-reduce-size
 
 jobs:
   build:
