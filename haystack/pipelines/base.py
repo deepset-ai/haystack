@@ -718,16 +718,12 @@ class Pipeline(BasePipeline):
             component_type = component_instance.pipeline_config["type"]
             component_params = component_instance.pipeline_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
-            if type(component_instance) in [OpenSearchDocumentStore, OpenDistroElasticsearchDocumentStore]:
-                # The 'OpenSearchDocumentStore' and 'OpenDistroElasticsearchDocumentStore' are extensions of 
-                # the 'ElasticsearchDocumentStore'. There are no parameters added within the constructor. 
-                # However, since 'inspect.signature' only returns the parameters defined in the respective 
-                # constructor, only explicitly overwritten arguments are returned. Therefore we need to use the parent class
-                # to fetch the parameters. See https://github.com/deepset-ai/haystack/issues/2012 for additional information.
-                component_signature = inspect.signature(ElasticsearchDocumentStore).parameters 
-            else:
-                component_signature = inspect.signature(type(component_instance)).parameters
             
+            component_parent_classes = inspect.getmro(type(component_instance))
+            component_signature = {}
+            for component_parent in component_parent_classes:
+                component_signature = {**component_signature, **inspect.signature(component_parent).parameters}
+                
             for key, value in component_params.items():
                 # A parameter for a Component could be another Component. For instance, a Retriever has
                 # the DocumentStore as a parameter.
