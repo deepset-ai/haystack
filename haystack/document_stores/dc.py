@@ -76,6 +76,7 @@ class DCDocumentStore(KeywordDocumentStore):
         response = requests.get(init_url, auth=BearerAuth(self.api_key))
         if response.status_code != 200:
             raise Exception(f"Could not connect to DC: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
+        
         index_info = response.json()
         indexing_info = index_info["indexing"]
         if indexing_info["pending_file_count"] > 0:
@@ -143,18 +144,16 @@ class DCDocumentStore(KeywordDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding   
 
-        body: dict = {
-            "return_embedding": return_embedding
+        body = {
+            "return_embedding": return_embedding,
+            "filters": filters
         }
 
-        if filters is not None:
-            body["filters"] = filters
-        
+        body = self._remove_null_values(body)
         url = f"{self._get_index_endpoint(index)}/documents-stream"
         response = requests.post(url=url, json=body, stream=True, headers=headers, auth=BearerAuth(self.api_key))
-
         if response.status_code != 200:
-            raise Exception(f"error during query: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
+            raise Exception(f"An error occured while loading documents: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
         
         for raw_doc in response.iter_lines():
             dict_doc = json.loads(raw_doc.decode('utf-8'))
@@ -164,11 +163,11 @@ class DCDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
         
-        params = {
+        query_params = {
             "return_embedding": self.return_embedding
         }
         url = f"{self._get_index_endpoint(index)}/documents/{id}"
-        response = requests.get(url=url, headers=headers, auth=BearerAuth(self.api_key), params=params)
+        response = requests.get(url=url, headers=headers, auth=BearerAuth(self.api_key), params=query_params)
 
         doc: Optional[Document] = None
         if response.status_code == 200:
@@ -218,9 +217,7 @@ class DCDocumentStore(KeywordDocumentStore):
             "top_k": top_k,
             "return_embedding": return_embedding
         }
-        return self._query_documents(request=request,
-                                    index=index,
-                                    headers=headers)
+        return self._query_documents(request=request, index=index, headers=headers)
 
     def query(
         self,
@@ -247,9 +244,7 @@ class DCDocumentStore(KeywordDocumentStore):
             "top_k": top_k,
             "custom_query": custom_query
         }
-        return self._query_documents(request=request,
-                                    index=index,
-                                    headers=headers)
+        return self._query_documents(request=request, index=index, headers=headers)
 
     def _query_documents(
         self,
@@ -260,13 +255,11 @@ class DCDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
 
-        # remove null values from json
-        body = {k:v for k,v in request.items() if v is not None}
-
+        body = self._remove_null_values(request)
         url = f"{self._get_index_endpoint(index)}/documents-query"
         response = requests.post(url=url, json=body, headers=headers, auth=BearerAuth(self.api_key))
         if response.status_code != 200:
-            raise Exception(f"error during query: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
+            raise Exception(f"An error occured during query: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
         
         doc_dicts = response.json()
         docs = [Document.from_dict(doc) for doc in doc_dicts]
@@ -277,3 +270,6 @@ class DCDocumentStore(KeywordDocumentStore):
             index = self.index
         
         return f"{self.api_endpoint}/workspaces/{self.workspace}/indexes/{index}"
+
+    def _remove_null_values(self, body: dict) -> dict:
+        return {k:v for k,v in body.items() if v is not None}
