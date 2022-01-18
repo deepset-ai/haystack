@@ -27,16 +27,21 @@ EVAL_LABELS = os.getenv("EVAL_FILE", Path(__file__).parent / "eval_labels_exampl
 DISABLE_FILE_UPLOAD = bool(os.getenv("DISABLE_FILE_UPLOAD"))
 
 
+def set_state_if_absent(key, value):
+    if key not in st.session_state:
+        st.session_state[key] = value
+
 def main():
 
     st.set_page_config(page_title='Haystack Demo', page_icon="https://haystack.deepset.ai/img/HaystackIcon.png")
 
     # Persistent state
-    st.session_state.question = DEFAULT_QUESTION_AT_STARTUP
-    st.session_state.answer = DEFAULT_ANSWER_AT_STARTUP
-    st.session_state.results = None
-    st.session_state.raw_json = None
-    st.session_state.random_question_requested = False
+    set_state_if_absent('question', DEFAULT_QUESTION_AT_STARTUP)
+    set_state_if_absent('answer', DEFAULT_ANSWER_AT_STARTUP)
+    set_state_if_absent('results', None)
+    set_state_if_absent('raw_json', None)
+    set_state_if_absent('random_question_requested', False)
+
 
     # Small callback to reset the interface in case the text of the question changes
     def reset_results(*args):
