@@ -186,6 +186,25 @@ class DCDocumentStore(KeywordDocumentStore):
         docs = (self.get_document_by_id(id, index=index, headers=headers) for id in ids)
         return [doc for doc in docs if doc is not None]
 
+    def get_document_count(self, 
+        filters: Optional[Dict[str, List[str]]] = None, 
+        index: Optional[str] = None,
+        only_documents_without_embedding: bool = False, 
+        headers: Optional[Dict[str, str]] = None
+    ) -> int:
+        body = {
+            "filters": filters,
+            "only_documents_without_embedding": only_documents_without_embedding
+        }
+        body = self._remove_null_values(body)
+        url = f"{self._get_index_endpoint(index)}/documents-count"
+        response = requests.post(url=url, json=body, headers=headers, auth=BearerAuth(self.api_key))
+        if response.status_code != 200:
+            raise Exception(f"An error occured during getting document count: "
+                            f"HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
+        count_result = response.json()
+        return count_result["count"]
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
@@ -273,3 +292,50 @@ class DCDocumentStore(KeywordDocumentStore):
 
     def _remove_null_values(self, body: dict) -> dict:
         return {k:v for k,v in body.items() if v is not None}
+
+    def _create_document_field_map(self) -> Dict:
+        return {}
+
+    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, 
+                        headers: Optional[Dict[str, str]] = None):
+        """
+        Indexes documents for later queries.
+
+        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                          Optionally: Include meta data via {"text": "<the-actual-text>",
+                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                          It can be used for filtering and is accessible in the responses of the Finder.
+        :param index: Optional name of index where the documents shall be written to.
+                      If None, the DocumentStore's default index (self.index) will be used.
+        :param batch_size: Number of documents that are passed to bulk function at a time.
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
+        :return: None
+        """
+        raise NotImplementedError("DCDocumentStore currently does not support writing documents.")
+
+    def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]:
+        raise NotImplementedError("DCDocumentStore currently does not support labels.")
+
+    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
+        raise NotImplementedError("DCDocumentStore currently does not support labels.")
+
+    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
+        raise NotImplementedError("DCDocumentStore currently does not support labels.")
+
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+        raise NotImplementedError("DCDocumentStore currently does not support deleting documents.")
+
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+        raise NotImplementedError("DCDocumentStore currently does not support deleting documents.")
+
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+        raise NotImplementedError("DCDocumentStore currently does not support labels.")
