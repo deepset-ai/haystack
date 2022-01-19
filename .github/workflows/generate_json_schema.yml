@@ -25,3 +25,6 @@ jobs:
           pip install -r requirements-json-schema.txt
       - name: Generate JSON Schema
         run: python ./.github/utils/generate_json_schema.py
+        env:
+          INPUT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
