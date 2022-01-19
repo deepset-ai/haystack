@@ -110,7 +110,8 @@ class BasePipeline:
     @classmethod
     def load_from_dc(
         cls,
-        pipeline_name: str,
+        pipeline_config: str,
+        pipeline_name: str = "query",
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         workspace_name: Optional[str] = "default", 
@@ -123,21 +124,15 @@ class BasePipeline:
         api_key = os.getenv("DEEPSET_CLOUD_API_KEY", api_key)
         if api_key is None:
             raise Exception("Could not authenticate at deepset cloud: No 'api_key' or envorionment 'DEEPSET_CLOUD_API_KEY' variable defined.")
-        
-        if "/" not in pipeline_name:
-            raise Exception("Invalid pipeline name: Please use <pipeline.yaml>/<pipeline_name>, e.g. 'document_retrieval_1/query'")
-
-        pipeline_file_name = pipeline_name.split("/")[0]
-        single_pipeline_name = pipeline_name.split("/")[1]
 
         response = requests.get(
-            f"{api_endpoint}/workspaces/{workspace_name}/pipelines/{pipeline_file_name}/yaml", 
+            f"{api_endpoint}/workspaces/{workspace_name}/pipelines/{pipeline_config}/yaml", 
             headers={
                 'Authorization': f'Bearer {api_key}'
             }
         )
         pipeline_config = yaml.safe_load(response.json())
-        pipeline = Pipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=single_pipeline_name)
+        pipeline = Pipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         return pipeline
 
     @classmethod
