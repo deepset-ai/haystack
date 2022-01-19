@@ -110,7 +110,7 @@ class BasePipeline:
     @classmethod
     def load_from_dc(
         cls,
-        pipeline_config: str,
+        pipeline_config_name: str,
         pipeline_name: str = "query",
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
@@ -126,7 +126,7 @@ class BasePipeline:
             raise Exception("Could not authenticate at deepset cloud: No 'api_key' or envorionment 'DEEPSET_CLOUD_API_KEY' variable defined.")
 
         response = requests.get(
-            f"{api_endpoint}/workspaces/{workspace_name}/pipelines/{pipeline_config}/yaml", 
+            f"{api_endpoint}/workspaces/{workspace_name}/pipelines/{pipeline_config_name}/yaml", 
             headers={
                 'Authorization': f'Bearer {api_key}'
             }
