@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from quantulum3 import parser
 from transformers import TapasTokenizer, TapasForQuestionAnswering, AutoTokenizer, AutoModelForSequenceClassification, \
-    BatchEncoding, TapasModel
+    BatchEncoding, TapasModel, TapasConfig
 from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
 
 from haystack.schema import Document, Answer, Span
@@ -89,7 +89,8 @@ class TableReader(BaseReader):
                         use_gpu=use_gpu, top_k=top_k, top_k_per_candidate=top_k_per_candidate, max_seq_len=max_seq_len)
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        if model_name_or_path in ["deepset/tapas-large-nq-hn-reader", "deepset/tapas-large-nq-reader"]:
+        config = TapasConfig.from_pretrained(model_name_or_path)
+        if config.architectures[0] == "TapasForScoredQA":
             self.model = self.TapasForScoredQA.from_pretrained(model_name_or_path)
         else:
             self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
