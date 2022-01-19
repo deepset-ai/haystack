@@ -25,7 +25,6 @@ except:
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.elasticsearch import OpenSearchDocumentStore, OpenDistroElasticsearchDocumentStore, ElasticsearchDocumentStore
 
 
 logger = logging.getLogger(__name__)
