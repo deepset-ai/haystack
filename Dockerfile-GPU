@@ -1,4 +1,4 @@
-FROM  nvidia/cuda:11.1-runtime-ubuntu20.04
+FROM nvidia/cuda:11.1-runtime-ubuntu20.04
 
 WORKDIR /home/user
 
@@ -11,7 +11,7 @@ RUN mkdir -p /home/user/file-upload && chmod 777 /home/user/file-upload
 # Install software dependencies
 RUN apt-get update && apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update && apt-get install -y \
+    apt-get install -y \
         cmake \
         curl \
         git \
@@ -25,7 +25,8 @@ RUN apt-get update && apt-get install -y software-properties-common && \
         python3.7-distutils \
         swig \
         tesseract-ocr \
-        wget
+        wget && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install PDF converter
 RUN curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz | tar -xvzf - -C /usr/local/bin --strip-components=2 xpdf-tools-linux-4.03/bin64/pdftotext
@@ -40,9 +41,9 @@ COPY setup.py requirements.txt README.md /home/user/
 RUN pip install --upgrade pip
 RUN echo "Install required packages" && \
     # Install PyTorch for CUDA 11
-    pip3 install torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html && \
-    # Install from requirements.txt		
-    pip3 install -r requirements.txt
+    pip3 install --no-cache-dir torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html && \
+    # Install from requirements.txt
+    pip3 install --no-cache-dir -r requirements.txt
 
 # copy saved models
 COPY README.md models* /home/user/models/
