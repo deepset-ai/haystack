@@ -343,7 +343,7 @@ def test_table_text_retriever_training(document_store):
     )
 
     retriever.train(
-        data_dir=Path(__name__.parent/"samples"/"mmr"),
+        data_dir=Path(__name__).parent/"samples"/"mmr",
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
