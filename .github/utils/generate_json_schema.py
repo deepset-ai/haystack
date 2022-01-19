@@ -195,11 +195,14 @@ def get_json_schema():
     return pipeline_schema
 
 
-def main():
+def generate_json_schema():
     pipeline_schema = get_json_schema()
     destination_path.parent.mkdir(parents=True, exist_ok=True)
     destination_path.write_text(json.dumps(pipeline_schema, indent=2))
 
+
+def main():
+    generate_json_schema()
     logging.basicConfig(level=logging.INFO)
     settings = Settings()
     logging.info(f"Using config: {settings.json()}")
@@ -228,4 +231,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # If you only want to generate the JSON Schema file without submitting a PR
+    # uncomment this line:
+    # generate_json_schema()
+
+    # and comment this line:
     main()
