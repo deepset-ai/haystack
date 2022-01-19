@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+from pathlib import Path
 from elasticsearch import Elasticsearch
 
 from haystack.document_stores import WeaviateDocumentStore
@@ -342,7 +343,7 @@ def test_table_text_retriever_training(document_store):
     )
 
     retriever.train(
-        data_dir="samples/mmr",
+        data_dir=Path(__name__.parent/"samples"/"mmr"),
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,

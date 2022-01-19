@@ -17,9 +17,9 @@ def test_tika_convert_files_to_dicts():
     assert documents and len(documents) > 0
 
 def test_squad_augmentation():
-    input_ = Path("samples/squad/tiny.json")
-    output = Path("samples/squad/tiny_augmented.json")
-    glove_path = Path("samples/glove/tiny.txt") # dummy glove file, will not even be use when augmenting tiny.json
+    input_ = Path(__name__.parent/"samples"/"squad"/"tiny.json")
+    output = Path(__name__.parent/"samples"/"squad"/"tiny_augmented.json")
+    glove_path = Path(__name__.parent/"samples"/"glove"/"tiny.txt") # dummy glove file, will not even be use when augmenting tiny.json
     multiplication_factor = 5
     augment_squad("distilbert-base-uncased", "distilbert-base-uncased", input_, output,
                     glove_path, multiplication_factor=multiplication_factor)
