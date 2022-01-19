@@ -720,7 +720,7 @@ class Pipeline(BasePipeline):
             components[node] = {"name": node, "type": component_type, "params": {}}
             
             component_parent_classes = inspect.getmro(type(component_instance))
-            component_signature = {}
+            component_signature: dict = {}
             for component_parent in component_parent_classes:
                 component_signature = {**component_signature, **inspect.signature(component_parent).parameters}
                 
