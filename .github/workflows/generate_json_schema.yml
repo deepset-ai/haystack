@@ -24,4 +24,4 @@ jobs:
           pip install .
           pip install -r requirements-json-schema.txt
       - name: Generate JSON Schema
-        run: ./.github/utils/generate_json_schema.py
+        run: python ./.github/utils/generate_json_schema.py
