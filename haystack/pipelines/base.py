@@ -118,12 +118,12 @@ class BasePipeline:
     ):
         api_endpoint = os.getenv("DEEPSET_CLOUD_API_ENDPOINT", api_endpoint)
         if api_endpoint is None: 
-            raise Exception("Missing environment variable 'DEEPSET_CLOUD_API_ENDPOINT'. Cannot communicate with DC without specifying the endpoint.")
+            raise ValueError("Missing environment variable 'DEEPSET_CLOUD_API_ENDPOINT'. Cannot communicate with DC without specifying the endpoint.")
         
         # overwrite api_key if environment variable is set
         api_key = os.getenv("DEEPSET_CLOUD_API_KEY", api_key)
         if api_key is None:
-            raise Exception("Could not authenticate at deepset cloud: No 'api_key' or envorionment 'DEEPSET_CLOUD_API_KEY' variable defined.")
+            raise ValueError("Could not authenticate at deepset cloud: No 'api_key' or envorionment 'DEEPSET_CLOUD_API_KEY' variable defined.")
 
         response = requests.get(
             f"{api_endpoint}/workspaces/{workspace_name}/pipelines/{pipeline_config_name}/yaml", 
