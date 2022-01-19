@@ -717,7 +717,12 @@ class Pipeline(BasePipeline):
             component_type = component_instance.pipeline_config["type"]
             component_params = component_instance.pipeline_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
-            component_signature = inspect.signature(type(component_instance)).parameters
+            
+            component_parent_classes = inspect.getmro(type(component_instance))
+            component_signature: dict = {}
+            for component_parent in component_parent_classes:
+                component_signature = {**component_signature, **inspect.signature(component_parent).parameters}
+                
             for key, value in component_params.items():
                 # A parameter for a Component could be another Component. For instance, a Retriever has
                 # the DocumentStore as a parameter.
