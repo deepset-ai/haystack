@@ -56,7 +56,7 @@ class FARMReader(BaseReader):
         progress_bar: bool = True,
         duplicate_filtering: int = 0,
         use_confidence_scores: bool = True,
-        proxies=None,
+        proxies: Optional[Dict[str, str]] = None,
         local_files_only=False,
         force_download=False,
         use_auth_token: Optional[Union[str,bool]] = None,
