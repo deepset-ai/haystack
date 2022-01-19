@@ -59,7 +59,7 @@ def tutorial2_finetune_a_model_on_your_data():
 
 
 def distil(teacher):
-    # ### Augment your training data
+    # ### Augmenting your training data
     # To get the most out of model distillation, we recommend increasing the size of your training data by using data augmentation.
     # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/master/haystack/utils/augment_squad.py):
     # # Downloading script
@@ -76,7 +76,7 @@ def distil(teacher):
 
     # If you want, you can leave out the intermediate layer distillation step and only run the prediction layer distillation.
     # This way you also do not need to perform data augmentation. However, this will make the model significantly less accurate.
-    
+
     student = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=True)
 
     student = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D", use_gpu=True)
