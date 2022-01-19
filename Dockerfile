@@ -2,16 +2,20 @@ FROM python:3.7.4-stretch
 
 WORKDIR /home/user
 
-RUN apt-get update && apt-get install -y curl git pkg-config cmake
+RUN apt-get update && apt-get install -y \
+    curl  \
+    git  \
+    pkg-config  \
+    cmake \
+    libpoppler-cpp-dev  \
+    tesseract-ocr  \
+    libtesseract-dev  \
+    poppler-utils && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install PDF converter
 RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && \
     tar -xvf xpdf-tools-linux-4.03.tar.gz && cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
-
-RUN apt-get install libpoppler-cpp-dev pkg-config -y --fix-missing
-
-# Install Tesseract
-RUN apt-get install tesseract-ocr libtesseract-dev poppler-utils -y
 
 # copy code
 COPY haystack /home/user/haystack
@@ -19,7 +23,7 @@ COPY haystack /home/user/haystack
 # install as a package
 COPY setup.py requirements.txt README.md /home/user/
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install -e .
 RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"
 
