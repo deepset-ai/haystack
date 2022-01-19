@@ -2345,3 +2345,34 @@ that are most relevant to the query as defined by the BM25 algorithm.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to requests
 
+<a name="dc.DCDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
+```
+
+Indexes documents for later queries.
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+                  For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                  Optionally: Include meta data via {"text": "<the-actual-text>",
+                  "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                  It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: Optional name of index where the documents shall be written to.
+              If None, the DocumentStore's default index (self.index) will be used.
+- `batch_size`: Number of documents that are passed to bulk function at a time.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
+**Returns**:
+
+None
+
