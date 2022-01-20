@@ -2241,7 +2241,7 @@ class DCDocumentStore(KeywordDocumentStore)
  | __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = 'overwrite', api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False)
 ```
 
-A DocumentStore facade enabling you to interact with the documents stored in DC.
+A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
 Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
 
 DCDocumentStore is not intended to be used in production-like scenarios.
@@ -2250,15 +2250,15 @@ DCDocumentStore is not intended to be used in production-like scenarios.
 
 - `api_key`: Secret value of the API key.
                 If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-- `workspace`: workspace in DC
-- `index`: index to access within the DC workspace
+- `workspace`: workspace in Deepset Cloud
+- `index`: index to access within the Deepset Cloud workspace
 - `duplicate_documents`: Handle duplicates document based on parameter options.
                             Parameter options : ( 'skip','overwrite','fail')
                             skip: Ignore the duplicates documents
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
-- `api_endpoint`: The URL of the DC API.
+- `api_endpoint`: The URL of the Deepset Cloud API.
                      If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
