@@ -112,18 +112,40 @@ class BasePipeline:
         cls,
         pipeline_config_name: str,
         pipeline_name: str = "query",
+        workspace_name: Optional[str] = "default",
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
-        workspace_name: Optional[str] = "default", 
+        overwrite_with_env_variables: bool = False,
     ):
-        api_endpoint = os.getenv("DEEPSET_CLOUD_API_ENDPOINT", api_endpoint)
+        """
+        Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
+        a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        be passed.
+
+        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+        :param pipeline_name: specifies which pipeline to load from config.
+                              Deepset Cloud typically provides a 'query' and a 'index' pipeline per config.
+        :param workspace: workspace in Deepset Cloud
+        :param api_key: Secret value of the API key. 
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API. 
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param overwrite_with_env_variables: Overwrite the config with environment variables. For example,
+                                             to change return_no_answer param for a FARMReader, an env
+                                             variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        """
+        if api_endpoint is None:
+            api_endpoint = os.getenv("DEEPSET_CLOUD_API_ENDPOINT")
         if api_endpoint is None: 
-            raise ValueError("Missing environment variable 'DEEPSET_CLOUD_API_ENDPOINT'. Cannot communicate with DC without specifying the endpoint.")
+            raise ValueError("Cannot communicate with Deepset Cloud without specifying the endpoint. "
+                             "Please set api_endpoint constructor param or environment variable 'DEEPSET_CLOUD_API_ENDPOINT'.")
         
-        # overwrite api_key if environment variable is set
-        api_key = os.getenv("DEEPSET_CLOUD_API_KEY", api_key)
         if api_key is None:
-            raise ValueError("Could not authenticate at deepset cloud: No 'api_key' or envorionment 'DEEPSET_CLOUD_API_KEY' variable defined.")
+            api_key = os.getenv("DEEPSET_CLOUD_API_KEY")
+        if api_key is None:
+            raise ValueError("Cannot communicate with Deepset Cloud without specifying the api_key. "
+                             "Please set api_key constructor param or environment variable 'DEEPSET_CLOUD_API_KEY'.")
 
         response = requests.get(
             f"{api_endpoint}/workspaces/{workspace_name}/pipelines/{pipeline_config_name}/yaml", 
@@ -132,7 +154,8 @@ class BasePipeline:
             }
         )
         pipeline_config = yaml.safe_load(response.json())
-        pipeline = Pipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
+        pipeline = Pipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=pipeline_name, 
+                                                overwrite_with_env_variables=overwrite_with_env_variables)
         return pipeline
 
     @classmethod
@@ -161,10 +184,9 @@ class BasePipeline:
     @classmethod
     def _get_component_definitions(cls, pipeline_config: Dict, overwrite_with_env_variables: bool):
         """
-        Parse the YAML and return the pipeline_definition, and definitions of all components.
+        Returns the definitions of all components from a given pipeline config.
 
-        :param yaml_dict: Dict Pipeline YAML parsed as a dictionary.
-        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+        :param pipeline_config: Dict Pipeline config parsed as a dictionary.
         :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
@@ -183,7 +205,7 @@ class BasePipeline:
     @classmethod
     def _overwrite_with_env_variables(cls, definition: dict):
         """
-        Overwrite the YAML configuration with environment variables. For example, to change index name param for an
+        Overwrite the pipeline config with environment variables. For example, to change index name param for an
         ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
         `_` sign must be used to specify nested hierarchical properties.
 
@@ -944,49 +966,6 @@ class RayPipeline(Pipeline):
             address: Optional[str] = None,
             **kwargs,
     ):
-        """
-        Load Pipeline from a YAML parsed as a dictionary defining the individual components and how they're tied together to form
-        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
-        be passed.
-
-        Here's a sample configuration:
-
-            ```yaml
-            |   version: '0.8'
-            |
-            |    components:    # define all the building-blocks for Pipeline
-            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            |      type: FARMReader    # Haystack Class name for the component
-            |      params:
-            |        no_ans_boost: -10
-            |        model_name_or_path: deepset/roberta-base-squad2
-            |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
-            |      params:
-            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
-            |    - name: MyDocumentStore
-            |      type: ElasticsearchDocumentStore
-            |      params:
-            |        index: haystack_test
-            |
-            |    pipelines:    # multiple Pipelines can be defined using the components from above
-            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            |      nodes:
-            |      - name: MyESRetriever
-            |        inputs: [Query]
-            |      - name: MyReader
-            |        inputs: [MyESRetriever]
-            ```
-
-        :param path: path of the YAML file.
-        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
-                                             to change index name param for an ElasticsearchDocumentStore, an env
-                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                             `_` sign must be used to specify nested hierarchical properties.
-        :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
-        """
         pipeline_definition = cls._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = cls._get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
