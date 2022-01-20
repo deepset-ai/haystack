@@ -267,24 +267,26 @@ Additional answer or document specific evaluation infos like gold labels
 and metrics depicting whether the row matches the gold labels are included, too.
 The DataFrames have the following schema:
 - query: the query
-- node: the node name
-- type: 'answer' or 'document'
-- rank: rank or 1-based-position in result list
-- document_id: the id of the document that has been retrieved or that contained the answer
-- gold_document_ids: the documents to be retrieved
-- content (documents only): the content of the document
-- gold_contents (documents only): the contents of the gold documents
-- gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
-- answer_match (documents only): metric depicting whether the document contains the answer
-- gold_id_or_answer_match (documents only): metric depicting whether one of the former two conditions are met
+- gold_answers (answers only): the answers to be given
 - answer (answers only): the answer
 - context (answers only): the surrounding context of the answer within the document
-- offsets_in_document (answers only): the position or offsets within the document the answer was found
-- gold_answers (answers only): the answers to be given
-- gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
 - exact_match (answers only): metric depicting if the answer exactly matches the gold label
 - f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
 - sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
+- gold_document_contents (documents only): the contents of the gold documents
+- content (documents only): the content of the document
+- gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
+- answer_match (documents only): metric depicting whether the document contains the answer
+- gold_id_or_answer_match (documents only): metric depicting whether one of the former two conditions are met
+- rank: rank or 1-based-position in result list
+- document_id: the id of the document that has been retrieved or that contained the answer
+- gold_document_ids: the documents to be retrieved
+- offsets_in_document (answers only): the position or offsets within the document the answer was found
+- gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
+- type: 'answer' or 'document'
+- node: the node name
+- eval_mode: evaluation mode depicting whether the evaluation was executed in integrated or isolated mode.
+             Check pipeline.eval()'s add_isolated_node_eval param for more information.        
 
 **Arguments**:
 
@@ -302,6 +304,7 @@ Calculates proper metrics for each node.
 For document returning nodes default metrics are:
 - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
 - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_%28information_retrieval%29#Mean_average_precision)
+- ndcg (Normalized Discounted Cumulative Gain: see https://en.wikipedia.org/wiki/Discounted_cumulative_gain)
 - precision (Precision: How many of the returned documents were relevant?)
 - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
 - recall_single_hit (Recall for Question Answering: How many of the queries returned at least one relevant document?)
