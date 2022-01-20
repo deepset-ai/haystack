@@ -17,24 +17,25 @@ RUN apt-get update && apt-get install -y \
 RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && \
     tar -xvf xpdf-tools-linux-4.03.tar.gz && cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
 
-# copy code
-COPY haystack /home/user/haystack
-
 # install as a package
-COPY setup.py requirements.txt README.md /home/user/
+COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md \
+    # Haystack code
+    haystack \
+    # Saved models
+    models* \
+    # REST API cpde
+    rest_api \
+    /home/user/
 RUN pip install --upgrade pip
-RUN pip install -e --no-cache .[docstores,crawler,preprocessing,ocr,ray,rest]
+RUN pip install --no-cache-dir -e .[docstores,crawler,preprocessing,ocr,ray,rest]
+RUN ls /home/user
+RUN pip freeze
 RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"
 
 # create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH
 RUN mkdir -p /home/user/file-upload
 RUN chmod 777 /home/user/file-upload
 
-# copy saved models
-COPY README.md models* /home/user/models/
-
-# Copy REST API code
-COPY rest_api /home/user/rest_api
 
 # optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/
