@@ -177,7 +177,7 @@ def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, m
         new_texts.append(" ".join(new_text))
     return new_texts
 
-def augment_squad(model: str, tokenizer: str, squad_path: Path, output_path: Path,
+def augment_squad(squad_path: Path, output_path: Path, model: str = "bert-base-uncased", tokenizer: str = "bert-base-uncased", 
         glove_path: Path = Path("glove.txt"), multiplication_factor: int = 20, word_possibilities: int = 20,
         replace_probability: float = 0.4, device: str = "cpu:0", batch_size: int = 16):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
