@@ -21,8 +21,8 @@ def test_squad_augmentation():
     output = Path("samples/squad/tiny_augmented.json")
     glove_path = Path("samples/glove/tiny.txt") # dummy glove file, will not even be use when augmenting tiny.json
     multiplication_factor = 5
-    augment_squad("distilbert-base-uncased", "distilbert-base-uncased", input_, output,
-                    glove_path, multiplication_factor=multiplication_factor)
+    augment_squad(model="distilbert-base-uncased", tokenizer="distilbert-base-uncased", squad_path=input_, output_path=output,
+                    glove_path=glove_path, multiplication_factor=multiplication_factor)
     original_squad = SquadData.from_file(input_)
     augmented_squad = SquadData.from_file(output)
     assert original_squad.count(unit="paragraph") == augmented_squad.count(unit="paragraph") * multiplication_factor
