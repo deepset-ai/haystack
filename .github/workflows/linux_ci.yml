@@ -99,4 +99,4 @@ jobs:
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Run tests
-      run: pytest -s ${{ matrix.test-path }}
+      run: python -m pytest -s ${{ matrix.test-path }}
