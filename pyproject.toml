@@ -3,4 +3,8 @@ requires = [
     "setuptools",
     "wheel",
 ]
-build-backend = "setuptools.build_meta" 
+build-backend = "setuptools.build_meta"
+
+
+[tool:black]
+line-length = 120
