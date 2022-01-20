@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
-from haystack.modeling.data_handler.processor import Processor
+from haystack.modeling.data_handler.processor import Processor, UnlabeledTextProcessor
 from haystack.modeling.logger import MLFlowLogger as MlLogger
 from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
@@ -84,7 +84,7 @@ class DataSilo:
         else:
             self.eval_batch_size = eval_batch_size
 
-        if len(self.processor.tasks) == 0:
+        if len(self.processor.tasks) == 0 and not isinstance(self.processor, UnlabeledTextProcessor):
             raise Exception("No task initialized. Try initializing the processor with a metric and a label list. "
                             "Alternatively you can add a task using Processor.add_task()")
 

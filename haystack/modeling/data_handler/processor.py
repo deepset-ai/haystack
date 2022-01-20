@@ -52,11 +52,11 @@ class Processor(ABC):
         self,
         tokenizer,
         max_seq_len: int,
-        train_filename: Optional[Union[Path, str]],
-        dev_filename: Optional[Union[Path, str]],
-        test_filename: Optional[Union[Path, str]],
-        dev_split: float,
-        data_dir: Optional[Union[Path, str]],
+        train_filename: Optional[Union[Path, str]] = None,
+        dev_filename: Optional[Union[Path, str]] = None,
+        test_filename: Optional[Union[Path, str]] = None,
+        dev_split: float = 0.,
+        data_dir: Optional[Union[Path, str]] = None,
         tasks : Dict = {},
         proxies: Optional[Dict] = None,
         multithreading_rust: Optional[bool] = True,
@@ -2147,7 +2147,7 @@ class UnlabeledTextProcessor(Processor):
         dicts = []
         with open(file, "r") as f:
             for line in f:
-                dicts.append({"text": json.loads(line)})
+                dicts.append({"text": line})
         return dicts
     
     def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
