@@ -35,7 +35,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.8'
+    |   version: '0.9'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -410,7 +410,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.8'
+    |   version: '0.9'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -430,9 +430,11 @@ Here's a sample configuration:
     |
     |    pipelines:    # multiple Pipelines can be defined using the components from above
     |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+    |      type: RayPipeline
     |      nodes:
     |      - name: MyESRetriever
     |        inputs: [Query]
+    |        replicas: 2    # number of replicas to create on the Ray cluster
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
