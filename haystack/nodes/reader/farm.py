@@ -8,7 +8,7 @@ from time import perf_counter
 import torch
 
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
-from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.data_handler.processor import SquadProcessor, Processor
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.inputs import QAInput, Question
 from haystack.modeling.infer import QAInferencer
@@ -183,6 +183,7 @@ class FARMReader(BaseReader):
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
         tinybert: bool = False,
+        processor: Optional[Processor] = None,
     ):
         if dev_filename:
             dev_split = 0
@@ -209,17 +210,18 @@ class FARMReader(BaseReader):
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
         label_list = ["start_token", "end_token"]
         metric = "squad"
-        processor = SquadProcessor(
-            tokenizer=self.inferencer.processor.tokenizer,
-            max_seq_len=max_seq_len,
-            label_list=label_list,
-            metric=metric,
-            train_filename=train_filename,
-            dev_filename=dev_filename,
-            dev_split=dev_split,
-            test_filename=test_filename,
-            data_dir=Path(data_dir),
-        )
+        if processor is None:
+            processor = SquadProcessor(
+                tokenizer=self.inferencer.processor.tokenizer,
+                max_seq_len=max_seq_len,
+                label_list=label_list,
+                metric=metric,
+                train_filename=train_filename,
+                dev_filename=dev_filename,
+                dev_split=dev_split,
+                test_filename=test_filename,
+                data_dir=Path(data_dir),
+            )
         data_silo: DataSilo
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
@@ -323,7 +325,8 @@ class FARMReader(BaseReader):
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
         caching: bool = False,
-        cache_path: Path = Path("cache/data_silo")
+        cache_path: Path = Path("cache/data_silo"),
+        processor: Optional[Processor] = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -367,6 +370,7 @@ class FARMReader(BaseReader):
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :param caching whether or not to use caching for preprocessed dataset
         :param cache_path: Path to cache the preprocessed dataset
+        :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :return: None
         """
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
@@ -378,7 +382,7 @@ class FARMReader(BaseReader):
         save_dir=save_dir, num_processes=num_processes,
         use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
         checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
-        caching=caching, cache_path=cache_path)
+        caching=caching, cache_path=cache_path, processor=processor)
     
     def distil_prediction_layer_from(
         self,
@@ -407,6 +411,7 @@ class FARMReader(BaseReader):
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
+        processor: Optional[Processor] = None,
     ):
         """
         Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -470,6 +475,7 @@ class FARMReader(BaseReader):
         :param tinybert_epochs: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
         :param tinybert_learning_rate: Learning rate to use when training the student model with the TinyBERT loss function.
         :param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
+        :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :return: None
         """
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
@@ -483,7 +489,7 @@ class FARMReader(BaseReader):
         checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
         teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
         caching=caching, cache_path=cache_path, distillation_loss_weight=distillation_loss_weight,
-        distillation_loss=distillation_loss, temperature=temperature)
+        distillation_loss=distillation_loss, temperature=temperature, processor=processor)
 
     def distil_intermediate_layers_from(
         self,
@@ -511,6 +517,7 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse",
         temperature: float = 1.0,
+        processor: Optional[Processor] = None,
     ):
         """
         The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -566,6 +573,7 @@ class FARMReader(BaseReader):
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+        :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :return: None
         """
         return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
@@ -579,7 +587,8 @@ class FARMReader(BaseReader):
         checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
         teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
         caching=caching, cache_path=cache_path,
-        distillation_loss=distillation_loss, temperature=temperature, tinybert=True)
+        distillation_loss=distillation_loss, temperature=temperature, tinybert=True,
+        processor=processor)
 
     def update_parameters(
         self,

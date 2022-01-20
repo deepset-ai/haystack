@@ -13,6 +13,7 @@ from inspect import signature
 from pathlib import Path
 from io import StringIO
 from typing import Optional, Dict, List, Union, Any, Iterable
+from torch.utils.data import TensorDataset
 
 import pandas as pd
 import numpy as np
@@ -2140,3 +2141,22 @@ def _is_json(x):
         return True
     except:
         return False
+
+class UnlabeledTextProcessor(Processor):
+    def file_to_dicts(self, file: str) -> List[dict]:
+        dicts = []
+        with open(file, "r") as f:
+            for line in f:
+                dicts.append({"text": json.loads(line)})
+        return dicts
+    
+    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+        if return_baskets:
+            raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
+        texts = [dict_["text"] for dict_ in dicts]
+        tokens = self.tokenizer.batch_encode_plus(texts, add_special_tokens=True, return_tensors="pt", padding=True, truncation=True, max_length=self.max_seq_length)
+        names = [key for key in tokens]
+        dataset = TensorDataset(*[tokens[key] for key in tokens])
+        return dataset, names, []
+    def _create_dataset(self, baskets:List[SampleBasket]):
+        raise NotImplementedError("_create_dataset is not supported by UnlabeledTextProcessor")
