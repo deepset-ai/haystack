@@ -2143,6 +2143,9 @@ def _is_json(x):
         return False
 
 class UnlabeledTextProcessor(Processor):
+    def __init__(self, tokenizer, max_seq_len: int, train_filename: Optional[Union[Path, str]] = None, dev_filename: Optional[Union[Path, str]] = None, test_filename: Optional[Union[Path, str]] = None, dev_split: float = 0, data_dir: Optional[Union[Path, str]] = None, tasks: Dict = {}, proxies: Optional[Dict] = None, multithreading_rust: Optional[bool] = True):
+        self.add_task("question_answering", "squad", ["start_token", "end_token"])
+        super().__init__(tokenizer, max_seq_len, train_filename, dev_filename, test_filename, dev_split, data_dir, tasks, proxies, multithreading_rust)
     def file_to_dicts(self, file: str) -> List[dict]:
         dicts = []
         with open(file, "r") as f:

@@ -84,7 +84,7 @@ class DataSilo:
         else:
             self.eval_batch_size = eval_batch_size
 
-        if len(self.processor.tasks) == 0 and not isinstance(self.processor, UnlabeledTextProcessor):
+        if len(self.processor.tasks) == 0:
             raise Exception("No task initialized. Try initializing the processor with a metric and a label list. "
                             "Alternatively you can add a task using Processor.add_task()")
 
