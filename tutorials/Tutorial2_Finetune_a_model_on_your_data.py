@@ -8,6 +8,7 @@
 # This tutorial shows you how to fine-tune a pretrained model on your own dataset.
 
 from haystack.nodes import FARMReader
+from haystack.utils import augment_squad
 
 
 def tutorial2_finetune_a_model_on_your_data():
@@ -54,19 +55,19 @@ def tutorial2_finetune_a_model_on_your_data():
     # This is why "distilbert-base-uncased" can achieve quite competitive performance while being very small.
     #
     # Sometimes, however, you can't use an already distilled model and have to distil it yourself.
-    # For this case, haystack has implemented a [distillation approach](https://arxiv.org/pdf/1909.10351.pdf).
-    # distil(reader)
+    # For this case, haystack has implemented [distillation features](https://haystack.deepset.ai/guides/model-distillation)..
+    # distil()
 
 
-def distil(teacher):
+def distil():
     # ### Augmenting your training data
     # To get the most out of model distillation, we recommend increasing the size of your training data by using data augmentation.
     # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/master/haystack/utils/augment_squad.py):
-    # # Downloading script
-    # !wget https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/utils/augment_squad.py
     # # Just replace dataset.json with the name of your dataset and adjust the output path
-    # !python augment_squad.py --squad_path dataset.json --output_path augmented_dataset.json --multiplication_factor 2
-    # In this case, we use a multiplication factor of 2 to keep this example lightweight. Usually you would use a factor like 20 depending on the size of your training data.
+    augment_squad.main(squad_path="dataset.json", output_path="augmented_dataset.json", multiplication_factor=2)
+    # In this case, we use a multiplication factor of 2 to keep this example lightweight.
+    # Usually you would use a factor like 20 depending on the size of your training data.
+    # Augmenting this small dataset with a multiplication factor of 2, should take about 5 to 10 minutes to run on one V100 GPU.
 
 
     # ### Running distillation
@@ -77,9 +78,12 @@ def distil(teacher):
     # If you want, you can leave out the intermediate layer distillation step and only run the prediction layer distillation.
     # This way you also do not need to perform data augmentation. However, this will make the model significantly less accurate.
 
-    student = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=True)
+    # Loading a fine-tuned model as teacher e.g. "deepset/​bert-​base-​uncased-​squad2"    
+    teacher = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D", use_gpu=True)
 
-    student = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D", use_gpu=True)
+    # You can use any pre-trained language model as teacher that uses the same tokenizer as the teacher model.
+    # The number of the layers in the teacher model also needs to be a multiple of the number of the layers in the student.
+    student = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=True)
 
     student.distil_intermediate_layers_from(teacher, data_dir="data/squad20", train_filename="augmented_dataset.json", use_gpu=True)
     student.distil_prediction_layer_from(teacher, data_dir="data/squad20", train_filename="dev-v2.0.json", use_gpu=True)
