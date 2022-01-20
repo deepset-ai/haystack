@@ -24,7 +24,7 @@ def test_distillation():
 
     student_weights.pop(-2) # pooler is not updated due to different attention head
     
-    student.distil_prediction_layer_from(teacher, data_dir=Path(__name__).parent/"samples"/"squad"), train_filename="tiny.json"
+    student.distil_prediction_layer_from(teacher, data_dir=Path(__file__).parent/"samples"/"squad"), train_filename="tiny.json"
 
     # create new checkpoint
     new_student_weights = create_checkpoint(student)
@@ -48,7 +48,7 @@ def test_tinybert_distillation():
     student_weights.pop(-1) # last layer is not affected by tinybert loss
     student_weights.pop(-1) # pooler is not updated due to different attention head
     
-    student.distil_intermediate_layers_from(teacher_model=teacher, data_dir=Path(__name__).parent/"samples"/"squad", train_filename="tiny.json")
+    student.distil_intermediate_layers_from(teacher_model=teacher, data_dir=Path(__file__).parent/"samples"/"squad", train_filename="tiny.json")
 
     # create new checkpoint
     new_student_weights = create_checkpoint(student)
