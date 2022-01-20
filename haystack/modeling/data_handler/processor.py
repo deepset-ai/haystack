@@ -2154,7 +2154,7 @@ class UnlabeledTextProcessor(Processor):
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]
-        tokens = self.tokenizer.batch_encode_plus(texts, add_special_tokens=True, return_tensors="pt", padding=True, truncation=True, max_length=self.max_seq_length)
+        tokens = self.tokenizer.batch_encode_plus(texts, add_special_tokens=True, return_tensors="pt", padding=True, truncation=True, max_length=self.max_seq_len)
         names = [key for key in tokens]
         dataset = TensorDataset(*[tokens[key] for key in tokens])
         return dataset, names, []
