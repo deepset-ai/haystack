@@ -24,7 +24,7 @@ def test_distillation():
 
     student_weights.pop(-2) # pooler is not updated due to different attention head
     
-    student.distil_prediction_layer_from(teacher, data_dir=Path(__file__).parent/"samples"/"squad"), train_filename="tiny.json"
+    student.distil_prediction_layer_from(teacher, data_dir=Path(__file__).parent/"samples"/"squad", train_filename="tiny.json")
 
     # create new checkpoint
     new_student_weights = create_checkpoint(student)

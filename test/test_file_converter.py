@@ -45,14 +45,14 @@ def test_language_validation(Converter, caplog):
     converter = Converter(valid_languages=["en"])
     converter.convert(file_path=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf")
     assert (
-        "The language for samples/pdf/sample_pdf_1.pdf is not one of ['en']."
+        "samples/pdf/sample_pdf_1.pdf is not one of ['en']."
         not in caplog.text
     )
 
     converter = Converter(valid_languages=["de"])
     converter.convert(file_path=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf")
     assert (
-        "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']."
+        "samples/pdf/sample_pdf_1.pdf is not one of ['de']."
         in caplog.text
     )
 
@@ -92,7 +92,7 @@ def test_azure_converter():
 def test_parsr_converter():
     converter = ParsrConverter()
 
-    docs = converter.convert(file_path=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf")
+    docs = converter.convert(file_path=str((Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf").absolute()))
     assert len(docs) == 2
     assert docs[0]["content_type"] == "table"
     assert len(docs[0]["content"]) == 5  # number of rows
