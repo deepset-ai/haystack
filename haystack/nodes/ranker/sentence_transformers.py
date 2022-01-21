@@ -125,7 +125,7 @@ class SentenceTransformersRanker(BaseRanker):
 
         # add normalized scores to documents
         sorted_documents = []
-        for doc, raw_score in sorted_scores_and_documents[:top_k]:
+        for raw_score, doc in sorted_scores_and_documents[:top_k]:
             if logits_dim >= 2:
                 score = self.multi_label_activation(raw_score)[-1]
             else:
