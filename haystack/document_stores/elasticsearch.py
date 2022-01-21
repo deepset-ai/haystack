@@ -1275,7 +1275,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
-            mapping = self.client.indices.get(index_name, headers=headers)[index_name]["mappings"]
+            index_info = self.client.indices.get(index_name, headers=headers)[index_name]
+            mapping = index_info["mappings"]
+            settings = index_info["settings"]
             if self.search_fields:
                 for search_field in self.search_fields:
                     if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
@@ -1284,11 +1286,36 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                                         f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
                                         f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
                                         f"Note, that all data stored in the index will be lost!")
-            if self.embedding_field:
-                if self.embedding_field in mapping["properties"] and mapping["properties"][self.embedding_field]["type"] != "knn_vector":
+
+            # index without full similarity support, but requested
+            if self.full_similarity_support and self.embedding_field in mapping["properties"]:
+                raise Exception(f"This seems to be an index without full similarity support. "
+                                 "To make this index capable of full similarity support, instantiate OpenSearchDocumentStore without full_similarity_support and run upgrade_to_full_similarity_support().")
+
+            # index with full similarity support, but not requested
+            full_support_field = self.embedding_field + "_" + self.similarity
+            if not self.full_similarity_support and full_support_field in mapping["properties"]:
+                self.similarity_embeddings[self.similarity] = full_support_field
+            
+            embedding_field = self.similarity_embeddings[self.similarity]
+            if embedding_field in mapping["properties"]:
+                # bad embedding field
+                if mapping["properties"][embedding_field]["type"] != "knn_vector":
                     raise Exception(f"The '{index_name}' index in OpenSearch already has a field called '{self.embedding_field}'"
                                     f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
                                     f"document_store to use a different name for the embedding_field parameter.")
+                # old embedding field with global space_type setting                                        
+                elif "method" not in mapping["properties"][embedding_field]:
+                    if settings["knn.space_type"] != self._get_similarity_space_type():
+                        logger.warning(f"{self.similarity} is not fully supported by this index. Falling back to slow exact vector calculation."
+                                        "Consider upgrading to full similarity support by calling upgrade_to_full_similarity_support().")
+                        del self.similarity_embeddings[self.similarity]
+                # new embedding field
+                else:
+                    if mapping["properties"][embedding_field]["space_type"] != self._get_similarity_space_type():
+                        logger.warning(f"{self.similarity} is not fully supported by this index. Falling back to slow exact vector calculation."
+                                        "Consider upgrading to full similarity support by calling upgrade_to_full_similarity_support().")
+                        del self.similarity_embeddings[self.similarity]
             return
 
         if self.custom_mapping:
@@ -1407,14 +1434,32 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         """
         Generate Elasticsearch query for vector similarity.
         """
-        embedding_field = self.similarity_embeddings[self.similarity]
-        query = {
-                "bool": {
-                    "must": [
-                        {"knn": {embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
-                    ]
+        embedding_field = self.similarity_embeddings.get(self.similarity, None)
+    
+        # if we do not have a proper similarity field we have to fall back to exact but slow vector similarity calculation
+        if embedding_field is None:
+            query = {
+                "script_score": {
+                    "query": {"match_all": {}},
+                    "script": {
+                        "source": "knn_score", 
+                        "lang": "knn", 
+                        "params": {
+                            "field": self.embedding_field, 
+                            "query_value": query_emb.tolist(), 
+                            "space_type": self._get_similarity_space_type()
+                            }
+                        }
+                    }
+                }               
+        else:            
+            query = {
+                    "bool": {
+                        "must": [
+                            {"knn": {embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
+                        ]
+                    }
                 }
-            }
         return query
 
     def _scale_embedding_score(self, score):
