@@ -9,7 +9,7 @@ import haystack.nodes
 import pydantic.schema
 from fastapi.dependencies.utils import get_typed_signature
 from github import Github
-from pydantic import BaseSettings, Required, SecretStr, create_model
+from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
 from pydantic.fields import ModelField
 from pydantic.schema import SkipField, TypeModelOrEnum, TypeModelSet, encode_default
 from pydantic.schema import field_singleton_schema as _field_singleton_schema
@@ -64,6 +64,10 @@ def field_singleton_schema(
 pydantic.schema.field_singleton_schema = field_singleton_schema
 
 
+class Config(BaseConfig):
+    extra = "forbid"
+
+
 def get_json_schema():
     schema_definitions = {}
     additional_definitions = {}
@@ -98,7 +102,9 @@ def get_json_schema():
                         default = param.default
                     param_fields_kwargs[param.name] = (annotation, default)
                 model = create_model(
-                    f"{node.__name__}ComponentParams", **param_fields_kwargs
+                    f"{node.__name__}ComponentParams",
+                    __config__=Config,
+                    **param_fields_kwargs,
                 )
                 model.update_forward_refs(**model.__dict__)
                 params_schema = model.schema()

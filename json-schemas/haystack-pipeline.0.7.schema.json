@@ -310,6 +310,7 @@
             "endpoint",
             "credential_key"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -336,6 +337,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -375,6 +377,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -401,6 +404,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -427,6 +431,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -453,6 +458,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -479,6 +485,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -505,6 +512,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -531,6 +539,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -557,6 +566,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -583,6 +593,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -638,6 +649,7 @@
           "required": [
             "output_dir"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -785,6 +797,7 @@
           "required": [
             "document_store"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -811,6 +824,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -850,6 +864,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -893,6 +908,7 @@
           "required": [
             "document_store"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -936,6 +952,7 @@
           "required": [
             "document_store"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1047,6 +1064,7 @@
             "document_store",
             "embedding_model"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1084,6 +1102,7 @@
               "type": "boolean"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1130,6 +1149,7 @@
               "type": "boolean"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1172,6 +1192,7 @@
               "type": "integer"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1305,6 +1326,7 @@
           "required": [
             "model_name_or_path"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1331,6 +1353,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1373,6 +1396,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1416,6 +1440,7 @@
               "type": "integer"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1455,6 +1480,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1494,6 +1520,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1536,6 +1563,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1618,6 +1646,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1685,6 +1714,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1755,6 +1785,7 @@
               "default": "generate questions:"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1840,6 +1871,7 @@
               "type": "boolean"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1908,6 +1940,7 @@
               "type": "integer"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -1981,6 +2014,7 @@
           "required": [
             "model_name_or_path"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2045,6 +2079,7 @@
           "required": [
             "model_name_or_path"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2092,6 +2127,7 @@
               ]
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2147,6 +2183,7 @@
               "type": "integer"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2319,6 +2356,7 @@
           "required": [
             "document_store"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2361,6 +2399,7 @@
             "knowledge_graph",
             "model_name_or_path"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2400,6 +2439,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2443,6 +2483,7 @@
           "required": [
             "document_store"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2487,6 +2528,7 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2558,6 +2600,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2603,6 +2646,7 @@
               "type": "boolean"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2678,6 +2722,7 @@
               "type": "integer"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2748,6 +2793,7 @@
               "type": "boolean"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2800,6 +2846,7 @@
           "required": [
             "model_name_or_path"
           ],
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2826,6 +2873,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -2852,6 +2900,7 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3054,6 +3103,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3163,6 +3213,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3219,6 +3270,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3286,6 +3338,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3392,6 +3445,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3427,6 +3481,7 @@
               "default": "cosine"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3474,6 +3529,7 @@
               "default": 9200
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3530,6 +3586,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
@@ -3658,6 +3715,7 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
       },
