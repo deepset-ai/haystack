@@ -1,3 +1,6 @@
+# Dummy pipeline, used when the CI needs to load the REST API to
+# extract the OpenAPI specs. DO NOT USE.
+
 version: '0.9'
 
 components:
