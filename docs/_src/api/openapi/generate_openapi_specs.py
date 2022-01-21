@@ -4,13 +4,16 @@ from pathlib import Path
 import os
 
 rest_path = Path(__file__).parent.parent.parent.parent.parent/"rest_api"
-os.environ["PIPELINE_YAML_PATH"] = str((rest_path/"pipeline"/"pipeline_empty.yaml").absolute())
+pipeline_path = str((rest_path/"pipeline"/"pipeline_empty.yaml").absolute())
+app_path = rest_path/"application.py"
+print(f"Loading OpenAPI specs from {app_path} with pipeline at {pipeline_path}")
+
+os.environ["PIPELINE_YAML_PATH"] = pipeline_path
 
 # Magic import from the rest_api folder
 import types
 import importlib.machinery
-path = rest_path/"application.py"
-loader = importlib.machinery.SourceFileLoader('a_b', str(path))
+loader = importlib.machinery.SourceFileLoader('a_b', str(app_path))
 mod = types.ModuleType(loader.name)
 loader.exec_module(mod)
 
