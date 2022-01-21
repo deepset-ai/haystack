@@ -132,6 +132,7 @@ def get_json_schema():
                         "params": params_schema,
                     },
                     "required": ["type", "name"],
+                    "additionalProperties": False,
                 }
                 schema_definitions[f"{node.__name__}Component"] = component_schema
 
@@ -156,6 +157,7 @@ def get_json_schema():
                 "type": "array",
                 "items": {"anyOf": component_refs},
                 "required": ["type", "name"],
+                "additionalProperties": False,
             },
             "pipelines": {
                 "title": "Pipelines",
@@ -190,12 +192,14 @@ def get_json_schema():
                                 },
                             },
                             "required": ["name", "nodes"],
+                            "additionalProperties": False,
                         },
                     },
                 },
             },
         },
         "required": ["version", "components", "pipelines"],
+        "additionalProperties": False,
         "definitions": all_definitions,
     }
     return pipeline_schema

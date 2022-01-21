@@ -196,7 +196,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "pipelines": {
       "title": "Pipelines",
@@ -235,7 +236,8 @@
             "required": [
               "name",
               "nodes"
-            ]
+            ],
+            "additionalProperties": false
           }
         }
       }
@@ -246,6 +248,7 @@
     "components",
     "pipelines"
   ],
+  "additionalProperties": false,
   "definitions": {
     "AzureConverterComponent": {
       "type": "object",
@@ -317,7 +320,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseComponentComponent": {
       "type": "object",
@@ -344,7 +348,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseConverterComponent": {
       "type": "object",
@@ -384,7 +389,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseDocumentClassifierComponent": {
       "type": "object",
@@ -411,7 +417,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseGeneratorComponent": {
       "type": "object",
@@ -438,7 +445,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BasePreProcessorComponent": {
       "type": "object",
@@ -465,7 +473,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseRankerComponent": {
       "type": "object",
@@ -492,7 +501,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseReaderComponent": {
       "type": "object",
@@ -519,7 +529,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseRetrieverComponent": {
       "type": "object",
@@ -546,7 +557,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseSummarizerComponent": {
       "type": "object",
@@ -573,7 +585,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseTranslatorComponent": {
       "type": "object",
@@ -600,7 +613,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "CrawlerComponent": {
       "type": "object",
@@ -656,7 +670,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "DensePassageRetrieverComponent": {
       "type": "object",
@@ -804,7 +819,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "Docs2AnswersComponent": {
       "type": "object",
@@ -831,7 +847,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "DocxToTextConverterComponent": {
       "type": "object",
@@ -871,7 +888,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "ElasticsearchFilterOnlyRetrieverComponent": {
       "type": "object",
@@ -915,7 +933,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "ElasticsearchRetrieverComponent": {
       "type": "object",
@@ -959,7 +978,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "EmbeddingRetrieverComponent": {
       "type": "object",
@@ -1071,7 +1091,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "EntityExtractorComponent": {
       "type": "object",
@@ -1109,7 +1130,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "EvalAnswersComponent": {
       "type": "object",
@@ -1156,7 +1178,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "EvalDocumentsComponent": {
       "type": "object",
@@ -1199,7 +1222,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "FARMReaderComponent": {
       "type": "object",
@@ -1333,7 +1357,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "FileTypeClassifierComponent": {
       "type": "object",
@@ -1360,7 +1385,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "ImageToTextConverterComponent": {
       "type": "object",
@@ -1403,7 +1429,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "JoinDocumentsComponent": {
       "type": "object",
@@ -1447,7 +1474,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "MarkdownConverterComponent": {
       "type": "object",
@@ -1487,7 +1515,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "PDFToTextConverterComponent": {
       "type": "object",
@@ -1527,7 +1556,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "PDFToTextOCRConverterComponent": {
       "type": "object",
@@ -1570,7 +1600,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "ParsrConverterComponent": {
       "type": "object",
@@ -1653,7 +1684,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "PreProcessorComponent": {
       "type": "object",
@@ -1721,7 +1753,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "QuestionGeneratorComponent": {
       "type": "object",
@@ -1792,7 +1825,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "RAGeneratorComponent": {
       "type": "object",
@@ -1878,7 +1912,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "RCIReaderComponent": {
       "type": "object",
@@ -1947,7 +1982,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "SentenceTransformersRankerComponent": {
       "type": "object",
@@ -2021,7 +2057,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "Seq2SeqGeneratorComponent": {
       "type": "object",
@@ -2086,7 +2123,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "SklearnQueryClassifierComponent": {
       "type": "object",
@@ -2134,7 +2172,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TableReaderComponent": {
       "type": "object",
@@ -2190,7 +2229,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TableTextRetrieverComponent": {
       "type": "object",
@@ -2363,7 +2403,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "Text2SparqlRetrieverComponent": {
       "type": "object",
@@ -2406,7 +2447,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TextConverterComponent": {
       "type": "object",
@@ -2446,7 +2488,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TfidfRetrieverComponent": {
       "type": "object",
@@ -2490,7 +2533,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TikaConverterComponent": {
       "type": "object",
@@ -2535,7 +2579,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TransformersDocumentClassifierComponent": {
       "type": "object",
@@ -2607,7 +2652,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TransformersQueryClassifierComponent": {
       "type": "object",
@@ -2653,7 +2699,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TransformersReaderComponent": {
       "type": "object",
@@ -2729,7 +2776,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TransformersSummarizerComponent": {
       "type": "object",
@@ -2800,7 +2848,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "TransformersTranslatorComponent": {
       "type": "object",
@@ -2853,7 +2902,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseDocumentStoreComponent": {
       "type": "object",
@@ -2880,7 +2930,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BaseKnowledgeGraphComponent": {
       "type": "object",
@@ -2907,7 +2958,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "ElasticsearchDocumentStoreComponent": {
       "type": "object",
@@ -3110,7 +3162,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "FAISSDocumentStoreComponent": {
       "type": "object",
@@ -3220,7 +3273,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "GraphDBKnowledgeGraphComponent": {
       "type": "object",
@@ -3277,7 +3331,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "InMemoryDocumentStoreComponent": {
       "type": "object",
@@ -3345,7 +3400,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "MilvusDocumentStoreComponent": {
       "type": "object",
@@ -3452,7 +3508,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "OpenDistroElasticsearchDocumentStoreComponent": {
       "type": "object",
@@ -3488,7 +3545,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "OpenSearchDocumentStoreComponent": {
       "type": "object",
@@ -3536,7 +3594,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "SQLDocumentStoreComponent": {
       "type": "object",
@@ -3593,7 +3652,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "WeaviateDocumentStoreComponent": {
       "type": "object",
@@ -3722,7 +3782,8 @@
       "required": [
         "type",
         "name"
-      ]
+      ],
+      "additionalProperties": false
     },
     "RAGeneratorType": {
       "title": "RAGeneratorType",
