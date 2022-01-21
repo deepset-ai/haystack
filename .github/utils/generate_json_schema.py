@@ -78,8 +78,13 @@ def get_json_schema():
         for importable_name in dir(module):
             imported = getattr(module, importable_name)
             possible_nodes.append((module, imported))
+    # TODO: decide if there's a better way to not include Base classes other than by
+    # the prefix "Base" in the name. Maybe it could make sense to have a list of
+    # all the valid nodes to include in the main source code and then using that here.
     for module, node in possible_nodes:
-        if lenient_issubclass(node, haystack.nodes.BaseComponent):
+        if lenient_issubclass(
+            node, haystack.nodes.BaseComponent
+        ) and not node.__name__.startswith("Base"):
             logging.info(f"Processing node: {node.__name__}")
             init_method = getattr(node, "__init__", None)
             if init_method:
@@ -245,7 +250,7 @@ def main():
 if __name__ == "__main__":
     # If you only want to generate the JSON Schema file without submitting a PR
     # uncomment this line:
-    # generate_json_schema()
+    generate_json_schema()
 
     # and comment this line:
-    main()
+    # main()
