@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchDocumentStore(BaseDocumentStore):
+    supported_similarities = ["cosine", "dot_product", "l2"]
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
@@ -146,6 +147,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.content_field = content_field
         self.name_field = name_field
         self.embedding_field = embedding_field
+        self.embedding_fields = [self.embedding_field]
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
         self.analyzer = analyzer
@@ -158,7 +160,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.label_index: str = label_index
         self.scroll = scroll
         self.skip_missing_embeddings: bool = skip_missing_embeddings
-        if similarity in ["cosine", "dot_product", "l2"]:
+        if similarity in self.supported_similarities:
             self.similarity = similarity
         else:
             raise Exception(f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'")
@@ -954,7 +956,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.content_field, "content_type", self.embedding_field)}
+        to_filter = [self.content_field, "content_type"] + self.embedding_fields
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in to_filter}
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
@@ -1076,12 +1079,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     update = {"_op_type": "update",
                               "_index": index,
                               "_id": doc.id,
-                              "doc": {self.embedding_field: emb.tolist()},
+                              "doc": self._get_update_embedding_doc(emb=emb),
                               }
                     doc_updates.append(update)
 
                 bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
+
+    def _get_update_embedding_doc(self, emb: np.ndarray) -> dict:
+        return {self.embedding_field: emb.tolist()}
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
@@ -1172,18 +1178,17 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                  username="admin",
                  password="admin",
                  port=9200,
+                 full_similarity_support=False,
                  **kwargs):
-
         # Overwrite default kwarg values of parent class so that in default cases we can initialize
         # an OpenSearchDocumentStore without provding any arguments
-
+        self.full_similarity_support=full_similarity_support
         super(OpenSearchDocumentStore, self).__init__(verify_certs=verify_certs,
                                                       scheme=scheme,
                                                       username=username,
                                                       password=password,
                                                       port=port,
                                                       **kwargs)
-
 
     def query_by_embedding(self,
                         query_emb: np.ndarray,
@@ -1261,6 +1266,13 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         """
         Create a new index for storing documents.
         """
+        if self.full_similarity_support:
+            self.similarity_embeddings = {similarity: self.embedding_field + "_" + similarity for similarity in self.supported_similarities}
+            self.embedding_fields = list(self.similarity_embeddings.values())
+        else:            
+            self.supported_similarities = [self.similarity]
+            self.similarity_embeddings = {self.similarity: self.embedding_field}
+
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
             mapping = self.client.indices.get(index_name, headers=headers)[index_name]["mappings"]
@@ -1307,35 +1319,34 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 }
             }
             if self.embedding_field:
+                mapping["settings"]["index"] = {"knn": True}
+                for similarity, embedding_field in self.similarity_embeddings.items():
+                    similarity_space_type = self._get_similarity_space_type(similarity)
 
-                similarity_space_type = self._get_similarity_space_type()
-
-                method: dict = {
-                        "space_type": similarity_space_type,
-                        "name": "hnsw",
-                        "engine": "nmslib"
-                    }
-
-                if self.index_type == "flat":
-                    pass
-                elif self.index_type == "hnsw":
-                    method.update({
-                        "parameters": {
-                            "ef_construction": 80,
-                            "m": 64,
-                            "ef_search": 20
+                    method: dict = {
+                            "space_type": similarity_space_type,
+                            "name": "hnsw",
+                            "engine": "nmslib"
                         }
-                    })
-                else:
-                    logger.error("Please set index_type to either 'flat' or 'hnsw'")
-                
-                mapping["settings"]["index"] = {}
-                mapping["settings"]["index"]["knn"] = True
-                mapping["mappings"]["properties"][self.embedding_field] = {
-                    "type": "knn_vector",
-                    "dimension": self.embedding_dim,
-                    "method": method                 
-                }
+
+                    if self.index_type == "flat":
+                        pass
+                    elif self.index_type == "hnsw":
+                        method.update({
+                            "parameters": {
+                                "ef_construction": 80,
+                                "m": 64,
+                                "ef_search": 20
+                            }
+                        })
+                    else:
+                        logger.error("Please set index_type to either 'flat' or 'hnsw'")
+                    
+                    mapping["mappings"]["properties"][embedding_field] = {
+                        "type": "knn_vector",
+                        "dimension": self.embedding_dim,
+                        "method": method                 
+                    }
 
         try:
             self.client.indices.create(index=index_name, body=mapping, headers=headers)
@@ -1347,12 +1358,17 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
-    def _get_similarity_space_type(self):
-        if self.similarity == "cosine":
+    def _get_update_embedding_doc(self, emb: np.ndarray) -> dict:
+        return {embedding_field: emb.tolist() for embedding_field in self.similarity_embeddings.values()}
+
+    def _get_similarity_space_type(self, similarity: str = None):
+        if similarity is None:
+            similarity = self.similarity
+        if similarity == "cosine":
             similarity_space_type = "cosinesimil"
-        elif self.similarity == "dot_product":
+        elif similarity == "dot_product":
             similarity_space_type = "innerproduct"
-        elif self.similarity == "l2":
+        elif similarity == "l2":
             similarity_space_type = "l2"
         return similarity_space_type
 
@@ -1391,10 +1407,11 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         """
         Generate Elasticsearch query for vector similarity.
         """
+        embedding_field = self.similarity_embeddings[self.similarity]
         query = {
                 "bool": {
                     "must": [
-                        {"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
+                        {"knn": {embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
                     ]
                 }
             }
