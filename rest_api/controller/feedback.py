@@ -44,13 +44,10 @@ def get_feedback_metrics(filters: FilterRequest = None):
     e.g., the ratio of correct answers or correctly identified documents. 
     You can filter the output by document or label.
 
-    **Example:**
-
-        ```
-            | curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback' \
-            | --header 'Content-Type: application/json' \
-            | --data-raw '{ "filters": {"document_id": ["XRR3xnEBCYVTkbTystOB"]} }'
-
+    Example:
+    `curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback' \
+     --header 'Content-Type: application/json' \
+     --data-raw '{ "filters": {"document_id": ["XRR3xnEBCYVTkbTystOB"]} }'`
     """
 
     if filters:
@@ -80,7 +77,7 @@ def export_feedback(
 ):
     """
     This endpoint returns JSON output in the SQuAD format for question/answer pairs 
-    that were marked as "relevant" by user feedback through the `/feedback` endpoint.
+    that were marked as "relevant" by user feedback through the `POST /feedback` endpoint.
 
     The context_size param can be used to limit response size for large documents.
     """

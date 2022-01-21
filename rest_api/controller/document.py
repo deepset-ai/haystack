@@ -23,10 +23,11 @@ def get_documents(filters: FilterRequest):
     You can filter the documents to delete by metadata (like the document's name), 
     or provide an empty JSON object to clear the document store.
 
-    :param filters: Filters to narrow down the documents to delete.
-                    Example: '{"filters": {{"name": ["some", "more"], "category": ["only_one"]}}'
-                    To get all documents you should provide an empty dict, like:
-                    '{"filters": {}}'
+    Example of filters: 
+    `'{"filters": {{"name": ["some", "more"], "category": ["only_one"]}}'`
+    
+    To get all documents you should provide an empty dict, like:
+    `'{"filters": {}}'`
     """
     docs = [doc.to_dict() for doc in DOCUMENT_STORE.get_all_documents(filters=filters.filters)]
     for doc in docs:
@@ -41,10 +42,11 @@ def delete_documents(filters: FilterRequest):
     You can filter the documents to delete by metadata (like the document's name), 
     or provide an empty JSON object to clear the document store.
 
-    :param filters: Filters to narrow down the documents to delete.
-                    Example: '{"filters": {{"name": ["some", "more"], "category": ["only_one"]}}'
-                    To delete all documents you should provide an empty dict, like:
-                    '{"filters": {}}'
+    Example of filters: 
+    `'{"filters": {{"name": ["some", "more"], "category": ["only_one"]}}'`
+    
+    To get all documents you should provide an empty dict, like:
+    `'{"filters": {}}'`
     """
     DOCUMENT_STORE.delete_documents(filters=filters.filters)
     return True
