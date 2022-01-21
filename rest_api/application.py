@@ -4,6 +4,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.routing import APIRoute
+from fastapi.openapi.utils import get_openapi
 from starlette.middleware.cors import CORSMiddleware
 
 from rest_api.controller.errors.http_error import http_error_handler
@@ -32,6 +33,18 @@ def get_application() -> FastAPI:
     application.include_router(api_router)
 
     return application
+
+
+def get_openapi_specs() -> dict:
+    app = get_application()
+    return get_openapi(
+        title=app.title if app.title else None,
+        version=app.version if app.version else None,
+        openapi_version=app.openapi_version if app.openapi_version else None,
+        description=app.description if app.description else None,
+        routes=app.routes if app.routes else None,
+    )
+
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:
     """

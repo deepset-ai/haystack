@@ -1,0 +1,13 @@
+version: '0.9'
+
+components:
+  - name: FileTypeClassifier
+    type: FileTypeClassifier
+  
+pipelines:
+  - name: query
+    type: Query
+    nodes:
+      - name: FileTypeClassifier
+        inputs: [File]
+
