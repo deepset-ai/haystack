@@ -128,21 +128,27 @@ def get_json_schema():
                             "description": "Custom name for the component. Helpful for visualization and debugging.",
                             "type": "string",
                         },
-                        "type": {
-                            "title": "Type",
-                            "description": "Haystack Class name for the component.",
-                            "type": "string",
-                            "const": f"{node.__name__}",
-                        },
                         "params": params_schema,
                     },
-                    "required": ["type", "name"],
+                    "required": ["name"],
                     "additionalProperties": False,
                 }
-                schema_definitions[f"{node.__name__}Component"] = component_schema
+                schema_definitions[f"{node.__name__}"] = component_schema
 
     all_definitions = {**schema_definitions, **additional_definitions}
-    component_refs = [{"$ref": f"#/definitions/{name}"} for name in schema_definitions]
+    component_items = []
+    for name in schema_definitions:
+        component_item = {
+            "title": f"{name} Component",
+            "type": "object",
+            "properties": {
+                name: {"$ref": f"#/definitions/{name}"}
+            },
+            "required": [name],
+            "additionalProperties": False
+        }
+        component_items.append(component_item)
+
     pipeline_schema = {
         "$schema": "http://json-schema.org/draft-07/schema",
         "$id": f"https://haystack.deepset.ai/json-schemas/{filename}",
@@ -160,7 +166,7 @@ def get_json_schema():
                 "title": "Components",
                 "description": "Component nodes and their configurations, to later be used in the pipelines section. Define here all the building blocks for the pipelines.",
                 "type": "array",
-                "items": {"anyOf": component_refs},
+                "items": {"anyOf": component_items},
                 "required": ["type", "name"],
                 "additionalProperties": False,
             },
