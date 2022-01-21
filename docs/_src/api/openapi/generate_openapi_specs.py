@@ -3,9 +3,9 @@ import importlib
 from pathlib import Path
 import os
 
-rest_path = Path(__file__).parent.parent.parent.parent.parent/"rest_api"
+rest_path = (Path(__file__).parent.parent.parent.parent.parent/"rest_api").absolute()
 pipeline_path = str((rest_path/"pipeline"/"pipeline_empty.yaml").absolute())
-app_path = rest_path/"application.py"
+app_path = (rest_path/"application.py").absolute()
 print(f"Loading OpenAPI specs from {app_path} with pipeline at {pipeline_path}")
 
 os.environ["PIPELINE_YAML_PATH"] = pipeline_path
