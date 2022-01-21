@@ -1217,13 +1217,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             # +1 in similarity to avoid negative numbers (for cosine sim)
             body = {
                 "size": top_k,
-                "query": {
-                    "bool": {
-                        "must": [
-                            self._get_vector_similarity_query(query_emb, top_k)
-                        ]
-                    }
-                }
+                "query": self._get_vector_similarity_query(query_emb, top_k)
             }
             if filters:
                 filter_clause = []
@@ -1267,6 +1261,23 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         """
         Create a new index for storing documents.
         """
+        # check if the existing index has the embedding field; if not create it
+        if self.client.indices.exists(index=index_name, headers=headers):
+            mapping = self.client.indices.get(index_name, headers=headers)[index_name]["mappings"]
+            if self.search_fields:
+                for search_field in self.search_fields:
+                    if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+                        raise Exception(f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
+                                        f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
+                                        f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
+                                        f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                                        f"Note, that all data stored in the index will be lost!")
+            if self.embedding_field:
+                if self.embedding_field in mapping["properties"] and mapping["properties"][self.embedding_field]["type"] != "knn_vector":
+                    raise Exception(f"The '{index_name}' index in OpenSearch already has a field called '{self.embedding_field}'"
+                                    f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
+                                    f"document_store to use a different name for the embedding_field parameter.")
+            return
 
         if self.custom_mapping:
             mapping = self.custom_mapping
@@ -1297,38 +1308,34 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             }
             if self.embedding_field:
 
-                if self.similarity == "cosine":
-                    similarity_space_type = "cosinesimil"
-                elif self.similarity == "dot_product":
-                    similarity_space_type = "innerproduct"
-                elif self.similarity == "l2":
-                    similarity_space_type = "l2"
+                similarity_space_type = self._get_similarity_space_type()
 
-                mapping["settings"]["index"] = {}
-                mapping["settings"]["index"]["knn"] = True
-                mapping["settings"]["index"]["knn.space_type"] = similarity_space_type
-
-                mapping["mappings"]["properties"][self.embedding_field] = {
-                    "type": "knn_vector",
-                    "dimension": self.embedding_dim,
-                }
+                method: dict = {
+                        "space_type": similarity_space_type,
+                        "name": "hnsw",
+                        "engine": "nmslib"
+                    }
 
                 if self.index_type == "flat":
                     pass
                 elif self.index_type == "hnsw":
-                    mapping["settings"]["index"]["knn.algo_param"] = {}
-                    mapping["settings"]["index"]["knn.algo_param"]["ef_search"] = 20
-                    mapping["mappings"]["properties"][self.embedding_field]["method"] = {
-                        "space_type": similarity_space_type,
-                        "name": "hnsw",
-                        "engine": "nmslib",
+                    method.update({
                         "parameters": {
                             "ef_construction": 80,
-                            "m": 64
+                            "m": 64,
+                            "ef_search": 20
                         }
-                    }
+                    })
                 else:
                     logger.error("Please set index_type to either 'flat' or 'hnsw'")
+                
+                mapping["settings"]["index"] = {}
+                mapping["settings"]["index"]["knn"] = True
+                mapping["mappings"]["properties"][self.embedding_field] = {
+                    "type": "knn_vector",
+                    "dimension": self.embedding_dim,
+                    "method": method                 
+                }
 
         try:
             self.client.indices.create(index=index_name, body=mapping, headers=headers)
@@ -1339,6 +1346,15 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             # - one fails as the other one already created it
             if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
+
+    def _get_similarity_space_type(self):
+        if self.similarity == "cosine":
+            similarity_space_type = "cosinesimil"
+        elif self.similarity == "dot_product":
+            similarity_space_type = "innerproduct"
+        elif self.similarity == "l2":
+            similarity_space_type = "l2"
+        return similarity_space_type
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         if self.client.indices.exists(index=index_name, headers=headers):
@@ -1375,7 +1391,13 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         """
         Generate Elasticsearch query for vector similarity.
         """
-        query = {"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
+        query = {
+                "bool": {
+                    "must": [
+                        {"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
+                    ]
+                }
+            }
         return query
 
     def _scale_embedding_score(self, score):
