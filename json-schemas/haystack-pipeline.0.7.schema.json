@@ -231,7 +231,8 @@
                     "type": "string"
                   }
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "required": [
               "name",
@@ -239,7 +240,8 @@
             ],
             "additionalProperties": false
           }
-        }
+        },
+        "additionalProperties": false
       }
     }
   },
