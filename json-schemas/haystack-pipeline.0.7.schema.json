@@ -18,142 +18,602 @@
       "items": {
         "anyOf": [
           {
-            "$ref": "#/definitions/AzureConverterComponent"
+            "title": "AzureConverter Component",
+            "type": "object",
+            "properties": {
+              "AzureConverter": {
+                "$ref": "#/definitions/AzureConverter"
+              }
+            },
+            "required": [
+              "AzureConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/CrawlerComponent"
+            "title": "Crawler Component",
+            "type": "object",
+            "properties": {
+              "Crawler": {
+                "$ref": "#/definitions/Crawler"
+              }
+            },
+            "required": [
+              "Crawler"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/DensePassageRetrieverComponent"
+            "title": "DensePassageRetriever Component",
+            "type": "object",
+            "properties": {
+              "DensePassageRetriever": {
+                "$ref": "#/definitions/DensePassageRetriever"
+              }
+            },
+            "required": [
+              "DensePassageRetriever"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/Docs2AnswersComponent"
+            "title": "Docs2Answers Component",
+            "type": "object",
+            "properties": {
+              "Docs2Answers": {
+                "$ref": "#/definitions/Docs2Answers"
+              }
+            },
+            "required": [
+              "Docs2Answers"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/DocxToTextConverterComponent"
+            "title": "DocxToTextConverter Component",
+            "type": "object",
+            "properties": {
+              "DocxToTextConverter": {
+                "$ref": "#/definitions/DocxToTextConverter"
+              }
+            },
+            "required": [
+              "DocxToTextConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/ElasticsearchFilterOnlyRetrieverComponent"
+            "title": "ElasticsearchFilterOnlyRetriever Component",
+            "type": "object",
+            "properties": {
+              "ElasticsearchFilterOnlyRetriever": {
+                "$ref": "#/definitions/ElasticsearchFilterOnlyRetriever"
+              }
+            },
+            "required": [
+              "ElasticsearchFilterOnlyRetriever"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/ElasticsearchRetrieverComponent"
+            "title": "ElasticsearchRetriever Component",
+            "type": "object",
+            "properties": {
+              "ElasticsearchRetriever": {
+                "$ref": "#/definitions/ElasticsearchRetriever"
+              }
+            },
+            "required": [
+              "ElasticsearchRetriever"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/EmbeddingRetrieverComponent"
+            "title": "EmbeddingRetriever Component",
+            "type": "object",
+            "properties": {
+              "EmbeddingRetriever": {
+                "$ref": "#/definitions/EmbeddingRetriever"
+              }
+            },
+            "required": [
+              "EmbeddingRetriever"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/EntityExtractorComponent"
+            "title": "EntityExtractor Component",
+            "type": "object",
+            "properties": {
+              "EntityExtractor": {
+                "$ref": "#/definitions/EntityExtractor"
+              }
+            },
+            "required": [
+              "EntityExtractor"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/EvalAnswersComponent"
+            "title": "EvalAnswers Component",
+            "type": "object",
+            "properties": {
+              "EvalAnswers": {
+                "$ref": "#/definitions/EvalAnswers"
+              }
+            },
+            "required": [
+              "EvalAnswers"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/EvalDocumentsComponent"
+            "title": "EvalDocuments Component",
+            "type": "object",
+            "properties": {
+              "EvalDocuments": {
+                "$ref": "#/definitions/EvalDocuments"
+              }
+            },
+            "required": [
+              "EvalDocuments"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/FARMReaderComponent"
+            "title": "FARMReader Component",
+            "type": "object",
+            "properties": {
+              "FARMReader": {
+                "$ref": "#/definitions/FARMReader"
+              }
+            },
+            "required": [
+              "FARMReader"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/FileTypeClassifierComponent"
+            "title": "FileTypeClassifier Component",
+            "type": "object",
+            "properties": {
+              "FileTypeClassifier": {
+                "$ref": "#/definitions/FileTypeClassifier"
+              }
+            },
+            "required": [
+              "FileTypeClassifier"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/ImageToTextConverterComponent"
+            "title": "ImageToTextConverter Component",
+            "type": "object",
+            "properties": {
+              "ImageToTextConverter": {
+                "$ref": "#/definitions/ImageToTextConverter"
+              }
+            },
+            "required": [
+              "ImageToTextConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/JoinDocumentsComponent"
+            "title": "JoinDocuments Component",
+            "type": "object",
+            "properties": {
+              "JoinDocuments": {
+                "$ref": "#/definitions/JoinDocuments"
+              }
+            },
+            "required": [
+              "JoinDocuments"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/MarkdownConverterComponent"
+            "title": "MarkdownConverter Component",
+            "type": "object",
+            "properties": {
+              "MarkdownConverter": {
+                "$ref": "#/definitions/MarkdownConverter"
+              }
+            },
+            "required": [
+              "MarkdownConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/PDFToTextConverterComponent"
+            "title": "PDFToTextConverter Component",
+            "type": "object",
+            "properties": {
+              "PDFToTextConverter": {
+                "$ref": "#/definitions/PDFToTextConverter"
+              }
+            },
+            "required": [
+              "PDFToTextConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/PDFToTextOCRConverterComponent"
+            "title": "PDFToTextOCRConverter Component",
+            "type": "object",
+            "properties": {
+              "PDFToTextOCRConverter": {
+                "$ref": "#/definitions/PDFToTextOCRConverter"
+              }
+            },
+            "required": [
+              "PDFToTextOCRConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/ParsrConverterComponent"
+            "title": "ParsrConverter Component",
+            "type": "object",
+            "properties": {
+              "ParsrConverter": {
+                "$ref": "#/definitions/ParsrConverter"
+              }
+            },
+            "required": [
+              "ParsrConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/PreProcessorComponent"
+            "title": "PreProcessor Component",
+            "type": "object",
+            "properties": {
+              "PreProcessor": {
+                "$ref": "#/definitions/PreProcessor"
+              }
+            },
+            "required": [
+              "PreProcessor"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/QuestionGeneratorComponent"
+            "title": "QuestionGenerator Component",
+            "type": "object",
+            "properties": {
+              "QuestionGenerator": {
+                "$ref": "#/definitions/QuestionGenerator"
+              }
+            },
+            "required": [
+              "QuestionGenerator"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/RAGeneratorComponent"
+            "title": "RAGenerator Component",
+            "type": "object",
+            "properties": {
+              "RAGenerator": {
+                "$ref": "#/definitions/RAGenerator"
+              }
+            },
+            "required": [
+              "RAGenerator"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/RCIReaderComponent"
+            "title": "RCIReader Component",
+            "type": "object",
+            "properties": {
+              "RCIReader": {
+                "$ref": "#/definitions/RCIReader"
+              }
+            },
+            "required": [
+              "RCIReader"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/SentenceTransformersRankerComponent"
+            "title": "SentenceTransformersRanker Component",
+            "type": "object",
+            "properties": {
+              "SentenceTransformersRanker": {
+                "$ref": "#/definitions/SentenceTransformersRanker"
+              }
+            },
+            "required": [
+              "SentenceTransformersRanker"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/Seq2SeqGeneratorComponent"
+            "title": "Seq2SeqGenerator Component",
+            "type": "object",
+            "properties": {
+              "Seq2SeqGenerator": {
+                "$ref": "#/definitions/Seq2SeqGenerator"
+              }
+            },
+            "required": [
+              "Seq2SeqGenerator"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/SklearnQueryClassifierComponent"
+            "title": "SklearnQueryClassifier Component",
+            "type": "object",
+            "properties": {
+              "SklearnQueryClassifier": {
+                "$ref": "#/definitions/SklearnQueryClassifier"
+              }
+            },
+            "required": [
+              "SklearnQueryClassifier"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TableReaderComponent"
+            "title": "TableReader Component",
+            "type": "object",
+            "properties": {
+              "TableReader": {
+                "$ref": "#/definitions/TableReader"
+              }
+            },
+            "required": [
+              "TableReader"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TableTextRetrieverComponent"
+            "title": "TableTextRetriever Component",
+            "type": "object",
+            "properties": {
+              "TableTextRetriever": {
+                "$ref": "#/definitions/TableTextRetriever"
+              }
+            },
+            "required": [
+              "TableTextRetriever"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/Text2SparqlRetrieverComponent"
+            "title": "Text2SparqlRetriever Component",
+            "type": "object",
+            "properties": {
+              "Text2SparqlRetriever": {
+                "$ref": "#/definitions/Text2SparqlRetriever"
+              }
+            },
+            "required": [
+              "Text2SparqlRetriever"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TextConverterComponent"
+            "title": "TextConverter Component",
+            "type": "object",
+            "properties": {
+              "TextConverter": {
+                "$ref": "#/definitions/TextConverter"
+              }
+            },
+            "required": [
+              "TextConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TfidfRetrieverComponent"
+            "title": "TfidfRetriever Component",
+            "type": "object",
+            "properties": {
+              "TfidfRetriever": {
+                "$ref": "#/definitions/TfidfRetriever"
+              }
+            },
+            "required": [
+              "TfidfRetriever"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TikaConverterComponent"
+            "title": "TikaConverter Component",
+            "type": "object",
+            "properties": {
+              "TikaConverter": {
+                "$ref": "#/definitions/TikaConverter"
+              }
+            },
+            "required": [
+              "TikaConverter"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TransformersDocumentClassifierComponent"
+            "title": "TransformersDocumentClassifier Component",
+            "type": "object",
+            "properties": {
+              "TransformersDocumentClassifier": {
+                "$ref": "#/definitions/TransformersDocumentClassifier"
+              }
+            },
+            "required": [
+              "TransformersDocumentClassifier"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TransformersQueryClassifierComponent"
+            "title": "TransformersQueryClassifier Component",
+            "type": "object",
+            "properties": {
+              "TransformersQueryClassifier": {
+                "$ref": "#/definitions/TransformersQueryClassifier"
+              }
+            },
+            "required": [
+              "TransformersQueryClassifier"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TransformersReaderComponent"
+            "title": "TransformersReader Component",
+            "type": "object",
+            "properties": {
+              "TransformersReader": {
+                "$ref": "#/definitions/TransformersReader"
+              }
+            },
+            "required": [
+              "TransformersReader"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TransformersSummarizerComponent"
+            "title": "TransformersSummarizer Component",
+            "type": "object",
+            "properties": {
+              "TransformersSummarizer": {
+                "$ref": "#/definitions/TransformersSummarizer"
+              }
+            },
+            "required": [
+              "TransformersSummarizer"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/TransformersTranslatorComponent"
+            "title": "TransformersTranslator Component",
+            "type": "object",
+            "properties": {
+              "TransformersTranslator": {
+                "$ref": "#/definitions/TransformersTranslator"
+              }
+            },
+            "required": [
+              "TransformersTranslator"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/ElasticsearchDocumentStoreComponent"
+            "title": "ElasticsearchDocumentStore Component",
+            "type": "object",
+            "properties": {
+              "ElasticsearchDocumentStore": {
+                "$ref": "#/definitions/ElasticsearchDocumentStore"
+              }
+            },
+            "required": [
+              "ElasticsearchDocumentStore"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/FAISSDocumentStoreComponent"
+            "title": "FAISSDocumentStore Component",
+            "type": "object",
+            "properties": {
+              "FAISSDocumentStore": {
+                "$ref": "#/definitions/FAISSDocumentStore"
+              }
+            },
+            "required": [
+              "FAISSDocumentStore"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/GraphDBKnowledgeGraphComponent"
+            "title": "GraphDBKnowledgeGraph Component",
+            "type": "object",
+            "properties": {
+              "GraphDBKnowledgeGraph": {
+                "$ref": "#/definitions/GraphDBKnowledgeGraph"
+              }
+            },
+            "required": [
+              "GraphDBKnowledgeGraph"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/InMemoryDocumentStoreComponent"
+            "title": "InMemoryDocumentStore Component",
+            "type": "object",
+            "properties": {
+              "InMemoryDocumentStore": {
+                "$ref": "#/definitions/InMemoryDocumentStore"
+              }
+            },
+            "required": [
+              "InMemoryDocumentStore"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/MilvusDocumentStoreComponent"
+            "title": "MilvusDocumentStore Component",
+            "type": "object",
+            "properties": {
+              "MilvusDocumentStore": {
+                "$ref": "#/definitions/MilvusDocumentStore"
+              }
+            },
+            "required": [
+              "MilvusDocumentStore"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/OpenDistroElasticsearchDocumentStoreComponent"
+            "title": "OpenDistroElasticsearchDocumentStore Component",
+            "type": "object",
+            "properties": {
+              "OpenDistroElasticsearchDocumentStore": {
+                "$ref": "#/definitions/OpenDistroElasticsearchDocumentStore"
+              }
+            },
+            "required": [
+              "OpenDistroElasticsearchDocumentStore"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/OpenSearchDocumentStoreComponent"
+            "title": "OpenSearchDocumentStore Component",
+            "type": "object",
+            "properties": {
+              "OpenSearchDocumentStore": {
+                "$ref": "#/definitions/OpenSearchDocumentStore"
+              }
+            },
+            "required": [
+              "OpenSearchDocumentStore"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/SQLDocumentStoreComponent"
+            "title": "SQLDocumentStore Component",
+            "type": "object",
+            "properties": {
+              "SQLDocumentStore": {
+                "$ref": "#/definitions/SQLDocumentStore"
+              }
+            },
+            "required": [
+              "SQLDocumentStore"
+            ],
+            "additionalProperties": false
           },
           {
-            "$ref": "#/definitions/WeaviateDocumentStoreComponent"
+            "title": "WeaviateDocumentStore Component",
+            "type": "object",
+            "properties": {
+              "WeaviateDocumentStore": {
+                "$ref": "#/definitions/WeaviateDocumentStore"
+              }
+            },
+            "required": [
+              "WeaviateDocumentStore"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -216,19 +676,13 @@
   ],
   "additionalProperties": false,
   "definitions": {
-    "AzureConverterComponent": {
+    "AzureConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "AzureConverter"
         },
         "params": {
           "title": "Parameters",
@@ -284,24 +738,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "CrawlerComponent": {
+    "Crawler": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "Crawler"
         },
         "params": {
           "title": "Parameters",
@@ -341,24 +788,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "DensePassageRetrieverComponent": {
+    "DensePassageRetriever": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "DensePassageRetriever"
         },
         "params": {
           "title": "Parameters",
@@ -490,24 +930,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "Docs2AnswersComponent": {
+    "Docs2Answers": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "Docs2Answers"
         },
         "params": {
           "title": "Parameters",
@@ -518,24 +951,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "DocxToTextConverterComponent": {
+    "DocxToTextConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "DocxToTextConverter"
         },
         "params": {
           "title": "Parameters",
@@ -559,24 +985,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "ElasticsearchFilterOnlyRetrieverComponent": {
+    "ElasticsearchFilterOnlyRetriever": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "ElasticsearchFilterOnlyRetriever"
         },
         "params": {
           "title": "Parameters",
@@ -604,24 +1023,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "ElasticsearchRetrieverComponent": {
+    "ElasticsearchRetriever": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "ElasticsearchRetriever"
         },
         "params": {
           "title": "Parameters",
@@ -649,24 +1061,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "EmbeddingRetrieverComponent": {
+    "EmbeddingRetriever": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "EmbeddingRetriever"
         },
         "params": {
           "title": "Parameters",
@@ -762,24 +1167,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "EntityExtractorComponent": {
+    "EntityExtractor": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "EntityExtractor"
         },
         "params": {
           "title": "Parameters",
@@ -801,24 +1199,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "EvalAnswersComponent": {
+    "EvalAnswers": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "EvalAnswers"
         },
         "params": {
           "title": "Parameters",
@@ -849,24 +1240,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "EvalDocumentsComponent": {
+    "EvalDocuments": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "EvalDocuments"
         },
         "params": {
           "title": "Parameters",
@@ -893,24 +1277,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "FARMReaderComponent": {
+    "FARMReader": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "FARMReader"
         },
         "params": {
           "title": "Parameters",
@@ -1028,24 +1405,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "FileTypeClassifierComponent": {
+    "FileTypeClassifier": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "FileTypeClassifier"
         },
         "params": {
           "title": "Parameters",
@@ -1056,24 +1426,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "ImageToTextConverterComponent": {
+    "ImageToTextConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "ImageToTextConverter"
         },
         "params": {
           "title": "Parameters",
@@ -1100,24 +1463,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "JoinDocumentsComponent": {
+    "JoinDocuments": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "JoinDocuments"
         },
         "params": {
           "title": "Parameters",
@@ -1145,24 +1501,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "MarkdownConverterComponent": {
+    "MarkdownConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "MarkdownConverter"
         },
         "params": {
           "title": "Parameters",
@@ -1186,24 +1535,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "PDFToTextConverterComponent": {
+    "PDFToTextConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "PDFToTextConverter"
         },
         "params": {
           "title": "Parameters",
@@ -1227,24 +1569,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "PDFToTextOCRConverterComponent": {
+    "PDFToTextOCRConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "PDFToTextOCRConverter"
         },
         "params": {
           "title": "Parameters",
@@ -1271,24 +1606,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "ParsrConverterComponent": {
+    "ParsrConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "ParsrConverter"
         },
         "params": {
           "title": "Parameters",
@@ -1355,24 +1683,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "PreProcessorComponent": {
+    "PreProcessor": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "PreProcessor"
         },
         "params": {
           "title": "Parameters",
@@ -1424,24 +1745,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "QuestionGeneratorComponent": {
+    "QuestionGenerator": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "QuestionGenerator"
         },
         "params": {
           "title": "Parameters",
@@ -1496,24 +1810,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "RAGeneratorComponent": {
+    "RAGenerator": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "RAGenerator"
         },
         "params": {
           "title": "Parameters",
@@ -1583,24 +1890,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "RCIReaderComponent": {
+    "RCIReader": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "RCIReader"
         },
         "params": {
           "title": "Parameters",
@@ -1653,24 +1953,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "SentenceTransformersRankerComponent": {
+    "SentenceTransformersRanker": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "SentenceTransformersRanker"
         },
         "params": {
           "title": "Parameters",
@@ -1728,24 +2021,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "Seq2SeqGeneratorComponent": {
+    "Seq2SeqGenerator": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "Seq2SeqGenerator"
         },
         "params": {
           "title": "Parameters",
@@ -1794,24 +2080,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "SklearnQueryClassifierComponent": {
+    "SklearnQueryClassifier": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "SklearnQueryClassifier"
         },
         "params": {
           "title": "Parameters",
@@ -1843,24 +2122,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TableReaderComponent": {
+    "TableReader": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TableReader"
         },
         "params": {
           "title": "Parameters",
@@ -1900,24 +2172,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TableTextRetrieverComponent": {
+    "TableTextRetriever": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TableTextRetriever"
         },
         "params": {
           "title": "Parameters",
@@ -2074,24 +2339,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "Text2SparqlRetrieverComponent": {
+    "Text2SparqlRetriever": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "Text2SparqlRetriever"
         },
         "params": {
           "title": "Parameters",
@@ -2118,24 +2376,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TextConverterComponent": {
+    "TextConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TextConverter"
         },
         "params": {
           "title": "Parameters",
@@ -2159,24 +2410,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TfidfRetrieverComponent": {
+    "TfidfRetriever": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TfidfRetriever"
         },
         "params": {
           "title": "Parameters",
@@ -2204,24 +2448,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TikaConverterComponent": {
+    "TikaConverter": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TikaConverter"
         },
         "params": {
           "title": "Parameters",
@@ -2250,24 +2487,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TransformersDocumentClassifierComponent": {
+    "TransformersDocumentClassifier": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TransformersDocumentClassifier"
         },
         "params": {
           "title": "Parameters",
@@ -2323,24 +2553,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TransformersQueryClassifierComponent": {
+    "TransformersQueryClassifier": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TransformersQueryClassifier"
         },
         "params": {
           "title": "Parameters",
@@ -2370,24 +2593,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TransformersReaderComponent": {
+    "TransformersReader": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TransformersReader"
         },
         "params": {
           "title": "Parameters",
@@ -2447,24 +2663,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TransformersSummarizerComponent": {
+    "TransformersSummarizer": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TransformersSummarizer"
         },
         "params": {
           "title": "Parameters",
@@ -2519,24 +2728,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "TransformersTranslatorComponent": {
+    "TransformersTranslator": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "TransformersTranslator"
         },
         "params": {
           "title": "Parameters",
@@ -2573,24 +2775,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "ElasticsearchDocumentStoreComponent": {
+    "ElasticsearchDocumentStore": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "ElasticsearchDocumentStore"
         },
         "params": {
           "title": "Parameters",
@@ -2777,24 +2972,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "FAISSDocumentStoreComponent": {
+    "FAISSDocumentStore": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "FAISSDocumentStore"
         },
         "params": {
           "title": "Parameters",
@@ -2888,24 +3076,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "GraphDBKnowledgeGraphComponent": {
+    "GraphDBKnowledgeGraph": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "GraphDBKnowledgeGraph"
         },
         "params": {
           "title": "Parameters",
@@ -2946,24 +3127,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "InMemoryDocumentStoreComponent": {
+    "InMemoryDocumentStore": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "InMemoryDocumentStore"
         },
         "params": {
           "title": "Parameters",
@@ -3015,24 +3189,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "MilvusDocumentStoreComponent": {
+    "MilvusDocumentStore": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "MilvusDocumentStore"
         },
         "params": {
           "title": "Parameters",
@@ -3123,24 +3290,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "OpenDistroElasticsearchDocumentStoreComponent": {
+    "OpenDistroElasticsearchDocumentStore": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "OpenDistroElasticsearchDocumentStore"
         },
         "params": {
           "title": "Parameters",
@@ -3160,24 +3320,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "OpenSearchDocumentStoreComponent": {
+    "OpenSearchDocumentStore": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "OpenSearchDocumentStore"
         },
         "params": {
           "title": "Parameters",
@@ -3209,24 +3362,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "SQLDocumentStoreComponent": {
+    "SQLDocumentStore": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "SQLDocumentStore"
         },
         "params": {
           "title": "Parameters",
@@ -3267,24 +3413,17 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
     },
-    "WeaviateDocumentStoreComponent": {
+    "WeaviateDocumentStore": {
       "type": "object",
       "properties": {
         "name": {
           "title": "Name",
           "description": "Custom name for the component. Helpful for visualization and debugging.",
           "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "WeaviateDocumentStore"
         },
         "params": {
           "title": "Parameters",
@@ -3397,7 +3536,6 @@
         }
       },
       "required": [
-        "type",
         "name"
       ],
       "additionalProperties": false
