@@ -19,7 +19,9 @@ router = APIRouter()
 @router.post("/documents/get_by_filters", response_model=List[DocumentSerialized], response_model_exclude_none=True)
 def get_documents(filters: FilterRequest):
     """
-    Can be used to get documents from a document store.
+    This endpoint allows you to retrieve documents contained in your document store. 
+    You can filter the documents to delete by metadata (like the document's name), 
+    or provide an empty JSON object to clear the document store.
 
     :param filters: Filters to narrow down the documents to delete.
                     Example: '{"filters": {{"name": ["some", "more"], "category": ["only_one"]}}'
@@ -35,7 +37,9 @@ def get_documents(filters: FilterRequest):
 @router.post("/documents/delete_by_filters", response_model=bool)
 def delete_documents(filters: FilterRequest):
     """
-    Can be used to delete documents from a document store.
+    This endpoint allows you to delete documents contained in your document store. 
+    You can filter the documents to delete by metadata (like the document's name), 
+    or provide an empty JSON object to clear the document store.
 
     :param filters: Filters to narrow down the documents to delete.
                     Example: '{"filters": {{"name": ["some", "more"], "category": ["only_one"]}}'
