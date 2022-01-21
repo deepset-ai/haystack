@@ -3,7 +3,7 @@ import importlib
 from pathlib import Path
 import os
 
-rest_path = Path("../../../../../rest_api")
+rest_path = Path("../../../../rest_api")
 pipeline_path = str(rest_path/"pipeline"/"pipeline_empty.yaml")
 app_path = str(rest_path/"application.py")
 print(f"Loading OpenAPI specs from {app_path} with pipeline at {pipeline_path}")
