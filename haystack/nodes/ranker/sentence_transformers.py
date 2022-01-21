@@ -72,6 +72,10 @@ class SentenceTransformersRanker(BaseRanker):
                                                                    revision=model_version)
         self.transformer_model.eval()
 
+        # activation functions to normalize scores after prediction
+        self.single_label_activation = torch.nn.Sigmoid()
+        self.multi_label_activation = torch.nn.Identity()
+
         if len(self.devices) > 1:
             self.model = DataParallel(self.transformer_model, device_ids=self.devices)
 
@@ -119,6 +123,14 @@ class SentenceTransformersRanker(BaseRanker):
             similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
             reverse=True)
 
-        # rank documents according to scores
-        sorted_documents = [doc for _, doc in sorted_scores_and_documents]
-        return sorted_documents[:top_k]
+        # add normalized scores to documents
+        sorted_documents = []
+        for doc, raw_score in sorted_scores_and_documents[:top_k]:
+            if logits_dim >= 2:
+                score = self.multi_label_activation(raw_score)[-1]
+            else:
+                score = self.single_label_activation(raw_score)[0]
+            doc.score = score.detach().cpu().numpy().tolist()
+            sorted_documents.append(doc)
+
+        return sorted_documents
