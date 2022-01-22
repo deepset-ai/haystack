@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchDocumentStore(BaseDocumentStore):
-    supported_similarities = ["cosine", "dot_product", "l2"]
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
@@ -160,7 +159,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.label_index: str = label_index
         self.scroll = scroll
         self.skip_missing_embeddings: bool = skip_missing_embeddings
-        if similarity in self.supported_similarities:
+        if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity = similarity
         else:
             raise Exception(f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'")
@@ -1079,15 +1078,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     update = {"_op_type": "update",
                               "_index": index,
                               "_id": doc.id,
-                              "doc": self._get_update_embedding_doc(emb=emb),
+                              "doc": {self.embedding_field: emb.tolist()},
                               }
                     doc_updates.append(update)
 
                 bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
-
-    def _get_update_embedding_doc(self, emb: np.ndarray) -> dict:
-        return {self.embedding_field: emb.tolist()}
 
     def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
@@ -1178,11 +1174,16 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                  username="admin",
                  password="admin",
                  port=9200,
-                 full_similarity_support=False,
                  **kwargs):
+        self.embeddings_field_supports_similarity = False
+        self.similarity_to_space_type = {
+            "cosine": "cosinesimil",
+            "dot_product": "innerproduct",
+            "l2": "l2"
+        }
+        self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
         # Overwrite default kwarg values of parent class so that in default cases we can initialize
         # an OpenSearchDocumentStore without provding any arguments
-        self.full_similarity_support=full_similarity_support
         super(OpenSearchDocumentStore, self).__init__(verify_certs=verify_certs,
                                                       scheme=scheme,
                                                       username=username,
@@ -1262,22 +1263,47 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             ]
             return documents
 
+    def clone_embedding_field(self, new_embedding_field: str, similarity: str, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None):
+        mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
+        if new_embedding_field in mapping["properties"]:
+            raise Exception(f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}")
+        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)
+        self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
+
+        document_count = self.get_document_count(headers=headers)
+        result = self._get_all_documents_in_index(
+            index=self.index,
+            batch_size=batch_size,
+            headers=headers
+        )
+
+        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
+
+        with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
+            for result_batch in get_batches_from_generator(result, batch_size):
+                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch]
+                doc_updates = []
+                for doc in document_batch:
+                    if doc.embedding is not None:
+                        update = {"_op_type": "update",
+                                "_index": self.index,
+                                "_id": doc.id,
+                                "doc": {new_embedding_field: doc.embedding.tolist()},
+                                }
+                        doc_updates.append(update)
+
+                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                progress_bar.update(batch_size)
+
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents.
         """
-        if self.full_similarity_support:
-            self.similarity_embeddings = {similarity: self.embedding_field + "_" + similarity for similarity in self.supported_similarities}
-            self.embedding_fields = list(self.similarity_embeddings.values())
-        else:            
-            self.supported_similarities = [self.similarity]
-            self.similarity_embeddings = {self.similarity: self.embedding_field}
-
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
             index_info = self.client.indices.get(index_name, headers=headers)[index_name]
             mapping = index_info["mappings"]
-            settings = index_info["settings"]
+            settings = index_info["settings"]["index"]
             if self.search_fields:
                 for search_field in self.search_fields:
                     if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
@@ -1287,35 +1313,38 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                                         f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
                                         f"Note, that all data stored in the index will be lost!")
 
-            # index without full similarity support, but requested
-            if self.full_similarity_support and self.embedding_field in mapping["properties"]:
-                raise Exception(f"This seems to be an index without full similarity support. "
-                                 "To make this index capable of full similarity support, instantiate OpenSearchDocumentStore without full_similarity_support and run upgrade_to_full_similarity_support().")
-
-            # index with full similarity support, but not requested
-            full_support_field = self.embedding_field + "_" + self.similarity
-            if not self.full_similarity_support and full_support_field in mapping["properties"]:
-                self.similarity_embeddings[self.similarity] = full_support_field
-            
-            embedding_field = self.similarity_embeddings[self.similarity]
-            if embedding_field in mapping["properties"]:
+            # embedding field will be created
+            if self.embedding_field not in mapping["properties"]:
+                mapping["properties"][self.embedding_field] = self._get_embedding_field_mapping(similarity=self.similarity)
+                self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
+                self.embeddings_field_supports_similarity = True
+            else:
                 # bad embedding field
-                if mapping["properties"][embedding_field]["type"] != "knn_vector":
+                if mapping["properties"][self.embedding_field]["type"] != "knn_vector":
                     raise Exception(f"The '{index_name}' index in OpenSearch already has a field called '{self.embedding_field}'"
                                     f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
-                                    f"document_store to use a different name for the embedding_field parameter.")
-                # old embedding field with global space_type setting                                        
-                elif "method" not in mapping["properties"][embedding_field]:
-                    if settings["knn.space_type"] != self._get_similarity_space_type():
-                        logger.warning(f"{self.similarity} is not fully supported by this index. Falling back to slow exact vector calculation."
-                                        "Consider upgrading to full similarity support by calling upgrade_to_full_similarity_support().")
-                        del self.similarity_embeddings[self.similarity]
-                # new embedding field
+                                    f"document_store to use a different name for the embedding_field parameter.")                                     
                 else:
-                    if mapping["properties"][embedding_field]["space_type"] != self._get_similarity_space_type():
-                        logger.warning(f"{self.similarity} is not fully supported by this index. Falling back to slow exact vector calculation."
-                                        "Consider upgrading to full similarity support by calling upgrade_to_full_similarity_support().")
-                        del self.similarity_embeddings[self.similarity]
+                    # embedding field with global space_type setting
+                    if "method" not in mapping["properties"][self.embedding_field]:
+                        embedding_field_space_type = settings["knn.space_type"]
+                    # embedding field with local space_type setting
+                    else:
+                        embedding_field_space_type = mapping["properties"][self.embedding_field]["method"]["space_type"]
+                    
+                    embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
+                    if embedding_field_similarity == self.similarity:
+                        self.embeddings_field_supports_similarity = True
+                    else:
+                        if self.similarity == "dot_product":
+                            raise Exception(f"embedding_field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. Cannot fall back to slow exact vector calculation: "
+                                            f"OpenSearch does not support slow exact vector calculation for similarity 'dot_product'. "
+                                            f"Consider cloning '{self.embedding_field}' optimized for {self.similarity} by calling clone_embedding_field().")
+                        else:
+                            logger.warning(f"embedding_field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. Falling back to slow exact vector calculation. "
+                                           f"Consider cloning '{self.embedding_field}' optimized for {self.similarity} by calling clone_embedding_field().")
+
+            self.embedding_fields += [field_name for field_name, field in mapping["properties"].items() if field["type"] == "knn_vector"]
             return
 
         if self.custom_mapping:
@@ -1347,33 +1376,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             }
             if self.embedding_field:
                 mapping["settings"]["index"] = {"knn": True}
-                for similarity, embedding_field in self.similarity_embeddings.items():
-                    similarity_space_type = self._get_similarity_space_type(similarity)
-
-                    method: dict = {
-                            "space_type": similarity_space_type,
-                            "name": "hnsw",
-                            "engine": "nmslib"
-                        }
-
-                    if self.index_type == "flat":
-                        pass
-                    elif self.index_type == "hnsw":
-                        method.update({
-                            "parameters": {
-                                "ef_construction": 80,
-                                "m": 64,
-                                "ef_search": 20
-                            }
-                        })
-                    else:
-                        logger.error("Please set index_type to either 'flat' or 'hnsw'")
-                    
-                    mapping["mappings"]["properties"][embedding_field] = {
-                        "type": "knn_vector",
-                        "dimension": self.embedding_dim,
-                        "method": method                 
-                    }
+                mapping["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(similarity=self.similarity)
 
         try:
             self.client.indices.create(index=index_name, body=mapping, headers=headers)
@@ -1385,19 +1388,32 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
-    def _get_update_embedding_doc(self, emb: np.ndarray) -> dict:
-        return {embedding_field: emb.tolist() for embedding_field in self.similarity_embeddings.values()}
+    def _get_embedding_field_mapping(self, similarity: Optional[str]):
+        space_type = self.similarity_to_space_type[similarity]
+        method: dict = {
+                        "space_type": space_type,
+                        "name": "hnsw",
+                        "engine": "nmslib"
+                    }
 
-    def _get_similarity_space_type(self, similarity: str = None):
-        if similarity is None:
-            similarity = self.similarity
-        if similarity == "cosine":
-            similarity_space_type = "cosinesimil"
-        elif similarity == "dot_product":
-            similarity_space_type = "innerproduct"
-        elif similarity == "l2":
-            similarity_space_type = "l2"
-        return similarity_space_type
+        if self.index_type == "flat":
+            # use default parameters
+            pass
+        elif self.index_type == "hnsw":
+            method["parameters"] = {
+                            "ef_construction": 80,
+                            "m": 64,
+                            "ef_search": 20
+                        }
+        else:
+            logger.error("Please set index_type to either 'flat' or 'hnsw'")
+                
+        embeddings_field_mapping = {
+                    "type": "knn_vector",
+                    "dimension": self.embedding_dim,
+                    "method": method                 
+                }        
+        return embeddings_field_mapping
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         if self.client.indices.exists(index=index_name, headers=headers):
@@ -1433,11 +1449,17 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
-        """
-        embedding_field = self.similarity_embeddings.get(self.similarity, None)
-    
-        # if we do not have a proper similarity field we have to fall back to exact but slow vector similarity calculation
-        if embedding_field is None:
+        """   
+        if self.embeddings_field_supports_similarity:
+            query: dict = {
+                    "bool": {
+                        "must": [
+                            {"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
+                        ]
+                    }
+                }                           
+        else:
+            # if we do not have a proper similarity field we have to fall back to exact but slow vector similarity calculation
             query = {
                 "script_score": {
                     "query": {"match_all": {}},
@@ -1447,22 +1469,34 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         "params": {
                             "field": self.embedding_field, 
                             "query_value": query_emb.tolist(), 
-                            "space_type": self._get_similarity_space_type()
+                            "space_type": self.similarity_to_space_type[self.similarity]
                             }
                         }
-                    }
-                }               
-        else:            
-            query = {
-                    "bool": {
-                        "must": [
-                            {"knn": {embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
-                        ]
                     }
                 }
         return query
 
     def _scale_embedding_score(self, score):
+        # adjust approximate knn scores, see https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
+        if self.embeddings_field_supports_similarity:
+            if self.similarity == "dot_product":
+                if score > 1:
+                    score = score - 1
+                else:
+                    score = -(1 / score - 1)
+            elif self.similarity == "cosine":
+                score = -(1 / score - 2) 
+            elif self.similarity == "l2":
+                score = 1 / score - 1
+        # adjust exact knn scores, see https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
+        else:
+            if self.similarity == "dot_product":
+                raise Exception("Exact dot_product similarity is not supported.")
+            elif self.similarity == "cosine":
+                score = score - 1
+            elif self.similarity == "l2":
+                score = 1 / score - 1
+
         return score
 
 
