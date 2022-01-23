@@ -560,7 +560,7 @@ answer = prediction["answers"][0].answer  # "10 june 1996"
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 1, max_seq_len: int = 256)
+ | __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256)
 ```
 
 Load a TableQA model from Transformers.
@@ -590,6 +590,8 @@ See https://huggingface.co/models?pipeline_tag=table-question-answering for full
 - `top_k`: The maximum number of answers to return
 - `top_k_per_candidate`: How many answers to extract for each candidate table that is coming from
                             the retriever.
+- `return_no_answer`: Whether to include no_answer predictions in the results.
+                         (Only applicable with nq-reader models.)
 - `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
                     query + table exceed max_seq_len, the table will be truncated by removing rows until the
                     input size fits the model.
