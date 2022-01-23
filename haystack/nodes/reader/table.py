@@ -129,7 +129,7 @@ class TableReader(BaseReader):
             top_k = self.top_k
 
         answers = []
-        no_answer_score = 1
+        no_answer_score = 1.0
         for document in documents:
             if document.content_type != "table":
                 logger.warning(f"Skipping document with id {document.id} in TableReader, as it is not of type table.")
