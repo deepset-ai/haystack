@@ -51,7 +51,8 @@ class TableReader(BaseReader):
             tokenizer: Optional[str] = None,
             use_gpu: bool = True,
             top_k: int = 10,
-            top_k_per_candidate: int = 1,
+            top_k_per_candidate: int = 3,
+            return_no_answer: bool = False,
             max_seq_len: int = 256,
     ):
         """
@@ -80,18 +81,21 @@ class TableReader(BaseReader):
         :param top_k: The maximum number of answers to return
         :param top_k_per_candidate: How many answers to extract for each candidate table that is coming from
                                     the retriever.
+        :param return_no_answer: Whether to include no_answer predictions in the results.
+                                 (Only applicable with nq-reader models.)
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
         """
         # Save init parameters to enable export of component config as YAML
         self.set_config(model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
-                        use_gpu=use_gpu, top_k=top_k, top_k_per_candidate=top_k_per_candidate, max_seq_len=max_seq_len)
+                        use_gpu=use_gpu, top_k=top_k, top_k_per_candidate=top_k_per_candidate,
+                        return_no_answer=return_no_answer, max_seq_len=max_seq_len)
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         config = TapasConfig.from_pretrained(model_name_or_path)
         if config.architectures[0] == "TapasForScoredQA":
-            self.model = self.TapasForScoredQA.from_pretrained(model_name_or_path)
+            self.model = self.TapasForScoredQA.from_pretrained(model_name_or_path, revision=model_version)
         else:
             self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
         self.model.to(str(self.devices[0]))
@@ -104,7 +108,7 @@ class TableReader(BaseReader):
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         self.max_seq_len = max_seq_len
-        self.return_no_answers = False
+        self.return_no_answer = return_no_answer
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
@@ -125,6 +129,7 @@ class TableReader(BaseReader):
             top_k = self.top_k
 
         answers = []
+        no_answer_score = 1
         for document in documents:
             if document.content_type != "table":
                 logger.warning(f"Skipping document with id {document.id} in TableReader, as it is not of type table.")
@@ -143,15 +148,23 @@ class TableReader(BaseReader):
                 current_answer = self._predict_tapas_for_qa(inputs, document)
                 answers.append(current_answer)
             elif isinstance(self.model, self.TapasForScoredQA):
-                current_answers = self._predict_tapas_for_scored_qa(inputs, document)
+                current_answers, current_no_answer_score = self._predict_tapas_for_scored_qa(inputs, document)
                 answers.extend(current_answers)
+                if current_no_answer_score < no_answer_score:
+                    no_answer_score = current_no_answer_score
 
-        # Sort answers by score and select top-k answers
-        if isinstance(self.model, self.TapasForScoredQA):
-            # Answers are sorted first by the general score for the tables and then by the answer span score
-            answers = sorted(answers, reverse=True, key=lambda ans: (ans.meta["table_score"], ans.score))  # type: ignore
-        else:
-            answers = sorted(answers, reverse=True)
+        if self.return_no_answer and isinstance(self.model, self.TapasForScoredQA):
+            answers.append(Answer(
+                answer="",
+                type="extractive",
+                score=no_answer_score,
+                context=None,
+                offsets_in_context=[Span(start=0, end=0)],
+                offsets_in_document=[Span(start=0, end=0)],
+                document_id=None,
+                meta=None
+            ))
+        answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
         results = {"query": query,
@@ -216,7 +229,7 @@ class TableReader(BaseReader):
 
         return answer
 
-    def _predict_tapas_for_scored_qa(self, inputs: BatchEncoding, document: Document) -> List[Answer]:
+    def _predict_tapas_for_scored_qa(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
         table: pd.DataFrame = document.content
 
         # Forward pass through model
@@ -224,7 +237,8 @@ class TableReader(BaseReader):
 
         # Get general table score
         table_score = self.model.classifier(outputs.pooler_output)
-        table_score = table_score[0][1] - table_score[0][0]
+        table_score_softmax = torch.nn.functional.softmax(table_score, dim=1)
+        table_relevancy_prob = table_score_softmax[0][1].item()
 
         # Get possible answer spans
         token_types = [
@@ -278,7 +292,8 @@ class TableReader(BaseReader):
             current_answer_span = possible_answer_spans[answer_span_idx]
             answer_str = table.iat[current_answer_span[:2]]
             answer_offsets = self._calculate_answer_offsets([current_answer_span[:2]], document.content)
-            current_score = span_logits_softmax[0, answer_span_idx].item()
+            # As the general table score is more important for the final score, it is double weighted.
+            current_score = ((2 * table_relevancy_prob) + span_logits_softmax[0, answer_span_idx].item()) / 3
 
             answers.append(
                 Answer(
@@ -290,12 +305,13 @@ class TableReader(BaseReader):
                     offsets_in_context=answer_offsets,
                     document_id=document.id,
                     meta={"aggregation_operator": "NONE",
-                          "answer_cells": table.iat[current_answer_span[:2]],
-                          "table_score": table_score.item()}
+                          "answer_cells": table.iat[current_answer_span[:2]]}
                 )
             )
 
-        return answers
+        no_answer_score = 1 - table_relevancy_prob
+
+        return answers, no_answer_score
     
     def _calculate_answer_score(self, logits: torch.Tensor, inputs: BatchEncoding,
                                 answer_coordinates: List[Tuple[int, int]]) -> float:
