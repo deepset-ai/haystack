@@ -29,7 +29,7 @@ jobs:
       # Generates the docstrings and tutorials so that we have the latest for the deployment
       - name: Generate Docstrings and Tutorials
         run: |
-          cd docs/_src/api/api/openapi/
+          cd docs/_src/api/openapi/
           python3 generate_openapi_specs.py
           cd ../../../../
           git status
