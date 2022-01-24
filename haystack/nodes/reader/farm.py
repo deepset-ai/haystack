@@ -8,7 +8,7 @@ from time import perf_counter
 import torch
 
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
-from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.data_handler.processor import SquadProcessor, Processor
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.inputs import QAInput, Question
 from haystack.modeling.infer import QAInferencer
