@@ -1998,8 +1998,8 @@ class UnlabeledTextProcessor(Processor):
             index = names.index("attention_mask")
             names[index] = "padding_mask"
         if not "segment_ids" in names:
-            names.append("segment_ids")
-            inputs.append(torch.zeros_like(inputs[0]))
+            index = names.index("token_type_ids")
+            names[index] = "segment_ids"
 
         dataset = TensorDataset(*inputs)
         return dataset, names, []
