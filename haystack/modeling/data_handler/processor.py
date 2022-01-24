@@ -1977,6 +1977,9 @@ class InferenceProcessor(TextClassificationProcessor):
         return features
 
 class UnlabeledTextProcessor(Processor):
+    """
+    Processor to be used for distilling a teacher model into a student model from scratch. Can only be used with distil_intermediate_layers_from.
+    """
     def __init__(self, tokenizer, max_seq_len: int, train_filename: Optional[Union[Path, str]] = None, dev_filename: Optional[Union[Path, str]] = None, test_filename: Optional[Union[Path, str]] = None, dev_split: float = 0, data_dir: Optional[Union[Path, str]] = None, tasks: Dict = {}, proxies: Optional[Dict] = None, multithreading_rust: Optional[bool] = True):
         super().__init__(tokenizer, max_seq_len, train_filename, dev_filename, test_filename, dev_split, data_dir, tasks, proxies, multithreading_rust)
         self.add_task("question_answering", "squad", ["start_token", "end_token"])
