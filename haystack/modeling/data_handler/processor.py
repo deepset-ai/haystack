@@ -13,6 +13,7 @@ from inspect import signature
 from pathlib import Path
 from io import StringIO
 from typing import Optional, Dict, List, Union, Any, Iterable
+import torch
 from torch.utils.data import TensorDataset
 
 import pandas as pd
@@ -2157,9 +2158,17 @@ class UnlabeledTextProcessor(Processor):
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]
-        tokens = self.tokenizer.batch_encode_plus(texts, add_special_tokens=True, return_tensors="pt", padding=True, truncation=True, max_length=self.max_seq_len)
+        tokens = self.tokenizer.batch_encode_plus(texts, add_special_tokens=True, return_tensors="pt", padding="max_length", truncation=True, max_length=self.max_seq_len)
         names = [key for key in tokens]
-        dataset = TensorDataset(*[tokens[key] for key in tokens])
+        inputs = [tokens[key] for key in tokens]
+        if not "padding_mask" in names:
+            index = names.index("attention_mask")
+            names[index] = "padding_mask"
+        if not "segment_ids" in names:
+            names.append("segment_ids")
+            inputs.append(torch.zeros_like(inputs[0]))
+
+        dataset = TensorDataset(*inputs)
         return dataset, names, []
     def _create_dataset(self, baskets:List[SampleBasket]):
         raise NotImplementedError("_create_dataset is not supported by UnlabeledTextProcessor")
