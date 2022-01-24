@@ -194,6 +194,8 @@ is therefore only an interim solution until the run function also accepts docume
 class KeywordDocumentStore(BaseDocumentStore)
 ```
 
+Base class for implementing Document Stores that support keyword searches.
+
 <a name="base.KeywordDocumentStore.query"></a>
 #### query
 
