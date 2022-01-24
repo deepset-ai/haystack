@@ -1,3 +1,4 @@
+name: Generate OpenAPI Specs
 
 on:
   workflow_dispatch:
