@@ -460,6 +460,9 @@ class BaseDocumentStore(BaseComponent):
 
 
 class KeywordDocumentStore(BaseDocumentStore):
+    """
+    Base class for implementing Document Stores that support keyword searches.
+    """
     @abstractmethod
     def query(
         self,
