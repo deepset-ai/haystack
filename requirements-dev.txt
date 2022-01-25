@@ -5,3 +5,4 @@ selenium
 webdriver-manager
 beautifulsoup4
 markdown
+responses
