@@ -13,7 +13,7 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import pandas as pd
 
-from haystack.document_stores import BaseDocumentStore
+from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 
@@ -21,7 +21,7 @@ from haystack.document_stores.base import get_batches_from_generator
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchDocumentStore(BaseDocumentStore):
+class ElasticsearchDocumentStore(KeywordDocumentStore):
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
@@ -742,6 +742,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
+        :param custom_query: Custom elasticsearch query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.

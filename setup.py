@@ -27,7 +27,7 @@ def parse_requirements(filename):
 
 def get_dependency_links(filename):
     """
-     Parse a requirements pip file looking for the --find-links directive.
+    Parse a requirements pip file looking for the --find-links directive.
     Args:
         filename:  pip requirements requirements
 
