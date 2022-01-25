@@ -2246,7 +2246,8 @@ class DCDocumentStore(KeywordDocumentStore)
 A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
 Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
 
-DCDocumentStore is not intended to be used in production-like scenarios.
+DCDocumentStore is not intended for use in production-like scenarios.
+See https://haystack.deepset.ai/components/document-store for more information.
 
 **Arguments**:
 
