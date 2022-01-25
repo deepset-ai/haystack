@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
-from conftest import get_document_store, ensure_ids_are_correct_uuids
+from conftest import deepset_cloud_fixture, get_document_store, MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX
 from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.errors import DuplicateDocumentError
@@ -1007,79 +1007,14 @@ def test_custom_headers(document_store_with_docs: BaseDocumentStore):
         assert len(documents) > 0
 
 
-DC_API_ENDPOINT = "https://DC_API/v1"
-DC_TEST_INDEX = "document_retrieval_1"
-DC_API_KEY = "NO_KEY"
-QUERY_EMB = np.random.randn(768)
-
-
-@pytest.fixture(scope="function")
-def setup_dc_responses():
-    responses.add_passthru(DC_API_ENDPOINT)
-    if DC_API_KEY == "NO_KEY":
-        with open('samples/dc/documents-stream.response', 'r') as f:
-            documents_stream_response = f.read()
-            docs = [json.loads(l) for l in documents_stream_response.splitlines()]
-            filtered_docs = [doc for doc in docs if doc["meta"]["file_id"] == docs[0]["meta"]["file_id"]]
-            documents_stream_filtered_response = "\n".join([json.dumps(d) for d in filtered_docs])
-
-        with open('samples/dc/query_winterfell.response', 'r') as f:
-            query_winterfell_response = f.read()
-            query_winterfell_docs = json.loads(query_winterfell_response)
-            query_winterfell_filtered_docs = [doc for doc in query_winterfell_docs if doc["meta"]["file_id"] == query_winterfell_docs[0]["meta"]["file_id"]]
-            query_winterfell_filtered_response = json.dumps(query_winterfell_filtered_docs)
-        
-        responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
-                    match=[matchers.header_matcher({"authorization": "Bearer invalid_token"})],
-                    body="Internal Server Error", status=500)
-        responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
-                    json={
-                            "indexing": 
-                                {
-                                    "status": "NOT_INDEXED",
-                                    "pending_file_count": 31,
-                                    "total_file_count": 31
-                                }
-                         }, status=200)
-        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-stream",
-                    body=documents_stream_response, status=200)
-        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-stream",
-                    match=[matchers.json_params_matcher({
-                        "filters": {"file_id": [docs[0]["meta"]["file_id"]]},
-                        "return_embedding": False})],
-                    body=documents_stream_filtered_response, status=200)
-        for doc in filtered_docs:
-            responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents/{doc['id']}",
-                        json=doc, status=200)
-        responses.add(responses.GET, f"{DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX}",
-                    body="Not Found", status=404)
-        responses.add(responses.GET, f"{DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index",
-                    body="Not Found", status=404)
-        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-                    match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50})],
-                    body=query_winterfell_response, status=200)
-        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-                    match=[matchers.json_params_matcher({
-                        "query": "winterfell", 
-                        "top_k": 50, 
-                        "filters": {"file_id": [query_winterfell_docs[0]["meta"]["file_id"]]}})],
-                    body=query_winterfell_filtered_response, status=200)
-        responses.add(responses.POST, f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-                    match=[matchers.json_params_matcher({"query_emb": QUERY_EMB.tolist(), 
-                        "top_k": 10, 
-                        "return_embedding": False, 
-                        "similarity": "dot_product"})],
-                    json=[], status=200)
-
-
-@pytest.mark.usefixtures("setup_dc_responses")
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
 def test_DeepsetCloudDocumentStore_init_with_dot_product():
     document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
     assert document_store.return_embedding == False
     assert document_store.similarity == "dot_product"
 
-@pytest.mark.usefixtures("setup_dc_responses")
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
 def test_DeepsetCloudDocumentStore_init_with_cosine():
     document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX, similarity="cosine", return_embedding=True)
@@ -1087,58 +1022,155 @@ def test_DeepsetCloudDocumentStore_init_with_cosine():
     assert document_store.similarity == "cosine"
 
 
-@pytest.mark.usefixtures("setup_dc_responses")
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_DeepsetCloudDocumentStore_documents():
-    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
-    docs = document_store.get_all_documents()
+def test_DeepsetCloudDocumentStore_invalid_token():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET, 
+            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
+            match=[matchers.header_matcher({"authorization": "Bearer invalid_token"})],
+            body="Internal Server Error", 
+            status=500)
+
+    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 500 - Internal Server Error"):
+        DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_invalid_api_endpoint():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET, 
+            url=f"{DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX}",
+            body="Not Found", 
+            status=404)
+
+    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 404 - Not Found"):
+        DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_invalid_index():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET, 
+            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index",
+            body="Not Found", 
+            status=404)  
+
+    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 404 - Not Found"):
+        DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
+    if MOCK_DC:
+        with open('samples/dc/documents-stream.response', 'r') as f:
+            documents_stream_response = f.read()
+            docs = [json.loads(l) for l in documents_stream_response.splitlines()]
+            filtered_docs = [doc for doc in docs if doc["meta"]["file_id"] == docs[0]["meta"]["file_id"]]
+            documents_stream_filtered_response = "\n".join([json.dumps(d) for d in filtered_docs])
+
+            responses.add(
+                method=responses.POST, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-stream",
+                body=documents_stream_response, 
+                status=200)
+
+            responses.add(
+                method=responses.POST, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-stream",
+                match=[matchers.json_params_matcher({
+                    "filters": {"file_id": [docs[0]["meta"]["file_id"]]},
+                    "return_embedding": False})],
+                body=documents_stream_filtered_response, 
+                status=200)
+
+            for doc in filtered_docs:
+                responses.add(
+                    method=responses.GET, 
+                    url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents/{doc['id']}",
+                    json=doc, 
+                    status=200)
+    
+    docs = deepset_cloud_document_store.get_all_documents()
     assert len(docs) > 1
     assert isinstance(docs[0], Document)
 
-    first_doc = next(document_store.get_all_documents_generator())
+    first_doc = next(deepset_cloud_document_store.get_all_documents_generator())
     assert isinstance(first_doc, Document)
     assert first_doc.meta["file_id"] is not None
     
-    filtered_docs = document_store.get_all_documents(filters={"file_id": [first_doc.meta["file_id"]]})
+    filtered_docs = deepset_cloud_document_store.get_all_documents(filters={"file_id": [first_doc.meta["file_id"]]})
     assert len(filtered_docs) > 0
     assert len(filtered_docs) < len(docs)
 
     ids = [doc.id for doc in filtered_docs]
-    single_doc_by_id = document_store.get_document_by_id(ids[0])
+    single_doc_by_id = deepset_cloud_document_store.get_document_by_id(ids[0])
     assert single_doc_by_id is not None
     assert single_doc_by_id.meta["file_id"] == first_doc.meta["file_id"]
 
-    docs_by_id = document_store.get_documents_by_id(ids)
+    docs_by_id = deepset_cloud_document_store.get_documents_by_id(ids)
     assert len(docs_by_id) == len(filtered_docs)
     for doc in docs_by_id:
         assert doc.meta["file_id"] == first_doc.meta["file_id"]
 
 
-@pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
-def test_DeepsetCloudDocumentStore_connect_failed():
-    with pytest.raises(Exception, match="Could not connect to DC: HTTP 404 - Not Found"):
-        DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
+def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
+    if MOCK_DC:
+        with open('samples/dc/query_winterfell.response', 'r') as f:
+            query_winterfell_response = f.read()
+            query_winterfell_docs = json.loads(query_winterfell_response)
+            query_winterfell_filtered_docs = [doc for doc in query_winterfell_docs if doc["meta"]["file_id"] == query_winterfell_docs[0]["meta"]["file_id"]]
+            query_winterfell_filtered_response = json.dumps(query_winterfell_filtered_docs)
 
-    with pytest.raises(Exception, match="Could not connect to DC: HTTP 500 - Internal Server Error"):
-        DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
+        responses.add(
+            method=responses.POST, 
+            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
+            match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50})],
+            status=200,
+            body=query_winterfell_response,
+        )
 
-    with pytest.raises(Exception, match="Could not connect to DC: HTTP 404 - Not Found"):
-        DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
+        responses.add(
+            method=responses.POST, 
+            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
+            match=[matchers.json_params_matcher({
+                        "query": "winterfell", 
+                        "top_k": 50, 
+                        "filters": {"file_id": [query_winterfell_docs[0]["meta"]["file_id"]]}})],
+            status=200,
+            body=query_winterfell_filtered_response,
+        )
 
-
-@pytest.mark.usefixtures("setup_dc_responses")
-@responses.activate
-def test_DeepsetCloudDocumentStore_query():
-    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
-    docs = document_store.query("winterfell", top_k=50)
+    docs = deepset_cloud_document_store.query("winterfell", top_k=50)
     assert docs is not None
     assert len(docs) > 0
 
     first_doc = docs[0]
-    filtered_docs = document_store.query("winterfell", top_k=50, filters={"file_id": [first_doc.meta["file_id"]]})
+    filtered_docs = deepset_cloud_document_store.query("winterfell", top_k=50, filters={"file_id": [first_doc.meta["file_id"]]})
     assert len(filtered_docs) > 0
     assert len(filtered_docs) < len(docs)
 
-    emb_docs = document_store.query_by_embedding(QUERY_EMB)
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_store):
+    query_emb = np.random.randn(768)
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST, 
+            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
+            match=[matchers.json_params_matcher({"query_emb": query_emb.tolist(), 
+                        "top_k": 10, 
+                        "return_embedding": False, 
+                        "similarity": "dot_product"})],
+            json=[], 
+            status=200
+        )
+
+    emb_docs = deepset_cloud_document_store.query_by_embedding(query_emb)
     assert len(emb_docs) == 0
