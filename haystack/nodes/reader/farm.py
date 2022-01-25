@@ -326,7 +326,6 @@ class FARMReader(BaseReader):
         checkpoints_to_keep: int = 3,
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
-        processor: Optional[Processor] = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -381,7 +380,7 @@ class FARMReader(BaseReader):
         save_dir=save_dir, num_processes=num_processes,
         use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
         checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
-        caching=caching, cache_path=cache_path, processor=processor)
+        caching=caching, cache_path=cache_path)
     
     def distil_prediction_layer_from(
         self,
@@ -410,7 +409,6 @@ class FARMReader(BaseReader):
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
-        processor: Optional[Processor] = None,
     ):
         """
         Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -486,7 +484,7 @@ class FARMReader(BaseReader):
         checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
         teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
         caching=caching, cache_path=cache_path, distillation_loss_weight=distillation_loss_weight,
-        distillation_loss=distillation_loss, temperature=temperature, processor=processor)
+        distillation_loss=distillation_loss, temperature=temperature)
 
     def distil_intermediate_layers_from(
         self,
