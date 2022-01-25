@@ -351,38 +351,17 @@ def test_table_text_retriever_training(document_store):
 def test_elasticsearch_highlight():
     client = Elasticsearch()
     client.indices.delete(index="haystack_hl_test",  ignore=[404])
-    document_store = ElasticsearchDocumentStore(
-        index="haystack_hl_test", content_field= "title",
+
+    # Mapping the content and title field as "text" perform search on these both fields.
+    document_store = ElasticsearchDocumentStore(index="haystack_hl_test", content_field= "title",
         custom_mapping={
             "mappings": {
                 "properties": {
                     "content": {
-                        "analyzer": "custom_analyzer",
                         "type": "text"
                     },
                     "title": {
-                        "analyzer": "custom_analyzer",
                         "type": "text"
-                    }
-                }
-            },
-            "settings": {
-                "analysis": {
-                    "analyzer": {
-                        "custom_analyzer": {
-                            "filter": [
-                                "lowercase",
-                                "english_stemmer"
-                            ],
-                            "tokenizer": "standard",
-                            "type": "custom"
-                        }
-                    },
-                    "filter": {
-                        "english_stemmer": {
-                            "language": "english",
-                            "type": "kstem"
-                        }
                     }
                 }
             }
@@ -396,8 +375,8 @@ def test_elasticsearch_highlight():
     ]
     document_store.write_documents(documents)
 
-    retriever = ElasticsearchRetriever(
-        document_store=document_store,
+    # Enabled highlighting on "title"&"content" field only using custom query
+    retriever_1 = ElasticsearchRetriever(document_store=document_store,
         custom_query=
         """{
             "size": 20,
@@ -432,12 +411,14 @@ def test_elasticsearch_highlight():
             }
         }""",
     )
-    results = retriever.retrieve(query="is green tea healthy")
-    assert "hl_title" in results[0].meta
-    assert "hl_content" in results[0].meta
+    results = retriever_1.retrieve(query="is green tea healthy")
 
-    retriever = ElasticsearchRetriever(
-        document_store=document_store,
+    assert len(results[0].meta['highlighted']) == 2
+    assert results[0].meta['highlighted']['title'] == ['**Green**', '**tea** components']
+    assert results[0].meta['highlighted']['content'] == ['The **green**', '**tea** plant', 'range of **healthy**']
+
+    #Enabled highlighting on "title" field only using custom query
+    retriever_2 = ElasticsearchRetriever(document_store=document_store,
         custom_query=
         """{
             "size": 20,
@@ -471,6 +452,7 @@ def test_elasticsearch_highlight():
             }
         }""",
     )
-    results = retriever.retrieve(query="is green tea healthy")
-    assert "hl_title" in results[0].meta
-    assert "hl_content" not in results[0].meta
+    results = retriever_2.retrieve(query="is green tea healthy")
+
+    assert len(results[0].meta['highlighted']) == 1
+    assert results[0].meta['highlighted']['title'] == ['**Green**', '**tea** components']
