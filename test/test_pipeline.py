@@ -5,19 +5,14 @@ from unittest.mock import Mock
 import pytest
 
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.pipeline import (
-    JoinDocuments,
+from haystack.pipelines import (
     Pipeline,
-    FAQPipeline,
     DocumentSearchPipeline,
     RootNode,
-    SklearnQueryClassifier,
-    TransformersQueryClassifier,
-    MostSimilarDocumentsPipeline,
 )
 from haystack.pipelines import ExtractiveQAPipeline
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, ElasticsearchRetriever, FARMReader
-from haystack.schema import Document
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
+
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)

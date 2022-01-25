@@ -1,9 +1,7 @@
 from pathlib import Path
 
-import pytest
-
-from haystack.file_converter.pdf import PDFToTextConverter
-from haystack.preprocessor.preprocessor import PreProcessor
+from haystack.nodes.file_converter.pdf import PDFToTextConverter
+from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
 TEXT = """
 This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in 
