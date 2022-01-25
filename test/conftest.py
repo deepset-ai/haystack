@@ -14,19 +14,19 @@ import requests
 
 try:
     from elasticsearch import Elasticsearch
+    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
     from milvus import Milvus
     import weaviate
     
     from haystack.document_stores.weaviate import WeaviateDocumentStore
     from haystack.document_stores.milvus import MilvusDocumentStore
     from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
-    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
     from haystack.document_stores.faiss import FAISSDocumentStore
     from haystack.document_stores.sql import SQLDocumentStore
 
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
-    _optional_component_not_installed(__name__, "test", ie)
+    _optional_component_not_installed('test', "test", ie)
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 
