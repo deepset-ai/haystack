@@ -62,11 +62,9 @@ class DCDocumentStore(KeywordDocumentStore):
         self.similarity = similarity
         self.return_embedding = return_embedding
 
-        if api_key is None:
-            api_key = os.getenv("DEEPSET_CLOUD_API_KEY")
-            if api_key is None:
-                raise ValueError("No api_key specified. Please set api_key param or DEEPSET_CLOUD_API_KEY environment variable.")
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv("DEEPSET_CLOUD_API_KEY")
+        if self.api_key is None:
+            raise ValueError("No api_key specified. Please set api_key param or DEEPSET_CLOUD_API_KEY environment variable.")
 
         if api_endpoint is None:
             api_endpoint = os.getenv("DEEPSET_CLOUD_API_ENDPOINT", DEFAULT_API_ENDPOINT)
