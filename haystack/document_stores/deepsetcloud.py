@@ -36,7 +36,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
         Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
         
-        DeepsetCloudDocumentStore is not intended to be used in production-like scenarios.
+        DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
+        See https://haystack.deepset.ai/components/document-store for more information.
 
         :param api_key: Secret value of the API key. 
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
@@ -132,9 +133,6 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         if batch_size != 10_000:
             raise ValueError("DeepsetCloudDocumentStore does not support batching")
-
-        if return_embedding is not None and return_embedding != self.return_embedding:
-            raise ValueError("DeepsetCloudDocumentStore does not support dynamic return_embeddings values")
 
         if index is None:
             index = self.index
