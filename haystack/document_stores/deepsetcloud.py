@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Dict, Any, Generator
+from typing import List, Optional, Union, Dict, Generator
 
 import json
 import logging
@@ -7,9 +7,9 @@ import os
 import numpy as np
 
 from haystack.document_stores import KeywordDocumentStore
-from haystack.schema import Document, Label, MultiLabel
+from haystack.schema import Document, Label
 
-DEFAULT_API_ENDPOINT = f"DC_API/v1"
+DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1" #TODO
 
 logger = logging.getLogger(__name__)
 
