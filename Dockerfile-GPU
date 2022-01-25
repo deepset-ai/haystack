@@ -35,15 +35,12 @@ RUN curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz | tar -xvzf -
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 && \
     update-alternatives --set python3 /usr/bin/python3.7
 
-# Copy package files
-COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md \
-    # Haystack code
-    haystack \
-    # Saved models
-    models* \
-    # REST API cpde
-    rest_api \
-    /home/user/
+# Copy Haystack code
+COPY haystack /home/user/haystack
+# Copy package files & models
+COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
+# Copy REST API code
+COPY rest_api /home/user/
 
 RUN pip install --upgrade pip
 RUN echo "Install required packages" && \
