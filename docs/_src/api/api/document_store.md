@@ -294,7 +294,7 @@ Fetch a document by specifying its text id string
 ```
 
 Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
-to performance issues.
+to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_metadata_values_by_key"></a>
 #### get\_metadata\_values\_by\_key
