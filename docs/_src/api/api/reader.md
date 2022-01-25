@@ -110,7 +110,6 @@ and that FARM includes no_answer in the sorted list of predictions.
 ```
 
 Fine-tune a model on a QA dataset. Options:
-
 - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
 - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
 
@@ -152,6 +151,7 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `checkpoints_to_keep`: maximum number of train checkpoints to save.
 :param caching whether or not to use caching for preprocessed dataset
 - `cache_path`: Path to cache the preprocessed dataset
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
 
 **Returns**:
 
@@ -170,12 +170,10 @@ using a more complex teacher.
 Originally proposed in: https://arxiv.org/pdf/1503.02531.pdf
 This can also be considered as the second stage of distillation finetuning as described in the TinyBERT paper:
 https://arxiv.org/pdf/1909.10351.pdf
-
 **Example**
 ```python
 student = FARMReader(model_name_or_path="prajjwal1/bert-medium")
 teacher = FARMReader(model_name_or_path="deepset/bert-large-uncased-whole-word-masking-squad2")
-
 student.distil_prediction_layer_from(teacher, data_dir="squad2", train_filename="train.json", test_filename="dev.json",
                     learning_rate=3e-5, distillation_loss_weight=1.0, temperature=5)
 ```
@@ -227,6 +225,7 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `tinybert_epochs`: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
 - `tinybert_learning_rate`: Learning rate to use when training the student model with the TinyBERT loss function.
 - `tinybert_train_filename`: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
 
 **Returns**:
 
@@ -236,17 +235,15 @@ None
 #### distil\_intermediate\_layers\_from
 
 ```python
- | distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0)
+ | distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None)
 ```
 
 The first stage of distillation finetuning as described in the TinyBERT paper:
 https://arxiv.org/pdf/1909.10351.pdf
-
 **Example**
 ```python
 student = FARMReader(model_name_or_path="prajjwal1/bert-medium")
 teacher = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D")
-
 student.distil_intermediate_layers_from(teacher, data_dir="squad2", train_filename="train.json", test_filename="dev.json",
                     learning_rate=3e-5, distillation_loss_weight=1.0, temperature=5)
 ```
@@ -294,6 +291,7 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `distillation_loss_weight`: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
 - `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
 - `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
 
 **Returns**:
 
