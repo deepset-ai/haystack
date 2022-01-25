@@ -1074,11 +1074,14 @@ def setup_dc_responses():
 
 @pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
-def test_dcdocumentstore_init():
+def test_dcdocumentstore_init_with_dot_product():
     document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
     assert document_store.return_embedding == False
     assert document_store.similarity == "dot_product"
 
+@pytest.mark.usefixtures("setup_dc_responses")
+@responses.activate
+def test_dcdocumentstore_init_with_cosine():
     document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX, similarity="cosine", return_embedding=True)
     assert document_store.return_embedding == True
     assert document_store.similarity == "cosine"
