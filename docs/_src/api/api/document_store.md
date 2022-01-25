@@ -2228,17 +2228,17 @@ Execute a SPARQL query on the given index in the GraphDB instance
 
 query result
 
-<a name="dc"></a>
-# Module dc
+<a name="deepsetcloud"></a>
+# Module deepsetcloud
 
-<a name="dc.DCDocumentStore"></a>
-## DCDocumentStore
+<a name="deepsetcloud.DeepsetCloudDocumentStore"></a>
+## DeepsetCloudDocumentStore
 
 ```python
-class DCDocumentStore(KeywordDocumentStore)
+class DeepsetCloudDocumentStore(KeywordDocumentStore)
 ```
 
-<a name="dc.DCDocumentStore.__init__"></a>
+<a name="deepsetcloud.DeepsetCloudDocumentStore.__init__"></a>
 #### \_\_init\_\_
 
 ```python
@@ -2248,7 +2248,7 @@ class DCDocumentStore(KeywordDocumentStore)
 A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
 Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
 
-DCDocumentStore is not intended for use in production-like scenarios.
+DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
 See https://haystack.deepset.ai/components/document-store for more information.
 
 **Arguments**:
@@ -2269,7 +2269,7 @@ See https://haystack.deepset.ai/components/document-store for more information.
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
 - `return_embedding`: To return document embedding.
 
-<a name="dc.DCDocumentStore.get_all_documents"></a>
+<a name="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
 #### get\_all\_documents
 
 ```python
@@ -2288,7 +2288,7 @@ Get documents from the document store.
 - `batch_size`: Number of documents that are passed to bulk function at a time.
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
-<a name="dc.DCDocumentStore.get_all_documents_generator"></a>
+<a name="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents_generator"></a>
 #### get\_all\_documents\_generator
 
 ```python
@@ -2309,7 +2309,7 @@ a large number of documents without having to load all documents in memory.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
-<a name="dc.DCDocumentStore.query_by_embedding"></a>
+<a name="deepsetcloud.DeepsetCloudDocumentStore.query_by_embedding"></a>
 #### query\_by\_embedding
 
 ```python
@@ -2332,7 +2332,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 
 
 
-<a name="dc.DCDocumentStore.query"></a>
+<a name="deepsetcloud.DeepsetCloudDocumentStore.query"></a>
 #### query
 
 ```python
@@ -2347,10 +2347,11 @@ that are most relevant to the query as defined by the BM25 algorithm.
 - `query`: The query
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
+- `custom_query`: Custom query to be executed.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to requests
 
-<a name="dc.DCDocumentStore.write_documents"></a>
+<a name="deepsetcloud.DeepsetCloudDocumentStore.write_documents"></a>
 #### write\_documents
 
 ```python
