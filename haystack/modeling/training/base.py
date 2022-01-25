@@ -854,7 +854,7 @@ class TinyBERTDistillationTrainer(Trainer):
 
         for teacher_dim, student_dim in zip(teacher_dims, student_dims):
             if teacher_dim != student_dim:
-                self.dim_mappings.append(Linear(student_dim, teacher_dim, bias=False))
+                self.dim_mappings.append(Linear(student_dim, teacher_dim, bias=False).to(device))
             else:
                 self.dim_mappings.append(None)
 
