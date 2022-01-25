@@ -13,20 +13,22 @@ from haystack.pipelines import (
 from haystack.pipelines import ExtractiveQAPipeline
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 
+from conftest import SAMPLES_PATH
+
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_load_and_save_yaml(document_store, tmp_path):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
@@ -38,7 +40,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
     # test invalid pipeline name
     with pytest.raises(Exception):
         Pipeline.load_from_yaml(
-            path=Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
+            path=SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
         )
     # test config export
     pipeline.save_to_yaml(tmp_path / "test.yaml")
@@ -82,14 +84,14 @@ def test_load_and_save_yaml(document_store, tmp_path):
 def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
     # populating index
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
     # test correct load of query pipeline from yaml
     pipeline = ExtractiveQAPipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
@@ -101,7 +103,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
     # test invalid pipeline name
     with pytest.raises(Exception):
         ExtractiveQAPipeline.load_from_yaml(
-            path=Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
+            path=SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
         )
     # test config export
     pipeline.save_to_yaml(tmp_path / "test.yaml")
@@ -147,7 +149,7 @@ def test_load_tfidfretriever_yaml(tmp_path):
         }
     ]
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
     )
     with pytest.raises(Exception) as exc_info:
         pipeline.run(
@@ -353,10 +355,10 @@ def test_existing_faiss_document_store():
     clean_faiss_document_store()
 
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
 
     new_document_store = pipeline.get_document_store()
@@ -364,7 +366,7 @@ def test_existing_faiss_document_store():
 
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
     )
 
     retriever = pipeline.get_node("DPRRetriever")

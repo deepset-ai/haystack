@@ -15,6 +15,8 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetri
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
+from conftest import SAMPLES_PATH
+
 
 @pytest.fixture()
 def docs():
@@ -343,7 +345,7 @@ def test_table_text_retriever_training(document_store):
     )
 
     retriever.train(
-        data_dir=Path(__file__).parent/"samples"/"mmr",
+        data_dir=SAMPLES_PATH/"mmr",
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,

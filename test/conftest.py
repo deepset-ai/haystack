@@ -5,6 +5,7 @@ from sys import platform
 import gc
 import uuid
 import logging
+from pathlib import Path
 from sqlalchemy import create_engine, text
 
 import numpy as np
@@ -50,6 +51,8 @@ from haystack.nodes.question_generator import QuestionGenerator
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
+
+SAMPLES_PATH = SAMPLES_PATH
 
 
 def pytest_addoption(parser):
