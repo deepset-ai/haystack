@@ -459,6 +459,33 @@ class BaseDocumentStore(BaseComponent):
         return [label for label in labels if label.id in duplicate_ids]
 
 
+class KeywordDocumentStore(BaseDocumentStore):
+    """
+    Base class for implementing Document Stores that support keyword searches.
+    """
+    @abstractmethod
+    def query(
+        self,
+        query: Optional[str],
+        filters: Optional[Dict[str, List[str]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None
+    ) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query as defined by keyword matching algorithms like BM25.
+
+        :param query: The query
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param custom_query: Custom query to be executed.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        """
+
+
 def get_batches_from_generator(iterable, n):
     """
     Batch elements of an iterable into fixed-length chunks or blocks.
