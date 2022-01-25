@@ -9,7 +9,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
 from conftest import get_document_store, ensure_ids_are_correct_uuids
-from haystack.document_stores import WeaviateDocumentStore, DCDocumentStore
+from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
@@ -1009,14 +1009,14 @@ def test_custom_headers(document_store_with_docs: BaseDocumentStore):
 
 DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
-DC_API_KEY = ""
+DC_API_KEY = "NO_KEY"
 QUERY_EMB = np.random.randn(768)
 
 
 @pytest.fixture(scope="function")
 def setup_dc_responses():
     responses.add_passthru(DC_API_ENDPOINT)
-    if not DC_API_KEY:
+    if DC_API_KEY == "NO_KEY":
         with open('samples/dc/documents-stream.response', 'r') as f:
             documents_stream_response = f.read()
             docs = [json.loads(l) for l in documents_stream_response.splitlines()]
@@ -1074,23 +1074,23 @@ def setup_dc_responses():
 
 @pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
-def test_dcdocumentstore_init_with_dot_product():
-    document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
+def test_DeepsetCloudDocumentStore_init_with_dot_product():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
     assert document_store.return_embedding == False
     assert document_store.similarity == "dot_product"
 
 @pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
-def test_dcdocumentstore_init_with_cosine():
-    document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX, similarity="cosine", return_embedding=True)
+def test_DeepsetCloudDocumentStore_init_with_cosine():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX, similarity="cosine", return_embedding=True)
     assert document_store.return_embedding == True
     assert document_store.similarity == "cosine"
 
 
 @pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
-def test_dcdocumentstore_documents():
-    document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
+def test_DeepsetCloudDocumentStore_documents():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
     docs = document_store.get_all_documents()
     assert len(docs) > 1
     assert isinstance(docs[0], Document)
@@ -1116,21 +1116,21 @@ def test_dcdocumentstore_documents():
 
 @pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
-def test_dcdocumentstore_connect_failed():
+def test_DeepsetCloudDocumentStore_connect_failed():
     with pytest.raises(Exception, match="Could not connect to DC: HTTP 404 - Not Found"):
-        DCDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
+        DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
     with pytest.raises(Exception, match="Could not connect to DC: HTTP 500 - Internal Server Error"):
-        DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
+        DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
 
     with pytest.raises(Exception, match="Could not connect to DC: HTTP 404 - Not Found"):
-        DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
+        DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
 
 
 @pytest.mark.usefixtures("setup_dc_responses")
 @responses.activate
-def test_dcdocumentstore_query():
-    document_store = DCDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
+def test_DeepsetCloudDocumentStore_query():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
     docs = document_store.query("winterfell", top_k=50)
     assert docs is not None
     assert len(docs) > 0

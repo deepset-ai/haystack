@@ -742,6 +742,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
+        :param custom_query: Custom elasticsearch query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
