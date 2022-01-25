@@ -365,7 +365,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
-        to performance issues.
+        to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
         """
         index = index or self.index
         query = {"size": len(ids), "query": {"ids": {"values": ids}}}
