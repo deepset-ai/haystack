@@ -337,6 +337,7 @@ class Label:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
+    filters: Optional[dict] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -352,7 +353,8 @@ class Label:
                  pipeline_id: Optional[str] = None,
                  created_at: Optional[str] = None,
                  updated_at: Optional[str] = None,
-                 meta: Optional[dict] = None
+                 meta: Optional[dict] = None,
+                 filters: Optional[dict] = None
                  ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
@@ -375,6 +377,8 @@ class Label:
         :param created_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
         :param meta: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
+        :param filters: filters that should be applied to the query to rule out non-relevant documents. For example, if there are different correct answers
+                        in a DocumentStore depending on the retrieved document and the answer in this label is correct only on condition of the filters.
         """
 
         # Create a unique ID (either new one, or one from user input)
@@ -423,6 +427,7 @@ class Label:
             self.meta = dict()
         else:
             self.meta = meta
+        self.filters = filters
 
     def to_dict(self):
         return asdict(self)

@@ -405,14 +405,16 @@ class Pipeline(BasePipeline):
             if params is None:
                 params = {}
             params["add_isolated_node_eval"] = True
-        queries = [label.query for label in labels]
-        for query, label in zip(queries, labels):
-            predictions = self.run(query=query, labels=label, params=params, debug=True)
+        for label in labels:
+            if label.filters is not None:
+                # filters in labels overwrite filters in params
+                params["filters"] = {**params.get("filters", {}), **label.filters}
+            predictions = self.run(query=label.query, labels=label, params=params, debug=True)
             
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
                 df = self._build_eval_dataframe(
-                    query, label, node_name, node_output)
+                    label.query, label, node_name, node_output)
                 eval_result.append(node_name, df)
         
         # add sas values in batch mode for whole Dataframe
