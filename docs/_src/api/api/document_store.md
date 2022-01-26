@@ -647,7 +647,7 @@ the KNN plugin that can scale to a large number of documents.
                    If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
 - `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
-                        Note, that in OpenSearch the similarity type for efficient approximate vector similarity calculations is tied to the embedding fields data type which cannot be changed after creation.
+                        Note, that in OpenSearch the similarity type for efficient approximate vector similarity calculations is tied to the embedding field's data type which cannot be changed after creation.
 - `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
 - `custom_mapping`: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
 - `analyzer`: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
