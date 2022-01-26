@@ -173,8 +173,10 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=es, name="R1", inputs=["Query"])
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
-    results = p.run(query=query, params={ 'Join': { 'top_k_join': 1 } })
-    assert len(results["documents"]) == 1
+    one_result = p.run(query=query, params={ 'Join': { 'top_k_join': 1 } })
+    two_results = p.run(query=query, params={ 'Join': { 'top_k_join': 2 } })
+    assert len(one_result["documents"]) == 1
+    assert len(two_results["documents"]) == 2
 
     # test join_node with reader
     join_node = JoinDocuments()
