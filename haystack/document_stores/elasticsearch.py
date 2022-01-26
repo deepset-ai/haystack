@@ -266,6 +266,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
                                     f"document_store to use a different name for the embedding_field parameter.")
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
+                self.embedding_fields = [field_name for field_name, field in mapping["properties"].items() if field["type"] == "dense_vector"]
                 self.client.indices.put_mapping(index=index_name, body=mapping, headers=headers)
             return
 
@@ -1344,7 +1345,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             logger.warning(f"embedding_field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. Falling back to slow exact vector calculation. "
                                            f"Consider cloning '{self.embedding_field}' optimized for {self.similarity} by calling clone_embedding_field().")
 
-            self.embedding_fields += [field_name for field_name, field in mapping["properties"].items() if field["type"] == "knn_vector"]
+            self.embedding_fields = [field_name for field_name, field in mapping["properties"].items() if field["type"] == "knn_vector"]
             return
 
         if self.custom_mapping:
