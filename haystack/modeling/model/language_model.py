@@ -585,6 +585,8 @@ class Albert(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
         if output_hidden_states is None:
@@ -671,6 +673,8 @@ class Roberta(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
         if output_hidden_states is None:
@@ -757,6 +761,8 @@ class XLMRoberta(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
         if output_hidden_states is None:
@@ -846,7 +852,6 @@ class DistilBert(LanguageModel):
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
-        
         **kwargs,
     ):  
         """
@@ -855,6 +860,8 @@ class DistilBert(LanguageModel):
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
         if output_hidden_states is None:
@@ -951,6 +958,8 @@ class XLNet(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
         if output_hidden_states is None:
@@ -1059,6 +1068,8 @@ class Electra(LanguageModel):
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
         output_tuple = self.model(
@@ -1462,10 +1473,12 @@ class BigBird(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
-        Perform the forward pass of the BERT model.
+        Perform the forward pass of the BigBird model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
         :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
@@ -1473,6 +1486,8 @@ class BigBird(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
         if output_hidden_states is None:
