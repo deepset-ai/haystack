@@ -12,6 +12,7 @@ from haystack.utils import augment_squad
 
 from pathlib import Path
 
+import os
 
 def tutorial2_finetune_a_model_on_your_data():
     # ## Create Training Data
@@ -65,8 +66,16 @@ def distil():
     # ### Augmenting your training data
     # To get the most out of model distillation, we recommend increasing the size of your training data by using data augmentation.
     # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/master/haystack/utils/augment_squad.py):
-    # # Just replace dataset.json with the name of your dataset and adjust the output path
-    augment_squad.main(squad_path=Path("dataset.json"), output_path=Path("augmented_dataset.json"), multiplication_factor=2)
+    
+    # Downloading smaller glove vector file (only for demonstration purposes)
+    os.system("wget https://nlp.stanford.edu/data/glove.6B.zip")
+    os.system("unzip glove.6B.zip")
+    
+    # Downloading very small dataset to make tutorial faster (please use a bigger dataset in real use cases)
+    os.system("wget https://raw.githubusercontent.com/deepset-ai/haystack/master/test/samples/squad/small.json")
+    
+    # Just replace dataset.json with the name of your dataset and adjust the output path
+    augment_squad.main(squad_path=Path("dataset.json"), output_path=Path("augmented_dataset.json"), multiplication_factor=2, glove_path=Path("glove.6B.300d.txt"))
     # In this case, we use a multiplication factor of 2 to keep this example lightweight.
     # Usually you would use a factor like 20 depending on the size of your training data.
     # Augmenting this small dataset with a multiplication factor of 2, should take about 5 to 10 minutes to run on one V100 GPU.

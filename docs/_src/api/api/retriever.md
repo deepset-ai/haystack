@@ -134,6 +134,40 @@ class ElasticsearchRetriever(BaseRetriever)
                     |    self.retrieve(query="Why did the revenue increase?",
                     |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                     ```
+
+                     Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+                     See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
+                     You will find the highlighted output in the returned Document's meta field by key "highlighted".
+                     ::
+
+                         **Example custom_query with highlighting:**
+                         ```python
+                        |    {
+                        |        "size": 10,
+                        |        "query": {
+                        |            "bool": {
+                        |                "should": [{"multi_match": {
+                        |                    "query": ${query},                 // mandatory query placeholder
+                        |                    "type": "most_fields",
+                        |                    "fields": ["content", "title"]}}],
+                        |            }
+                        |        },
+                        |        "highlight": {             // enable highlighting
+                        |            "fields": {            // for fields content and title
+                        |                "content": {},
+                        |                "title": {}
+                        |            }
+                        |        },
+                        |    }
+                         ```
+
+                         **For this custom_query, highlighting info can be accessed by:**
+                        ```python
+                        |    docs = self.retrieve(query="Why did the revenue increase?")
+                        |    highlighted_content = docs[0].meta["highlighted"]["content"]
+                        |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                        ```
+
 - `top_k`: How many documents to return per query.
 
 <a name="sparse.ElasticsearchRetriever.retrieve"></a>
