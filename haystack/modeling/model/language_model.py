@@ -514,6 +514,8 @@ class Bert(LanguageModel):
             output_attentions=output_attentions,
             return_dict=False
         )
+        print("hey")
+        print(output_tuple)
         return output_tuple
 
     def enable_hidden_states_output(self):
@@ -599,7 +601,8 @@ class Albert(LanguageModel):
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions
+            output_attentions=output_attentions,
+            return_dict=False
         )
         return output_tuple
 
@@ -687,7 +690,8 @@ class Roberta(LanguageModel):
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions
+            output_attentions=output_attentions,
+            return_dict=False
         )
         return output_tuple
 
@@ -775,7 +779,8 @@ class XLMRoberta(LanguageModel):
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions
+            output_attentions=output_attentions,
+            return_dict=False
         )
         return output_tuple
 
@@ -873,7 +878,8 @@ class DistilBert(LanguageModel):
             input_ids,
             attention_mask=padding_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions
+            output_attentions=output_attentions,
+            return_dict=False
         )
         # We need to manually aggregate that to get a pooled output (one vec per seq)
         pooled_output = self.pooler(output_tuple[0])
@@ -973,7 +979,8 @@ class XLNet(LanguageModel):
             input_ids,
             attention_mask=padding_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions
+            output_attentions=output_attentions,
+            return_dict=False
         )
         # XLNet also only returns the sequence_output (one vec per token)
         # We need to manually aggregate that to get a pooled output (one vec per seq)
@@ -1076,6 +1083,7 @@ class Electra(LanguageModel):
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            return_dict=False
         )
 
         if output_hidden_states is None:
@@ -1500,7 +1508,8 @@ class BigBird(LanguageModel):
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions
+            output_attentions=output_attentions,
+            return_dict=False
         )
         return output_tuple
 
