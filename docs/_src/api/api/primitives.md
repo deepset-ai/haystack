@@ -177,7 +177,7 @@ class Label()
 #### \_\_init\_\_
 
 ```python
- | __init__(query: str, document: Document, is_correct_answer: bool, is_correct_document: bool, origin: Literal["user-feedback", "gold-label"], answer: Optional[Answer], id: Optional[str] = None, no_answer: Optional[bool] = None, pipeline_id: Optional[str] = None, created_at: Optional[str] = None, updated_at: Optional[str] = None, meta: Optional[dict] = None)
+ | __init__(query: str, document: Document, is_correct_answer: bool, is_correct_document: bool, origin: Literal["user-feedback", "gold-label"], answer: Optional[Answer], id: Optional[str] = None, no_answer: Optional[bool] = None, pipeline_id: Optional[str] = None, created_at: Optional[str] = None, updated_at: Optional[str] = None, meta: Optional[dict] = None, filters: Optional[dict] = None)
 ```
 
 Object used to represent label/feedback in a standardized way within Haystack.
@@ -202,6 +202,8 @@ or, user-feedback from the Haystack REST API.
 - `created_at`: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
                    Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
 - `meta`: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
+- `filters`: filters that should be applied to the query to rule out non-relevant documents. For example, if there are different correct answers
+                in a DocumentStore depending on the retrieved document and the answer in this label is correct only on condition of the filters.
 
 <a name="schema.MultiLabel"></a>
 ## MultiLabel
