@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -14,6 +15,8 @@ from haystack.pipelines import ExtractiveQAPipeline, GenerativeQAPipeline, Searc
 from haystack.pipelines.standard_pipelines import DocumentSearchPipeline, FAQPipeline, RetrieverQuestionGenerationPipeline, TranslationWrapperPipeline
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
+
+from conftest import SAMPLES_PATH
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
@@ -77,7 +80,7 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
 def test_add_eval_data(document_store, batch_size):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename="samples/squad/small.json",
+        filename=SAMPLES_PATH/"squad"/"small.json",
         doc_index="haystack_test_eval_document",
         label_index="haystack_test_feedback",
         batch_size=batch_size,
@@ -121,7 +124,7 @@ def test_add_eval_data(document_store, batch_size):
 def test_eval_reader(reader, document_store: BaseDocumentStore):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename="samples/squad/tiny.json",
+        filename=SAMPLES_PATH/"squad"/"tiny.json",
         doc_index="haystack_test_eval_document",
         label_index="haystack_test_feedback",
     )
@@ -146,7 +149,7 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
 def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename="samples/squad/tiny.json",
+        filename=SAMPLES_PATH/"squad"/"tiny.json",
         doc_index="haystack_test_eval_document",
         label_index="haystack_test_feedback",
     )
@@ -170,7 +173,7 @@ def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, 
 def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
-        filename="samples/squad/tiny.json",
+        filename=SAMPLES_PATH/"squad"/"tiny.json",
         doc_index="haystack_test_eval_document",
         label_index="haystack_test_feedback",
     )
@@ -220,7 +223,7 @@ def test_eval_data_split_word(document_store):
     )
 
     document_store.add_eval_data(
-        filename="samples/squad/tiny.json",
+        filename=SAMPLES_PATH/"squad"/"tiny.json",
         doc_index="haystack_test_eval_document",
         label_index="haystack_test_feedback",
         preprocessor=preprocessor,
@@ -245,7 +248,7 @@ def test_eval_data_split_passage(document_store):
     )
 
     document_store.add_eval_data(
-        filename="samples/squad/tiny_passages.json",
+        filename=SAMPLES_PATH/"squad"/"tiny_passages.json",
         doc_index="haystack_test_eval_document",
         label_index="haystack_test_feedback",
         preprocessor=preprocessor,

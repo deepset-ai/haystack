@@ -9,6 +9,8 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore, KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 
+from haystack.document_stores import BaseDocumentStore
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 class ElasticsearchRetriever(BaseRetriever):
     def __init__(self, document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None):
         """
-        :param document_store: an instance of a DocumentStore to retrieve documents from.
+        :param document_store: an instance of an ElasticsearchDocumentStore to retrieve documents from.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
                              Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
@@ -87,7 +89,6 @@ class ElasticsearchRetriever(BaseRetriever):
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
-
         self.document_store: KeywordDocumentStore = document_store
         self.top_k = top_k
         self.custom_query = custom_query

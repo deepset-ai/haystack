@@ -1,10 +1,10 @@
 import pytest
 
-from haystack.retriever.sparse import ElasticsearchRetriever
-from haystack.reader import FARMReader
-from haystack.pipeline import Pipeline
+from haystack.nodes.retriever.sparse import ElasticsearchRetriever
+from haystack.nodes.reader import FARMReader
+from haystack.pipelines import Pipeline
 
-from haystack.extractor import EntityExtractor, simplify_ner_for_qa
+from haystack.nodes.extractor import EntityExtractor, simplify_ner_for_qa
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)

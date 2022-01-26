@@ -1,3 +1,0 @@
-streamlit>=1.2.0
-st-annotated-text==2.0.0
-markdown>=3.3.4
