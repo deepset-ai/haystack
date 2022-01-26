@@ -745,7 +745,72 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
-        :param custom_query: Custom elasticsearch query to be executed.
+        :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
+
+                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
+                             names must match with the filters dict supplied in self.retrieve().
+                             ::
+
+                                 **An example custom_query:**
+                                 ```python
+                                |    {
+                                |        "size": 10,
+                                |        "query": {
+                                |            "bool": {
+                                |                "should": [{"multi_match": {
+                                |                    "query": ${query},                 // mandatory query placeholder
+                                |                    "type": "most_fields",
+                                |                    "fields": ["content", "title"]}}],
+                                |                "filter": [                                 // optional custom filters
+                                |                    {"terms": {"year": ${years}}},
+                                |                    {"terms": {"quarter": ${quarters}}},
+                                |                    {"range": {"date": {"gte": ${date}}}}
+                                |                    ],
+                                |            }
+                                |        },
+                                |    }
+                                 ```
+
+                                **For this custom_query, a sample retrieve() could be:**
+                                ```python
+                                |    self.retrieve(query="Why did the revenue increase?",
+                                |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                                ```
+
+                             Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+                             See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
+                             You will find the highlighted output in the returned Document's meta field by key "highlighted".
+                             ::
+
+                                 **Example custom_query with highlighting:**
+                                 ```python
+                                |    {
+                                |        "size": 10,
+                                |        "query": {
+                                |            "bool": {
+                                |                "should": [{"multi_match": {
+                                |                    "query": ${query},                 // mandatory query placeholder
+                                |                    "type": "most_fields",
+                                |                    "fields": ["content", "title"]}}],
+                                |            }
+                                |        },
+                                |        "highlight": {             // enable highlighting
+                                |            "fields": {            // for fields content and title
+                                |                "content": {},
+                                |                "title": {}
+                                |            }
+                                |        },
+                                |    }
+                                 ```
+
+                                 **For this custom_query, highlighting info can be accessed by:**
+                                ```python
+                                |    docs = self.retrieve(query="Why did the revenue increase?")
+                                |    highlighted_content = docs[0].meta["highlighted"]["content"]
+                                |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                                ```
+
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -962,6 +1027,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
+
+        if 'highlight' in hit:
+            meta_data['highlighted'] = hit['highlight']
 
         score = hit["_score"]
         if score:
