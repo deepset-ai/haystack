@@ -19,7 +19,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
-from haystack.document_stores import BaseDocumentStore
+from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 
@@ -27,7 +27,7 @@ from haystack.document_stores.base import get_batches_from_generator
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchDocumentStore(BaseDocumentStore):
+class ElasticsearchDocumentStore(KeywordDocumentStore):
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
@@ -369,9 +369,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             return None
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
-        """Fetch documents by specifying a list of text id strings"""
+        """
+        Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
+        to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+        """
         index = index or self.index
-        query = {"query": {"ids": {"values": ids}}}
+        query = {"size": len(ids), "query": {"ids": {"values": ids}}}
         result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
@@ -748,6 +751,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
+        :param custom_query: Custom elasticsearch query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.

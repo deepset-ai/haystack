@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/document_stores]
-    modules: ['base', 'elasticsearch', 'memory', 'sql', 'faiss', 'milvus', 'weaviate', 'graphdb']
+    modules: ['base', 'elasticsearch', 'memory', 'sql', 'faiss', 'milvus', 'weaviate', 'graphdb', 'deepsetcloud']
     ignore_when_discovered: ['__init__']
 processor:
   - type: filter

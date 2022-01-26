@@ -1,7 +1,7 @@
 import os
 import importlib
 from haystack.utils.import_utils import safe_import
-from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
+from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, KeywordDocumentStore
 
 ElasticsearchDocumentStore = safe_import("haystack.document_stores.elasticsearch", "ElasticsearchDocumentStore", "elasticsearch")
 OpenDistroElasticsearchDocumentStore = safe_import("haystack.document_stores.elasticsearch", "OpenDistroElasticsearchDocumentStore", "elasticsearch")
@@ -17,4 +17,5 @@ WeaviateDocumentStore = safe_import("haystack.document_stores.weaviate", "Weavia
 GraphDBKnowledgeGraph = safe_import("haystack.document_stores.graphdb", "GraphDBKnowledgeGraph", "graphdb")
 
 from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl

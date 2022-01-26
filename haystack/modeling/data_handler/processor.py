@@ -14,6 +14,9 @@ from pathlib import Path
 from io import StringIO
 from typing import Optional, Dict, List, Union, Any, Iterable
 
+import torch
+from torch.utils.data import TensorDataset
+
 import pandas as pd
 import numpy as np
 from haystack.modeling.model.tokenization import (
@@ -1973,6 +1976,38 @@ class InferenceProcessor(TextClassificationProcessor):
         )
         return features
 
+class UnlabeledTextProcessor(Processor):
+    """
+    Processor to be used for distilling a teacher model into a student model from scratch. Can only be used with distil_intermediate_layers_from.
+    """
+    def __init__(self, tokenizer, max_seq_len: int, train_filename: Optional[Union[Path, str]] = None, dev_filename: Optional[Union[Path, str]] = None, test_filename: Optional[Union[Path, str]] = None, dev_split: float = 0, data_dir: Optional[Union[Path, str]] = None, tasks: Dict = {}, proxies: Optional[Dict] = None, multithreading_rust: Optional[bool] = True):
+        super().__init__(tokenizer, max_seq_len, train_filename, dev_filename, test_filename, dev_split, data_dir, tasks, proxies, multithreading_rust)
+        self.add_task("question_answering", "squad", ["start_token", "end_token"])
+    def file_to_dicts(self, file: str) -> List[dict]:
+        dicts = []
+        with open(file, "r") as f:
+            for line in f:
+                dicts.append({"text": line})
+        return dicts
+    
+    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+        if return_baskets:
+            raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
+        texts = [dict_["text"] for dict_ in dicts]
+        tokens = self.tokenizer.batch_encode_plus(texts, add_special_tokens=True, return_tensors="pt", padding="max_length", truncation=True, max_length=self.max_seq_len)
+        names = [key for key in tokens]
+        inputs = [tokens[key] for key in tokens]
+        if not "padding_mask" in names:
+            index = names.index("attention_mask")
+            names[index] = "padding_mask"
+        if not "segment_ids" in names:
+            index = names.index("token_type_ids")
+            names[index] = "segment_ids"
+
+        dataset = TensorDataset(*inputs)
+        return dataset, names, []
+    def _create_dataset(self, baskets:List[SampleBasket]):
+        raise NotImplementedError("_create_dataset is not supported by UnlabeledTextProcessor")
 
 # helper fcts
 def write_squad_predictions(predictions, out_filename, predictions_filename=None):

@@ -6,6 +6,7 @@ from collections import OrderedDict, namedtuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
+from haystack.document_stores import BaseDocumentStore, KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 
 from haystack.document_stores import BaseDocumentStore
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: "ElasticsearchDocumentStore", top_k: int = 10, custom_query: str = None):  # type: ignore
+    def __init__(self, document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None):
         """
         :param document_store: an instance of an ElasticsearchDocumentStore to retrieve documents from.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
@@ -55,7 +56,11 @@ class ElasticsearchRetriever(BaseRetriever):
         # save init parameters to enable export of component config as YAML
         self.set_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
 
+<<<<<<< HEAD
         self.document_store: "ElasticsearchDocumentStore" = document_store   # type: ignore
+=======
+        self.document_store: KeywordDocumentStore = document_store
+>>>>>>> master
         self.top_k = top_k
         self.custom_query = custom_query
 
