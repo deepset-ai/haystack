@@ -13,7 +13,7 @@ from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
 import pandas as pd
 
-from haystack.document_stores import BaseDocumentStore
+from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 
@@ -21,7 +21,7 @@ from haystack.document_stores.base import get_batches_from_generator
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchDocumentStore(BaseDocumentStore):
+class ElasticsearchDocumentStore(KeywordDocumentStore):
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
@@ -243,21 +243,29 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             hosts = [{"host": host, "port": port}]
         return hosts
 
-    def _create_document_index(self, index_name: str):
+    def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents. In case if an index with the name already exists, it ensures that
         the embedding_field is present.
         """
         # check if the existing index has the embedding field; if not create it
-        if self.client.indices.exists(index=index_name):
+        if self.client.indices.exists(index=index_name, headers=headers):
+            mapping = self.client.indices.get(index_name, headers=headers)[index_name]["mappings"]
+            if self.search_fields:
+                for search_field in self.search_fields:
+                    if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+                        raise Exception(f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
+                                        f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
+                                        f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
+                                        f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                                        f"Note, that all data stored in the index will be lost!")
             if self.embedding_field:
-                mapping = self.client.indices.get(index_name)[index_name]["mappings"]
                 if self.embedding_field in mapping["properties"] and mapping["properties"][self.embedding_field]["type"] != "dense_vector":
                     raise Exception(f"The '{index_name}' index in Elasticsearch already has a field called '{self.embedding_field}'"
                                     f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
                                     f"document_store to use a different name for the embedding_field parameter.")
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
-                self.client.indices.put_mapping(index=index_name, body=mapping)
+                self.client.indices.put_mapping(index=index_name, body=mapping, headers=headers)
             return
 
         if self.custom_mapping:
@@ -298,17 +306,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 mapping["mappings"]["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
 
         try:
-            self.client.indices.create(index=index_name, body=mapping)
+            self.client.indices.create(index=index_name, body=mapping, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name):
+            if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
-    def _create_label_index(self, index_name: str):
-        if self.client.indices.exists(index=index_name):
+    def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        if self.client.indices.exists(index=index_name, headers=headers):
             return
         mapping = {
             "mappings": {
@@ -329,13 +337,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             }
         }
         try:
-            self.client.indices.create(index=index_name, body=mapping)
+            self.client.indices.create(index=index_name, body=mapping, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name):
+            if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
     # TODO: Add flexibility to define other non-meta and meta fields expected by the Document class
@@ -345,20 +353,23 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding"
         }
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
         index = index or self.index
-        documents = self.get_documents_by_id([id], index=index)
+        documents = self.get_documents_by_id([id], index=index, headers=headers)
         if documents:
             return documents[0]
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:  # type: ignore
-        """Fetch documents by specifying a list of text id strings"""
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
+        """
+        Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
+        to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+        """
         index = index or self.index
-        query = {"query": {"ids": {"values": ids}}}
-        result = self.client.search(index=index, body=query)["hits"]["hits"]
+        query = {"size": len(ids), "query": {"ids": {"values": ids}}}
+        result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
 
@@ -367,7 +378,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         key: str,
         query: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
-        index: Optional[str] = None,
+        index: Optional[str] = None, 
+        headers: Optional[Dict[str, str]] = None
     ) -> List[dict]:
         """
         Get values associated with a metadata key. The output is in the format:
@@ -378,6 +390,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: narrow down the scope to documents that match the given filters.
         :param index: Elasticsearch index where the meta values should be searched. If not supplied,
                       self.index will be used.
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         body: dict = {"size": 0, "aggs": {"metadata_agg": {"terms": {"field": key}}}}
         if query:
@@ -393,7 +407,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if not body.get("query"):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": filter_clause})
-        result = self.client.search(body=body, index=index)
+        result = self.client.search(body=body, index=index, headers=headers)
         buckets = result["aggregations"]["metadata_agg"]["buckets"]
         for bucket in buckets:
             bucket["count"] = bucket.pop("doc_count")
@@ -401,7 +415,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         return buckets
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
+                        headers: Optional[Dict[str, str]] = None):
         """
         Indexes documents for later queries in Elasticsearch.
 
@@ -427,12 +442,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
 
-        if index and not self.client.indices.exists(index=index):
-            self._create_document_index(index)
+        if index and not self.client.indices.exists(index=index, headers=headers):
+            self._create_document_index(index, headers=headers)
 
         if index is None:
             index = self.index
@@ -444,7 +461,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
         document_objects = self._handle_duplicate_documents(documents=document_objects,
                                                             index=index,
-                                                            duplicate_documents=duplicate_documents)
+                                                            duplicate_documents=duplicate_documents,
+                                                            headers=headers)
         documents_to_index = []
         for doc in document_objects:
             _doc = {
@@ -475,24 +493,30 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             # Pass batch_size number of documents to bulk
             if len(documents_to_index) % batch_size == 0:
-                bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
+                bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 documents_to_index = []
 
         if documents_to_index:
-            bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type)
+            bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
     def write_labels(
-        self, labels: Union[List[Label], List[dict]], index: Optional[str] = None, batch_size: int = 10_000
+        self, 
+        labels: Union[List[Label], List[dict]], 
+        index: Optional[str] = None, 
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: int = 10_000
     ):
         """Write annotation labels into document store.
 
         :param labels: A list of Python dictionaries or a list of Haystack Label objects.
         :param index: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
         :param batch_size: Number of labels that are passed to Elasticsearch's bulk function at a time.
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.label_index
-        if index and not self.client.indices.exists(index=index):
-            self._create_label_index(index)
+        if index and not self.client.indices.exists(index=index, headers=headers):
+            self._create_label_index(index, headers=headers)
 
         labels = [Label.from_dict(label) if isinstance(label, dict) else label for label in labels]
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
@@ -524,21 +548,23 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
-                bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
+                bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 labels_to_index = []
 
         if labels_to_index:
-            bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type)
+            bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
-    def update_document_meta(self, id: str, meta: Dict[str, str]):
+    def update_document_meta(self, id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
+        if not index:
+            index = self.index
         body = {"doc": meta}
-        self.client.update(index=self.index, id=id, body=body, refresh=self.refresh_type)
+        self.client.update(index=index, id=id, body=body, refresh=self.refresh_type, headers=headers)
 
     def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None,
-                           only_documents_without_embedding: bool = False) -> int:
+                           only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -562,18 +588,18 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 )
             body["query"]["bool"]["filter"] = filter_clause
 
-        result = self.client.count(index=index, body=body)
+        result = self.client.count(index=index, body=body, headers=headers)
         count = result["count"]
         return count
 
-    def get_label_count(self, index: Optional[str] = None) -> int:
+    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Return the number of labels in the document store
         """
         index = index or self.label_index
-        return self.get_document_count(index=index)
+        return self.get_document_count(index=index, headers=headers)
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
@@ -595,7 +621,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 )
             body["query"]["bool"]["filter"] = filter_clause
 
-        result = self.client.count(index=index, body=body)
+        result = self.client.count(index=index, body=body, headers=headers)
         count = result["count"]
         return count
 
@@ -605,6 +631,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -615,9 +642,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         result = self.get_all_documents_generator(
-            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
+            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size, headers=headers
         )
         documents = list(result)
         return documents
@@ -628,6 +657,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -640,6 +670,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
 
         if index is None:
@@ -648,19 +680,23 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        result = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size)
+        result = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size, headers=headers)
         for hit in result:
             document = self._convert_es_hit_to_document(hit, return_embedding=return_embedding)
             yield document
 
     def get_all_labels(
-        self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000
+        self, 
+        index: Optional[str] = None, 
+        filters: Optional[Dict[str, List[str]]] = None, 
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: int = 10_000
     ) -> List[Label]:
         """
         Return all labels in the document store
         """
         index = index or self.label_index
-        result = list(self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size))
+        result = list(self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size, headers=headers))
         labels = [Label.from_dict({**hit["_source"], "id": hit["_id"]}) for hit in result]
         return labels
 
@@ -670,6 +706,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
+        headers: Optional[Dict[str, str]] = None
     ) -> Generator[dict, None, None]:
         """
         Return all documents in a specific index in the document store
@@ -689,7 +726,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if only_documents_without_embedding:
             body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
 
-        result = scan(self.client, query=body, index=index, size=batch_size, scroll=self.scroll)
+        result = scan(self.client, query=body, index=index, size=batch_size, scroll=self.scroll, headers=headers)
         yield from result
 
     def query(
@@ -699,6 +736,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -774,6 +812,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                 ```
 
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
 
         if index is None:
@@ -841,7 +881,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             body["_source"] = {"excludes": self.excluded_meta_data}
 
         logger.debug(f"Retriever query: {body}")
-        result = self.client.search(index=index, body=body)["hits"]["hits"]
+        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
@@ -851,7 +891,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                            filters: Optional[Dict[str, List[str]]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None) -> List[Document]:
+                           return_embedding: Optional[bool] = None,
+                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -861,6 +902,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return:
         """
         if index is None:
@@ -907,9 +950,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             logger.debug(f"Retriever query: {body}")
             try:
-                result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+                result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
                 if len(result) == 0:
-                    count_embeddings = self.get_embedding_count(index=index)
+                    count_embeddings = self.get_embedding_count(index=index, headers=headers)
                     if count_embeddings == 0:
                         raise RequestError(400, "search_phase_execution_exception",
                                            {"error": "No documents with embeddings."})
@@ -988,7 +1031,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if 'highlight' in hit:
             meta_data['highlighted'] = hit['highlight']
 
-        score = hit["_score"] if hit["_score"] else None
+        score = hit["_score"]
         if score:
             if adapt_score_for_embedding:
                 score = self._scale_embedding_score(score)
@@ -1043,7 +1086,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         update_existing_embeddings: bool = True,
-        batch_size: int = 10_000
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1058,30 +1102,33 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
         if index is None:
             index = self.index
 
         if self.refresh_type == 'false':
-            self.client.indices.refresh(index=index)
+            self.client.indices.refresh(index=index, headers=headers)
 
         if not self.embedding_field:
             raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
 
         if update_existing_embeddings:
-            document_count = self.get_document_count(index=index)
+            document_count = self.get_document_count(index=index, headers=headers)
             logger.info(f"Updating embeddings for all {document_count} docs ...")
         else:
             document_count = self.get_document_count(index=index, filters=filters,
-                                                     only_documents_without_embedding=True)
+                                                     only_documents_without_embedding=True, headers=headers)
             logger.info(f"Updating embeddings for {document_count} docs without embeddings ...")
 
         result = self._get_all_documents_in_index(
             index=index,
             filters=filters,
             batch_size=batch_size,
-            only_documents_without_embedding=not update_existing_embeddings
+            only_documents_without_embedding=not update_existing_embeddings,
+            headers=headers
         )
 
         logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
@@ -1105,15 +1152,17 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                               }
                     doc_updates.append(update)
 
-                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type)
+                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
         logger.warning(
@@ -1122,9 +1171,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
-        self.delete_documents(index, None, filters)
+        self.delete_documents(index, None, filters, headers=headers)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -1136,6 +1185,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
         index = index or self.index
@@ -1157,12 +1208,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             query["query"]["ids"] = {"values": ids}
         else:
             query["query"] = {"match_all": {}}
-        self.client.delete_by_query(index=index, body=query, ignore=[404])
+        self.client.delete_by_query(index=index, body=query, ignore=[404], headers=headers)
         # We want to be sure that all docs are deleted before continuing (delete_by_query doesn't support wait_for)
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
@@ -1171,10 +1222,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
             Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
         index = index or self.label_index
-        self.delete_documents(index=index, ids=ids, filters=filters)
+        self.delete_documents(index=index, ids=ids, filters=filters, headers=headers)
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
@@ -1209,7 +1262,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         filters: Optional[Dict[str, List[str]]] = None,
                         top_k: int = 10,
                         index: Optional[str] = None,
-                        return_embedding: Optional[bool] = None) -> List[Document]:
+                        return_embedding: Optional[bool] = None,
+                        headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -1219,6 +1273,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return:
         """
         if index is None:
@@ -1271,7 +1327,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 body["_source"] = {"excludes": excluded_meta_data}
 
             logger.debug(f"Retriever query: {body}")
-            result = self.client.search(index=index, body=body, request_timeout=300)["hits"]["hits"]
+            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
             documents = [
                 self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
@@ -1279,7 +1335,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             ]
             return documents
 
-    def _create_document_index(self, index_name: str):
+    def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents.
         """
@@ -1347,17 +1403,17 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     logger.error("Please set index_type to either 'flat' or 'hnsw'")
 
         try:
-            self.client.indices.create(index=index_name, body=mapping)
+            self.client.indices.create(index=index_name, body=mapping, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name):
+            if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
-    def _create_label_index(self, index_name: str):
-        if self.client.indices.exists(index=index_name):
+    def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        if self.client.indices.exists(index=index_name, headers=headers):
             return
         mapping = {
             "mappings": {
@@ -1378,13 +1434,13 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             }
         }
         try:
-            self.client.indices.create(index=index_name, body=mapping)
+            self.client.indices.create(index=index_name, body=mapping, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name):
+            if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):

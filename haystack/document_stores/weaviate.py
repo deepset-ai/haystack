@@ -7,7 +7,6 @@ import logging
 import json
 import numpy as np
 from tqdm import tqdm
-import pandas as pd
 
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
@@ -32,6 +31,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
     3. Has less variety of ANN algorithms, as of now only HNSW.
     4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
+    5. Only support cosine similarity.
 
     Weaviate python client is used to connect to the server, more details are here
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -54,7 +54,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             embedding_dim: int = 768,
             content_field: str = "content",
             name_field: str = "name",
-            similarity: str = "dot_product",
+            similarity: str = "cosine",
             index_type: str = "hnsw",
             custom_schema: Optional[dict] = None,
             return_embedding: bool = False,
@@ -75,7 +75,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default.
+        :param similarity: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
@@ -94,6 +94,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already exists.
         """
+        if similarity != "cosine":
+            raise ValueError(f"Weaviate only supports cosine similarity, but you provided {similarity}")
         # save init parameters to enable export of component config as YAML
         self.set_config(
             host=host, port=port, timeout_config=timeout_config, username=username, password=password,
@@ -220,6 +222,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             # Converting JSON-string to original datatype (string or nested list)
             content = json.loads(str(props.get(self.content_field)))
 
+        content_type = None
         if props.get("contenttype") is not None:
             content_type = str(props.pop("contenttype"))
 
@@ -255,7 +258,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding"
         }
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
         """Fetch a document by specifying its uuid string"""
         # Sample result dict from a get method
         '''{'class': 'Document',
@@ -265,6 +268,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
           'name': 'name_5',
           'content': 'text_5'},
          'vector': []}'''
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+        
         index = self._sanitize_index_name(index) or self.index
         document = None
 
@@ -275,11 +281,16 @@ class WeaviateDocumentStore(BaseDocumentStore):
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
-                            batch_size: int = 10_000) -> List[Document]:
+    def get_documents_by_id(self, ids: List[str], 
+                            index: Optional[str] = None, 
+                            batch_size: int = 10_000, 
+                            headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Fetch documents by specifying a list of uuid strings.
         """
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+        
         index = self._sanitize_index_name(index) or self.index
         documents = []
         #TODO: better implementation with multiple where filters instead of chatty call below?
@@ -364,7 +375,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def write_documents(
             self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-            batch_size: int = 10_000, duplicate_documents: Optional[str] = None):
+            batch_size: int = 10_000, duplicate_documents: Optional[str] = None, 
+            headers: Optional[Dict[str, str]] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -380,6 +392,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+        
         index = self._sanitize_index_name(index) or self.index
         self._create_schema_and_index_if_not_exist(index)
         field_map = self._create_document_field_map()
@@ -471,11 +486,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 progress_bar.update(batch_size)
         progress_bar.close()
 
-    def update_document_meta(self, id: str, meta: Dict[str, str]):
+    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
         """
         Update the metadata dictionary of a document by specifying its string id.
         """
-        self.weaviate_client.data_object.update(meta, class_name=self.index, uuid=id)
+        if not index:
+            index = self.index
+        self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
     def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         """
@@ -483,10 +500,17 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         return self.get_document_count(filters=filters, index=index)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, 
+        only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Return the number of documents in the document store.
         """
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+
+        if only_documents_without_embedding:
+            return 0
+        
         index = self._sanitize_index_name(index) or self.index
         doc_count = 0
         if filters:
@@ -512,6 +536,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -523,6 +548,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+        
         index = self._sanitize_index_name(index) or self.index
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
@@ -568,6 +596,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -581,7 +610,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
-
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+        
         index = self._sanitize_index_name(index) or self.index
 
         if return_embedding is None:
@@ -648,7 +679,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None) -> List[Document]:
+                           return_embedding: Optional[bool] = None,
+                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -660,6 +692,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param return_embedding: To return document embedding
         :return:
         """
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+        
         if return_embedding is None:
             return_embedding = self.return_embedding
         index = self._sanitize_index_name(index) or self.index
@@ -753,13 +788,16 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 if self.similarity=="cosine": self.normalize_embedding(emb)
                 self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
         :return: None
         """
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+        
         logger.warning(
                 """DEPRECATION WARNINGS: 
                 1. delete_all_documents() method is deprecated, please use delete_documents method
@@ -768,7 +806,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -782,6 +820,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             have their ID in the list).
         :return: None
         """
+        if headers:
+            raise NotImplementedError("WeaviateDocumentStore does not support headers.")
+        
         index = self._sanitize_index_name(index) or self.index
 
         # create index if it doesn't exist yet

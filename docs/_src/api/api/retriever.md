@@ -24,7 +24,7 @@ Base class for regular retrievers.
 
 ```python
  | @abstractmethod
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -36,6 +36,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
 <a name="base.BaseRetriever.timing"></a>
 #### timing
@@ -50,7 +51,7 @@ Wrapper method used to time functions.
 #### eval
 
 ```python
- | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+ | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False, headers: Optional[Dict[str, str]] = None) -> dict
 ```
 
 Performs evaluation on the Retriever.
@@ -79,6 +80,7 @@ position in the ranking of documents the correct document is.
                     are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                      contains the keys "predictions" and "metrics".
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
 <a name="sparse"></a>
 # Module sparse
@@ -94,7 +96,7 @@ class ElasticsearchRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: ElasticsearchDocumentStore, top_k: int = 10, custom_query: str = None)
+ | __init__(document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None)
 ```
 
 **Arguments**:
@@ -172,7 +174,7 @@ class ElasticsearchRetriever(BaseRetriever)
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -184,6 +186,8 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
 ## ElasticsearchFilterOnlyRetriever
@@ -199,7 +203,7 @@ Helpful for benchmarking, testing and if you want to do QA on small documents wi
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -211,6 +215,8 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="sparse.TfidfRetriever"></a>
 ## TfidfRetriever
@@ -243,7 +249,7 @@ It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -343,7 +349,7 @@ The checkpoint format matches huggingface transformers' model format
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -394,7 +400,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
+ | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
 ```
 
 train a DensePassageRetrieval model
@@ -408,6 +414,9 @@ train a DensePassageRetrieval model
 - `max_samples`: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
 - `max_processes`: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                       It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+- `multiprocessing_strategy`: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
+                                 If your system has low limits for the number of open file descriptors, and you can’t raise them,
+                                 you should use the file_system strategy.
 - `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None
 - `batch_size`: total number of samples in 1 batch of data
 - `embed_title`: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
@@ -682,7 +691,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents

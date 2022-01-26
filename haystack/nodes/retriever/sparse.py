@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import logging
 import pandas as pd
@@ -6,7 +6,7 @@ from collections import OrderedDict, namedtuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
-from haystack.document_stores import BaseDocumentStore, ElasticsearchDocumentStore
+from haystack.document_stores import BaseDocumentStore, KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: ElasticsearchDocumentStore, top_k: int = 10, custom_query: str = None):
+    def __init__(self, document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
@@ -88,11 +88,17 @@ class ElasticsearchRetriever(BaseRetriever):
         # save init parameters to enable export of component config as YAML
         self.set_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
 
-        self.document_store: ElasticsearchDocumentStore = document_store
+        self.document_store: KeywordDocumentStore = document_store
         self.top_k = top_k
         self.custom_query = custom_query
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(
+        self, 
+        query: str, 
+        filters: dict = None, 
+        top_k: Optional[int] = None, 
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -101,13 +107,15 @@ class ElasticsearchRetriever(BaseRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
 
-        documents = self.document_store.query(query, filters, top_k, self.custom_query, index)
+        documents = self.document_store.query(query, filters, top_k, self.custom_query, index, headers=headers)
         return documents
 
 
@@ -116,7 +124,13 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
     """
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(
+        self, 
+        query: str, 
+        filters: dict = None, 
+        top_k: Optional[int] = None, 
+        index: str = None, 
+        headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -125,13 +139,16 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
         documents = self.document_store.query(query=None, filters=filters, top_k=top_k,
-                                              custom_query=self.custom_query, index=index)
+                                              custom_query=self.custom_query, index=index,
+                                              headers=headers)
         return documents
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
@@ -200,7 +217,7 @@ class TfidfRetriever(BaseRetriever):
         )
         return indices_and_scores
 
-    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]:
+    def retrieve(self, query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -211,7 +228,7 @@ class TfidfRetriever(BaseRetriever):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         if self.auto_fit:
-            if self.document_store.get_document_count() != self.document_count:
+            if self.document_store.get_document_count(headers=headers) != self.document_count:
                 # run fit() to update self.df, self.tfidf_matrix and self.document_count
                 logger.warning("Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now.")
                 self.fit()

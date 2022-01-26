@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 
 if TYPE_CHECKING:
@@ -59,7 +60,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
             port: str = "19530",
             connection_pool: str = "SingletonThread",
             index: str = "document",
-            vector_dim: int = 768,
+            vector_dim: int = None,
+            embedding_dim: int = 768,
             index_file_size: int = 1024,
             similarity: str = "dot_product",
             index_type: str = "IVF_FLAT",
@@ -71,6 +73,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             custom_fields: Optional[List[Any]] = None,
             progress_bar: bool = True,
             duplicate_documents: str = 'overwrite',
+            isolation_level: str = None
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -81,7 +84,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                            See https://milvus.io/docs/v1.0.0/install_milvus.md for instructions to start a Milvus instance.
         :param connection_pool: Connection pool type to connect with Milvus server. Default: "SingletonThread".
         :param index: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
-        :param vector_dim: The embedding vector size. Default: 768.
+        :param vector_dim: Deprecated. Use embedding_dim instead.
+        :param embedding_dim: The embedding vector size. Default: 768.
         :param index_file_size: Specifies the size of each segment file that is stored by Milvus and its default value is 1024 MB.
          When the size of newly inserted vectors reaches the specified volume, Milvus packs these vectors into a new segment.
          Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
@@ -115,15 +119,17 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
             sql_url=sql_url, host=host, port=port, connection_pool=connection_pool, index=index, vector_dim=vector_dim,
-            index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
+            embedding_dim=embedding_dim, index_file_size=index_file_size, similarity=similarity, index_type=index_type, index_param=index_param,
             search_param=search_param, duplicate_documents=duplicate_documents, id_field=id_field,
             return_embedding=return_embedding, embedding_field=embedding_field, progress_bar=progress_bar,
             custom_fields=custom_fields,
+            isolation_level=isolation_level
         )
 
         logger.warning("Milvus2DocumentStore is in experimental state until Milvus 2.0 is released")
@@ -135,7 +141,13 @@ class Milvus2DocumentStore(SQLDocumentStore):
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
 
-        self.vector_dim = vector_dim
+        if vector_dim is not None:
+            warnings.warn("The 'vector_dim' parameter is deprecated, "
+                          "use 'embedding_dim' instead.", DeprecationWarning, 2)
+            self.embedding_dim = vector_dim
+        else:
+            self.embedding_dim = embedding_dim
+
         self.index_file_size = index_file_size
 
         if similarity == "dot_product":
@@ -160,11 +172,12 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
-        self.duplicate_documents = duplicate_documents
 
         super().__init__(
             url=sql_url,
-            index=index
+            index=index,
+            duplicate_documents=duplicate_documents,
+            isolation_level=isolation_level,
         )
 
     def _create_collection_and_index_if_not_exist(
@@ -187,7 +200,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if not has_collection:
             fields = [
                 FieldSchema(name=self.id_field, dtype=DataType.INT64, is_primary=True, auto_id=True),
-                FieldSchema(name=self.embedding_field, dtype=DataType.FLOAT_VECTOR, dim=self.vector_dim)
+                FieldSchema(name=self.embedding_field, dtype=DataType.FLOAT_VECTOR, dim=self.embedding_dim)
             ]
 
             for field in custom_fields:
@@ -222,7 +235,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         }
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, index_param: Optional[Dict[str, Any]] = None):
+                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, index_param: Optional[Dict[str, Any]] = None):
         """
         Add new documents to the DocumentStore.
 
@@ -239,6 +252,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return:
         """
+        if headers:
+            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+        
         index = index or self.index
         index_param = index_param or self.index_param
         duplicate_documents = duplicate_documents or self.duplicate_documents
@@ -436,7 +452,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                            filters: Optional[dict] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None) -> List[Document]:
+                           return_embedding: Optional[bool] = None,
+                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -448,6 +465,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param return_embedding: To return document embedding
         :return:
         """
+        if headers:
+            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+        
         index = index or self.index
         try:
             from pymilvus import connections
@@ -518,7 +538,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         return documents
 
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete all documents (from SQL AND Milvus).
         :param index: (SQL) index name for storing the docs and metadata
@@ -526,6 +546,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
+        if headers:
+            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+        
         index = index or self.index
         super().delete_documents(index=index, filters=filters)
         try:
@@ -553,6 +576,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -566,6 +590,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        if headers:
+            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+        
         index = index or self.index
         documents = super().get_all_documents_generator(
             index=index, filters=filters, batch_size=batch_size
@@ -584,6 +611,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             filters: Optional[Dict[str, List[str]]] = None,
             return_embedding: Optional[bool] = None,
             batch_size: int = 10_000,
+            headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Get documents from the document store (optionally using filter criteria).
@@ -595,7 +623,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
-
+        if headers:
+            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+        
         index = index or self.index
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
@@ -603,7 +633,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         documents = list(result)
         return documents
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None) -> Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
         """
         Fetch a document by specifying its text id string
 
@@ -611,12 +641,15 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         """
+        if headers:
+            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+        
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
         return document
 
     def get_documents_by_id(
-            self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000
+            self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         """
         Fetch multiple documents by specifying their IDs (strings)
@@ -626,8 +659,11 @@ class Milvus2DocumentStore(SQLDocumentStore):
                       DocumentStore's default index (self.index) will be used.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        if headers:
+            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+        
         index = index or self.index
-        documents = super().get_documents_by_id(ids=ids, index=index)
+        documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if self.return_embedding:
             self._populate_embeddings_to_docs(index=index, docs=documents)
 

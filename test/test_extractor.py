@@ -12,7 +12,7 @@ def test_extractor(document_store_with_docs):
     
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -36,7 +36,7 @@ def test_extractor_output_simplifier(document_store_with_docs):
     
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])

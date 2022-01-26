@@ -158,9 +158,9 @@ class AzureConverter(BaseConverter):
         if valid_languages:
             file_text = text["content"] + " ".join(
                 [cell for table in tables for row in table["content"] for cell in row])
-            if not self.validate_language(file_text):
+            if not self.validate_language(file_text, valid_languages):
                 logger.warning(
-                    f"The language for {file_path} is not one of {self.valid_languages}. The file may not have "
+                    f"The language for {file_path} is not one of {valid_languages}. The file may not have "
                     f"been decoded in the correct text format."
                 )
 

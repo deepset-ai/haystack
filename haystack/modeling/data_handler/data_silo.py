@@ -44,6 +44,7 @@ class DataSilo:
         automatic_loading: bool = True,
         max_multiprocessing_chunksize: int = 2000,
         max_processes: int = 128,
+        multiprocessing_strategy: Optional[str] = None,
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
     ):
@@ -59,6 +60,9 @@ class DataSilo:
             values are rather large that might cause memory issues.
         :param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+        :multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
+                                   If your system has low limits for the number of open file descriptors, and you can’t raise them,
+                                   you should use the file_system strategy.
         :param caching: save the processed datasets on disk to save time/compute if the same train data is used to run
                         multiple experiments. Each cache has a checksum based on the train_filename of the Processor
                         and the batch size.
@@ -70,6 +74,7 @@ class DataSilo:
         self.batch_size = batch_size
         self.class_weights = None
         self.max_processes = max_processes
+        self.multiprocessing_strategy = multiprocessing_strategy
         self.max_multiprocessing_chunksize = max_multiprocessing_chunksize
         self.caching = caching
         self.cache_path = cache_path
@@ -138,6 +143,15 @@ class DataSilo:
 
         with ExitStack() as stack:
             if self.max_processes > 1:  # use multiprocessing only when max_processes > 1
+                if self.multiprocessing_strategy:
+                    if self.multiprocessing_strategy in mp.get_all_sharing_strategies():
+                        mp.set_sharing_strategy(self.multiprocessing_strategy)
+                    else:
+                        logger.warning(
+                            f"{self.multiprocessing_strategy} is unavailable, "
+                            f"falling back to default multiprocessing sharing strategy of your OS."
+                        )
+
                 p = stack.enter_context(mp.Pool(processes=num_cpus_used))
 
                 logger.info(
@@ -743,19 +757,29 @@ class DistillationDataSilo(DataSilo):
         super().__init__(max_processes=max_processes, processor=processor, batch_size=batch_size, eval_batch_size=eval_batch_size,
         distributed=distributed, automatic_loading=automatic_loading, caching=caching, cache_path=cache_path)
     
-    def _run_teacher(self, batch: List[List[torch.Tensor]], corresponding_chunks: List[int],
+    def _run_teacher(self, batch: dict) -> List[torch.Tensor]:
+        """
+        Run the teacher model on the given batch.
+        """
+        return self.teacher.inferencer.model(**batch)
+    
+    def _pass_batches(self, batch: List[List[torch.Tensor]], corresponding_chunks: List[int],
     teacher_outputs: List[List[Tuple[torch.Tensor, ...]]], tensor_names: List[str]):
         with torch.no_grad():
             batch_transposed = zip(*batch) # transpose dimensions (from batch, features, ... to features, batch, ...)
             batch_transposed_list = [torch.stack(b) for b in batch_transposed] # create tensors for each feature
             batch_dict = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch_transposed_list)} # create input dict
-            y = self.teacher.inferencer.model(**batch_dict)
+            y = self._run_teacher(batch=batch_dict) # run teacher model
             y = [y.cpu() for y in y]
+            self.output_len = len(y)
 
             # grouping by chunk
             for i, data in zip(corresponding_chunks, zip(*y)): # transpose back
                 teacher_outputs[i].append(data)
             return
+    
+    def _teacher_output_names(self) -> List[str]:
+        return ["teacher_output_" + str(i) for i in range(self.output_len)]
 
     def _get_dataset(self, filename: Optional[Union[str, Path]], dicts: Optional[List[Dict]] = None):
         concat_datasets, tensor_names = super()._get_dataset(filename, dicts)
@@ -772,16 +796,16 @@ class DistillationDataSilo(DataSilo):
                 batch.append(x)
                 corresponding_chunks.append(i)
                 if len(batch) == self.teacher_batch_size:
-                    self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names) # doing forward pass on teacher model
+                    self._pass_batches(batch, corresponding_chunks, teacher_outputs, tensor_names) # doing forward pass on teacher model
                     batch = []
                     corresponding_chunks = []
         if batch:
-            self._run_teacher(batch, corresponding_chunks, teacher_outputs, tensor_names)
+            self._pass_batches(batch, corresponding_chunks, teacher_outputs, tensor_names)
         
         # appending teacher outputs to original dataset
         for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):
             dataset.tensors += tuple(torch.stack(tensors) for tensors in zip(*teacher_output))
-        tensor_names.extend(["teacher_output_" + str(i) for i, _ in enumerate(zip(*teacher_output))])
+        tensor_names += self._teacher_output_names()
         concat_datasets = ConcatDataset(concat_datasets.datasets) # making sure metrics are updated
         return concat_datasets, tensor_names
     
@@ -796,7 +820,8 @@ class DistillationDataSilo(DataSilo):
             "max_seq_len": self.processor.max_seq_len,
             "dev_split": self.processor.dev_split,
             "tasks": self.processor.tasks,
-            "teacher_name_or_path": self.teacher.pipeline_config["params"]["model_name_or_path"]
+            "teacher_name_or_path": self.teacher.pipeline_config["params"]["model_name_or_path"],
+            "data_silo_type": self.__class__.__name__,
         }
         checksum = get_dict_checksum(payload_dict)
         return checksum
