@@ -71,10 +71,10 @@ def convert_files_to_dicts(
                 text = clean_func(text)
 
             if split_paragraphs:
-                for i, para in enumerate(text.split("\n\n")):
+                for para in text.split("\n\n"):
                     if not para.strip():  # skip empty paragraphs
                         continue
-                    documents.append({"content": para, "meta": {"name": path.name, "_split_id": i}})
+                    documents.append({"content": para, "meta": {"name": path.name}})
             else:
                 documents.append({"content": text, "meta": {"name": path.name}})
 
