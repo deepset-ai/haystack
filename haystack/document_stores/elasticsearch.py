@@ -1217,8 +1217,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. 
-                           As OpenSearchDocumentStore currently does not support all similarity functions (e.g. dot_product) in exact vector similarity calculations,
-                           we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but optimized for accuracy.
+                           As OpenSearch currently does not support all similarity functions (e.g. dot_product) in exact vector similarity calculations,
+                           we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but further optimized for accuracy.
                            Exact vector similarity is only used as fallback when there's a mismatch between certain requested and indexed similarity types.
                            In these cases however, a warning will be displayed. See similarity param for more information.
         :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
