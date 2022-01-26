@@ -572,6 +572,8 @@ class Albert(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -585,17 +587,19 @@ class Albert(LanguageModel):
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
@@ -654,6 +658,8 @@ class Roberta(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -667,17 +673,19 @@ class Roberta(LanguageModel):
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
@@ -736,6 +744,8 @@ class XLMRoberta(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -749,17 +759,19 @@ class XLMRoberta(LanguageModel):
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
@@ -832,6 +844,9 @@ class DistilBert(LanguageModel):
         self,
         input_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        
         **kwargs,
     ):  
         """
@@ -842,18 +857,20 @@ class DistilBert(LanguageModel):
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+            
         output_tuple = self.model(
             input_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions
         )
         # We need to manually aggregate that to get a pooled output (one vec per seq)
         pooled_output = self.pooler(output_tuple[0])
-        if self.model.config.output_hidden_states == True:
-            sequence_output, all_hidden_states = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
-        else:
-            sequence_output = output_tuple[0]
-            return sequence_output, pooled_output
+        return (output_tuple[0], pooled_output) + output_tuple[1:]
 
     def enable_hidden_states_output(self):
         self.model.config.output_hidden_states = True
@@ -921,6 +938,8 @@ class XLNet(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -934,24 +953,24 @@ class XLNet(LanguageModel):
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+            
         # Note: XLNet has a couple of special input tensors for pretraining / text generation  (perm_mask, target_mapping ...)
         # We will need to implement them, if we wanna support LM adaptation
         output_tuple = self.model(
             input_ids,
-            token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions
         )
         # XLNet also only returns the sequence_output (one vec per token)
         # We need to manually aggregate that to get a pooled output (one vec per seq)
         # TODO verify that this is really doing correct pooling
         pooled_output = self.pooler(output_tuple[0])
-
-        if self.model.output_hidden_states == True:
-            sequence_output, all_hidden_states = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output = output_tuple[0]
-            return sequence_output, pooled_output
+        return (output_tuple[0], pooled_output) + output_tuple[1:]
 
     def enable_hidden_states_output(self):
         self.model.output_hidden_states = True
@@ -1030,6 +1049,8 @@ class Electra(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -1046,18 +1067,20 @@ class Electra(LanguageModel):
             attention_mask=padding_mask,
         )
 
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+            
+        output_tuple = self.model(
+            input_ids,
+            attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions
+        )
         # We need to manually aggregate that to get a pooled output (one vec per seq)
         pooled_output = self.pooler(output_tuple[0])
-
-        if self.model.config.output_hidden_states == True:
-            sequence_output, all_hidden_states = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
-        else:
-            sequence_output = output_tuple[0]
-            return sequence_output, pooled_output
-
-    def enable_hidden_states_output(self):
-        self.model.config.output_hidden_states = True
+        return (output_tuple[0], pooled_output) + output_tuple[1:]
 
     def disable_hidden_states_output(self):
         self.model.config.output_hidden_states = False
@@ -1452,17 +1475,19 @@ class BigBird(LanguageModel):
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
