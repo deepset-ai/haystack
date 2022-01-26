@@ -76,7 +76,7 @@ Here's a sample configuration:
 
 ```python
  | @classmethod
- | load_from_dc(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace_name: Optional[str] = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
+ | load_from_dc(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: Optional[str] = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
 ```
 
 Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
