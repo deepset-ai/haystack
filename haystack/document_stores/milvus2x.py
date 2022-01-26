@@ -11,6 +11,14 @@ import numpy as np
 from scipy.special import expit
 from tqdm import tqdm
 
+try:
+    from pymilvus import FieldSchema, CollectionSchema, Collection, connections
+    from pymilvus.client.abstract import QueryResult
+    from pymilvus.client.types import DataType
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "milvus2", ie)
+
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
@@ -133,10 +141,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         )
 
         logger.warning("Milvus2DocumentStore is in experimental state until Milvus 2.0 is released")
-        try:
-            from pymilvus import connections
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
@@ -188,12 +192,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index = index or self.index
         index_param = index_param or self.index_param
         custom_fields = self.custom_fields or []
-
-        try:
-            from pymilvus import FieldSchema, CollectionSchema, Collection, connections
-            from pymilvus.client.types import DataType
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         has_collection = connection.has_collection(collection_name=index)
@@ -276,10 +274,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
             mutation_result: Any = None
 
             if add_vectors:
-                try:
-                    from pymilvus import connections
-                except:
-                    raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
                 connection = connections.get_connection()
                 field_to_idx, field_to_type = self._get_field_to_idx(connection, index)
@@ -339,12 +333,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
     @staticmethod
     def _get_field_to_idx(connection, index):
-        try:
-            from pymilvus import CollectionSchema, connections
-            from pymilvus.client.types import DataType
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
-
         resp = connection.describe_collection(index)
         collection_schema = CollectionSchema.construct_from_dict(resp)
         field_to_idx: Dict[str, int] = {}
@@ -389,12 +377,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-
-        try:
-            from pymilvus import connections
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
-
         connection = connections.get_connection()
         field_to_idx, field_to_type = self._get_field_to_idx(connection, index)
 
@@ -469,12 +451,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
             raise NotImplementedError("Milvus2DocumentStore does not support headers.")
         
         index = index or self.index
-        try:
-            from pymilvus import connections
-            from pymilvus.client.abstract import QueryResult
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
-
         connection = connections.get_connection()
         has_collection = connection.has_collection(collection_name=index)
         if not has_collection:
@@ -551,10 +527,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         
         index = index or self.index
         super().delete_documents(index=index, filters=filters)
-        try:
-            from pymilvus import connections
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         has_collection = connection.has_collection(collection_name=index)
@@ -679,12 +651,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if len(docs_with_vector_ids) == 0:
             return
 
-        try:
-            from pymilvus import connections
-            from pymilvus.client.abstract import QueryResult
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
-
         connection = connections.get_connection()
         connection.load_collection(index)
 
@@ -722,10 +688,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if filters:
             raise Exception("filters are not supported for get_embedding_count in MilvusDocumentStore.")
         index = index or self.index
-        try:
-            from pymilvus import connections
-        except:
-            raise ImportError("Missing client for Milvus 2.0. Install via: pip install pymilvus===2.0.0rc6 ")
 
         connection = connections.get_connection()
         stats = connection.get_collection_stats(index)

@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+from pathlib import Path
 from elasticsearch import Elasticsearch
 
 from haystack.document_stores import WeaviateDocumentStore
@@ -13,6 +14,8 @@ from haystack.document_stores.milvus import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+
+from conftest import SAMPLES_PATH
 
 
 @pytest.fixture()
@@ -342,7 +345,7 @@ def test_table_text_retriever_training(document_store):
     )
 
     retriever.train(
-        data_dir="samples/mmr",
+        data_dir=SAMPLES_PATH/"mmr",
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,

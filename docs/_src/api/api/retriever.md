@@ -101,7 +101,7 @@ class ElasticsearchRetriever(BaseRetriever)
 
 **Arguments**:
 
-- `document_store`: an instance of a DocumentStore to retrieve documents from.
+- `document_store`: an instance of an ElasticsearchDocumentStore to retrieve documents from.
 - `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
                      Optionally, ES `filter` clause can be added where the values of `terms` are placeholders

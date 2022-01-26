@@ -15,6 +15,8 @@ from haystack.pipelines import (
 from haystack.nodes import DensePassageRetriever,  ElasticsearchRetriever, SklearnQueryClassifier, TransformersQueryClassifier, JoinDocuments
 from haystack.schema import Document
 
+from conftest import SAMPLES_PATH
+
 
 @pytest.mark.parametrize(
     "retriever,document_store",
@@ -255,14 +257,14 @@ def test_query_keyword_statement_classifier():
 def test_indexing_pipeline_with_classifier(document_store):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline_with_classifier"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline_with_classifier"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
@@ -278,14 +280,14 @@ def test_indexing_pipeline_with_classifier(document_store):
 def test_query_pipeline_with_document_classifier(document_store):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline_with_document_classifier"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline_with_document_classifier"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
@@ -300,10 +302,10 @@ def test_existing_faiss_document_store():
     clean_faiss_document_store()
 
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
 
     new_document_store = pipeline.get_document_store()
@@ -311,7 +313,7 @@ def test_existing_faiss_document_store():
 
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
     )
 
     retriever = pipeline.get_node("DPRRetriever")

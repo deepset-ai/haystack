@@ -5,6 +5,7 @@ from sys import platform
 import gc
 import uuid
 import logging
+from pathlib import Path
 import responses
 from sqlalchemy import create_engine, text
 
@@ -12,40 +13,55 @@ import numpy as np
 import psutil
 import pytest
 import requests
-from elasticsearch import Elasticsearch
+
+try:
+    from elasticsearch import Elasticsearch
+    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+    from milvus import Milvus
+    import weaviate
+    
+    from haystack.document_stores.weaviate import WeaviateDocumentStore
+    from haystack.document_stores.milvus import MilvusDocumentStore
+    from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
+    from haystack.document_stores.faiss import FAISSDocumentStore
+    from haystack.document_stores.sql import SQLDocumentStore
+
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed('test', "test", ie)
+
+from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
 
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
-from milvus import Milvus
-
-import weaviate
-from haystack.document_stores import WeaviateDocumentStore, MilvusDocumentStore, ElasticsearchDocumentStore, \
-    FAISSDocumentStore, InMemoryDocumentStore, SQLDocumentStore, DeepsetCloudDocumentStore
+    
 from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-
 from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
-
 from haystack.schema import Document
-from haystack.nodes import FARMReader, TransformersReader, TableReader, RCIReader
-from haystack.nodes import TransformersSummarizer
-from haystack.nodes import TransformersTranslator
-from haystack.nodes import QuestionGenerator
+
+from haystack.nodes.reader.farm import FARMReader
+from haystack.nodes.reader.transformers import TransformersReader
+from haystack.nodes.reader.table import TableReader, RCIReader
+from haystack.nodes.summarizer.transformers import TransformersSummarizer
+from haystack.nodes.translator import TransformersTranslator
+from haystack.nodes.question_generator import QuestionGenerator
 
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
 
+
+SAMPLES_PATH = Path(__file__).parent/"samples"
+
 # to run tests against Deepset Cloud set MOCK_DC to False and set the following params
 DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
-
 
 def pytest_addoption(parser):
     parser.addoption("--document_store_type", action="store", default="elasticsearch, faiss, memory, milvus, weaviate")
