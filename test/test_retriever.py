@@ -351,3 +351,114 @@ def test_table_text_retriever_training(document_store):
 
     # Load trained model
     retriever = TableTextRetriever.load(load_dir="test_table_text_retriever_train", document_store=document_store)
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_highlight():
+    client = Elasticsearch()
+    client.indices.delete(index="haystack_hl_test",  ignore=[404])
+
+    # Mapping the content and title field as "text" perform search on these both fields.
+    document_store = ElasticsearchDocumentStore(index="haystack_hl_test", content_field= "title",
+        custom_mapping={
+            "mappings": {
+                "properties": {
+                    "content": {
+                        "type": "text"
+                    },
+                    "title": {
+                        "type": "text"
+                    }
+                }
+            }
+        }
+    )
+    documents = [
+        {"title": "Green tea components", "meta":{"content": "The green tea plant contains a range of healthy compounds that make it into the final drink"}, "id":"1"},
+        {"title": "Green tea catechin", "meta":{"content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG)."}, "id":"2"},
+        {"title": "Minerals in Green tea", "meta":{"content": "Green tea also has small amounts of minerals that can benefit your health."}, "id":"3"},
+        {"title": "Green tea Benefits", "meta":{"content": "Green tea does more than just keep you alert, it may also help boost brain function."}, "id":"4"}
+    ]
+    document_store.write_documents(documents)
+
+    # Enabled highlighting on "title"&"content" field only using custom query
+    retriever_1 = ElasticsearchRetriever(document_store=document_store,
+        custom_query=
+        """{
+            "size": 20,
+            "query": {
+                "bool": {
+                    "should": [
+                        {
+                            "multi_match": {
+                                "query": ${query},
+                                "fields": [
+                                    "content^3",
+                                    "title^5"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "highlight": {
+                "pre_tags": [
+                    "**"
+                ],
+                "post_tags": [
+                    "**"
+                ],
+                "number_of_fragments": 3,
+                "fragment_size": 5,
+                "fields": {
+                    "content": {},
+                    "title": {}
+                }
+            }
+        }""",
+    )
+    results = retriever_1.retrieve(query="is green tea healthy")
+
+    assert len(results[0].meta['highlighted']) == 2
+    assert results[0].meta['highlighted']['title'] == ['**Green**', '**tea** components']
+    assert results[0].meta['highlighted']['content'] == ['The **green**', '**tea** plant', 'range of **healthy**']
+
+    #Enabled highlighting on "title" field only using custom query
+    retriever_2 = ElasticsearchRetriever(document_store=document_store,
+        custom_query=
+        """{
+            "size": 20,
+            "query": {
+                "bool": {
+                    "should": [
+                        {
+                            "multi_match": {
+                                "query": ${query},
+                                "fields": [
+                                    "content^3",
+                                    "title^5"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "highlight": {
+                "pre_tags": [
+                    "**"
+                ],
+                "post_tags": [
+                    "**"
+                ],
+                "number_of_fragments": 3,
+                "fragment_size": 5,
+                "fields": {
+                    "title": {}
+                }
+            }
+        }""",
+    )
+    results = retriever_2.retrieve(query="is green tea healthy")
+
+    assert len(results[0].meta['highlighted']) == 1
+    assert results[0].meta['highlighted']['title'] == ['**Green**', '**tea** components']
