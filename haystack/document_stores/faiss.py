@@ -272,7 +272,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                         docs_to_write_in_sql.append(doc)
 
                     super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
-                                                                duplicate_documents=duplicate_documents)
+                                                                duplicate_documents=duplicate_documents, batch_size=batch_size)
                     progress_bar.update(batch_size)
             progress_bar.close()
     def _create_document_field_map(self) -> Dict:
