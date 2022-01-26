@@ -146,7 +146,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.content_field = content_field
         self.name_field = name_field
         self.embedding_field = embedding_field
-        self.embedding_fields = [self.embedding_field]
         self.embedding_dim = embedding_dim
         self.excluded_meta_data = excluded_meta_data
         self.analyzer = analyzer
@@ -266,7 +265,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                     f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
                                     f"document_store to use a different name for the embedding_field parameter.")
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
-                self.embedding_fields = [field_name for field_name, field in mapping["properties"].items() if field["type"] == "dense_vector"]
                 self.client.indices.put_mapping(index=index_name, body=mapping, headers=headers)
             return
 
@@ -956,8 +954,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        to_filter = [self.content_field, "content_type"] + self.embedding_fields
-        meta_data = {k:v for k,v in hit["_source"].items() if k not in to_filter}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.content_field, "content_type", self.embedding_field)}
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
@@ -1162,13 +1159,6 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
-    """
-    Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
-
-    In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
-    the KNN plugin that can scale to a large number of documents.
-    """
-
     def __init__(self,
                  verify_certs=False,
                  scheme="https",
@@ -1176,6 +1166,77 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                  password="admin",
                  port=9200,
                  **kwargs):
+        """
+        Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
+
+        In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
+        the KNN plugin that can scale to a large number of documents.
+
+        :param host: url(s) of elasticsearch nodes
+        :param port: port(s) of elasticsearch nodes
+        :param username: username (standard authentication via http_auth)
+        :param password: password (standard authentication via http_auth)
+        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
+        :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+        :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
+        :param search_fields: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+        :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+                           If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+        :param name_field: Name of field that contains the title of the the doc
+        :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+                                Note, that in OpenSearch the similarity type for efficient approximate vector similarity calculations is tied to the embedding fields data type which cannot be changed after creation.
+        :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+        :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+                         Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+                         https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
+        :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+                                   Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+        :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
+        :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
+        :param verify_certs: Whether to be strict about ca certificates
+        :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
+        :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+                             If set to 'wait_for', continue only after changes are visible (slow, but safe).
+                             If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
+                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+                           Note, that the use of efficient approximate vector calculations in OpenSearch is tied to embedding_field's data type which cannot be changed after creation.
+                           You won't be able to use approximate vector calculations on an embedding_field which was created with a different similarity value.
+                           In such cases a fallback to exact but slow vector calculations will be attempted. If successful a warning will be displayed, otherwise an exception will be thrown.
+                           E.g. currently this fallback works if you want to use 'cosine' on a 'dot_product' embedding field, but not vice verca.
+        :param timeout: Number of seconds after which an ElasticSearch request times out.
+        :param return_embedding: To return document embedding
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. 
+                           As OpenSearchDocumentStore currently does not support all similarity functions (e.g. dot_product) in exact vector similarity calculations,
+                           we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but optimized for accuracy.
+                           Exact vector similarity is only used as fallback when there's a mismatch between certain requested and indexed similarity types.
+                           In these cases however, a warning will be displayed. See similarity param for more information.
+        :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+                       Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+                       For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+        :param skip_missing_embeddings: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
+                                        Parameter options: (True, False)
+                                        False: Raises exception if one or more documents do not have embeddings at query time
+                                        True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
+        :param synonyms: List of synonyms can be passed while elasticsearch initialization.
+                         For example: [ "foo, bar => baz",
+                                        "foozball , foosball" ]
+                         More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
+        :param synonym_type: Synonym filter type can be passed.
+                             Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
+                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+
+        """
         self.embeddings_field_supports_similarity = False
         self.similarity_to_space_type = {
             "cosine": "cosinesimil",
@@ -1264,38 +1325,6 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             ]
             return documents
 
-    def clone_embedding_field(self, new_embedding_field: str, similarity: str, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None):
-        mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
-        if new_embedding_field in mapping["properties"]:
-            raise Exception(f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}")
-        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)
-        self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
-
-        document_count = self.get_document_count(headers=headers)
-        result = self._get_all_documents_in_index(
-            index=self.index,
-            batch_size=batch_size,
-            headers=headers
-        )
-
-        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
-
-        with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
-            for result_batch in get_batches_from_generator(result, batch_size):
-                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch]
-                doc_updates = []
-                for doc in document_batch:
-                    if doc.embedding is not None:
-                        update = {"_op_type": "update",
-                                "_index": self.index,
-                                "_id": doc.id,
-                                "doc": {new_embedding_field: doc.embedding.tolist()},
-                                }
-                        doc_updates.append(update)
-
-                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
-                progress_bar.update(batch_size)
-
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents.
@@ -1338,14 +1367,17 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         self.embeddings_field_supports_similarity = True
                     else:
                         if self.similarity == "dot_product":
-                            raise Exception(f"embedding_field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. Cannot fall back to slow exact vector calculation: "
-                                            f"OpenSearch does not support slow exact vector calculation for similarity 'dot_product'. "
-                                            f"Consider cloning '{self.embedding_field}' optimized for {self.similarity} by calling clone_embedding_field().")
+                            raise Exception(f"Embedding field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. "
+                                            f"OpenSearch does not support the use of similarity '{self.similarity}' on {embedding_field_similarity}-optimized fields. "
+                                            f"In order to try out {self.similarity} similarity on this index, you might want to use a different embedding field by setting the `embedding_field` param. "
+                                            f"Consider creating a new index optimized for {self.similarity} by setting similarity={self.similarity} the first time you instantiate OpenSearchDocumentStore for the new index, "
+                                            f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`.")
                         else:
-                            logger.warning(f"embedding_field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. Falling back to slow exact vector calculation. "
-                                           f"Consider cloning '{self.embedding_field}' optimized for {self.similarity} by calling clone_embedding_field().")
+                            logger.warning(f"Embedding field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. "
+                                           f"Falling back to slow exact vector calculation. "
+                                           f"Consider creating a new index optimized for {self.similarity} by setting similarity={self.similarity} the first time you instantiate OpenSearchDocumentStore for the new index, "
+                                           f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`.")
 
-            self.embedding_fields = [field_name for field_name, field in mapping["properties"].items() if field["type"] == "knn_vector"]
             return
 
         if self.custom_mapping:
