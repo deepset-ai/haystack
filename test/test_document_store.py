@@ -186,11 +186,28 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
-def test_get_documents_by_id(document_store_with_docs):
+def test_get_document_by_id(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     doc = document_store_with_docs.get_document_by_id(documents[0].id)
     assert doc.id == documents[0].id
     assert doc.content == documents[0].content
+
+
+def test_get_documents_by_id(document_store):
+    # generate more documents than the elasticsearch default query size limit of 10
+    docs_to_generate = 15
+    documents = [{'content': 'doc-' + str(i)} for i in range(docs_to_generate)]
+    doc_idx = 'green_fields'
+    document_store.write_documents(documents, index=doc_idx)
+
+    all_docs = document_store.get_all_documents(index=doc_idx)
+    all_ids = [doc.id for doc in all_docs]
+
+    retrieved_by_id = document_store.get_documents_by_id(all_ids, index=doc_idx)
+    retrieved_ids = [doc.id for doc in retrieved_by_id]
+
+    # all documents in the index should be retrieved when passing all document ids in the index
+    assert set(retrieved_ids) == set(all_ids)
 
 
 def test_get_document_count(document_store):
