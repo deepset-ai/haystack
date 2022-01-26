@@ -514,8 +514,6 @@ class Bert(LanguageModel):
             output_attentions=output_attentions,
             return_dict=False
         )
-        print("hey")
-        print(output_tuple)
         return output_tuple
 
     def enable_hidden_states_output(self):
