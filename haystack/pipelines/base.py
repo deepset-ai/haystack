@@ -15,6 +15,7 @@ import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 from haystack.nodes.evaluator.evaluator import calculate_em_str_multi, calculate_f1_str_multi, semantic_answer_similarity
+from haystack.utils.deepsetcloud import DeepsetCloudAdapter
 
 try:
     from ray import serve
@@ -112,7 +113,7 @@ class BasePipeline:
         cls,
         pipeline_config_name: str,
         pipeline_name: str = "query",
-        workspace_name: Optional[str] = "default",
+        workspace: Optional[str] = "default",
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         overwrite_with_env_variables: bool = False,
@@ -135,24 +136,8 @@ class BasePipeline:
                                              variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        if api_endpoint is None:
-            api_endpoint = os.getenv("DEEPSET_CLOUD_API_ENDPOINT")
-        if api_endpoint is None: 
-            raise ValueError("Cannot communicate with Deepset Cloud without specifying the endpoint. "
-                             "Please set api_endpoint constructor param or environment variable 'DEEPSET_CLOUD_API_ENDPOINT'.")
-        
-        if api_key is None:
-            api_key = os.getenv("DEEPSET_CLOUD_API_KEY")
-        if api_key is None:
-            raise ValueError("Cannot communicate with Deepset Cloud without specifying the api_key. "
-                             "Please set api_key constructor param or environment variable 'DEEPSET_CLOUD_API_KEY'.")
-
-        response = requests.get(
-            f"{api_endpoint}/workspaces/{workspace_name}/pipelines/{pipeline_config_name}/yaml", 
-            headers={
-                'Authorization': f'Bearer {api_key}'
-            }
-        )
+        adapter = DeepsetCloudAdapter(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, pipeline=pipeline_config_name)
+        response = adapter.get(relative_path="/yaml")
         pipeline_config = yaml.safe_load(response.json())
         pipeline = Pipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=pipeline_name, 
                                                 overwrite_with_env_variables=overwrite_with_env_variables)

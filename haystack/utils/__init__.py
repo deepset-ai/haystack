@@ -21,3 +21,4 @@ from haystack.utils.export_utils import (
     convert_labels_to_squad,
 )
 from haystack.utils.squad_data import SquadData
+from haystack.utils.deepsetcloud import DeepsetCloudAdapter
