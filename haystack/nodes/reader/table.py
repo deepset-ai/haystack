@@ -5,6 +5,7 @@ from statistics import mean
 import torch
 import numpy as np
 import pandas as pd
+from quantulum3 import parser
 from transformers import TapasTokenizer, TapasForQuestionAnswering, AutoTokenizer, AutoModelForSequenceClassification, BatchEncoding
 
 from haystack.schema import Document, Answer, Span
