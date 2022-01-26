@@ -55,12 +55,7 @@ class ElasticsearchRetriever(BaseRetriever):
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
-
-<<<<<<< HEAD
-        self.document_store: "ElasticsearchDocumentStore" = document_store   # type: ignore
-=======
         self.document_store: KeywordDocumentStore = document_store
->>>>>>> master
         self.top_k = top_k
         self.custom_query = custom_query
 
