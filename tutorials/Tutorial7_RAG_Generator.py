@@ -108,7 +108,7 @@ def tutorial7_rag_generator():
 
         # Print you answer
         answers = predicted_result["answers"]
-        print(f' -> Generated answer is \'{answers[0]["answer"]}\' for the question = \'{question}\'')
+        print(f' -> Generated answer is \'{answers[0].answer}\' for the question = \'{question}\'')
 
     # Or alternatively use the Pipeline class
     from haystack.pipelines import GenerativeQAPipeline
