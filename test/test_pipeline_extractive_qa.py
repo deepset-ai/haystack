@@ -1,6 +1,6 @@
 import pytest
 
-from haystack.pipeline import (
+from haystack.pipelines import (
     TranslationWrapperPipeline,
     ExtractiveQAPipeline
 )

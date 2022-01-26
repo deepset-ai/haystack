@@ -13,6 +13,7 @@ from haystack.pipelines.base import Pipeline
 from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
 from rest_api.controller.utils import as_form
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 

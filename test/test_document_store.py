@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
-from conftest import deepset_cloud_fixture, get_document_store, MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX
+from conftest import deepset_cloud_fixture, get_document_store, MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH
 from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.errors import DuplicateDocumentError
@@ -186,11 +186,28 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
-def test_get_documents_by_id(document_store_with_docs):
+def test_get_document_by_id(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     doc = document_store_with_docs.get_document_by_id(documents[0].id)
     assert doc.id == documents[0].id
     assert doc.content == documents[0].content
+
+
+def test_get_documents_by_id(document_store):
+    # generate more documents than the elasticsearch default query size limit of 10
+    docs_to_generate = 15
+    documents = [{'content': 'doc-' + str(i)} for i in range(docs_to_generate)]
+    doc_idx = 'green_fields'
+    document_store.write_documents(documents, index=doc_idx)
+
+    all_docs = document_store.get_all_documents(index=doc_idx)
+    all_ids = [doc.id for doc in all_docs]
+
+    retrieved_by_id = document_store.get_documents_by_id(all_ids, index=doc_idx)
+    retrieved_ids = [doc.id for doc in retrieved_by_id]
+
+    # all documents in the index should be retrieved when passing all document ids in the index
+    assert set(retrieved_ids) == set(all_ids)
 
 
 def test_get_document_count(document_store):
@@ -1068,7 +1085,7 @@ def test_DeepsetCloudDocumentStore_invalid_index():
 @responses.activate
 def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
     if MOCK_DC:
-        with open('samples/dc/documents-stream.response', 'r') as f:
+        with open(SAMPLES_PATH/"dc"/"documents-stream.response", 'r') as f:
             documents_stream_response = f.read()
             docs = [json.loads(l) for l in documents_stream_response.splitlines()]
             filtered_docs = [doc for doc in docs if doc["meta"]["file_id"] == docs[0]["meta"]["file_id"]]
@@ -1122,7 +1139,7 @@ def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
 @responses.activate
 def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
     if MOCK_DC:
-        with open('samples/dc/query_winterfell.response', 'r') as f:
+        with open(SAMPLES_PATH/"dc"/"query_winterfell.response", 'r') as f:
             query_winterfell_response = f.read()
             query_winterfell_docs = json.loads(query_winterfell_response)
             query_winterfell_filtered_docs = [doc for doc in query_winterfell_docs if doc["meta"]["file_id"] == query_winterfell_docs[0]["meta"]["file_id"]]

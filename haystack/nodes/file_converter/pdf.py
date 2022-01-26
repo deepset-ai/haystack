@@ -5,7 +5,12 @@ import logging
 import tempfile
 import subprocess
 from pathlib import Path
-from pdf2image import convert_from_path
+
+try:
+    from pdf2image import convert_from_path
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "ocr", ie)
 
 from haystack.nodes.file_converter import BaseConverter, ImageToTextConverter
 

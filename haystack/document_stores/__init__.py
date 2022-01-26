@@ -1,17 +1,21 @@
-from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, KeywordDocumentStore
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore, OpenDistroElasticsearchDocumentStore, OpenSearchDocumentStore
-from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.memory import InMemoryDocumentStore
-
 import os
-if os.getenv("MILVUS2_ENABLED"):
-    print("Using experimental Milvus2DocumentStore")
-    from haystack.document_stores.milvus2x import Milvus2DocumentStore as MilvusDocumentStore
-else:
-    from haystack.document_stores.milvus import MilvusDocumentStore  # type: ignore    
+import importlib
+from haystack.utils.import_utils import safe_import
+from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, KeywordDocumentStore
 
-from haystack.document_stores.sql import SQLDocumentStore
-from haystack.document_stores.weaviate import WeaviateDocumentStore
-from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
+ElasticsearchDocumentStore = safe_import("haystack.document_stores.elasticsearch", "ElasticsearchDocumentStore", "elasticsearch")
+OpenDistroElasticsearchDocumentStore = safe_import("haystack.document_stores.elasticsearch", "OpenDistroElasticsearchDocumentStore", "elasticsearch")
+OpenSearchDocumentStore = safe_import("haystack.document_stores.elasticsearch", "OpenSearchDocumentStore", "elasticsearch")
+
+SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
+FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumentStore", "faiss")
+if os.getenv("MILVUS2_ENABLED"):
+    MilvusDocumentStore = safe_import("haystack.document_stores.milvus2x", "MilvusDocumentStore", "milvus2")
+else:
+    MilvusDocumentStore = safe_import("haystack.document_stores.milvus", "MilvusDocumentStore", "milvus")
+WeaviateDocumentStore = safe_import("haystack.document_stores.weaviate", "WeaviateDocumentStore", "weaviate")
+GraphDBKnowledgeGraph = safe_import("haystack.document_stores.graphdb", "GraphDBKnowledgeGraph", "graphdb")
+
+from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
