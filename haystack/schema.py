@@ -508,6 +508,7 @@ class MultiLabel:
         self.labels = labels
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
+        self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
