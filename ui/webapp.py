@@ -5,11 +5,16 @@ import logging
 import pandas as pd
 from json import JSONDecodeError
 from pathlib import Path
-import streamlit as st
-from annotated_text import annotation
-from markdown import markdown
 
-from utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
+try:
+    import streamlit as st
+    from annotated_text import annotation
+    from markdown import markdown
+
+    from ui.utils import haystack_is_ready, query, send_feedback, upload_doc, haystack_version, get_backlink
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "ui", ie)
 
 
 # Adjust to a question that you would like users to see in the search bar when they load the UI:

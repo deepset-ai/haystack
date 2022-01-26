@@ -12,8 +12,12 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 
-from weaviate import client, AuthClientPassword
-from weaviate import ObjectsBatchRequest
+try:
+    from weaviate import client, AuthClientPassword
+    from weaviate import ObjectsBatchRequest
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "weaviate", ie)
 
 
 logger = logging.getLogger(__name__)

@@ -3,7 +3,7 @@ from pathlib import Path
 from re import search
 
 import pytest
-from haystack.connector import Crawler
+from haystack.nodes.connector import Crawler
 
 
 def test_crawler_url_none_exception(tmp_path):

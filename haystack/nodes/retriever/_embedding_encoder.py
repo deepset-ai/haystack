@@ -8,13 +8,11 @@ from abc import abstractmethod
 import numpy as np
 from tqdm.auto import tqdm
 import torch
-from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 from transformers import AutoTokenizer, AutoModel
 
 from haystack.schema import Document
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
-from haystack.modeling.utils import initialize_device_settings
 from haystack.modeling.infer import Inferencer
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 
@@ -89,14 +87,14 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             self,
             retriever: 'EmbeddingRetriever'
     ):
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError:
-            raise ImportError("Can't find package `sentence-transformers` \n"
-                              "You can install it via `pip install sentence-transformers` \n"
-                              "For details see https://github.com/UKPLab/sentence-transformers ")
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
+        try:
+            from sentence_transformers import SentenceTransformer
+        except (ImportError, ModuleNotFoundError) as ie:
+            from haystack.utils.import_utils import _optional_component_not_installed
+            _optional_component_not_installed(__name__, "sentence", ie)
+
         self.embedding_model = SentenceTransformer(retriever.embedding_model, device=str(retriever.devices[0]))
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len

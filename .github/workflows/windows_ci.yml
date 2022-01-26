@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+          key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
       - name: Install Pytorch on windows
         run: |
           pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
@@ -43,9 +43,7 @@ jobs:
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager -r requirements-dev.txt -e .
-          pip install --upgrade --upgrade-strategy eager -r ui/requirements.txt -e .
-          pip install --upgrade --upgrade-strategy eager -f https://download.pytorch.org/whl/torch_stable.html -r requirements.txt -e .
+          pip install --upgrade --upgrade-strategy eager .[test]
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
@@ -56,7 +54,7 @@ jobs:
       - uses: actions/checkout@v2
       - id: set-matrix
         run: |
-          echo "::set-output name=matrix::$(cd test && ls -d test_*.py | jq -R . | jq -cs .)"
+          echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
@@ -78,7 +76,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+        key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows test env
@@ -96,4 +94,4 @@ jobs:
     # Removing test_ray, test_utils, test_preprocessor, test_knowledge_graph and test_connector
     - name: Run tests
       if: ${{ !contains(fromJSON('["test_ray.py", "test_knowledge_graph.py", "test_connector.py", "test_summarizer_translation.py"]'), matrix.test-path) }}
-      run: cd test && pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -k "not test_parsr_converter" -s ${{ matrix.test-path }}
+      run: pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -k "not test_parsr_converter" -s ${{ matrix.test-path }}

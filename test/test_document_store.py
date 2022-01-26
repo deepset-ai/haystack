@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
-from conftest import deepset_cloud_fixture, get_document_store, MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX
+from conftest import deepset_cloud_fixture, get_document_store, MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH
 from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.errors import DuplicateDocumentError
@@ -1085,7 +1085,7 @@ def test_DeepsetCloudDocumentStore_invalid_index():
 @responses.activate
 def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
     if MOCK_DC:
-        with open('samples/dc/documents-stream.response', 'r') as f:
+        with open(SAMPLES_PATH/"dc"/"documents-stream.response", 'r') as f:
             documents_stream_response = f.read()
             docs = [json.loads(l) for l in documents_stream_response.splitlines()]
             filtered_docs = [doc for doc in docs if doc["meta"]["file_id"] == docs[0]["meta"]["file_id"]]
@@ -1139,7 +1139,7 @@ def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
 @responses.activate
 def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
     if MOCK_DC:
-        with open('samples/dc/query_winterfell.response', 'r') as f:
+        with open(SAMPLES_PATH/"dc"/"query_winterfell.response", 'r') as f:
             query_winterfell_response = f.read()
             query_winterfell_docs = json.loads(query_winterfell_response)
             query_winterfell_filtered_docs = [doc for doc in query_winterfell_docs if doc["meta"]["file_id"] == query_winterfell_docs[0]["meta"]["file_id"]]

@@ -38,6 +38,7 @@ def tutorial7_rag_generator():
 
     # Initialize FAISS document store to documents and corresponding index for embeddings
     # Set `return_embedding` to `True`, so generator doesn't have to perform re-embedding
+    # Don't forget to install FAISS dependencies with `pip install farm-haystack[faiss]`
     document_store = FAISSDocumentStore(
         faiss_index_factory_str="Flat",
         return_embedding=True
