@@ -619,10 +619,83 @@ None
 class OpenSearchDocumentStore(ElasticsearchDocumentStore)
 ```
 
+<a name="elasticsearch.OpenSearchDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(verify_certs=False, scheme="https", username="admin", password="admin", port=9200, **kwargs)
+```
+
 Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
 
 In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
 the KNN plugin that can scale to a large number of documents.
+
+**Arguments**:
+
+- `host`: url(s) of elasticsearch nodes
+- `port`: port(s) of elasticsearch nodes
+- `username`: username (standard authentication via http_auth)
+- `password`: password (standard authentication via http_auth)
+- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth)
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth)
+- `aws4auth`: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
+- `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+- `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
+- `search_fields`: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+                   If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+- `name_field`: Name of field that contains the title of the the doc
+- `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+                        Note, that in OpenSearch the similarity type for efficient approximate vector similarity calculations is tied to the embedding fields data type which cannot be changed after creation.
+- `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `custom_mapping`: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+- `analyzer`: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+                 Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+                 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
+- `excluded_meta_data`: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+                           Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+- `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
+- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
+- `verify_certs`: Whether to be strict about ca certificates
+- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
+- `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+                     If set to 'wait_for', continue only after changes are visible (slow, but safe).
+                     If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
+                     More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+                   Note, that the use of efficient approximate vector calculations in OpenSearch is tied to embedding_field's data type which cannot be changed after creation.
+                   You won't be able to use approximate vector calculations on an embedding_field which was created with a different similarity value.
+                   In such cases a fallback to exact but slow vector calculations will be attempted. If successful a warning will be displayed, otherwise an exception will be thrown.
+                   E.g. currently this fallback works if you want to use 'cosine' on a 'dot_product' embedding field, but not vice verca.
+- `timeout`: Number of seconds after which an ElasticSearch request times out.
+- `return_embedding`: To return document embedding
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+- `index_type`: The type of index to be created. Choose from 'flat' and 'hnsw'.
+                   As OpenSearchDocumentStore currently does not support all similarity functions (e.g. dot_product) in exact vector similarity calculations,
+                   we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but optimized for accuracy.
+                   Exact vector similarity is only used as fallback when there's a mismatch between certain requested and indexed similarity types.
+                   In these cases however, a warning will be displayed. See similarity param for more information.
+- `scroll`: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+               Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+               For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+- `skip_missing_embeddings`: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
+                                Parameter options: (True, False)
+                                False: Raises exception if one or more documents do not have embeddings at query time
+                                True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
+- `synonyms`: List of synonyms can be passed while elasticsearch initialization.
+                 For example: [ "foo, bar => baz",
+                                "foozball , foosball" ]
+                 More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
+- `synonym_type`: Synonym filter type can be passed.
+                     Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
+                     More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
 
 <a name="elasticsearch.OpenSearchDocumentStore.query_by_embedding"></a>
 #### query\_by\_embedding
