@@ -17,7 +17,7 @@ import requests
 try:
     from elasticsearch import Elasticsearch
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-    from milvus import Milvus
+    from pymilvus import Milvus
     import weaviate
     
     from haystack.document_stores.weaviate import WeaviateDocumentStore

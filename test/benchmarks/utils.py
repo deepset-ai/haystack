@@ -3,7 +3,7 @@ from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.milvus import MilvusDocumentStore
+from haystack.document_stores.milvus1x import Milvus1DocumentStore
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes.reader.farm import FARMReader
