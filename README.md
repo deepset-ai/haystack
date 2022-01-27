@@ -94,7 +94,7 @@ You can also clone it from GitHub — in case you'd like to work with the master
 To update your installation, do a ``git pull``. The ``--editable`` flag will update changes immediately.
 
 Note that this command will install the **base** version of the package, which includes only the 
-Elasticsearch document store and the most common used components. 
+Elasticsearch document store and the most commonly used components. 
 
 For a complete installation that includes all optional components, please run instead:
 
