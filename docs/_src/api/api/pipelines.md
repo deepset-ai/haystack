@@ -71,12 +71,12 @@ Here's a sample configuration:
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
 
-<a name="base.BasePipeline.load_from_dc"></a>
-#### load\_from\_dc
+<a name="base.BasePipeline.load_from_deepset_cloud"></a>
+#### load\_from\_deepset\_cloud
 
 ```python
  | @classmethod
- | load_from_dc(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: Optional[str] = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
+ | load_from_deepset_cloud(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: Optional[str] = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
 ```
 
 Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
