@@ -18,7 +18,7 @@ try:
 
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
-    _optional_component_not_installed(__name__, "rest", ie)
+    _optional_component_not_installed("rest_api", "rest", ie)
 
 
 

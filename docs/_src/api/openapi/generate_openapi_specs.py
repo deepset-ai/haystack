@@ -13,7 +13,7 @@ os.environ["PIPELINE_YAML_PATH"] = pipeline_path
 # Magic import from the rest_api folder
 import types
 import importlib.machinery
-loader = importlib.machinery.SourceFileLoader('a_b', app_path)
+loader = importlib.machinery.SourceFileLoader('application.py', app_path)
 mod = types.ModuleType(loader.name)
 loader.exec_module(mod)
 
