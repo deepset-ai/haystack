@@ -5,36 +5,43 @@ from sys import platform
 import gc
 import uuid
 import logging
+from pathlib import Path
+import responses
 from sqlalchemy import create_engine, text
 
 import numpy as np
 import psutil
 import pytest
 import requests
-from elasticsearch import Elasticsearch
+
+try:
+    from elasticsearch import Elasticsearch
+    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+    from milvus import Milvus
+    import weaviate
+    
+    from haystack.document_stores.weaviate import WeaviateDocumentStore
+    from haystack.document_stores.milvus import MilvusDocumentStore
+    from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
+    from haystack.document_stores.faiss import FAISSDocumentStore
+    from haystack.document_stores.sql import SQLDocumentStore
+
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed('test', "test", ie)
+
+from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
 
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
-from milvus import Milvus
-
-import weaviate
-from haystack.document_stores.weaviate import WeaviateDocumentStore
-
-from haystack.document_stores.milvus import MilvusDocumentStore
+    
 from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-
 from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
-
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
-
 from haystack.schema import Document
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.memory import InMemoryDocumentStore
-from haystack.document_stores.sql import SQLDocumentStore
+
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader, RCIReader
@@ -47,6 +54,14 @@ from haystack.nodes.question_generator import QuestionGenerator
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
 
+
+SAMPLES_PATH = Path(__file__).parent/"samples"
+
+# to run tests against Deepset Cloud set MOCK_DC to False and set the following params
+DC_API_ENDPOINT = "https://DC_API/v1"
+DC_TEST_INDEX = "document_retrieval_1"
+DC_API_KEY = "NO_KEY"
+MOCK_DC = True
 
 def pytest_addoption(parser):
     parser.addoption("--document_store_type", action="store", default="elasticsearch, faiss, memory, milvus, weaviate")
@@ -263,6 +278,32 @@ def xpdf_fixture():
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                  You can download for your OS from here: https://www.xpdfreader.com/download.html."""
             )
+
+
+@pytest.fixture(scope="function")
+def deepset_cloud_fixture():    
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET, 
+            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
+            match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
+            json={
+                    "indexing": 
+                        {
+                            "status": "INDEXED",
+                            "pending_file_count": 0,
+                            "total_file_count": 31
+                        }
+                }, 
+            status=200)
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+
+@pytest.fixture(scope="function")
+@responses.activate
+def deepset_cloud_document_store(deepset_cloud_fixture):
+    return DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
 @pytest.fixture(scope="function")

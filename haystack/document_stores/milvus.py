@@ -9,10 +9,14 @@ import numpy as np
 from tqdm import tqdm
 from scipy.special import expit
 
-from milvus import IndexType, MetricType, Milvus, Status
+try:
+    from milvus import IndexType, MetricType, Milvus, Status
+    from haystack.document_stores.sql import SQLDocumentStore
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "milvus", ie)
 
 from haystack.schema import Document
-from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 
 

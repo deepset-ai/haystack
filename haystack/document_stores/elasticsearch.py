@@ -1,3 +1,4 @@
+from modulefinder import Module
 from typing import List, Optional, Union, Dict, Any, Generator
 
 import json
@@ -8,12 +9,17 @@ from string import Template
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
-from elasticsearch import Elasticsearch, RequestsHttpConnection
-from elasticsearch.helpers import bulk, scan
-from elasticsearch.exceptions import RequestError
 import pandas as pd
 
-from haystack.document_stores import BaseDocumentStore
+try:
+    from elasticsearch import Elasticsearch, RequestsHttpConnection
+    from elasticsearch.helpers import bulk, scan
+    from elasticsearch.exceptions import RequestError
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
+
+from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 
@@ -21,7 +27,7 @@ from haystack.document_stores.base import get_batches_from_generator
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchDocumentStore(BaseDocumentStore):
+class ElasticsearchDocumentStore(KeywordDocumentStore):
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
@@ -363,9 +369,12 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             return None
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
-        """Fetch documents by specifying a list of text id strings"""
+        """
+        Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
+        to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+        """
         index = index or self.index
-        query = {"query": {"ids": {"values": ids}}}
+        query = {"size": len(ids), "query": {"ids": {"values": ids}}}
         result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
@@ -742,6 +751,72 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
+        :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
+
+                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
+                             names must match with the filters dict supplied in self.retrieve().
+                             ::
+
+                                 **An example custom_query:**
+                                 ```python
+                                |    {
+                                |        "size": 10,
+                                |        "query": {
+                                |            "bool": {
+                                |                "should": [{"multi_match": {
+                                |                    "query": ${query},                 // mandatory query placeholder
+                                |                    "type": "most_fields",
+                                |                    "fields": ["content", "title"]}}],
+                                |                "filter": [                                 // optional custom filters
+                                |                    {"terms": {"year": ${years}}},
+                                |                    {"terms": {"quarter": ${quarters}}},
+                                |                    {"range": {"date": {"gte": ${date}}}}
+                                |                    ],
+                                |            }
+                                |        },
+                                |    }
+                                 ```
+
+                                **For this custom_query, a sample retrieve() could be:**
+                                ```python
+                                |    self.retrieve(query="Why did the revenue increase?",
+                                |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                                ```
+
+                             Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+                             See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
+                             You will find the highlighted output in the returned Document's meta field by key "highlighted".
+                             ::
+
+                                 **Example custom_query with highlighting:**
+                                 ```python
+                                |    {
+                                |        "size": 10,
+                                |        "query": {
+                                |            "bool": {
+                                |                "should": [{"multi_match": {
+                                |                    "query": ${query},                 // mandatory query placeholder
+                                |                    "type": "most_fields",
+                                |                    "fields": ["content", "title"]}}],
+                                |            }
+                                |        },
+                                |        "highlight": {             // enable highlighting
+                                |            "fields": {            // for fields content and title
+                                |                "content": {},
+                                |                "title": {}
+                                |            }
+                                |        },
+                                |    }
+                                 ```
+
+                                 **For this custom_query, highlighting info can be accessed by:**
+                                ```python
+                                |    docs = self.retrieve(query="Why did the revenue increase?")
+                                |    highlighted_content = docs[0].meta["highlighted"]["content"]
+                                |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                                ```
+
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -958,6 +1033,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
+
+        if 'highlight' in hit:
+            meta_data['highlighted'] = hit['highlight']
 
         score = hit["_score"]
         if score:

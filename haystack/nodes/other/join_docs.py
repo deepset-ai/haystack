@@ -39,7 +39,7 @@ class JoinDocuments(BaseComponent):
         self.weights = [float(i)/sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
 
-    def run(self, inputs: List[dict]):  # type: ignore
+    def run(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
         if self.join_mode == "concatenate":
             document_map = {}
             for input_from_node in inputs:
@@ -63,7 +63,10 @@ class JoinDocuments(BaseComponent):
 
         documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
 
-        if self.top_k_join:
-            documents = documents[: self.top_k_join]
+        if top_k_join is None:
+            top_k_join = self.top_k_join
+
+        if top_k_join:
+            documents = documents[: top_k_join]
         output = {"documents": documents, "labels": inputs[0].get("labels", None)}
         return output, "output_1"

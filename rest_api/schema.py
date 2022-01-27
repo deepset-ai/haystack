@@ -9,7 +9,9 @@ try:
 except ImportError:
     from typing_extensions import Literal #type: ignore
 
+
 BaseConfig.arbitrary_types_allowed = True
+
 
 class QueryRequest(BaseModel):
     query: str

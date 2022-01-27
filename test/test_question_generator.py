@@ -1,4 +1,4 @@
-from haystack.pipeline import QuestionAnswerGenerationPipeline, QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline
+from haystack.pipelines import QuestionAnswerGenerationPipeline, QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline
 from haystack.schema import Document
 import pytest
 
