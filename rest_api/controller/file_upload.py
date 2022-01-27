@@ -70,6 +70,10 @@ def upload_file(
     fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),
     preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form)
 ):
+    """
+    You can use this endpoint to upload a file for indexing 
+    (see [http://localhost:3000/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store]).
+    """
     if not INDEXING_PIPELINE:
         raise HTTPException(status_code=501, detail="Indexing Pipeline is not configured.")
 

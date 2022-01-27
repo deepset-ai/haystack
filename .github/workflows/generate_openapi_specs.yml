@@ -1,17 +1,13 @@
-name: Update Docstrings and Tutorials
+name: Generate OpenAPI Specs
 
-# Controls when the action will run. Triggers the workflow on push 
-# events but only for the master branch
 on:
+  workflow_dispatch:
   push:
-    branches-ignore:
-      - master
-      - benchmarks
+    paths:
+      - "rest_api/**"
 
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
     steps:
@@ -28,18 +24,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pydoc-markdown==3.11.0
-          pip install mkdocs
-          pip install jupytercontrib
-          pip install watchdog==1.0.2
+          python -m pip install .[rest]
 
       # Generates the docstrings and tutorials so that we have the latest for the deployment
       - name: Generate Docstrings and Tutorials
         run: |
-          cd docs/_src/api/api/
-          ./generate_docstrings.sh 
-          cd ../../tutorials/tutorials/
-          python3 convert_ipynb.py
+          cd docs/_src/api/openapi/
+          python generate_openapi_specs.py
           cd ../../../../
           git status
 
@@ -48,7 +39,7 @@ jobs:
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
-          git commit -m "Add latest docstring and tutorial changes" -a || echo "No changes to commit"
+          git commit -m "Update OpenAPI Specs" -a || echo "No changes to commit"
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
