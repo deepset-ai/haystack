@@ -3,8 +3,11 @@ from pathlib import Path
 import os
 from unittest.mock import Mock
 import pytest
+import responses
+from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import (
     Pipeline,
     DocumentSearchPipeline,
@@ -13,7 +16,7 @@ from haystack.pipelines import (
 from haystack.pipelines import ExtractiveQAPipeline
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 
-from conftest import SAMPLES_PATH
+from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
 
 
 @pytest.mark.elasticsearch
@@ -165,6 +168,41 @@ def test_load_tfidfretriever_yaml(tmp_path):
     )
     assert prediction["query"] == "What can be used to scale QA models to large document collections?"
     assert prediction["answers"][0].answer == "haystack"
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_load_from_deepset_cloud():
+    if MOCK_DC:
+        with open(SAMPLES_PATH/"dc"/"pipeline_config_yaml.response", 'r') as f:
+            pipeline_config_yaml_response = f.read()
+
+        responses.add(
+                method=responses.GET, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/{DC_TEST_INDEX}/yaml",
+                body=pipeline_config_yaml_response, 
+                status=200)
+
+        responses.add(
+                method=responses.POST, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
+                json=[{"id": "test_doc", "content": "man on hores"}],
+                status=200)
+    
+    query_pipeline = Pipeline.load_from_deepset_cloud(pipeline_config_name=DC_TEST_INDEX, api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    retriever = query_pipeline.get_node("Retriever")
+    document_store = retriever.document_store
+    assert query_pipeline is not None    
+    assert isinstance(retriever, ElasticsearchRetriever)
+    assert isinstance(document_store, DeepsetCloudDocumentStore)
+
+    prediction = query_pipeline.run(
+        query="man on horse",
+        params={}
+    )
+
+    assert prediction["query"] == "man on horse"
+    assert len(prediction["documents"]) == 1
+    assert prediction["documents"][0].id == "test_doc"
 
 
 # @pytest.mark.slow

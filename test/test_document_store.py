@@ -1050,8 +1050,8 @@ def test_DeepsetCloudDocumentStore_invalid_token():
             body="Internal Server Error", 
             status=500)
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 500 - Internal Server Error"):
-        DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 500 - Internal Server Error"):
+            DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -1064,7 +1064,7 @@ def test_DeepsetCloudDocumentStore_invalid_api_endpoint():
             body="Not Found", 
             status=404)
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 404 - Not Found"):
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 404 - Not Found"):
         DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
@@ -1078,7 +1078,7 @@ def test_DeepsetCloudDocumentStore_invalid_index():
             body="Not Found", 
             status=404)  
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 404 - Not Found"):
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index failed: HTTP 404 - Not Found"):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
 
 

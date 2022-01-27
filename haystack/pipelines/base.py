@@ -3,7 +3,6 @@ from typing import Dict, List, Optional, Any
 import copy
 import inspect
 import logging
-import requests
 import os
 import traceback
 import numpy as np
@@ -15,7 +14,7 @@ import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 from haystack.nodes.evaluator.evaluator import calculate_em_str_multi, calculate_f1_str_multi, semantic_answer_similarity
-from haystack.utils.deepsetcloud import DeepsetCloudAdapter
+from haystack.utils import DeepsetCloud
 
 try:
     from ray import serve
@@ -109,7 +108,7 @@ class BasePipeline:
                            f"'Pipeline' and 'RayPipeline'.")
 
     @classmethod
-    def load_from_dc(
+    def load_from_deepset_cloud(
         cls,
         pipeline_config_name: str,
         pipeline_name: str = "query",
@@ -136,9 +135,21 @@ class BasePipeline:
                                              variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        adapter = DeepsetCloudAdapter(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, pipeline=pipeline_config_name)
-        response = adapter.get(relative_path="/yaml")
-        pipeline_config = yaml.safe_load(response.json())
+        client = DeepsetCloud.get_pipeline_client(
+            api_key=api_key, 
+            api_endpoint=api_endpoint, 
+            workspace=workspace, 
+            pipeline_config_name=pipeline_config_name)
+        pipeline_config_yaml = client.get_pipeline_config_yaml()
+        pipeline_config = yaml.safe_load(pipeline_config_yaml)
+        for component_config in pipeline_config["components"]:
+            if component_config["type"] == "DeepsetCloudDocumentStore":
+                component_config["params"] = {
+                    "api_key": api_key, 
+                    "api_endpoint": api_endpoint, 
+                    "workspace": workspace, 
+                    "index": pipeline_config_name
+                }
         pipeline = Pipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=pipeline_name, 
                                                 overwrite_with_env_variables=overwrite_with_env_variables)
         return pipeline
