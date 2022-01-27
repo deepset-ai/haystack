@@ -102,11 +102,15 @@ For a complete installation that includes all optional components, please run in
     git clone https://github.com/deepset-ai/haystack.git
     cd haystack
     pip install --upgrade pip
-    pip install --editable .[all]
+    pip install --editable .[all]   # or 'all-gpu' to get the GPU-enabled dependencies
 ```
 
 Do not forget to upgrade pip before performing the installation: pip version below 21.3.1 might
-enter infinite loops due to a bug.
+enter infinite loops due to a bug. If you encounter it, replace `[all]` with 
+`[docstores,crawler,preprocessing,ocr,ray,rest,ui,dev,onnx]`
+
+For an complete list of the dependency groups available, have a look at the 
+[setup.cfg file](https://github.com/deepset-ai/haystack/blob/488c3e9e52b9286afc3ad9a5f2e3161772be2e2f/setup.cfg#L103).
 
 
 **3. Installing on Windows**
