@@ -172,7 +172,7 @@ def test_load_tfidfretriever_yaml(tmp_path):
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_load_from_deepset_cloud():
+def test_load_from_deepset_cloud_query():
     if MOCK_DC:
         with open(SAMPLES_PATH/"dc"/"pipeline_config.json", 'r') as f:
             pipeline_config_yaml_response = json.load(f)
@@ -189,10 +189,10 @@ def test_load_from_deepset_cloud():
                 json=[{"id": "test_doc", "content": "man on hores"}],
                 status=200)
     
-    query_pipeline = Pipeline.load_from_deepset_cloud(pipeline_config_name=DC_TEST_INDEX, api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    query_pipeline = Pipeline.load_from_deepset_cloud(
+        pipeline_config_name=DC_TEST_INDEX, api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     retriever = query_pipeline.get_node("Retriever")
     document_store = retriever.document_store
-    assert query_pipeline is not None    
     assert isinstance(retriever, ElasticsearchRetriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
 
@@ -204,6 +204,30 @@ def test_load_from_deepset_cloud():
     assert prediction["query"] == "man on horse"
     assert len(prediction["documents"]) == 1
     assert prediction["documents"][0].id == "test_doc"
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_load_from_deepset_cloud_indexing():
+    if MOCK_DC:
+        with open(SAMPLES_PATH/"dc"/"pipeline_config.json", 'r') as f:
+            pipeline_config_yaml_response = json.load(f)
+
+        responses.add(
+                method=responses.GET, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/{DC_TEST_INDEX}/json",
+                json=pipeline_config_yaml_response, 
+                status=200)
+    
+    indexing_pipeline = Pipeline.load_from_deepset_cloud(
+        pipeline_config_name=DC_TEST_INDEX, api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, pipeline_name="indexing")
+    document_store = indexing_pipeline.get_node("DocumentStore")
+    assert isinstance(document_store, DeepsetCloudDocumentStore)
+
+    with pytest.raises(Exception, match=".*NotImplementedError.*DeepsetCloudDocumentStore currently does not support writing documents"):
+        indexing_pipeline.run(
+            file_paths=[SAMPLES_PATH/"docs"/"doc_1.txt"]
+        )
 
 
 # @pytest.mark.slow
