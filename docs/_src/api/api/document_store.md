@@ -1558,26 +1558,41 @@ Note: In order to have a correct mapping from FAISS to SQL,
 class MilvusDocumentStore(SQLDocumentStore)
 ```
 
+** Note: This implementation supports the upcoming Milvus 2.0 release and is in experimental stage.
+If you want to use a stable version, we recommend using `MilvusDocumentStore` with a Milvus 1.x version **
+
+Limitations:
+Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
+Therefore, delete_documents() and update_embeddings() won't work yet.
+
+Differences to 1.x:
+Besides big architectural changes that impact performance and reliability 2.0 supports the filtering by scalar data types.
+For Haystack users this means you can now run a query using vector similarity and filter for some meta data at the same time!
+(See https://milvus.io/docs/v2.0.0/comparison.md for more details)
+
+Usage:
+1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
+2. Run pip install pymilvus===2.0.0rc6
+3. Init a Milvus2DocumentStore() in Haystack
+
+Overview:
 Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
 Therefore, it is particularly suited for Haystack users that work with dense retrieval methods (like DPR).
+
 In contrast to FAISS, Milvus ...
- - runs as a separate service (e.g. a Docker container) and can scale easily in a distributed environment
- - allows dynamic data management (i.e. you can insert/delete vectors without recreating the whole index)
- - encapsulates multiple ANN libraries (FAISS, ANNOY ...)
+- runs as a separate service (e.g. a Docker container) and can scale easily in a distributed environment
+- allows dynamic data management (i.e. you can insert/delete vectors without recreating the whole index)
+- encapsulates multiple ANN libraries (FAISS, ANNOY ...)
 
 This class uses Milvus for all vector related storage, processing and querying.
 The meta-data (e.g. for filtering) and the document text are however stored in a separate SQL Database as Milvus
 does not allow these data types (yet).
 
-Usage:
-1. Start a Milvus server (see https://milvus.io/docs/v1.0.0/install_milvus.md)
-2. Init a MilvusDocumentStore in Haystack
-
 <a name="milvus.MilvusDocumentStore.__init__"></a>
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', isolation_level: str = None, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: str = "IVF_FLAT", index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", id_field: str = "id", custom_fields: Optional[List[Any]] = None, progress_bar: bool = True, duplicate_documents: str = 'overwrite', isolation_level: str = None)
 ```
 
 **Arguments**:
@@ -1599,7 +1614,9 @@ As a rule of thumb, we would see a 30% ~ 50% increase in the search performance 
 Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
 (From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
-                   'cosine' is recommended for Sentence Transformers.
+                   'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
+                   However, you can normalize your embeddings and use `dot_product` to get the same results.
+                   See https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)`floating`.
 - `index_type`: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
                    Some popular options:
                    - FLAT (default): Exact method, slow
@@ -1653,7 +1670,7 @@ Add new documents to the DocumentStore.
 
 **Returns**:
 
-None
+
 
 <a name="milvus.MilvusDocumentStore.update_embeddings"></a>
 #### update\_embeddings
@@ -1701,13 +1718,13 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 
 **Returns**:
 
-list of Documents that are the most similar to `query_emb`
 
-<a name="milvus.MilvusDocumentStore.delete_all_documents"></a>
-#### delete\_all\_documents
+
+<a name="milvus.MilvusDocumentStore.delete_documents"></a>
+#### delete\_documents
 
 ```python
- | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None)
+ | delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete all documents (from SQL AND Milvus).
@@ -1717,30 +1734,6 @@ Delete all documents (from SQL AND Milvus).
 - `index`: (SQL) index name for storing the docs and metadata
 - `filters`: Optional filters to narrow down the search space.
                 Example: {"name": ["some", "more"], "category": ["only_one"]}
-
-**Returns**:
-
-None
-
-<a name="milvus.MilvusDocumentStore.delete_documents"></a>
-#### delete\_documents
-
-```python
- | delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None)
-```
-
-Delete documents in an index. All documents are deleted if no filters are passed.
-
-**Arguments**:
-
-- `index`: Index name to delete the document from. If None, the
-              DocumentStore's default index (self.index) will be used.
-- `ids`: Optional list of IDs to narrow down the documents to be deleted.
-- `filters`: Optional filters to narrow down the documents to be deleted.
-    Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
-    If filters are provided along with a list of IDs, this method deletes the
-    intersection of the two query results (documents that match the filters and
-    have their ID in the list).
 
 **Returns**:
 
@@ -1813,25 +1806,7 @@ Fetch multiple documents by specifying their IDs (strings)
 - `ids`: List of IDs of the documents
 - `index`: Name of the index to get the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
-- `batch_size`: is currently not used
-
-<a name="milvus.MilvusDocumentStore.get_all_vectors"></a>
-#### get\_all\_vectors
-
-```python
- | get_all_vectors(index: Optional[str] = None) -> List[np.ndarray]
-```
-
-Helper function to dump all vectors stored in Milvus server.
-
-**Arguments**:
-
-- `index`: Name of the index to get the documents from. If None, the
-              DocumentStore's default index (self.index) will be used.
-
-**Returns**:
-
-List[np.array]: List of vectors.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a name="milvus.MilvusDocumentStore.get_embedding_count"></a>
 #### get\_embedding\_count
