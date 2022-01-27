@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import os
+import json
 from unittest.mock import Mock
 import pytest
 import responses
@@ -173,13 +174,13 @@ def test_load_tfidfretriever_yaml(tmp_path):
 @responses.activate
 def test_load_from_deepset_cloud():
     if MOCK_DC:
-        with open(SAMPLES_PATH/"dc"/"pipeline_config_yaml.response", 'r') as f:
-            pipeline_config_yaml_response = f.read()
+        with open(SAMPLES_PATH/"dc"/"pipeline_config.json", 'r') as f:
+            pipeline_config_yaml_response = json.load(f)
 
         responses.add(
                 method=responses.GET, 
-                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/{DC_TEST_INDEX}/yaml",
-                body=pipeline_config_yaml_response, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/{DC_TEST_INDEX}/json",
+                json=pipeline_config_yaml_response, 
                 status=200)
 
         responses.add(

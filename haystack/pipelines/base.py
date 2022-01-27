@@ -140,16 +140,20 @@ class BasePipeline:
             api_endpoint=api_endpoint, 
             workspace=workspace, 
             pipeline_config_name=pipeline_config_name)
-        pipeline_config_yaml = client.get_pipeline_config_yaml()
-        pipeline_config = yaml.safe_load(pipeline_config_yaml)
+        pipeline_config = client.get_pipeline_config()
+
+        # update document store params in order to connect to correct index
         for component_config in pipeline_config["components"]:
             if component_config["type"] == "DeepsetCloudDocumentStore":
-                component_config["params"] = {
-                    "api_key": api_key, 
-                    "api_endpoint": api_endpoint, 
-                    "workspace": workspace, 
-                    "index": pipeline_config_name
-                }
+                params = component_config.get("params", {})
+                params.update({
+                        "api_key": api_key, 
+                        "api_endpoint": api_endpoint, 
+                        "workspace": workspace, 
+                        "index": pipeline_config_name
+                    })
+                component_config["params"] = params
+        
         pipeline = Pipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=pipeline_name, 
                                                 overwrite_with_env_variables=overwrite_with_env_variables)
         return pipeline

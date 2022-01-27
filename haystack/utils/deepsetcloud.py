@@ -175,11 +175,11 @@ class PipelineClient:
         self.workspace = workspace
         self.pipeline_config_name = pipeline_config_name
 
-    def get_pipeline_config_yaml(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None, headers: dict = None) -> str:
+    def get_pipeline_config(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None, headers: dict = None) -> dict:
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
-        pipeline_config_url = f"{pipeline_url}/yaml"
+        pipeline_config_url = f"{pipeline_url}/json"
         response = self.client.get(url=pipeline_config_url, headers=headers)
-        return response.json()["yaml"]
+        return response.json()
 
     def _build_pipeline_url(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None):
         if workspace is None:
