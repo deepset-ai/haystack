@@ -10,7 +10,7 @@ from tqdm import tqdm
 from scipy.special import expit
 
 try:
-    from haystack.document_stores.milvus1x import IndexType, MetricType, Milvus, Status
+    from milvus import IndexType, MetricType, Milvus, Status
     from haystack.document_stores.sql import SQLDocumentStore
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
