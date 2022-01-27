@@ -20,7 +20,7 @@ class Evaluator:
     Handles evaluation of a given model over a specified dataset.
     """
     def __init__(
-        self, data_loader: torch.utils.data.DataLoader, tasks, device: str, report: bool = True
+        self, data_loader: torch.utils.data.DataLoader, tasks, device: torch.device, report: bool = True
     ):
         """
         :param data_loader: The PyTorch DataLoader that will return batches of data from the evaluation dataset

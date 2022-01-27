@@ -42,7 +42,7 @@ class TriAdaptiveModel(nn.Module):
             language_model3: LanguageModel,
             prediction_heads: List[PredictionHead],
             embeds_dropout_prob: float = 0.1,
-            device: str = "cuda",
+            device: torch.device = torch.device("cuda"),
             lm1_output_types: Union[str, List[str]] = ["per_sequence"],
             lm2_output_types: Union[str, List[str]] = ["per_sequence"],
             lm3_output_types: Union[str, List[str]] = ["per_sequence"],
@@ -131,7 +131,7 @@ class TriAdaptiveModel(nn.Module):
             ph.save(save_dir, i)
 
     @classmethod
-    def load(cls, load_dir: Path, device: str, strict: bool = False, lm1_name: str = "lm1", lm2_name: str = "lm2",
+    def load(cls, load_dir: Path, device: torch.device, strict: bool = False, lm1_name: str = "lm1", lm2_name: str = "lm2",
              lm3_name: str = "lm3", processor: Optional[Processor] = None):
         """
         Loads a TriAdaptiveModel from a directory. The directory must contain:

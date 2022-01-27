@@ -35,7 +35,7 @@ class BiAdaptiveModel(nn.Module):
         language_model2: LanguageModel,
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float = 0.1,
-        device: str = "cuda",
+        device: torch.device = torch.device("cuda"),
         lm1_output_types: Union[str, List[str]] = ["per_sequence"],
         lm2_output_types: Union[str, List[str]] = ["per_sequence"],
         loss_aggregation_fn: Optional[Callable] = None,
@@ -108,7 +108,7 @@ class BiAdaptiveModel(nn.Module):
             ph.save(save_dir, i)
 
     @classmethod
-    def load(cls, load_dir: Path, device: str, strict: bool = False, lm1_name: str = "lm1",
+    def load(cls, load_dir: Path, device: torch.device, strict: bool = False, lm1_name: str = "lm1",
              lm2_name: str = "lm2", processor: Optional[Processor] = None):
         """
         Loads a BiAdaptiveModel from a directory. The directory must contain:
@@ -420,7 +420,7 @@ class BiAdaptiveModel(nn.Module):
 
     @classmethod
     def convert_from_transformers(cls, model_name_or_path1: Union[str, Path], model_name_or_path2: Union[str, Path],
-                                  device: str, task_type: str, processor: Optional[Processor] = None,
+                                  device: torch.device, task_type: str, processor: Optional[Processor] = None,
                                   similarity_function: str = "dot_product"):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:

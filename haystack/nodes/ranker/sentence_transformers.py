@@ -41,7 +41,7 @@ class SentenceTransformersRanker(BaseRanker):
             model_version: Optional[str] = None,
             top_k: int = 10,
             use_gpu: bool = True,
-            devices: Optional[List[Union[int, str, torch.device]]] = None
+            devices: Optional[List[torch.device]] = None
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.

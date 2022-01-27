@@ -174,7 +174,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float,
         lm_output_types: Union[str, List[str]],
-        device: str,
+        device: torch.device,
         loss_aggregation_fn: Optional[Callable] = None,
     ):
         """
@@ -265,7 +265,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # Need to save config and pipeline
 
     @classmethod
-    def load(cls, load_dir: Union[str, Path], device: str, strict: bool = True, lm_name: Optional[str] = None,  #  type: ignore
+    def load(cls, load_dir: Union[str, Path], device: torch.device, strict: bool = True, lm_name: Optional[str] = None,  #  type: ignore
              processor: Optional[Processor] = None):
         """
         Loads an AdaptiveModel from a directory. The directory must contain:
@@ -484,7 +484,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         return conv.Converter.convert_to_transformers(self)
 
     @classmethod
-    def convert_from_transformers(cls, model_name_or_path: Union[str, Path], device: str, revision: Optional[str] = None,
+    def convert_from_transformers(cls, model_name_or_path: Union[str, Path], device: torch.device, revision: Optional[str] = None,
                                   task_type: Optional[str] = None, processor: Optional[Processor] = None,  use_auth_token: Optional[Union[bool, str]] = None, **kwargs):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
@@ -558,7 +558,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             use_fast=True
         )
         processor.save(output_path)
-        model = AdaptiveModel.convert_from_transformers(model_name, device="cpu", task_type=task_type)
+        model = AdaptiveModel.convert_from_transformers(model_name, device=torch.device("cpu"), task_type=task_type)
         model.save(output_path)
         os.remove(output_path / "language_model.bin")  # remove the actual PyTorch model(only configs are required)
 
@@ -603,7 +603,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         language_model_class: str,
         language: str,
         prediction_heads: List[PredictionHead],
-        device: str
+        device: torch.device
     ):
         """
         :param onnx_session: ? # TODO

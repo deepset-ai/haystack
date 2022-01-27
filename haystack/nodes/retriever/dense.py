@@ -52,7 +52,7 @@ class DensePassageRetriever(BaseRetriever):
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
-                 devices: Optional[List[Union[int, str, torch.device]]] = None,
+                 devices: Optional[List[torch.device]] = None,
                  use_auth_token: Optional[Union[str,bool]] = None,
                  ):
         """
@@ -186,7 +186,7 @@ class DensePassageRetriever(BaseRetriever):
             embeds_dropout_prob=0.1,
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
-            device=str(self.devices[0]),
+            device=self.devices[0],
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
@@ -506,7 +506,7 @@ class TableTextRetriever(BaseRetriever):
                  similarity_function: str = "dot_product",
                  global_loss_buffer_size: int = 150000,
                  progress_bar: bool = True,
-                 devices: Optional[List[Union[int, str, torch.device]]] = None,
+                 devices: Optional[List[torch.device]] = None,
                  use_auth_token: Optional[Union[str,bool]] = None
                  ):
         """
@@ -646,7 +646,7 @@ class TableTextRetriever(BaseRetriever):
                                       lm1_output_types=["per_sequence"],
                                       lm2_output_types=["per_sequence"],
                                       lm3_output_types=["per_sequence"],
-                                      device=str(self.devices[0]))
+                                      device=self.devices[0])
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
@@ -973,7 +973,7 @@ class EmbeddingRetriever(BaseRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[torch.device]] = None,
         use_auth_token: Optional[Union[str,bool]] = None
     ):
         """
