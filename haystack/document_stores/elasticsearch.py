@@ -301,6 +301,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                     }
                 }
             }
+            if self.search_fields:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
+
             if self.synonyms:
                 mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
                 mapping["settings"]["analysis"]["analyzer"]["synonym"] = {"tokenizer": "whitespace",
