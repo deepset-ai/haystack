@@ -30,7 +30,6 @@ def get_application() -> FastAPI:
     application.add_middleware(
         CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
     )
-
     application.add_exception_handler(HTTPException, http_error_handler)
     application.include_router(api_router)
 

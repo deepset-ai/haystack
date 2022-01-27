@@ -30,7 +30,7 @@ jobs:
       - name: Generate Docstrings and Tutorials
         run: |
           cd docs/_src/api/openapi/
-          python3 generate_openapi_specs.py
+          python generate_openapi_specs.py
           cd ../../../../
           git status
 
