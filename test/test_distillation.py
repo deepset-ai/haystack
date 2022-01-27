@@ -1,6 +1,10 @@
+from pathlib import Path
 from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.processor import UnlabeledTextProcessor
 import torch
+
+from conftest import SAMPLES_PATH
+
 
 def create_checkpoint(model):
     weights = []
@@ -24,7 +28,7 @@ def test_prediction_layer_distillation():
 
     student_weights.pop(-2) # pooler is not updated due to different attention head
     
-    student.distil_prediction_layer_from(teacher, data_dir="samples/squad", train_filename="tiny.json")
+    student.distil_prediction_layer_from(teacher, data_dir=SAMPLES_PATH/"squad", train_filename="tiny.json")
 
     # create new checkpoint
     new_student_weights = create_checkpoint(student)
@@ -48,7 +52,7 @@ def test_intermediate_layer_distillation():
     student_weights.pop(-1) # last layer is not affected by tinybert loss
     student_weights.pop(-1) # pooler is not updated due to different attention head
     
-    student.distil_intermediate_layers_from(teacher_model=teacher, data_dir="samples/squad", train_filename="tiny.json")
+    student.distil_intermediate_layers_from(teacher_model=teacher, data_dir=SAMPLES_PATH/"squad", train_filename="tiny.json")
 
     # create new checkpoint
     new_student_weights = create_checkpoint(student)
@@ -73,8 +77,8 @@ def test_intermediate_layer_distillation_from_scratch():
     student_weights.pop(-1) # last layer is not affected by tinybert loss
     student_weights.pop(-1) # pooler is not updated due to different attention head
     
-    processor = UnlabeledTextProcessor(tokenizer=teacher.inferencer.processor.tokenizer, max_seq_len=128, train_filename="doc_2.txt", data_dir="samples/docs")
-    student.distil_intermediate_layers_from(teacher_model=teacher, data_dir="samples/squad", train_filename="tiny.json", processor=processor)
+    processor = UnlabeledTextProcessor(tokenizer=teacher.inferencer.processor.tokenizer, max_seq_len=128, train_filename="doc_2.txt", data_dir=SAMPLES_PATH/"docs")
+    student.distil_intermediate_layers_from(teacher_model=teacher, data_dir=SAMPLES_PATH/"squad", train_filename="tiny.json", processor=processor)
 
     # create new checkpoint
     new_student_weights = create_checkpoint(student)

@@ -1,22 +1,25 @@
 import logging
-
 from pathlib import Path
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.routing import APIRoute
-from starlette.middleware.cors import CORSMiddleware
-
-from rest_api.controller.errors.http_error import http_error_handler
-from rest_api.config import ROOT_PATH
-
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 logger = logging.getLogger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
 
+try:
+    import uvicorn
+    from fastapi import FastAPI, HTTPException
+    from fastapi.routing import APIRoute
+    from starlette.middleware.cors import CORSMiddleware
 
-from rest_api.controller.router import router as api_router
+    from rest_api.controller.errors.http_error import http_error_handler
+    from rest_api.config import ROOT_PATH
+    from rest_api.controller.router import router as api_router
+
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "rest", ie)
+
 
 
 def get_application() -> FastAPI:
