@@ -1112,6 +1112,8 @@ def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
                     url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents/{doc['id']}",
                     json=doc, 
                     status=200)
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
     
     docs = deepset_cloud_document_store.get_all_documents()
     assert len(docs) > 1
@@ -1163,6 +1165,8 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
             status=200,
             body=query_winterfell_filtered_response,
         )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
 
     docs = deepset_cloud_document_store.query("winterfell", top_k=50)
     assert docs is not None
@@ -1188,6 +1192,8 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
             json=[], 
             status=200
         )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
 
     emb_docs = deepset_cloud_document_store.query_by_embedding(query_emb)
     assert len(emb_docs) == 0
