@@ -1,13 +1,14 @@
 from typing import Union
 from types import ModuleType
 
+__version__ = None
 try:
     import importlib.metadata as metadata
+    __version__ = metadata.version('farm-haystack')
 except ModuleNotFoundError:
     # Python <= 3.7
     import importlib_metadata as metadata  # type: ignore
-
-__version__ = metadata.version('farm-haystack')
+    __version__ = metadata.version('haystack')
 
 # This configuration must be done before any import to apply to all submodules
 import logging
