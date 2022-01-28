@@ -43,32 +43,8 @@ jobs:
           pip install --upgrade --upgrade-strategy eager .[test]
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
-  docker-cache:
-    runs-on: ubuntu-20.04
-    steps:
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      - name: Cache
-        id: cache-docker-images
-        uses: actions/cache@v2
-        with:
-          path: /var/lib/docker/
-          key: linux-${{ env.date }}
-
-      - name: Pull Docker images
-        if: steps.cache-docker-images.outputs.cache-hit != 'true'
-        run: |
-          docker pull elasticsearch:7.9.2
-          docker pull milvusdb/milvus:1.1.0-cpu-d050721-5e559c
-          docker pull semitechnologies/weaviate:1.7.2
-          docker pull deepset/graphdb-free:9.4.1-adoptopenjdk11
-          docker pull apache/tika:1.24.1
-          docker pull axarev/parsr:v1.2.2
-
   prepare-build:
-    needs: 
-     - build-cache
-     - docker-cache
+    needs: build-cache
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -87,8 +63,6 @@ jobs:
       fail-fast: false
     steps:
     - uses: actions/checkout@v2
-    
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
@@ -100,12 +74,6 @@ jobs:
       with:
         path: ${{ env.pythonLocation }}
         key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
-
-    - name: Cache Docker
-      uses: actions/cache@v2
-      with:
-          path: /var/lib/docker/
-          key: linux-${{ env.date }}
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -133,14 +101,6 @@ jobs:
 
     - name: Install tesseract
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
-
-    # - name: Install Haystack
-    #   # run: |
-    #   #   pip install --upgrade pip
-    #   #   pip install --upgrade --upgrade-strategy eager -e .[test]
-    #   #   pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
-    #   run: |
-    #     pip install -e .
 
     - name: Run tests
       run: pytest -s ${{ matrix.test-path }}
