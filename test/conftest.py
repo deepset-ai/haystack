@@ -30,7 +30,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
     _optional_component_not_installed('test', "test", ie)
 
-from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore, DeepsetCloudDocumentStore
+from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
 
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
     
@@ -53,12 +53,6 @@ from haystack.nodes.question_generator import QuestionGenerator
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
-
-# to run tests against Deepset Cloud set MOCK_DC to False and set the following params
-DC_API_ENDPOINT = "https://DC_API/v1"
-DC_TEST_INDEX = "document_retrieval_1"
-DC_API_KEY = "NO_KEY"
-MOCK_DC = True
 
 
 SAMPLES_PATH = Path(__file__).parent/"samples"
