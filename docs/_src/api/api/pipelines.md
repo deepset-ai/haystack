@@ -35,7 +35,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.8'
+    |   version: '0.9'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -69,6 +69,33 @@ Here's a sample configuration:
 - `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
                                      to change index name param for an ElasticsearchDocumentStore, an env
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                     `_` sign must be used to specify nested hierarchical properties.
+
+<a name="base.BasePipeline.load_from_deepset_cloud"></a>
+#### load\_from\_deepset\_cloud
+
+```python
+ | @classmethod
+ | load_from_deepset_cloud(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: Optional[str] = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
+```
+
+Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
+a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+**Arguments**:
+
+- `pipeline_config_name`: name of the config file inside the Deepset Cloud workspace.
+- `pipeline_name`: specifies which pipeline to load from config.
+                      Deepset Cloud typically provides a 'query' and a 'index' pipeline per config.
+- `workspace`: workspace in Deepset Cloud
+- `api_key`: Secret value of the API key.
+                If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+- `api_endpoint`: The URL of the Deepset Cloud API.
+                     If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+- `overwrite_with_env_variables`: Overwrite the config with environment variables. For example,
+                                     to change return_no_answer param for a FARMReader, an env
+                                     variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
 
 <a name="base.Pipeline"></a>
@@ -383,7 +410,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.8'
+    |   version: '0.9'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -403,9 +430,11 @@ Here's a sample configuration:
     |
     |    pipelines:    # multiple Pipelines can be defined using the components from above
     |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+    |      type: RayPipeline
     |      nodes:
     |      - name: MyESRetriever
     |        inputs: [Query]
+    |        replicas: 2    # number of replicas to create on the Ray cluster
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```

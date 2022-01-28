@@ -2,24 +2,16 @@ from typing import List, Optional, Union, Dict, Generator
 
 import json
 import logging
-import requests
-import os
 import numpy as np
 
 from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
+from haystack.utils import DeepsetCloud
+
 
 DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1" #TODO
 
 logger = logging.getLogger(__name__)
-
-
-class BearerAuth(requests.auth.AuthBase):
-    def __init__(self, token):
-        self.token = token
-    def __call__(self, r):
-        r.headers["authorization"] = "Bearer " + self.token
-        return r
 
 
 class DeepsetCloudDocumentStore(KeywordDocumentStore):   
@@ -56,34 +48,21 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param return_embedding: To return document embedding.
 
         """
-        self.workspace = workspace
         self.index = index
         self.label_index = index
         self.duplicate_documents = duplicate_documents
         self.similarity = similarity
         self.return_embedding = return_embedding
+        self.client = DeepsetCloud.get_index_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index)
 
-        self.api_key = api_key or os.getenv("DEEPSET_CLOUD_API_KEY")
-        if self.api_key is None:
-            raise ValueError("No api_key specified. Please set api_key param or DEEPSET_CLOUD_API_KEY environment variable.")
-
-        if api_endpoint is None:
-            api_endpoint = os.getenv("DEEPSET_CLOUD_API_ENDPOINT", DEFAULT_API_ENDPOINT)
-        self.api_endpoint = api_endpoint
-
-        init_url = self._get_index_endpoint()       
-        response = requests.get(init_url, auth=BearerAuth(self.api_key))
-        if response.status_code != 200:
-            raise Exception(f"Could not connect to Deepset Cloud: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
-        
-        index_info = response.json()
+        index_info = self.client.info()       
         indexing_info = index_info["indexing"]
         if indexing_info["pending_file_count"] > 0:
             logger.warning(f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}")
 
         self.set_config(
             workspace=workspace, index=index, duplicate_documents=duplicate_documents,
-            api_endpoint=self.api_endpoint, similarity=similarity, return_embedding=return_embedding
+            api_endpoint=api_endpoint, similarity=similarity, return_embedding=return_embedding
         )
 
     def get_all_documents(
@@ -140,18 +119,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding   
 
-        body = {
-            "return_embedding": return_embedding,
-            "filters": filters
-        }
-
-        body = self._remove_null_values(body)
-        url = f"{self._get_index_endpoint(index)}/documents-stream"
-        response = requests.post(url=url, json=body, stream=True, headers=headers, auth=BearerAuth(self.api_key))
-        if response.status_code != 200:
-            raise Exception(f"An error occured while loading documents: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
-        
-        for raw_doc in response.iter_lines():
+        raw_documents = self.client.stream_documents(return_embedding=return_embedding, filters=filters, index=index, headers=headers)       
+        for raw_doc in raw_documents:
             dict_doc = json.loads(raw_doc.decode('utf-8'))
             yield Document.from_dict(dict_doc)
 
@@ -159,19 +128,11 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
         
-        query_params = {
-            "return_embedding": self.return_embedding
-        }
-        url = f"{self._get_index_endpoint(index)}/documents/{id}"
-        response = requests.get(url=url, headers=headers, auth=BearerAuth(self.api_key), params=query_params)
-
+        doc_dict = self.client.get_document(id=id, return_embedding=self.return_embedding, index=index, headers=headers)
         doc: Optional[Document] = None
-        if response.status_code == 200:
-            doc_dict = response.json()
+        if doc_dict:
             doc = Document.from_dict(doc_dict)
-        else:
-            logger.warning(f"Document {id} could not be fetched from Deepset Cloud: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
-        
+
         return doc
 
     def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
@@ -188,17 +149,11 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         only_documents_without_embedding: bool = False, 
         headers: Optional[Dict[str, str]] = None
     ) -> int:
-        body = {
-            "filters": filters,
-            "only_documents_without_embedding": only_documents_without_embedding
-        }
-        body = self._remove_null_values(body)
-        url = f"{self._get_index_endpoint(index)}/documents-count"
-        response = requests.post(url=url, json=body, headers=headers, auth=BearerAuth(self.api_key))
-        if response.status_code != 200:
-            raise Exception(f"An error occured during getting document count: "
-                            f"HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
-        count_result = response.json()
+        count_result = self.client.count_documents(
+            filters=filters, 
+            only_documents_without_embedding=only_documents_without_embedding,
+            index=index, 
+            headers=headers)
         return count_result["count"]
 
     def query_by_embedding(
@@ -225,14 +180,17 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
         
-        request = {
-            "query_emb": query_emb.tolist(),
-            "similarity": self.similarity,
-            "filters": filters,
-            "top_k": top_k,
-            "return_embedding": return_embedding
-        }
-        return self._query_documents(request=request, index=index, headers=headers)
+        doc_dicts = self.client.query(
+            query_emb=query_emb.tolist(), 
+            filters=filters, 
+            similarity=self.similarity, 
+            top_k=top_k, 
+            return_embedding=return_embedding, 
+            index=index, 
+            headers=headers
+        )
+        docs = [Document.from_dict(doc) for doc in doc_dicts]
+        return docs
 
     def query(
         self,
@@ -254,41 +212,16 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to requests
         """
-        request = {
-            "query": query,
-            "filters": filters,
-            "top_k": top_k,
-            "custom_query": custom_query
-        }
-        return self._query_documents(request=request, index=index, headers=headers)
-
-    def _query_documents(
-        self,
-        request: dict,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None
-    ) -> List[Document]:
-        if index is None:
-            index = self.index
-
-        body = self._remove_null_values(request)
-        url = f"{self._get_index_endpoint(index)}/documents-query"
-        response = requests.post(url=url, json=body, headers=headers, auth=BearerAuth(self.api_key))
-        if response.status_code != 200:
-            raise Exception(f"An error occured during query: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
-        
-        doc_dicts = response.json()
+        doc_dicts = self.client.query(
+            query=query, 
+            filters=filters, 
+            top_k=top_k, 
+            custom_query=custom_query, 
+            index=index, 
+            headers=headers
+        )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
         return docs
-
-    def _get_index_endpoint(self, index: Optional[str] = None) -> str:
-        if index is None:
-            index = self.index
-        
-        return f"{self.api_endpoint}/workspaces/{self.workspace}/indexes/{index}"
-
-    def _remove_null_values(self, body: dict) -> dict:
-        return {k:v for k,v in body.items() if v is not None}
 
     def _create_document_field_map(self) -> Dict:
         return {}
