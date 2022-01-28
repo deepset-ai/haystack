@@ -20,30 +20,30 @@ jobs:
           pip install mypy==0.910 types-Markdown types-requests types-PyYAML pydantic
           mypy haystack
 
-  build-cache:
-    needs: type-check
-    runs-on: windows-latest
+  # build-cache:
+  #   needs: type-check
+  #   runs-on: windows-latest
 
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-      - name: Cache
-        id: cache-python-env
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
-      - name: Install Pytorch on windows
-        run: |
-          pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
-      - name: Install dependencies
-        if: steps.cache-python-env.outputs.cache-hit != 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager -e .[test]
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: actions/setup-python@v2
+  #       with:
+  #         python-version: 3.7
+  #     - name: Cache
+  #       id: cache-python-env
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: ${{ env.pythonLocation }}
+  #         key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+  #     - name: Install Pytorch on windows
+  #       run: |
+  #         pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+  #     - name: Install dependencies
+  #       if: steps.cache-python-env.outputs.cache-hit != 'true'
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install --upgrade --upgrade-strategy eager -e .[test]
+  #         pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
     needs: build-cache
@@ -70,11 +70,11 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - name: Cache
-      uses: actions/cache@v2
-      with:
-        path: ${{ env.pythonLocation }}
-        key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+    # - name: Cache
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: ${{ env.pythonLocation }}
+    #     key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows test env
@@ -86,6 +86,16 @@ jobs:
         choco install elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
+
+    - name: Install Pytorch on windows
+      run: |
+        pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade --upgrade-strategy eager -e .[test]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
     # We have to remove files if not test going to run from it
     # As on windows we are going to disable quite a few tests these, hence these files will throw error refer https://github.com/pytest-dev/pytest/issues/812
