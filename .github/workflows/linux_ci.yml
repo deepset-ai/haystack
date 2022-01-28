@@ -20,26 +20,26 @@ jobs:
           pip install mypy==0.910 types-Markdown types-requests types-PyYAML pydantic
           mypy haystack
 
-  # build-cache:
-  #   needs: type-check
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: actions/setup-python@v2
-  #       with:
-  #         python-version: 3.7
-  #     - name: Cache
-  #       id: cache-python-env
-  #       uses: actions/cache@v2
-  #       with:
-  #         path: ${{ env.pythonLocation }}
-  #         key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
-  #     - name: Install dependencies
-  #       if: steps.cache-python-env.outputs.cache-hit != 'true'
-  #       run: |
-  #         pip install --upgrade pip
-  #         pip install --upgrade --upgrade-strategy eager -e .[test]
-  #         pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+  build-cache:
+    needs: type-check
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Cache
+        id: cache-python-env
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+      - name: Install dependencies
+        if: steps.cache-python-env.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install --upgrade --upgrade-strategy eager -e .[test]
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
     needs: type-check
@@ -65,11 +65,13 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    # - name: Cache
-    #   uses: actions/cache@v2
-    #   with:
-    #     path: ${{ env.pythonLocation }}
-    #     key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+
+    - name: Cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
@@ -97,11 +99,13 @@ jobs:
     - name: Install tesseract
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
-    - name: Install dependencies
+    - name: Install Haystack
+      # run: |
+      #   pip install --upgrade pip
+      #   pip install --upgrade --upgrade-strategy eager -e .[test]
+      #   pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
       run: |
-        pip install --upgrade pip
-        pip install --upgrade --upgrade-strategy eager -e .[test]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+        pip install -e .
 
     - name: Run tests
       run: pytest -s ${{ matrix.test-path }}
