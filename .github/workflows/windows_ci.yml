@@ -29,21 +29,27 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
+
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+          # The cache currently misses at every change in the Python files to ensure
+          # that the code changes to Haystack are not being cached along with the dependencies.
+          # TODO for the tests refactoring: We could speed up the process by caching only 
+          # the dependencies and installing Haystack again separately for each test runner.
+          key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+      
       - name: Install Pytorch on windows
         run: |
           pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+      
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager -e .[test]
+          pip install --upgrade --upgrade-strategy eager .[test]
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
@@ -71,12 +77,12 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
+
     - name: Cache
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+        key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows test env
