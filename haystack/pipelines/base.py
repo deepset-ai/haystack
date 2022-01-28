@@ -30,6 +30,7 @@ from haystack.document_stores.base import BaseDocumentStore
 
 logger = logging.getLogger(__name__)
 
+
 class RootNode(BaseComponent):
     """
     RootNode feeds inputs together with corresponding params to a Pipeline.

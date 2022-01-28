@@ -22,7 +22,7 @@ class DeepsetCloudClient:
         api_key: str = None, 
         api_endpoint: Optional[str] = None):
         """
-        An adapter to communicate with Deepset Cloud.
+        A client to communicate with Deepset Cloud.
 
         :param api_key: Secret value of the API key. 
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
@@ -64,9 +64,9 @@ class IndexClient:
         workspace: Optional[str] = None,
         index: Optional[str] = None):
         """
-        An adapter to communicate with Deepset Cloud indexes.
+        A client to communicate with Deepset Cloud indexes.
 
-        :param dc_client: Deepset Cloud client
+        :param client: Deepset Cloud client
         :param workspace: workspace in Deepset Cloud
         :param index: index in Deepset Cloud workspace
 
@@ -82,7 +82,6 @@ class IndexClient:
             return response.json()
         except Exception as ie:
             raise Exception(f"Could not connect to Deepset Cloud:\n{ie}") from ie
-        
 
     def query(
         self, 
@@ -164,9 +163,9 @@ class PipelineClient:
         workspace: Optional[str] = None,
         pipeline_config_name: Optional[str] = None):
         """
-        An adapter to communicate with Deepset Cloud pipelines.
+        A client to communicate with Deepset Cloud pipelines.
 
-        :param dc_client: Deepset Cloud client
+        :param client: Deepset Cloud client
         :param workspace: workspace in Deepset Cloud
         :param pipeline_config_name: name of the pipeline_config in Deepset Cloud workspace
 
@@ -191,7 +190,9 @@ class PipelineClient:
 
 
 class DeepsetCloud:
-
+    """
+    A facade to communicate with Deepset Cloud.
+    """
     @classmethod
     def get_index_client(
         cls, 
@@ -200,6 +201,17 @@ class DeepsetCloud:
         workspace: Optional[str] = None,
         index: Optional[str] = None,
     ) -> IndexClient:
+        """
+        Creates a client to communicate with Deepset Cloud indexes.
+
+        :param api_key: Secret value of the API key. 
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API. 
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param workspace: workspace in Deepset Cloud
+        :param index: index in Deepset Cloud workspace
+
+        """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return IndexClient(client=client, workspace=workspace, index=index)
 
@@ -211,5 +223,16 @@ class DeepsetCloud:
         workspace: Optional[str] = None,
         pipeline_config_name: Optional[str] = None,
     ) -> PipelineClient:
+        """
+        Creates a client to communicate with Deepset Cloud pipelines.
+
+        :param api_key: Secret value of the API key. 
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API. 
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param workspace: workspace in Deepset Cloud
+        :param pipeline_config_name: name of the pipeline_config in Deepset Cloud workspace
+
+        """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return PipelineClient(client=client, workspace=workspace, pipeline_config_name=pipeline_config_name)

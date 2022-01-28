@@ -1051,7 +1051,7 @@ def test_DeepsetCloudDocumentStore_invalid_token():
             status=500)
 
     with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 500 - Internal Server Error"):
-            DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
+        DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
