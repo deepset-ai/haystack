@@ -92,12 +92,18 @@ jobs:
       with:
         python-version: 3.7
 
-    - name: Cache
+    - name: Cache Python
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
         key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
 
+    - name: Cache Docker
+      uses: actions/cache@v2
+      with:
+          path: /var/lib/docker/
+          key: linux-${{ env.date }}
+          
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
