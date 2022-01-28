@@ -28,15 +28,14 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-      # - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-      # - name: Cache
-      #   id: cache-python-env
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: ${{ env.pythonLocation }}
-      #     key: linux-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+      - run: echo "date=$(date +'%Y-%m-%d-%H-%M')" >> $env:GITHUB_ENV
+      - name: Cache
+        id: cache-python-env
+        uses: actions/cache@v2
+        with:
+          key: linux-${{ env.date }}
       - name: Install dependencies
-      #   if: steps.cache-python-env.outputs.cache-hit != 'true'
+        if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade --upgrade-strategy eager -e .[test]
@@ -65,12 +64,11 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+    - run: echo "date=$(date +'%Y-%m-%d-%H-%M')" >> $env:GITHUB_ENV
     - name: Cache
       uses: actions/cache@v2
       with:
-        path: ${{ env.pythonLocation }}
-        key: linux-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+        key: linux-${{ env.date }}
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
