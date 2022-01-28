@@ -908,12 +908,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.similarity == "cosine":
             similarity_fn_name = "cosineSimilarity"
         elif self.similarity == "dot_product":
-            if type(self) == OpenSearchDocumentStore:
-                similarity_fn_name = "innerproduct"
-            elif type(self) == ElasticsearchDocumentStore:
-                similarity_fn_name = "dotProduct"
+            similarity_fn_name = "dotProduct"
+        elif self.similarity == "l2":
+            similarity_fn_name = "l2norm"
         else:
-            raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
+            raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\', \'dot_product\' and \'l2\'")
 
         # To handle scenarios where embeddings may be missing
         script_score_query: dict = {"match_all": {}}
@@ -965,8 +964,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 score = self._scale_embedding_score(score)
                 if self.similarity == "cosine":
                     score = (score + 1) / 2  # scaling probability from cosine similarity
-                elif self.similarity == "dot_product":
-                    score = float(expit(np.asarray(score / 100)))  # scaling probability from dot product
+                else:
+                    score = float(expit(np.asarray(score / 100)))  # scaling probability from dot product and l2
             else:
                 score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
