@@ -1367,15 +1367,15 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         self.embeddings_field_supports_similarity = True
                     else:
                         if self.similarity == "dot_product":
-                            raise Exception(f"Embedding field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. "
-                                            f"OpenSearch does not support the use of similarity '{self.similarity}' on {embedding_field_similarity}-optimized fields. "
-                                            f"In order to try out {self.similarity} similarity on this index, you might want to use a different embedding field by setting the `embedding_field` param. "
-                                            f"Consider creating a new index optimized for {self.similarity} by setting similarity={self.similarity} the first time you instantiate OpenSearchDocumentStore for the new index, "
+                            raise Exception(f"Embedding field '{self.embedding_field}' is only optimized for similarity '{embedding_field_similarity}'. "
+                                            f"OpenSearch does not support the use of similarity '{self.similarity}' on '{embedding_field_similarity}'-optimized fields. "
+                                            f"In order to try out '{self.similarity}' similarity on this index, you might want to use a different embedding field by setting the `embedding_field` param. "
+                                            f"Consider creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
                                             f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`.")
                         else:
-                            logger.warning(f"Embedding field '{self.embedding_field}' is only optimized for similarity {embedding_field_similarity}. "
+                            logger.warning(f"Embedding field '{self.embedding_field}' is only optimized for similarity '{embedding_field_similarity}'. "
                                            f"Falling back to slow exact vector calculation. "
-                                           f"Consider creating a new index optimized for {self.similarity} by setting similarity={self.similarity} the first time you instantiate OpenSearchDocumentStore for the new index, "
+                                           f"Consider creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
                                            f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`.")
 
             return
