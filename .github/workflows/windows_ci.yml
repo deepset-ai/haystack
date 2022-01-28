@@ -29,13 +29,12 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+          key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
       - name: Install Pytorch on windows
         run: |
           pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
@@ -71,12 +70,11 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
     - name: Cache
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: windows-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+        key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows test env

@@ -28,13 +28,12 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $env:GITHUB_ENV
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: linux-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+          key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
@@ -65,12 +64,11 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
     - name: Cache
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: linux-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+        key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
