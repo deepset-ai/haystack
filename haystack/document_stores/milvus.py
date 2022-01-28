@@ -158,7 +158,7 @@ class MilvusDocumentStore(SQLDocumentStore):
             self.metric_type = "L2"
             self.similarity = similarity
         else:
-            raise ValueError("The Milvus document store can currently only support dot_product and L2 similarity. "
+            raise ValueError(f"The Milvus document store can currently only support dot_product and L2 similarity, not {similarity}. "
                              "Please set similarity=\"dot_product\" or \"l2\"")
 
         self.index_type = index_type
@@ -190,7 +190,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         index_param = index_param or self.index_param
         custom_fields = self.custom_fields or []
 
-        connection = connections.get_connection()
+        connection = connections._get_connection()
         has_collection = connection.has_collection(collection_name=index)
         if not has_collection:
             fields = [

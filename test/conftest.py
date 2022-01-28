@@ -172,18 +172,18 @@ def elasticsearch_fixture():
         time.sleep(30)
 
 
-@pytest.fixture(scope="session")
-def milvus_fixture():
-    # test if a Milvus server is already running. If not, start Milvus docker container locally.
-    # Make sure you have given > 6GB memory to docker engine
-    try:
-        milvus_server = Milvus(uri="tcp://localhost:19530", timeout=5, wait_timeout=5)
-        milvus_server.server_status(timeout=5)
-    except:
-        print("Starting Milvus ...")
-        status = subprocess.run(['docker run -d --name milvus_cpu_0.10.5 -p 19530:19530 -p 19121:19121 '
-                                 'milvusdb/milvus:0.10.5-cpu-d010621-4eda95'], shell=True)
-        time.sleep(40)
+# @pytest.fixture(scope="session")
+# def milvus_fixture():
+#     # test if a Milvus server is already running. If not, start Milvus docker container locally.
+#     # Make sure you have given > 6GB memory to docker engine
+#     try:
+#         milvus_server = Milvus(uri="tcp://localhost:19530", timeout=5, wait_timeout=5)
+#         milvus_server.server_status(timeout=5)
+#     except:
+#         print("Starting Milvus ...")
+#         status = subprocess.run(['docker run -d --name milvus_cpu_0.10.5 -p 19530:19530 -p 19121:19121 '
+#                                  'milvusdb/milvus:0.10.5-cpu-d010621-4eda95'], shell=True)
+#         time.sleep(40)
 
 @pytest.fixture(scope="session")
 def weaviate_fixture():
@@ -624,7 +624,7 @@ def teardown_postgres():
         connection.close()
 
 
-def get_document_store(document_store_type, tmp_path, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="cosine"): # cosine is default similarity as dot product is not supported by Weaviate
+def get_document_store(document_store_type, tmp_path, embedding_dim=768, embedding_field="embedding", index="haystack_test", similarity:str="l2"): # l2 is default similarity as dot product is not supported by Weaviate
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
 
