@@ -1050,7 +1050,7 @@ def test_DeepsetCloudDocumentStore_invalid_token():
             body="Internal Server Error", 
             status=500)
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 500 - Internal Server Error"):
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 500 - Internal Server Error"):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
 
 
@@ -1064,7 +1064,7 @@ def test_DeepsetCloudDocumentStore_invalid_api_endpoint():
             body="Not Found", 
             status=404)
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 404 - Not Found"):
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 404 - Not Found"):
         DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
@@ -1078,7 +1078,7 @@ def test_DeepsetCloudDocumentStore_invalid_index():
             body="Not Found", 
             status=404)  
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 404 - Not Found"):
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index failed: HTTP 404 - Not Found"):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
 
 
@@ -1112,6 +1112,8 @@ def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
                     url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents/{doc['id']}",
                     json=doc, 
                     status=200)
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
     
     docs = deepset_cloud_document_store.get_all_documents()
     assert len(docs) > 1
@@ -1163,6 +1165,8 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
             status=200,
             body=query_winterfell_filtered_response,
         )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
 
     docs = deepset_cloud_document_store.query("winterfell", top_k=50)
     assert docs is not None
@@ -1188,6 +1192,8 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
             json=[], 
             status=200
         )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
 
     emb_docs = deepset_cloud_document_store.query_by_embedding(query_emb)
     assert len(emb_docs) == 0
