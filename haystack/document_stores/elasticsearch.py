@@ -302,8 +302,13 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 }
             }
             if self.search_fields:
+                if self.synonyms:
+                    search_fields_mapping = {"type": "text", "analyzer": "synonym"}
+                else:
+                    search_fields_mapping = {"type": "text"}
+
                 for field in self.search_fields:
-                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
+                    mapping["mappings"]["properties"].update({field: search_fields_mapping})
 
             if self.synonyms:
                 mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
