@@ -28,18 +28,23 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: linux-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+          # The cache currently misses at every change in the Python files to ensure
+          # that the code changes to Haystack are not being cached along with the dependencies.
+          # TODO for the tests refactoring: We could speed up the process by caching only 
+          # the dependencies and installing Haystack again separately for each test runner.
+          key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager -e .[test]
+          pip install --upgrade pip
+          pip install --upgrade --upgrade-strategy eager .[test]
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
@@ -52,6 +57,7 @@ jobs:
           echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+
   build:
     needs: prepare-build
     runs-on: ubuntu-20.04
@@ -61,16 +67,18 @@ jobs:
       fail-fast: false
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-    - name: Cache
+
+    - name: Cache Python
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: linux-${{ env.pythonLocation }}-${{ env.date }}-${{ hashFiles('setup.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+        key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
