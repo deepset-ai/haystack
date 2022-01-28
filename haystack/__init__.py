@@ -9,7 +9,6 @@ except ModuleNotFoundError:
 
 __version__ = metadata.version('farm-haystack')
 
-
 # This configuration must be done before any import to apply to all submodules
 import logging
 logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING)
