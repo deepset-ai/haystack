@@ -74,6 +74,7 @@ jobs:
     - name: Cache
       uses: actions/cache@v2
       with:
+        path: ${{ env.pythonLocation }}
         key: windows-${{ env.date }}
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
