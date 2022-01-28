@@ -546,9 +546,16 @@ class MultiLabel:
         self.document_contents = [l.document.content for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
-        unique_values = set([getattr(l, key) for l in self.labels])
+        if key == "filters":
+            # filters dict is not hashable so we collect unique filters via looping through all labels
+            unique_values = []
+            for l in self.labels:
+                if l.filters not in unique_values:
+                    unique_values.append(l.filters)
+        else:
+            unique_values = set([getattr(l, key) for l in self.labels])
         if must_be_single_value and len(unique_values) > 1:
-                raise ValueError(f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}")
+            raise ValueError(f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}")
         else:
             return list(unique_values)
 
@@ -926,7 +933,7 @@ class EvaluationResult:
         doc_relevance_col: str = "gold_id_match"
     ) -> pd.DataFrame:
         """
-        Builds a dataframe containing document metrics (columns) per query (index).
+        Builds a dataframe containing document metrics (columns) per pair of query and gold document ids (index).
         Document metrics are:
         - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
         - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
@@ -938,10 +945,13 @@ class EvaluationResult:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
         
         metrics = []
-        queries = documents["query"].unique()
-        for query in queries:
-            query_df = documents[documents["query"] == query]
-            gold_ids = query_df["gold_document_ids"].iloc[0]
+
+        # sort gold_document_ids and convert to tuple to make them hashable
+        documents["gold_document_ids"] = documents["gold_document_ids"].apply(lambda x: tuple(sorted(x)))
+        documents.insert(loc=0, column='query_id', value=documents.set_index(['query', 'gold_document_ids']).index.factorize()[0] + 1)
+        for query_id in documents["query_id"]:
+            query_df = documents[documents["query_id"]==query_id]
+            gold_ids = list(query_df["gold_document_ids"].iloc[0])
             retrieved = len(query_df)
             
             relevance_criteria_ids = list(query_df[query_df[doc_relevance_col] == 1]["document_id"].values)
@@ -969,7 +979,7 @@ class EvaluationResult:
                 "ndcg": ndcg
             })
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=queries)
+        metrics_df = pd.DataFrame.from_records(metrics, index=documents["query_id"])
         return metrics_df
 
     def save(self, out_dir: Union[str, Path]):

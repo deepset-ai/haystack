@@ -406,13 +406,14 @@ class Pipeline(BasePipeline):
                 params = {}
             params["add_isolated_node_eval"] = True
         for label in labels:
+            params_per_label = copy.deepcopy(params)
             if label.filters is not None:
-                if params is None:
-                    params = {"filters": label.filters}
+                if params_per_label is None:
+                    params_per_label = {"filters": label.filters}
                 else:
                     # join both filters and overwrite filters in params with filters in labels 
-                    params["filters"] = {**params.get("filters", {}), **label.filters}
-            predictions = self.run(query=label.query, labels=label, params=params, debug=True)
+                    params_per_label["filters"] = {**params_per_label.get("filters", {}), **label.filters}
+            predictions = self.run(query=label.query, labels=label, params=params_per_label, debug=True)
             
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
