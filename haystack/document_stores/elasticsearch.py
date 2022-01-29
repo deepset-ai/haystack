@@ -280,7 +280,8 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             mapping = {
                 "mappings": {
                     "properties": {
-                        self.name_field: {"type": "keyword"}
+                        self.name_field: {"type": "keyword"},
+                        self.content_field: {"type": "text"}
                     },
                     "dynamic_templates": [
                         {
@@ -304,9 +305,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             if self.synonyms:
                 for field in self.search_fields:
                     mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
-
-                if self.content_field not in self.search_fields:
-                    mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
 
                 mapping["settings"]["analysis"]["analyzer"]["synonym"] = {"tokenizer": "whitespace",
                                                                           "filter": ["lowercase",
@@ -316,9 +315,6 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             else:
                 for field in self.search_fields:
                     mapping["mappings"]["properties"].update({field: {"type": "text"}})
-
-                if self.content_field not in self.search_fields:
-                    mapping["mappings"]["properties"][self.content_field] = {"type": "text"}
 
             if self.embedding_field:
                 mapping["mappings"]["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
@@ -1364,7 +1360,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             mapping = {
                 "mappings": {
                     "properties": {
-                        self.name_field: {"type": "keyword"}
+                        self.name_field: {"type": "keyword"},
+                        self.content_field: {"type": "text"}
                     },
                     "dynamic_templates": [
                         {
@@ -1384,6 +1381,21 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     }
                 }
             }
+
+            if self.synonyms:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
+                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+
+                mapping["settings"]["analysis"]["analyzer"]["synonym"] = {"tokenizer": "whitespace",
+                                                                          "filter": ["lowercase",
+                                                                                     "synonym"]}
+                mapping["settings"]["analysis"]["filter"] = {"synonym": {"type": self.synonym_type, "synonyms": self.synonyms}}
+
+            else:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
+
             if self.embedding_field:
 
                 if self.similarity == "cosine":
