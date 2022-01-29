@@ -280,8 +280,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             mapping = {
                 "mappings": {
                     "properties": {
-                        self.name_field: {"type": "keyword"},
-                        self.content_field: {"type": "text"},
+                        self.name_field: {"type": "keyword"}
                     },
                     "dynamic_templates": [
                         {
@@ -301,21 +300,25 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                     }
                 }
             }
-            if self.search_fields:
-                if self.synonyms:
-                    search_fields_mapping = {"type": "text", "analyzer": "synonym"}
-                else:
-                    search_fields_mapping = {"type": "text"}
-
-                for field in self.search_fields:
-                    mapping["mappings"]["properties"].update({field: search_fields_mapping})
 
             if self.synonyms:
-                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
+
+                if self.content_field not in self.search_fields:
+                    mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+
                 mapping["settings"]["analysis"]["analyzer"]["synonym"] = {"tokenizer": "whitespace",
                                                                           "filter": ["lowercase",
                                                                                      "synonym"]}
                 mapping["settings"]["analysis"]["filter"] = {"synonym": {"type": self.synonym_type, "synonyms": self.synonyms}}
+
+            else:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
+
+                if self.content_field not in self.search_fields:
+                    mapping["mappings"]["properties"][self.content_field] = {"type": "text"}
 
             if self.embedding_field:
                 mapping["mappings"]["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
@@ -1361,8 +1364,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             mapping = {
                 "mappings": {
                     "properties": {
-                        self.name_field: {"type": "keyword"},
-                        self.content_field: {"type": "text"},
+                        self.name_field: {"type": "keyword"}
                     },
                     "dynamic_templates": [
                         {
