@@ -848,8 +848,8 @@ class DistillationLoss(Module):
         # creating dummy inputs to get the shapes of hidden states and attention of teacher and student model
         dummy_inputs = teacher_model.language_model.model.dummy_inputs
         dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)
-        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"]).to(device)
-        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"]).to(device)
+        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)
+        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)
 
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
