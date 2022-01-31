@@ -1197,3 +1197,29 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
 
     emb_docs = deepset_cloud_document_store.query_by_embedding(query_emb)
     assert len(emb_docs) == 0
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_search_field_mapping():
+
+    client = Elasticsearch()
+    client.indices.delete(index='haystack_search_field_mapping', ignore=[404])
+
+    index_data = [
+            {"title": "Green tea components",
+             "meta": {"content": "The green tea plant contains a range of healthy compounds that make it into the final drink","sub_content":"Drink tip"},"id": "1"},
+            {"title": "Green tea catechin",
+             "meta": {"content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).","sub_content":"Ingredients tip"}, "id": "2"},
+            {"title": "Minerals in Green tea",
+             "meta": {"content": "Green tea also has small amounts of minerals that can benefit your health.","sub_content":"Minerals tip"}, "id": "3"},
+            {"title": "Green tea Benefits",
+             "meta": {"content": "Green tea does more than just keep you alert, it may also help boost brain function.","sub_content":"Health tip"},"id": "4"}
+        ]
+
+    document_store = ElasticsearchDocumentStore(index="haystack_search_field_mapping",search_fields=["content", "sub_content"],content_field= "title")
+    document_store.write_documents(index_data)
+
+    indexed_settings = client.indices.get_mapping(index="haystack_search_field_mapping")
+
+    assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["content"]["type"] == 'text'
+    assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["sub_content"]["type"] == 'text'
