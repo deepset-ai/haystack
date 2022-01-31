@@ -838,7 +838,8 @@ class TinyBERTDistillationTrainer(Trainer):
 
 class DistillationLoss(Module):
     """
-    Calculates the distillation loss in a separate module"""
+    Calculates the distillation loss in a separate module to allow for data parallelization.
+    """
     def __init__(self, model, teacher_model, device):
         super().__init__()
         self.model = model.module.to(device)
