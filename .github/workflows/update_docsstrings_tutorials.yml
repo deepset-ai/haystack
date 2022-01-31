@@ -39,7 +39,7 @@ jobs:
           cd docs/_src/api/api/
           ./generate_docstrings.sh 
           cd ../../tutorials/tutorials/
-          python3 convert_ipynb.py  
+          python3 convert_ipynb.py
           cd ../../../../
           git status
 

@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+from pathlib import Path
 from elasticsearch import Elasticsearch
 
 from haystack.document_stores import WeaviateDocumentStore
@@ -13,6 +14,8 @@ from haystack.document_stores.milvus import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+
+from conftest import SAMPLES_PATH
 
 
 @pytest.fixture()
@@ -154,17 +157,23 @@ def test_dpr_embedding(document_store, retriever, docs):
     document_store.update_embeddings(retriever=retriever)
     time.sleep(1)
 
-    doc_1 = document_store.get_document_by_id("1")
-    assert len(doc_1.embedding) == 768
-    assert abs(doc_1.embedding[0] - (-0.3063)) < 0.001
-    doc_2 = document_store.get_document_by_id("2")
-    assert abs(doc_2.embedding[0] - (-0.3914)) < 0.001
-    doc_3 = document_store.get_document_by_id("3")
-    assert abs(doc_3.embedding[0] - (-0.2470)) < 0.001
-    doc_4 = document_store.get_document_by_id("4")
-    assert abs(doc_4.embedding[0] - (-0.0802)) < 0.001
-    doc_5 = document_store.get_document_by_id("5")
-    assert abs(doc_5.embedding[0] - (-0.0551)) < 0.001
+    # always normalize vector as faiss returns normalized vectors and other document stores do not
+    doc_1 = document_store.get_document_by_id("1").embedding
+    doc_1 /= np.linalg.norm(doc_1)
+    assert len(doc_1) == 768
+    assert abs(doc_1[0] - (-0.0250)) < 0.001
+    doc_2 = document_store.get_document_by_id("2").embedding
+    doc_2 /= np.linalg.norm(doc_2)
+    assert abs(doc_2[0] - (-0.0314)) < 0.001
+    doc_3 = document_store.get_document_by_id("3").embedding
+    doc_3 /= np.linalg.norm(doc_3)
+    assert abs(doc_3[0] - (-0.0200)) < 0.001
+    doc_4 = document_store.get_document_by_id("4").embedding
+    doc_4 /= np.linalg.norm(doc_4)
+    assert abs(doc_4[0] - (-0.0070)) < 0.001
+    doc_5 = document_store.get_document_by_id("5").embedding
+    doc_5 /= np.linalg.norm(doc_5)
+    assert abs(doc_5[0] - (-0.0049)) < 0.001
 
 
 @pytest.mark.slow
@@ -336,7 +345,7 @@ def test_table_text_retriever_training(document_store):
     )
 
     retriever.train(
-        data_dir="samples/mmr",
+        data_dir=SAMPLES_PATH/"mmr",
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
@@ -345,3 +354,114 @@ def test_table_text_retriever_training(document_store):
 
     # Load trained model
     retriever = TableTextRetriever.load(load_dir="test_table_text_retriever_train", document_store=document_store)
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_highlight():
+    client = Elasticsearch()
+    client.indices.delete(index="haystack_hl_test",  ignore=[404])
+
+    # Mapping the content and title field as "text" perform search on these both fields.
+    document_store = ElasticsearchDocumentStore(index="haystack_hl_test", content_field= "title",
+        custom_mapping={
+            "mappings": {
+                "properties": {
+                    "content": {
+                        "type": "text"
+                    },
+                    "title": {
+                        "type": "text"
+                    }
+                }
+            }
+        }
+    )
+    documents = [
+        {"title": "Green tea components", "meta":{"content": "The green tea plant contains a range of healthy compounds that make it into the final drink"}, "id":"1"},
+        {"title": "Green tea catechin", "meta":{"content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG)."}, "id":"2"},
+        {"title": "Minerals in Green tea", "meta":{"content": "Green tea also has small amounts of minerals that can benefit your health."}, "id":"3"},
+        {"title": "Green tea Benefits", "meta":{"content": "Green tea does more than just keep you alert, it may also help boost brain function."}, "id":"4"}
+    ]
+    document_store.write_documents(documents)
+
+    # Enabled highlighting on "title"&"content" field only using custom query
+    retriever_1 = ElasticsearchRetriever(document_store=document_store,
+        custom_query=
+        """{
+            "size": 20,
+            "query": {
+                "bool": {
+                    "should": [
+                        {
+                            "multi_match": {
+                                "query": ${query},
+                                "fields": [
+                                    "content^3",
+                                    "title^5"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "highlight": {
+                "pre_tags": [
+                    "**"
+                ],
+                "post_tags": [
+                    "**"
+                ],
+                "number_of_fragments": 3,
+                "fragment_size": 5,
+                "fields": {
+                    "content": {},
+                    "title": {}
+                }
+            }
+        }""",
+    )
+    results = retriever_1.retrieve(query="is green tea healthy")
+
+    assert len(results[0].meta['highlighted']) == 2
+    assert results[0].meta['highlighted']['title'] == ['**Green**', '**tea** components']
+    assert results[0].meta['highlighted']['content'] == ['The **green**', '**tea** plant', 'range of **healthy**']
+
+    #Enabled highlighting on "title" field only using custom query
+    retriever_2 = ElasticsearchRetriever(document_store=document_store,
+        custom_query=
+        """{
+            "size": 20,
+            "query": {
+                "bool": {
+                    "should": [
+                        {
+                            "multi_match": {
+                                "query": ${query},
+                                "fields": [
+                                    "content^3",
+                                    "title^5"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "highlight": {
+                "pre_tags": [
+                    "**"
+                ],
+                "post_tags": [
+                    "**"
+                ],
+                "number_of_fragments": 3,
+                "fragment_size": 5,
+                "fields": {
+                    "title": {}
+                }
+            }
+        }""",
+    )
+    results = retriever_2.retrieve(query="is green tea healthy")
+
+    assert len(results[0].meta['highlighted']) == 1
+    assert results[0].meta['highlighted']['title'] == ['**Green**', '**tea** components']

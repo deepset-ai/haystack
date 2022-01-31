@@ -151,10 +151,11 @@ class BaseStandardPipeline(ABC):
         return self.pipeline.get_document_store()
 
     def eval(self,
-            labels: List[MultiLabel],
-            params: Optional[dict],
-            sas_model_name_or_path: str = None) -> EvaluationResult:
-            
+             labels: List[MultiLabel],
+             params: Optional[dict] = None,
+             sas_model_name_or_path: Optional[str] = None,
+             add_isolated_node_eval: bool = False) -> EvaluationResult:
+
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode 
         and putting together all data that is needed for evaluation, e.g. calculating metrics.
@@ -164,9 +165,10 @@ class BaseStandardPipeline(ABC):
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
         :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
                                     should be path or string pointing to downloadable models.
+        :param add_isolated_node_eval: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
         """
-        output = self.pipeline.eval(labels=labels, params=params, 
-            sas_model_name_or_path=sas_model_name_or_path)
+        output = self.pipeline.eval(labels=labels, params=params,
+                                    sas_model_name_or_path=sas_model_name_or_path, add_isolated_node_eval=add_isolated_node_eval)
         return output
 
     def print_eval_report(

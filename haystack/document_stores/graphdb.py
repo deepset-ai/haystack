@@ -3,8 +3,13 @@ from typing import Dict, Optional
 
 import requests
 from pathlib import Path
-from SPARQLWrapper import SPARQLWrapper, JSON
 from requests.auth import HTTPBasicAuth
+
+try:
+    from SPARQLWrapper import SPARQLWrapper, JSON
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "graphdb", ie)
 
 from haystack.document_stores import BaseKnowledgeGraph
 

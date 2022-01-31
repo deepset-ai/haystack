@@ -30,16 +30,16 @@ DOCUMENTS_XS = [
 
 
 @pytest.fixture(params=["weaviate"])
-def document_store_with_docs(request):
-    document_store = get_document_store(request.param)
+def document_store_with_docs(request, tmp_path):
+    document_store = get_document_store(request.param, tmp_path=tmp_path)
     document_store.write_documents(DOCUMENTS_XS)
     yield document_store
     document_store.delete_documents()
 
 
 @pytest.fixture(params=["weaviate"])
-def document_store(request):
-    document_store = get_document_store(request.param)
+def document_store(request, tmp_path):
+    document_store = get_document_store(request.param, tmp_path=tmp_path)
     yield document_store
     document_store.delete_documents()
 

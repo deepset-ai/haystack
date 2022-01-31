@@ -96,12 +96,12 @@ class ElasticsearchRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: ElasticsearchDocumentStore, top_k: int = 10, custom_query: str = None)
+ | __init__(document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None)
 ```
 
 **Arguments**:
 
-- `document_store`: an instance of a DocumentStore to retrieve documents from.
+- `document_store`: an instance of an ElasticsearchDocumentStore to retrieve documents from.
 - `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
                      Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
@@ -134,6 +134,40 @@ class ElasticsearchRetriever(BaseRetriever)
                     |    self.retrieve(query="Why did the revenue increase?",
                     |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                     ```
+
+                     Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+                     See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
+                     You will find the highlighted output in the returned Document's meta field by key "highlighted".
+                     ::
+
+                         **Example custom_query with highlighting:**
+                         ```python
+                        |    {
+                        |        "size": 10,
+                        |        "query": {
+                        |            "bool": {
+                        |                "should": [{"multi_match": {
+                        |                    "query": ${query},                 // mandatory query placeholder
+                        |                    "type": "most_fields",
+                        |                    "fields": ["content", "title"]}}],
+                        |            }
+                        |        },
+                        |        "highlight": {             // enable highlighting
+                        |            "fields": {            // for fields content and title
+                        |                "content": {},
+                        |                "title": {}
+                        |            }
+                        |        },
+                        |    }
+                         ```
+
+                         **For this custom_query, highlighting info can be accessed by:**
+                        ```python
+                        |    docs = self.retrieve(query="Why did the revenue increase?")
+                        |    highlighted_content = docs[0].meta["highlighted"]["content"]
+                        |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                        ```
+
 - `top_k`: How many documents to return per query.
 
 <a name="sparse.ElasticsearchRetriever.retrieve"></a>

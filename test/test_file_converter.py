@@ -6,6 +6,9 @@ import pytest
 from haystack.nodes import MarkdownConverter, DocxToTextConverter, PDFToTextConverter, PDFToTextOCRConverter, \
     TikaConverter, AzureConverter, ParsrConverter
 
+from conftest import SAMPLES_PATH
+
+
 
 @pytest.mark.tika
 @pytest.mark.parametrize(
@@ -14,7 +17,7 @@ from haystack.nodes import MarkdownConverter, DocxToTextConverter, PDFToTextConv
 )
 def test_convert(Converter):
     converter = Converter()
-    document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))[0]
+    document = converter.convert(file_path=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf")[0]
     pages = document["content"].split("\f")
     assert len(pages) == 4  # the sample PDF file has four pages.
     assert pages[0] != ""  # the page 1 of PDF contains text.
@@ -32,7 +35,7 @@ def test_convert(Converter):
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
     converter = Converter(remove_numeric_tables=True)
-    document = converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))[0]
+    document = converter.convert(file_path=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf")[0]
     pages = document["content"].split("\f")
     # assert numeric rows are removed from the table.
     assert "324" not in pages[0]
@@ -43,29 +46,29 @@ def test_table_removal(Converter):
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_language_validation(Converter, caplog):
     converter = Converter(valid_languages=["en"])
-    converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
+    converter.convert(file_path=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf")
     assert (
-        "The language for samples/pdf/sample_pdf_1.pdf is not one of ['en']."
+        "samples/pdf/sample_pdf_1.pdf is not one of ['en']."
         not in caplog.text
     )
 
     converter = Converter(valid_languages=["de"])
-    converter.convert(file_path=Path("samples/pdf/sample_pdf_1.pdf"))
+    converter.convert(file_path=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf")
     assert (
-        "The language for samples/pdf/sample_pdf_1.pdf is not one of ['de']."
+        "samples/pdf/sample_pdf_1.pdf is not one of ['de']."
         in caplog.text
     )
 
 
 def test_docx_converter():
     converter = DocxToTextConverter()
-    document = converter.convert(file_path=Path("samples/docx/sample_docx.docx"))[0]
+    document = converter.convert(file_path=SAMPLES_PATH/"docx"/"sample_docx.docx")[0]
     assert document["content"].startswith("Sample Docx File")
 
 
 def test_markdown_converter():
     converter = MarkdownConverter()
-    document = converter.convert(file_path=Path("samples/markdown/sample.md"))[0]
+    document = converter.convert(file_path=SAMPLES_PATH/"markdown"/"sample.md")[0]
     assert document["content"].startswith("What to build with Haystack")
 
 
@@ -77,7 +80,7 @@ def test_azure_converter():
                                    save_json=True,
                                    )
 
-        docs = converter.convert(file_path="samples/pdf/sample_pdf_1.pdf")
+        docs = converter.convert(file_path=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf")
         assert len(docs) == 2
         assert docs[0]["content_type"] == "table"
         assert len(docs[0]["content"]) == 5  # number of rows
@@ -92,7 +95,7 @@ def test_azure_converter():
 def test_parsr_converter():
     converter = ParsrConverter()
 
-    docs = converter.convert(file_path="samples/pdf/sample_pdf_1.pdf")
+    docs = converter.convert(file_path=str((SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf").absolute()))
     assert len(docs) == 2
     assert docs[0]["content_type"] == "table"
     assert len(docs[0]["content"]) == 5  # number of rows

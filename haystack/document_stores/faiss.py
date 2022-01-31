@@ -9,17 +9,19 @@ from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
 import warnings
+import numpy as np
+from inspect import Signature, signature
 
 try:
     import faiss
-except ImportError:
-    faiss = None
-import numpy as np
+    from haystack.document_stores.sql import SQLDocumentStore  # its deps are optional, but get installed with the `faiss` extra
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "faiss", ie)
+
 
 from haystack.schema import Document
-from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
-from inspect import Signature, signature
 
 
 logger = logging.getLogger(__name__)
@@ -50,6 +52,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         duplicate_documents: str = 'overwrite',
         faiss_index_path: Union[str, Path] = None,
         faiss_config_path: Union[str, Path] = None,
+        isolation_level: str = None,
         **kwargs,
     ):
         """
@@ -74,7 +77,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                                         Benchmarks: XXX
         :param faiss_index: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                             or one with docs that you used in Haystack before and want to load again.
-        :param return_embedding: To return document embedding
+        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
@@ -94,6 +97,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             If specified no other params besides faiss_config_path must be specified.
         :param faiss_config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again
@@ -115,7 +119,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             index=index,
             similarity=similarity,
             embedding_field=embedding_field,
-            progress_bar=progress_bar
+            progress_bar=progress_bar,
+            isolation_level=isolation_level
         )
 
         if similarity in ("dot_product", "cosine"):
@@ -155,7 +160,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         super().__init__(
             url=sql_url,
             index=index,
-            duplicate_documents=duplicate_documents
+            duplicate_documents=duplicate_documents,
+            isolation_level=isolation_level
         )
 
         self._validate_index_sync()
@@ -266,7 +272,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                         docs_to_write_in_sql.append(doc)
 
                     super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
-                                                                duplicate_documents=duplicate_documents)
+                                                                duplicate_documents=duplicate_documents, batch_size=batch_size)
                     progress_bar.update(batch_size)
             progress_bar.close()
     def _create_document_field_map(self) -> Dict:
@@ -379,7 +385,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                       DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :param return_embedding: Whether to return the document embeddings.
+        :param return_embedding: Whether to return the document embeddings. Unlike other document stores, FAISS will return normalized embeddings
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:
@@ -510,7 +516,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
-        :param return_embedding: To return document embedding
+        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
         :return:
         """
         if headers:

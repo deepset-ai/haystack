@@ -9,6 +9,13 @@ from urllib.parse import urlparse
 
 from haystack.nodes.base import BaseComponent
 
+try:
+    from webdriver_manager.chrome import ChromeDriverManager
+    from selenium import webdriver
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "crawler", ie)
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +51,6 @@ class Crawler(BaseComponent):
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         """
         IN_COLAB = "google.colab" in sys.modules
-        
-        try:
-            from webdriver_manager.chrome import ChromeDriverManager
-        except ImportError:
-            raise ImportError("Can't find package `webdriver-manager` \n"
-                              "You can install it via `pip install webdriver-manager`")
-
-        try:
-            from selenium import webdriver
-        except ImportError:
-            raise ImportError("Can't find package `selenium` \n"
-                              "You can install it via `pip install selenium`")
 
         options = webdriver.chrome.options.Options()
         options.add_argument('--headless')

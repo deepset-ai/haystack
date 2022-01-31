@@ -1,13 +1,7 @@
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional
 
 import logging
-from statistics import mean
-import torch
-import numpy as np
-import pandas as pd
-from quantulum3 import parser
-from transformers import pipeline, TapasTokenizer, TapasForQuestionAnswering, BatchEncoding
-
+from transformers import pipeline
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
