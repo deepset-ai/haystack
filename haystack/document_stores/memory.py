@@ -193,20 +193,20 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
         :param document_to_search: List of documents to compare `query_emb` against.
         """
-        query_emb = torch.as_tensor(query_emb).to(self.main_device)
+        query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
         if len(query_emb.shape) == 1:
             query_emb = query_emb.unsqueeze(dim=0)
 
         doc_embeds = np.array([ doc.embedding for doc in document_to_search ])
-        doc_embeds = torch.Tensor(doc_embeds).to(self.main_device)
+        doc_embeds = torch.tensor(doc_embeds, dtype=torch.float).to(self.main_device)
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
             query_emb_norm = torch.norm(query_emb, dim=1)
-            query_emb = torch.div(query_emb, query_emb_norm).float() # The division makes it a Double
+            query_emb = torch.div(query_emb, query_emb_norm)
 
             doc_embeds_norms = torch.norm(doc_embeds, dim=1)
-            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T.float() # The division makes it a Double
+            doc_embeds = torch.div(doc_embeds.T, doc_embeds_norms).T
 
         curr_pos = 0
         scores = []
