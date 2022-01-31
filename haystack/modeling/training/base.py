@@ -829,7 +829,9 @@ class TinyBERTDistillationTrainer(Trainer):
         from_step=from_step, global_step=global_step,
         evaluator_test=evaluator_test, disable_tqdm=disable_tqdm,
         max_grad_norm=max_grad_norm)
-        self.loss = DataParallel(DistillationLoss(model, teacher_model, device)).to(device)
+        self.loss = DataParallel(DistillationLoss(model, teacher_model, device))
+        if torch.cuda.device_count() > 1:
+            self.loss = DataParallel(self.loss).to(device)
 
 
     
@@ -842,7 +844,7 @@ class DistillationLoss(Module):
     """
     def __init__(self, model, teacher_model, device):
         super().__init__()
-        self.model = model.module.to(device)
+        self.model = model.module.to(device) if isinstance(model, DataParallel) else model.to(device)
         self.teacher_model = teacher_model.to(device)
 
         # creating dummy inputs to get the shapes of hidden states and attention of teacher and student model
