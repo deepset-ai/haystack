@@ -630,7 +630,7 @@ answer = prediction["answers"][0].answer  # "10 june 1996"
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
+ | __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256)
 ```
 
 Load a TableQA model from Transformers.
@@ -638,18 +638,30 @@ Available models include:
 
 - ``'google/tapas-base-finetuned-wtq`'``
 - ``'google/tapas-base-finetuned-wikisql-supervised``'
+- ``'deepset/tapas-large-nq-hn-reader'``
+- ``'deepset/tapas-large-nq-reader'``
 
 See https://huggingface.co/models?pipeline_tag=table-question-answering
 for full list of available TableQA models.
+
+The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
+over multiple cells. The returned answers are sorted first by a general table score and then by answer span
+scores.
+All the other models can handle aggregation questions, but don't provide reasonable confidence scores.
 
 **Arguments**:
 
 - `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
 See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
-- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
+                      or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `use_gpu`: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
 - `top_k`: The maximum number of answers to return
+- `top_k_per_candidate`: How many answers to extract for each candidate table that is coming from
+                            the retriever.
+- `return_no_answer`: Whether to include no_answer predictions in the results.
+                         (Only applicable with nq-reader models.)
 - `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
                     query + table exceed max_seq_len, the table will be truncated by removing rows until the
                     input size fits the model.
