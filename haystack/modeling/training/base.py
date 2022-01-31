@@ -842,7 +842,7 @@ class DistillationLoss(Module):
     """
     Calculates the distillation loss in a separate module to allow for data parallelization.
     """
-    def __init__(self, model, teacher_model, device):
+    def __init__(self, model: Union[DataParallel, Module], teacher_model: Module, device: str):
         super().__init__()
         self.model = model.module.to(device) if isinstance(model, DataParallel) else model.to(device)
         self.teacher_model = teacher_model.to(device)
