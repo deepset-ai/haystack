@@ -38,7 +38,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = 'overwrite',
         use_gpu: bool = True,
-        scoring_batch_size: int = 5000
+        scoring_batch_size: int = 500000
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -186,9 +186,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         documents = [self.indexes[index][id] for id in ids]
         return documents
 
-    def get_scores(self, query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]:
+    def get_scores_torch(self, query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]:
         """
-        Calculate similarity scores between query embedding and a list of documents.
+        Calculate similarity scores between query embedding and a list of documents using torch.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
         :param document_to_search: List of documents to compare `query_emb` against.
@@ -198,7 +198,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             query_emb = query_emb.unsqueeze(dim=0)
 
         doc_embeds = np.array([ doc.embedding for doc in document_to_search ])
-        doc_embeds = torch.tensor(doc_embeds, dtype=torch.float).to(self.main_device)
+        doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
             doc_embeds = doc_embeds.unsqueeze(dim=0)
         elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
@@ -216,7 +216,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         scores = []
         while curr_pos < len(doc_embeds):
             doc_embeds_slice = doc_embeds[curr_pos:curr_pos + self.scoring_batch_size]
-
+            doc_embeds_slice = doc_embeds_slice.to(self.main_device)
             with torch.no_grad():
                 slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()
                 slice_scores = slice_scores.squeeze(dim=1)
@@ -224,6 +224,39 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
             scores.extend(slice_scores)
             curr_pos += self.scoring_batch_size
+
+        return scores
+
+    def get_scores_numpy(self, query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]:
+        """
+        Calculate similarity scores between query embedding and a list of documents using numpy.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param document_to_search: List of documents to compare `query_emb` against.
+        """
+        if len(query_emb.shape) == 1:
+            query_emb = np.expand_dims(query_emb, 0)
+
+        doc_embeds = np.array([ doc.embedding for doc in document_to_search ])
+        if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
+            doc_embeds = doc_embeds.unsqueeze(dim=0)
+        elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
+            return []
+
+        if self.similarity == "cosine":
+            # cosine similarity is just a normed dot product
+            query_emb /= np.hypot(query_emb[:,0], query_emb[:,1])[:, None]
+            doc_embeds /= np.hypot(doc_embeds[:,0], doc_embeds[:,1])[:, None]
+
+        scores = np.dot(query_emb, doc_embeds.T)[0].tolist()
+
+        return scores
+
+    def get_scores(self, query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]:
+        if self.main_device.type == "cuda":
+            scores = self.get_scores_torch(query_emb, document_to_search)
+        else:
+            scores = self.get_scores_numpy(query_emb, document_to_search)
 
         return scores
 
@@ -267,6 +300,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                 meta=curr_meta,
                 embedding=doc.embedding
             )
+
             new_document.embedding = doc.embedding if return_embedding is True else None
             new_document.score = self.finalize_raw_score(score, self.similarity)
             candidate_docs.append(new_document)
