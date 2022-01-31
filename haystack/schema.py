@@ -775,10 +775,10 @@ class EvaluationResult:
                 simulated_top_k_retriever=simulated_top_k_retriever)
             worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
             wrong_examples = []
-            for query, metrics in worst_df.iterrows():
-                query_answers = answers[answers["query"] == query]
+            for query_id, metrics in worst_df.iterrows():
+                query_answers = answers[answers["query_id"] == query_id]
                 query_dict = {
-                    "query": query,
+                    "query": query_answers["query"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "answers": query_answers.drop(["node", "query", "type", 
                             "gold_answers", "gold_offsets_in_documents",
@@ -797,10 +797,10 @@ class EvaluationResult:
                 doc_relevance_col=doc_relevance_col)
             worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
             wrong_examples = []
-            for query, metrics in worst_df.iterrows():
-                query_documents = documents[documents["query"] == query]
+            for query_id, metrics in worst_df.iterrows():
+                query_documents = documents[documents["query_id"] == query_id]
                 query_dict = {
-                    "query": query,
+                    "query": query_documents["query"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "documents": query_documents.drop(["node", "query", "type", 
                             "gold_document_ids", "gold_document_contents"], axis=1) \
@@ -867,7 +867,10 @@ class EvaluationResult:
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
         - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
-        queries = answers["query"].unique()
+        # sort gold_document_ids and convert to tuple to make them hashable
+        answers["gold_document_ids"] = answers["gold_document_ids"].apply(lambda x: tuple(sorted(x)))
+        answers.insert(loc=0, column='query_id', value=answers.set_index(['query', 'gold_document_ids']).index.factorize()[0] + 1)
+        answers["gold_document_ids"] = answers["gold_document_ids"].apply(lambda x: list(x))
 
         #simulate top k reader
         if simulated_top_k_reader != -1:
@@ -878,18 +881,20 @@ class EvaluationResult:
             documents = self._get_documents_df()
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
-            for query in queries:
-                top_k_document_ids = top_k_documents[top_k_documents["query"] == query]["document_id"].unique()
-                query_answers = answers[answers["query"] == query]
+            for query_id in answers["query_id"]:
+                top_k_document_ids = top_k_documents[top_k_documents["query_id"] == query_id]["document_id"].unique()
+                query_answers = answers[answers["query_id"] == query_id]
                 simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
                 simulated_query_answers["rank"] = np.arange(1, len(simulated_query_answers)+1)
                 simulated_answers.append(simulated_query_answers)
             answers = pd.concat(simulated_answers)
 
         # build metrics df
-        metrics = []        
-        for query in queries:
-            query_df = answers[answers["query"] == query]
+        metrics = []
+
+
+        for query_id in answers["query_id"]:
+            query_df = answers[answers["query_id"]==query_id]
             metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
 
             query_metrics = {
@@ -898,7 +903,7 @@ class EvaluationResult:
             }
             metrics.append(query_metrics)
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=queries)
+        metrics_df = pd.DataFrame.from_records(metrics, index=answers["query_id"])
         return metrics_df
 
     def _get_documents_df(self):
@@ -949,6 +954,7 @@ class EvaluationResult:
         # sort gold_document_ids and convert to tuple to make them hashable
         documents["gold_document_ids"] = documents["gold_document_ids"].apply(lambda x: tuple(sorted(x)))
         documents.insert(loc=0, column='query_id', value=documents.set_index(['query', 'gold_document_ids']).index.factorize()[0] + 1)
+        documents["gold_document_ids"] = documents["gold_document_ids"].apply(lambda x: list(x))
         for query_id in documents["query_id"]:
             query_df = documents[documents["query_id"]==query_id]
             gold_ids = list(query_df["gold_document_ids"].iloc[0])
