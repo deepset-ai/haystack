@@ -11,7 +11,7 @@ import torch
 from tqdm import tqdm
 from pathlib import Path
 
-from torch.nn import MSELoss, Linear
+from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel
 import torch.nn.functional as F
 from torch.optim import Optimizer
 
@@ -829,13 +829,26 @@ class TinyBERTDistillationTrainer(Trainer):
         from_step=from_step, global_step=global_step,
         evaluator_test=evaluator_test, disable_tqdm=disable_tqdm,
         max_grad_norm=max_grad_norm)
-        self.teacher_model = teacher_model
+        self.loss = DataParallel(DistillationLoss(model, teacher_model, device)).to(device)
+
+
+    
+    def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
+        return self.backward_propagate(torch.sum(self.loss(batch)), step)
+
+class DistillationLoss(Module):
+    """
+    Calculates the distillation loss in a separate module"""
+    def __init__(self, model, teacher_model, device):
+        super().__init__()
+        self.model = model.module.to(device)
+        self.teacher_model = teacher_model.to(device)
 
         # creating dummy inputs to get the shapes of hidden states and attention of teacher and student model
         dummy_inputs = teacher_model.language_model.model.dummy_inputs
         dummy_inputs["input_ids"] = dummy_inputs["input_ids"].to(device)
-        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)
-        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)
+        dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"]).to(device)
+        dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"]).to(device)
 
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(**dummy_inputs, output_attentions=True, output_hidden_states=True)
@@ -850,7 +863,7 @@ class TinyBERTDistillationTrainer(Trainer):
         student_dims = [hidden_state.shape[-1] for hidden_state in hidden_states]
 
         # creating linear mappings in case the teacher and student model have different hidden state dimensions
-        self.dim_mappings: List[Optional[Linear]] = []
+        self.dim_mappings: List[Optional[Linear]] = ModuleList([])
 
         for teacher_dim, student_dim in zip(teacher_dims, student_dims):
             if teacher_dim != student_dim:
@@ -858,14 +871,12 @@ class TinyBERTDistillationTrainer(Trainer):
             else:
                 self.dim_mappings.append(None)
 
-    
-    def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
+    def forward(self, batch):
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(**batch, output_attentions=True, output_hidden_states=True)
 
         _, hidden_states, attentions = self.model.forward(**batch, output_attentions=True, output_hidden_states=True)
-
-        loss = torch.tensor(0., device=self.device)
+        loss = torch.tensor(0., device=batch["input_ids"].device)
 
         # calculating attention loss
         for student_attention, teacher_attention, dim_mapping in zip(attentions,
@@ -887,5 +898,5 @@ class TinyBERTDistillationTrainer(Trainer):
                 student_hidden_state = dim_mapping(student_hidden_state)
                 
             loss += F.mse_loss(student_hidden_state, teacher_hidden_state)
-
-        return self.backward_propagate(loss, step)
+        
+        return torch.unsqueeze(loss, -1)
