@@ -757,7 +757,7 @@ class TinyBERTDistillationTrainer(Trainer):
         data_silo: DistillationDataSilo,
         epochs: int,
         n_gpu: int,
-        device: str,
+        device: torch.device,
         lr_schedule: Optional["_LRScheduler"]=None,
         evaluate_every: int = 100,
         eval_report: bool = True,
@@ -829,12 +829,12 @@ class TinyBERTDistillationTrainer(Trainer):
         from_step=from_step, global_step=global_step,
         evaluator_test=evaluator_test, disable_tqdm=disable_tqdm,
         max_grad_norm=max_grad_norm)
+
         self.loss = DataParallel(DistillationLoss(model, teacher_model, device))
-        if torch.cuda.device_count() > 1:
+        if torch.cuda.device_count() > 1 and device.type == "cuda":
             self.loss = DataParallel(self.loss).to(device)
 
 
-    
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         return self.backward_propagate(torch.sum(self.loss(batch)), step)
 
@@ -842,7 +842,7 @@ class DistillationLoss(Module):
     """
     Calculates the distillation loss in a separate module to allow for data parallelization.
     """
-    def __init__(self, model: Union[DataParallel, Module], teacher_model: Module, device: str):
+    def __init__(self, model: Union[DataParallel, AdaptiveModel], teacher_model: Module, device: torch.device):
         super().__init__()
         self.model = model.module.to(device) if isinstance(model, DataParallel) else model.to(device)
         self.teacher_model = teacher_model.to(device)
