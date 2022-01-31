@@ -199,6 +199,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         doc_embeds = np.array([ doc.embedding for doc in document_to_search ])
         doc_embeds = torch.tensor(doc_embeds, dtype=torch.float).to(self.main_device)
+        if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
+            doc_embeds = doc_embeds.unsqueeze(dim=0)
+        elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
+            return []
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
