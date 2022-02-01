@@ -6,8 +6,6 @@ RUN apt-get update && apt-get install -y curl git pkg-config cmake
 
 # copy code
 COPY setup.py /home/user/
-COPY README.md /home/user/
-COPY ../VERSION.txt /home/user/
 COPY utils.py /home/user/
 COPY webapp.py /home/user/
 COPY eval_labels_example.csv /home/user/

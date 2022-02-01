@@ -3,21 +3,8 @@ import logging
 from pathlib import Path
 
 
-VERSION = None
-try:
-    # In the normal repo layout, it's in the root folder
-    VERSION = open(Path(__file__).parent.parent/'VERSION.txt', "r").read()
-except Exception:
-    try:
-        # In Docker, they're siblings
-        VERSION = open(Path(__file__).parent/'VERSION.txt', "r").read()
-    except Exception as e:
-        logging.exception("No VERSION.txt found!", e)
-
-
 setup(
     name="farm-haystack-ui",
-    version=VERSION,
     description='Demo UI for Haystack (https://github.com/deepset-ai/haystack)',
     author='deepset.ai',
     author_email='malte.pietsch@deepset.ai',
