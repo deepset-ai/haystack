@@ -32,7 +32,7 @@ setup(
     packages=find_packages(),
     python_requires='>=3.7, <4',
     install_requires=[
-        "farm-haystack>=1.1.0, <2",
+        f"farm-haystack @ file://localhost/{Path(__file__).parent.parent}#egg=farm-haystack",
         "fastapi<1",
         "uvicorn<1",
         "gunicorn<21",
