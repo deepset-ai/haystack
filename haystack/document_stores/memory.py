@@ -245,8 +245,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         if self.similarity == "cosine":
             # cosine similarity is just a normed dot product
-            query_emb /= np.hypot(query_emb[:,0], query_emb[:,1])[:, None]
-            doc_embeds /= np.hypot(doc_embeds[:,0], doc_embeds[:,1])[:, None]
+            query_emb_norm = np.apply_along_axis(np.linalg.norm, 1, query_emb)
+            query_emb_norm = np.expand_dims(query_emb_norm, 1)
+            query_emb = np.divide(query_emb, query_emb_norm)
+
+            doc_embeds_norms = np.apply_along_axis(np.linalg.norm, 1, doc_embeds)
+            doc_embeds_norms = np.expand_dims(doc_embeds_norms, 1)
+            doc_embeds = np.divide(doc_embeds, doc_embeds_norms)
 
         scores = np.dot(query_emb, doc_embeds.T)[0].tolist()
 
