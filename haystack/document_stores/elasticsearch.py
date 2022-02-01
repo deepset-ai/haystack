@@ -5,17 +5,22 @@ import logging
 import time
 from copy import deepcopy
 from string import Template
+from collections import defaultdict
+
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
-import pandas as pd
 
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
+
+
+def nested_defaultdict():
+    return defaultdict(nested_defaultdict)
 
 
 logger = logging.getLogger(__name__)
@@ -374,8 +379,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self,
         key: str,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
-        index: Optional[str] = None, 
+        filters: Optional[Dict[str, Any]] = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None
     ) -> List[dict]:
         """
@@ -398,12 +403,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 }
             }
         if filters:
-            filter_clause = []
-            for key, values in filters.items():
-                filter_clause.append({"terms": {key: values}})
             if not body.get("query"):
                 body["query"] = {"bool": {}}
-            body["query"]["bool"].update({"filter": filter_clause})
+            body["query"]["bool"].update({"filter": self.convert_haystack_filter_to_es_query(filters)})
         result = self.client.search(body=body, index=index, headers=headers)
         buckets = result["aggregations"]["metadata_agg"]["buckets"]
         for bucket in buckets:
@@ -560,8 +562,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         body = {"doc": meta}
         self.client.update(index=index, id=id, body=body, refresh=self.refresh_type, headers=headers)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None,
-                           only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int:
+    def get_document_count(self, filters: Optional[Dict[str, Any]] = None, index: Optional[str] = None,
+                           only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None
+                           ) -> int:
         """
         Return the number of documents in the document store.
         """
@@ -572,18 +575,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
 
         if filters:
-            filter_clause = []
-            for key, values in filters.items():
-                if type(values) != list:
-                    raise ValueError(
-                        f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
-                        'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
-                filter_clause.append(
-                    {
-                        "terms": {key: values}
-                    }
-                )
-            body["query"]["bool"]["filter"] = filter_clause
+            body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
 
         result = self.client.count(index=index, body=body, headers=headers)
         count = result["count"]
@@ -596,7 +588,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         index = index or self.label_index
         return self.get_document_count(index=index, headers=headers)
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None,
+                            headers: Optional[Dict[str, str]] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
@@ -605,18 +598,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         body: dict = {"query": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}
         if filters:
-            filter_clause = []
-            for key, values in filters.items():
-                if type(values) != list:
-                    raise ValueError(
-                        f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
-                        'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
-                filter_clause.append(
-                    {
-                        "terms": {key: values}
-                    }
-                )
-            body["query"]["bool"]["filter"] = filter_clause
+            body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
 
         result = self.client.count(index=index, body=body, headers=headers)
         count = result["count"]
@@ -625,7 +607,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None
@@ -651,7 +633,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None
@@ -685,7 +667,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def get_all_labels(
         self, 
         index: Optional[str] = None, 
-        filters: Optional[Dict[str, List[str]]] = None, 
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000
     ) -> List[Label]:
@@ -693,14 +675,15 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         Return all labels in the document store
         """
         index = index or self.label_index
-        result = list(self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size, headers=headers))
+        result = list(self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size,
+                                                       headers=headers))
         labels = [Label.from_dict({**hit["_source"], "id": hit["_id"]}) for hit in result]
         return labels
 
     def _get_all_documents_in_index(
         self,
         index: str,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None
@@ -711,14 +694,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         body: dict = {"query": {"bool": {}}}
 
         if filters:
-            filter_clause = []
-            for key, values in filters.items():
-                filter_clause.append(
-                    {
-                        "terms": {key: values}
-                    }
-                )
-            body["query"]["bool"]["filter"] = filter_clause
+            body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
 
         if only_documents_without_embedding:
             body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
@@ -729,7 +705,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -756,14 +732,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         {"bool": {"must":
                                       {"match_all": {}}}}}  # type: Dict[str, Any]
             if filters:
-                filter_clause = []
-                for key, values in filters.items():
-                    filter_clause.append(
-                        {
-                            "terms": {key: values}
-                        }
-                    )
-                body["query"]["bool"]["filter"] = filter_clause
+                body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
 
         # Retrieval via custom query
         elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
@@ -790,23 +759,14 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "size": str(top_k),
                 "query": {
                     "bool": {
-                        "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
+                        "should": [{"multi_match": {"query": query, "type": "most_fields",
+                                                    "fields": self.search_fields}}]
                     }
                 },
             }
 
             if filters:
-                filter_clause = []
-                for key, values in filters.items():
-                    if type(values) != list:
-                        raise ValueError(f'Wrong filter format: "{key}": {values}. Provide a list of values for each key. '
-                                         'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
-                    filter_clause.append(
-                        {
-                            "terms": {key: values}
-                        }
-                    )
-                body["query"]["bool"]["filter"] = filter_clause
+                body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
 
         if self.excluded_meta_data:
             body["_source"] = {"excludes": self.excluded_meta_data}
@@ -819,7 +779,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     def query_by_embedding(self,
                            query_emb: np.ndarray,
-                           filters: Optional[Dict[str, List[str]]] = None,
+                           filters: Optional[Dict[str, Any]] = None,
                            top_k: int = 10,
                            index: Optional[str] = None,
                            return_embedding: Optional[bool] = None,
@@ -852,17 +812,9 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "query": self._get_vector_similarity_query(query_emb, top_k)
             }
             if filters:
-                filter_clause = []
-                for key, values in filters.items():
-                    if type(values) != list:
-                        raise ValueError(f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
-                                         'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
-                    filter_clause.append(
-                        {
-                            "terms": {key: values}
-                        }
-                    )
-                body["query"]["script_score"]["query"] = {"bool": {"filter": filter_clause}}
+                body["query"]["script_score"]["query"] = {
+                    "bool": {"filter": self.convert_haystack_filter_to_es_query(filters)}
+                }
 
             excluded_meta_data: Optional[list] = None
 
@@ -1012,7 +964,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self,
         retriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None
@@ -1083,7 +1035,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None,
+                             headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -1101,7 +1054,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters, headers=headers)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None,
+                         filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -1120,14 +1074,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         index = index or self.index
         query: Dict[str, Any] = {"query": {}}
         if filters:
-            filter_clause = []
-            for key, values in filters.items():
-                filter_clause.append(
-                        {
-                            "terms": {key: values}
-                        }
-                )
-                query["query"]["bool"] = {"filter": filter_clause}
+            query["query"]["bool"] = {"filter": self.convert_haystack_filter_to_es_query(filters)}
 
             if ids:
                 query["query"]["bool"]["must"] = {"ids": {"values": ids}}
@@ -1141,7 +1088,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if self.refresh_type == "wait_for":
             time.sleep(2)
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None,
+                      filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
@@ -1156,6 +1104,73 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         index = index or self.label_index
         self.delete_documents(index=index, ids=ids, filters=filters, headers=headers)
+
+    def convert_haystack_filter_to_es_query(self, haystack_filter: Dict[str, Any]) -> Dict[str, Any]:
+        # If no logical operation is provided, we use "$and" as the default one
+        if len(haystack_filter.keys()) > 1 or list(haystack_filter.keys())[0] not in ["$and", "$or", "$not"]:
+            haystack_filter = {"$and": haystack_filter}
+
+        es_filter_term = self._convert_filter_recursively(haystack_filter)
+        return es_filter_term
+
+    def _convert_filter_recursively(self, haystack_filter: Dict[str, Any],
+                                    es_filter_term: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        if es_filter_term is None:
+            es_filter_term = nested_defaultdict()
+
+        for key, value in haystack_filter.items():
+            if key == "$and":
+                self._convert_filter_recursively(value, es_filter_term["must"])
+            elif key == "$or":
+                self._convert_filter_recursively(value, es_filter_term["should"])
+            elif key == "$not":
+                self._convert_filter_recursively(value, es_filter_term["must_not"])
+
+            # Key needs to be a metadata field name
+            else:
+                if key in ["$eq", "$in", "$gt", "$gte", "$lt", "$lte"]:
+                    raise KeyError(f"Unexpected comparison operator {key} in filter_term {haystack_filter}. "
+                                   f"A metadata field name is expected instead.")
+                else:
+                    # If no comparison operator is given, we use "$in" as default operation if the comparison value
+                    # is a list and "$eq" in every other case.
+                    if isinstance(haystack_filter[key], list):
+                        es_filter_term = self._convert_comp_operation(key, "$in", haystack_filter[key], es_filter_term)
+                    elif not isinstance(haystack_filter[key], dict):
+                        es_filter_term = self._convert_comp_operation(key, "$eq", haystack_filter[key], es_filter_term)
+                    else:
+                        # Iterate over all filters that shall be applied to current metadata field
+                        for comp_op, comp_value in haystack_filter[key].items():
+                            es_filter_term = self._convert_comp_operation(key, comp_op, comp_value, es_filter_term)
+
+        return es_filter_term
+
+    def _convert_comp_operation(self, field_name: str, comp_op: str, comp_value: Union[str, float, int, List],
+                                es_filter_term: Dict[str, Any]) -> Dict[str, Any]:
+        # "equal" operation corresponds to ES "term" query
+        if comp_op == "$eq":
+            es_filter_term["term"][field_name] = comp_value
+
+        # "in" operation corresponds to ES "terms" query
+        elif comp_op == "$in":
+            es_filter_term["terms"][field_name] = comp_value
+
+        # "greater than (or equal)" / "less than (or equal)" correspond to ES range queries
+        elif comp_op == "$gt":
+            es_filter_term["range"][field_name]["gt"] = comp_value
+        elif comp_op == "$gte":
+            es_filter_term["range"][field_name]["gte"] = comp_value
+        elif comp_op == "$lt":
+            es_filter_term["range"][field_name]["lt"] = comp_value
+        elif comp_op == "$lte":
+            es_filter_term["range"][field_name]["lte"] = comp_value
+
+        # Unsupported comparison operation
+        else:
+            raise KeyError(f"Unsupported comparison operation '{comp_op}'. "
+                           f"Supported operations are: ['$eq', '$in', '$gt', '$gte', '$lt', '$lte']")
+
+        return es_filter_term
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
@@ -1187,7 +1202,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
     def query_by_embedding(self,
                         query_emb: np.ndarray,
-                        filters: Optional[Dict[str, List[str]]] = None,
+                        filters: Optional[Dict[str, Any]] = None,
                         top_k: int = 10,
                         index: Optional[str] = None,
                         return_embedding: Optional[bool] = None,
@@ -1226,18 +1241,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 }
             }
             if filters:
-                filter_clause = []
-                for key, values in filters.items():
-                    if type(values) != list:
-                        raise ValueError(
-                            f'Wrong filter format for key "{key}": Please provide a list of allowed values for each key. '
-                            'Example: {"name": ["some", "more"], "category": ["only_one"]} ')
-                    filter_clause.append(
-                        {
-                            "terms": {key: values}
-                        }
-                    )
-                body["query"]["bool"]["filter"] = filter_clause         # type: ignore
+                body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
 
             excluded_meta_data: Optional[list] = None
 
