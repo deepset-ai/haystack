@@ -316,9 +316,16 @@ class Seq2SeqGenerator(BaseGenerator):
         |
         |     # Answer
         |
-        |     {'answers': [" The Dothraki language is a constructed fictional language. It's important because George R.R. Martin wrote it."],
-        |      'query': 'Why is Dothraki language important?'}
-        |
+        |     {'query': 'who got the first nobel prize in physics',
+        |      'answers':
+        |          [{'query': 'who got the first nobel prize in physics',
+        |            'answer': ' albert einstein',
+        |            'meta': { 'doc_ids': [...],
+        |                      'doc_scores': [80.42758 ...],
+        |                      'doc_probabilities': [40.71379089355469, ...
+        |                      'content': ['Albert Einstein was a ...]
+        |                      'titles': ['"Albert Einstein"', ...]
+        |      }}]}
         ```
     """
 
@@ -437,7 +444,7 @@ class Seq2SeqGenerator(BaseGenerator):
         generated_answers = self.tokenizer.batch_decode(generated_answers_encoded, skip_special_tokens=True)
         answers = self._create_answers(generated_answers, documents)
         result = {"query": query, "answers": answers}
-        
+
         return result
 
 
