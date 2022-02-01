@@ -830,7 +830,7 @@ class TinyBERTDistillationTrainer(Trainer):
         evaluator_test=evaluator_test, disable_tqdm=disable_tqdm,
         max_grad_norm=max_grad_norm)
 
-        self.loss = DataParallel(DistillationLoss(model, teacher_model, device))
+        self.loss = DistillationLoss(model, teacher_model, device)
         if torch.cuda.device_count() > 1 and device.type == "cuda":
             self.loss = DataParallel(self.loss).to(device)
 
