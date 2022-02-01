@@ -60,7 +60,13 @@ def test_init_elastic_doc_store_with_index_recreation():
 
     document_store = ElasticsearchDocumentStore(index=index_name, label_index=label_index_name)
     documents = [Document(content="Doc1")]
-    labels = [Label('query', documents[0])]
+    labels = [Label(
+        query='query',
+        document=documents[0],
+        is_correct_document=True,
+        is_correct_answer=False,
+        origin='user-feedback'
+    )]
     document_store.write_documents(documents, index=index_name)
     document_store.write_labels(labels, index=label_index_name)
 
