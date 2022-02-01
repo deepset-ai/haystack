@@ -389,7 +389,39 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         :param key: the meta key name to get the values for.
         :param query: narrow down the scope to documents matching the query string.
-        :param filters: narrow down the scope to documents that match the given filters.
+        :param filters: Narrow down the scope to documents that match the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param index: Elasticsearch index where the meta values should be searched. If not supplied,
                       self.index will be used.
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -618,7 +650,38 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -646,7 +709,38 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -716,7 +810,40 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         that are most relevant to the query as defined by the BM25 algorithm.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -788,8 +915,40 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
@@ -980,7 +1139,38 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                            incremental updating of embeddings, wherein, only newly indexed documents
                                            get processed.
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -1042,6 +1232,38 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
@@ -1063,10 +1285,42 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                       DocumentStore's default index (self.index) will be used
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
-            If filters are provided along with a list of IDs, this method deletes the
-            intersection of the two query results (documents that match the filters and
-            have their ID in the list).
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
+
+                        If filters are provided along with a list of IDs, this method deletes the
+                        intersection of the two query results (documents that match the filters and
+                        have their ID in the list).
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
@@ -1097,7 +1351,38 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                       DocumentStore's default label index (self.label_index) will be used
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
-            Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
@@ -1106,6 +1391,44 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         self.delete_documents(index=index, ids=ids, filters=filters, headers=headers)
 
     def convert_haystack_filter_to_es_query(self, haystack_filter: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Converts a filter from the format used in haystack to the format used in Elasticsearch.
+
+        :param haystack_filter: Filter dictionary in haystack format.
+                                Filters are defined as nested dictionaries. The keys of the dictionaries can be a
+                                logical operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`,
+                                `"$gt"`, `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                                Logical operator keys take a dictionary of metadata field names and/or logical operators
+                                as value. Metadata field names take a dictionary of comparison operators as value.
+                                Comparison operator keys take a single value or (in case of `"$in"`) a list of values as
+                                value.
+                                If no logical operator is provided, `"$and"` is used as default operation. If no
+                                comparison operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list)
+                                is used as default operation.
+
+                                Example:
+                                ```python
+                                filters = {
+                                    "$and": {
+                                        "type": {"$eq": "article"},
+                                        "year": {"$gte": 2015, "$lte": 2021},
+                                        "$or": {
+                                            "genre": {"$in": ["economy", "politics"]},
+                                            "publisher": {"$eq": "nytimes"}
+                                        }
+                                    }
+                                }
+                                # or simpler using default operators
+                                filters = {
+                                    "type": "article",
+                                    "year": {"$gte": 2015, "$lte": 2021},
+                                    "$or": {
+                                        "genre": ["economy", "politics"],
+                                        "publisher": "nytimes"
+                                    }
+                                }
+                                ```
+        """
         # If no logical operation is provided, we use "$and" as the default one
         if len(haystack_filter.keys()) > 1 or list(haystack_filter.keys())[0] not in ["$and", "$or", "$not"]:
             haystack_filter = {"$and": haystack_filter}
@@ -1211,8 +1534,40 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
