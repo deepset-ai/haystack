@@ -83,7 +83,7 @@ def test_lfqa_pipeline(document_store, retriever, eli5_generator):
     output = pipeline.run(query=query, params={"top_k": 1})
     answers = output["answers"]
     assert len(answers) == 1
-    assert "Germany" in answers[0]
+    assert "Germany" in answers[0].answer
 
 
 @pytest.mark.slow
