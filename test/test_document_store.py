@@ -65,7 +65,8 @@ def test_init_elastic_doc_store_with_index_recreation():
         document=documents[0],
         is_correct_document=True,
         is_correct_answer=False,
-        origin='user-feedback'
+        origin='user-feedback',
+        answer=None
     )]
     document_store.write_documents(documents, index=index_name)
     document_store.write_labels(labels, index=label_index_name)
