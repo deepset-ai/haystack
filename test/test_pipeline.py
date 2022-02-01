@@ -1,37 +1,38 @@
 from pathlib import Path
 
 import os
+import json
 from unittest.mock import Mock
 import pytest
+import responses
+from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.pipeline import (
-    JoinDocuments,
+from haystack.nodes.retriever.sparse import ElasticsearchRetriever
+from haystack.pipelines import (
     Pipeline,
-    FAQPipeline,
     DocumentSearchPipeline,
     RootNode,
-    SklearnQueryClassifier,
-    TransformersQueryClassifier,
-    MostSimilarDocumentsPipeline,
 )
 from haystack.pipelines import ExtractiveQAPipeline
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, ElasticsearchRetriever, FARMReader
-from haystack.schema import Document
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
+
+from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
+
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_load_and_save_yaml(document_store, tmp_path):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
@@ -43,7 +44,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
     # test invalid pipeline name
     with pytest.raises(Exception):
         Pipeline.load_from_yaml(
-            path=Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
+            path=SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
         )
     # test config export
     pipeline.save_to_yaml(tmp_path / "test.yaml")
@@ -87,14 +88,14 @@ def test_load_and_save_yaml(document_store, tmp_path):
 def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
     # populating index
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
     # test correct load of query pipeline from yaml
     pipeline = ExtractiveQAPipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
@@ -106,7 +107,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
     # test invalid pipeline name
     with pytest.raises(Exception):
         ExtractiveQAPipeline.load_from_yaml(
-            path=Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
+            path=SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="invalid"
         )
     # test config export
     pipeline.save_to_yaml(tmp_path / "test.yaml")
@@ -152,7 +153,7 @@ def test_load_tfidfretriever_yaml(tmp_path):
         }
     ]
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
     )
     with pytest.raises(Exception) as exc_info:
         pipeline.run(
@@ -168,6 +169,65 @@ def test_load_tfidfretriever_yaml(tmp_path):
     )
     assert prediction["query"] == "What can be used to scale QA models to large document collections?"
     assert prediction["answers"][0].answer == "haystack"
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_load_from_deepset_cloud_query():
+    if MOCK_DC:
+        with open(SAMPLES_PATH/"dc"/"pipeline_config.json", 'r') as f:
+            pipeline_config_yaml_response = json.load(f)
+
+        responses.add(
+                method=responses.GET, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/{DC_TEST_INDEX}/json",
+                json=pipeline_config_yaml_response, 
+                status=200)
+
+        responses.add(
+                method=responses.POST, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
+                json=[{"id": "test_doc", "content": "man on hores"}],
+                status=200)
+    
+    query_pipeline = Pipeline.load_from_deepset_cloud(
+        pipeline_config_name=DC_TEST_INDEX, api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    retriever = query_pipeline.get_node("Retriever")
+    document_store = retriever.document_store
+    assert isinstance(retriever, ElasticsearchRetriever)
+    assert isinstance(document_store, DeepsetCloudDocumentStore)
+
+    prediction = query_pipeline.run(
+        query="man on horse",
+        params={}
+    )
+
+    assert prediction["query"] == "man on horse"
+    assert len(prediction["documents"]) == 1
+    assert prediction["documents"][0].id == "test_doc"
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_load_from_deepset_cloud_indexing():
+    if MOCK_DC:
+        with open(SAMPLES_PATH/"dc"/"pipeline_config.json", 'r') as f:
+            pipeline_config_yaml_response = json.load(f)
+
+        responses.add(
+                method=responses.GET, 
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/{DC_TEST_INDEX}/json",
+                json=pipeline_config_yaml_response, 
+                status=200)
+    
+    indexing_pipeline = Pipeline.load_from_deepset_cloud(
+        pipeline_config_name=DC_TEST_INDEX, api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, pipeline_name="indexing")
+    document_store = indexing_pipeline.get_node("DocumentStore")
+    assert isinstance(document_store, DeepsetCloudDocumentStore)
+
+    with pytest.raises(Exception, match=".*NotImplementedError.*DeepsetCloudDocumentStore currently does not support writing documents"):
+        indexing_pipeline.run(
+            file_paths=[SAMPLES_PATH/"docs"/"doc_1.txt"]
+        )
 
 
 # @pytest.mark.slow
@@ -358,10 +418,10 @@ def test_existing_faiss_document_store():
     clean_faiss_document_store()
 
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(
-        file_paths=Path(__file__).parent/"samples"/"pdf"/"sample_pdf_1.pdf"
+        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
     )
 
     new_document_store = pipeline.get_document_store()
@@ -369,7 +429,7 @@ def test_existing_faiss_document_store():
 
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
     )
 
     retriever = pipeline.get_node("DPRRetriever")

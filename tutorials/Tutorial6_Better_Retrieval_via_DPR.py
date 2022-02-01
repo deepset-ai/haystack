@@ -10,12 +10,16 @@ def tutorial6_better_retrieval_via_dpr():
     # The default flavour of FAISSDocumentStore is "Flat" but can also be set to "HNSW" for
     # faster search at the expense of some accuracy. Just set the faiss_index_factor_str argument in the constructor.
     # For more info on which suits your use case: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+
+    # Do not forget to install its dependencies with `pip install farm-haystack[faiss]`
     document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 
     # OPTION2: Milvus is an open source database library that is also optimized for vector similarity searches like FAISS.
     # Like FAISS it has both a "Flat" and "HNSW" mode but it outperforms FAISS when it comes to dynamic data management.
     # It does require a little more setup, however, as it is run through Docker and requires the setup of some config files.
     # See https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md
+
+    # Do not forget to install its dependencies with `pip install farm-haystack[milvus1]`
     # launch_milvus()
     # document_store = MilvusDocumentStore()
 

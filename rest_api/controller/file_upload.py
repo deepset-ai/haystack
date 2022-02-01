@@ -13,18 +13,21 @@ from haystack.pipelines.base import Pipeline
 from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
 from rest_api.controller.utils import as_form
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 try:
-    _, pipeline_config, definitions = Pipeline._read_yaml(
-        path=Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME, overwrite_with_env_variables=True
+    pipeline_config = Pipeline._read_pipeline_config_from_yaml(Path(PIPELINE_YAML_PATH))
+    pipeline_definition = Pipeline._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=INDEXING_PIPELINE_NAME)
+    definitions = Pipeline._get_component_definitions(
+        pipeline_config=pipeline_config, overwrite_with_env_variables=True
     )
     # Since each instance of FAISSDocumentStore creates an in-memory FAISS index, the Indexing & Query Pipelines would
     # end up with different indices. The same applies for InMemoryDocumentStore. The check below prevents creation of 
     # Indexing Pipelines with FAISSDocumentStore or InMemoryDocumentStore.   
     is_faiss_or_inmemory_present = False
-    for node in pipeline_config["nodes"]:
+    for node in pipeline_definition["nodes"]:
         if definitions[node["name"]]["type"] == "FAISSDocumentStore" or definitions[node["name"]]["type"] == "InMemoryDocumentStore":
             is_faiss_or_inmemory_present = True
             break
@@ -69,6 +72,10 @@ def upload_file(
     fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),
     preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form)
 ):
+    """
+    You can use this endpoint to upload a file for indexing 
+    (see [http://localhost:3000/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store]).
+    """
     if not INDEXING_PIPELINE:
         raise HTTPException(status_code=501, detail="Indexing Pipeline is not configured.")
 

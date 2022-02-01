@@ -3,6 +3,13 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+try:
+    from bs4 import BeautifulSoup
+    from markdown import markdown
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "preprocessing", ie)
+
 from haystack.nodes.file_converter import BaseConverter
 
 
@@ -43,18 +50,6 @@ class MarkdownConverter(BaseConverter):
 
         :param markdown_string: String in markdown format
         """
-        try:
-            from bs4 import BeautifulSoup
-        except ImportError:
-            raise ImportError("Can't find package `beautifulsoup4` \n"
-                              "You can install it via `pip install beautifulsoup4`")
-
-        try:
-            from markdown import markdown
-        except ImportError:
-            raise ImportError("Can't find package `markdown` \n"
-                              "You can install it via `pip install markdown`")
-
         # md -> html -> text since BeautifulSoup can extract text cleanly
         html = markdown(markdown_string)
 

@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
-from conftest import deepset_cloud_fixture, get_document_store, MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX
+from conftest import deepset_cloud_fixture, get_document_store, MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH
 from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.errors import DuplicateDocumentError
@@ -1087,7 +1087,7 @@ def test_DeepsetCloudDocumentStore_invalid_token():
             body="Internal Server Error", 
             status=500)
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 500 - Internal Server Error"):
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 500 - Internal Server Error"):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
 
 
@@ -1101,7 +1101,7 @@ def test_DeepsetCloudDocumentStore_invalid_api_endpoint():
             body="Not Found", 
             status=404)
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 404 - Not Found"):
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 404 - Not Found"):
         DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
@@ -1115,14 +1115,14 @@ def test_DeepsetCloudDocumentStore_invalid_index():
             body="Not Found", 
             status=404)  
 
-    with pytest.raises(Exception, match="Could not connect to Deepset Cloud: HTTP 404 - Not Found"):
+    with pytest.raises(Exception, match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index failed: HTTP 404 - Not Found"):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
 
 
 @responses.activate
 def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
     if MOCK_DC:
-        with open('samples/dc/documents-stream.response', 'r') as f:
+        with open(SAMPLES_PATH/"dc"/"documents-stream.response", 'r') as f:
             documents_stream_response = f.read()
             docs = [json.loads(l) for l in documents_stream_response.splitlines()]
             filtered_docs = [doc for doc in docs if doc["meta"]["file_id"] == docs[0]["meta"]["file_id"]]
@@ -1149,6 +1149,8 @@ def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
                     url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents/{doc['id']}",
                     json=doc, 
                     status=200)
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
     
     docs = deepset_cloud_document_store.get_all_documents()
     assert len(docs) > 1
@@ -1176,7 +1178,7 @@ def test_DeepsetCloudDocumentStore_documents(deepset_cloud_document_store):
 @responses.activate
 def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
     if MOCK_DC:
-        with open('samples/dc/query_winterfell.response', 'r') as f:
+        with open(SAMPLES_PATH/"dc"/"query_winterfell.response", 'r') as f:
             query_winterfell_response = f.read()
             query_winterfell_docs = json.loads(query_winterfell_response)
             query_winterfell_filtered_docs = [doc for doc in query_winterfell_docs if doc["meta"]["file_id"] == query_winterfell_docs[0]["meta"]["file_id"]]
@@ -1200,6 +1202,8 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
             status=200,
             body=query_winterfell_filtered_response,
         )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
 
     docs = deepset_cloud_document_store.query("winterfell", top_k=50)
     assert docs is not None
@@ -1225,6 +1229,34 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
             json=[], 
             status=200
         )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
 
     emb_docs = deepset_cloud_document_store.query_by_embedding(query_emb)
     assert len(emb_docs) == 0
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_search_field_mapping():
+
+    client = Elasticsearch()
+    client.indices.delete(index='haystack_search_field_mapping', ignore=[404])
+
+    index_data = [
+            {"title": "Green tea components",
+             "meta": {"content": "The green tea plant contains a range of healthy compounds that make it into the final drink","sub_content":"Drink tip"},"id": "1"},
+            {"title": "Green tea catechin",
+             "meta": {"content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).","sub_content":"Ingredients tip"}, "id": "2"},
+            {"title": "Minerals in Green tea",
+             "meta": {"content": "Green tea also has small amounts of minerals that can benefit your health.","sub_content":"Minerals tip"}, "id": "3"},
+            {"title": "Green tea Benefits",
+             "meta": {"content": "Green tea does more than just keep you alert, it may also help boost brain function.","sub_content":"Health tip"},"id": "4"}
+        ]
+
+    document_store = ElasticsearchDocumentStore(index="haystack_search_field_mapping",search_fields=["content", "sub_content"],content_field= "title")
+    document_store.write_documents(index_data)
+
+    indexed_settings = client.indices.get_mapping(index="haystack_search_field_mapping")
+
+    assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["content"]["type"] == 'text'
+    assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["sub_content"]["type"] == 'text'

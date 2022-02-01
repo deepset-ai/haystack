@@ -12,6 +12,7 @@ from haystack.nodes import (
     ElasticsearchRetriever,
 )
 
+from conftest import SAMPLES_PATH
 
 
 @pytest.mark.elasticsearch
@@ -150,7 +151,7 @@ def test_global_debug_attributes_override_node_ones(document_store_with_docs, tm
 
 def test_invalid_run_args():
     pipeline = Pipeline.load_from_yaml(
-        Path(__file__).parent/"samples"/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
     )
     with pytest.raises(Exception) as exc:
         pipeline.run(params={"ESRetriever": {"top_k": 10}})
