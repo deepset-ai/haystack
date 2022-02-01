@@ -546,8 +546,8 @@ class MultiLabel:
         self.document_contents = [l.document.content for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
-        if key == "filters":
-            # filters dict is not hashable so we collect unique filters via looping through all labels
+        if any(isinstance(getattr(l, key), dict) for l in self.labels):
+            # dict is not hashable so we collect unique filters via looping through all labels
             unique_values = []
             for l in self.labels:
                 if l.filters not in unique_values:
@@ -881,7 +881,7 @@ class EvaluationResult:
             documents = self._get_documents_df()
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
-            for query_id in answers["query_id"]:
+            for query_id in answers["query_id"].unique():
                 top_k_document_ids = top_k_documents[top_k_documents["query_id"] == query_id]["document_id"].unique()
                 query_answers = answers[answers["query_id"] == query_id]
                 simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
@@ -893,7 +893,7 @@ class EvaluationResult:
         metrics = []
 
 
-        for query_id in answers["query_id"]:
+        for query_id in answers["query_id"].unique():
             query_df = answers[answers["query_id"]==query_id]
             metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
 
@@ -903,7 +903,7 @@ class EvaluationResult:
             }
             metrics.append(query_metrics)
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=answers["query_id"])
+        metrics_df = pd.DataFrame.from_records(metrics, index=answers["query_id"].unique())
         return metrics_df
 
     def _get_documents_df(self):
@@ -955,7 +955,7 @@ class EvaluationResult:
         documents["gold_document_ids"] = documents["gold_document_ids"].apply(lambda x: tuple(sorted(x)))
         documents.insert(loc=0, column='query_id', value=documents.set_index(['query', 'gold_document_ids']).index.factorize()[0] + 1)
         documents["gold_document_ids"] = documents["gold_document_ids"].apply(lambda x: list(x))
-        for query_id in documents["query_id"]:
+        for query_id in documents["query_id"].unique():
             query_df = documents[documents["query_id"]==query_id]
             gold_ids = list(query_df["gold_document_ids"].iloc[0])
             retrieved = len(query_df)
@@ -985,7 +985,7 @@ class EvaluationResult:
                 "ndcg": ndcg
             })
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=documents["query_id"])
+        metrics_df = pd.DataFrame.from_records(metrics, index=documents["query_id"].unique())
         return metrics_df
 
     def save(self, out_dir: Union[str, Path]):
