@@ -38,7 +38,8 @@ from transformers import (
     DistilBertModel, DistilBertConfig,
     ElectraModel, ElectraConfig,
     CamembertModel, CamembertConfig,
-    BigBirdModel, BigBirdConfig
+    BigBirdModel, BigBirdConfig,
+    DebertaV2Model, DebertaV2Config,
 )
 from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
@@ -1521,7 +1522,8 @@ class BigBird(LanguageModel):
 
 class DebertaV2(LanguageModel):
     """
-    
+    This is a wrapper around the DebertaV2 model from HuggingFace's transformers library.
+    It is also compatible with DebertaV3 as DebertaV3 only changes the pretraining procedure.
 
     NOTE:
     - DebertaV2 does not output the pooled_output. An additional pooler is initialized.
@@ -1554,24 +1556,23 @@ class DebertaV2(LanguageModel):
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
         if os.path.exists(haystack_lm_config):
             # Haystack style
-            config = ElectraConfig.from_pretrained(haystack_lm_config)
+            config = DebertaV2Config.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            debertav2.model = ElectraModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
+            debertav2.model = DebertaV2Model.from_pretrained(haystack_lm_model, config=config, **kwargs)
             debertav2.language = debertav2.model.config.language
         else:
             # Transformers Style
-            debertav2.model = ElectraModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            debertav2.model = DebertaV2Model.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
             debertav2.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         config = debertav2.model.config
 
-        # ELECTRA does not provide a pooled_output by default. Therefore, we need to initialize an extra pooler.
+        # DebertaV2 does not provide a pooled_output by default. Therefore, we need to initialize an extra pooler.
         # The pooler takes the first hidden representation & feeds it to a dense layer of (hidden_dim x hidden_dim).
         # We don't want a dropout in the end of the pooler, since we do that already in the adaptive model before we
         # feed everything to the prediction head.
-        # Note: ELECTRA uses gelu as activation (BERT uses tanh instead)
         config.summary_last_dropout = 0
         config.summary_type = 'first'
-        config.summary_activation = 'gelu'
+        config.summary_activation = 'tanh'
         config.summary_use_proj = False
         debertav2.pooler = SequenceSummary(config)
         debertav2.pooler.apply(debertav2.model._init_weights)
