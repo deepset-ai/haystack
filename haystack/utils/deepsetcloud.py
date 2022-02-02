@@ -35,13 +35,27 @@ class DeepsetCloudClient:
 
         self.api_endpoint = api_endpoint or os.getenv("DEEPSET_CLOUD_API_ENDPOINT", DEFAULT_API_ENDPOINT)
    
-    def get(self, url: str, headers: dict = None, query_params: dict = None, raise_on_error: bool =True):
+    def get(self, url: str, headers: dict = None, query_params: dict = None, raise_on_error: bool = True):
         response = requests.get(url=url, auth=BearerAuth(self.api_key), headers=headers, params=query_params)
         if raise_on_error and response.status_code > 299:
             raise Exception(f"GET {url} failed: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
         return response
 
-    def post(self, url: str, json: dict = {}, stream: bool = False, headers: dict = None, raise_on_error: bool =True):
+    def get_paginated(self, url: str, headers: dict = None, query_params: dict = {}, raise_on_error: bool = True, items_per_page: int = 100):
+        query_params["limit"] = items_per_page
+        page_number = 1
+        has_more = True
+        data = []
+        while has_more:
+            query_params["page_number"] = page_number
+            payload = self.get(url=url, headers=headers, query_params=query_params, raise_on_error=raise_on_error).json()
+            data += payload["data"]
+            has_more = payload["has_more"]
+            page_number += 1
+        
+        return data
+
+    def post(self, url: str, json: dict = {}, stream: bool = False, headers: dict = None, raise_on_error: bool = True):
         json = self._remove_null_values(json)
         response = requests.post(url=url, json=json, stream=stream, headers=headers, auth=BearerAuth(self.api_key))
         if raise_on_error and response.status_code > 299:
@@ -180,13 +194,22 @@ class PipelineClient:
         response = self.client.get(url=pipeline_config_url, headers=headers)
         return response.json()
 
+    def list_pipeline_configs(self, workspace: Optional[str] = None, headers: dict = None) -> List[dict]:
+        workspace_url = self._build_workspace_url(workspace)
+        pipelines_url = f"{workspace_url}/pipelines"
+        data = self.client.get_paginated(url=pipelines_url, headers=headers)
+        return data
+
     def _build_pipeline_url(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None):
-        if workspace is None:
-            workspace = self.workspace
         if pipeline_config_name is None:
             pipeline_config_name = self.pipeline_config_name
-        workspace_url = self.client.build_workspace_url(workspace)
+        workspace_url = self._build_workspace_url(workspace)
         return f"{workspace_url}/pipelines/{pipeline_config_name}"
+
+    def _build_workspace_url(self, workspace: Optional[str] = None):
+        if workspace is None:
+            workspace = self.workspace
+        return self.client.build_workspace_url(workspace)
 
 
 class DeepsetCloud:
@@ -198,7 +221,7 @@ class DeepsetCloud:
         cls, 
         api_key: Optional[str] = None, 
         api_endpoint: Optional[str] = None,
-        workspace: Optional[str] = None,
+        workspace: str = "default",
         index: Optional[str] = None,
     ) -> IndexClient:
         """
@@ -220,7 +243,7 @@ class DeepsetCloud:
         cls, 
         api_key: Optional[str] = None, 
         api_endpoint: Optional[str] = None,
-        workspace: Optional[str] = None,
+        workspace: str = "default",
         pipeline_config_name: Optional[str] = None,
     ) -> PipelineClient:
         """
