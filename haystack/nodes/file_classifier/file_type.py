@@ -10,8 +10,22 @@ class FileTypeClassifier(BaseComponent):
     """
     outgoing_edges = 10
 
-    def __init__(self):
-        self.set_config()
+    def __init__(self, supported_types: List[str] = ["txt", "pdf", "md", "docx", "html"]):
+        """
+        Node that sends out files on a different output edge depending on their extension.
+
+        :param supported_types: the file types that this node can distinguish.
+            Note that it's limited to a maximum of 10 outgoing edges, which 
+            correspond each to a file extension. Such extension are, by default
+            `txt`, `pdf`, `md`, `docx`, `html`. Lists containing more than 10
+            elements will not be allowed. Lists with duplicate elements will 
+            also be rejected.
+        """
+        if len(supported_types) > 5:
+            raise ValueError("supported_types can't have more than 5 values.")
+
+        self.set_config(supported_types=supported_types)
+        self.supported_types = supported_types
 
     def _get_extension(self, file_paths: list) -> str:
         """
@@ -30,32 +44,22 @@ class FileTypeClassifier(BaseComponent):
 
         return extension.lstrip(".")
 
-    def run(self, 
-            file_paths: Union[Path, List[Path]], 
-            supported_types: List[str] = ["txt", "pdf", "md", "docx", "html"]
-        ):  # type: ignore
+    def run(self, file_paths: Union[Path, List[Path]]):  # type: ignore
         """
         Sends out files on a different output edge depending on their extension.
 
         :param file_paths: paths to route on different edges.
-        :param supported_types: the file types that this node can distinguish.
-            Note that it's limited to a maximum of 10 outgoing edges, which 
-            correspond each to a file extension. Such extension are, by default
-            `txt`, `pdf`, `md`, `docx`, `html`. Lists containing more than 10
-            elements will not be allowed. Lists with duplicate elements will 
-            also be rejected.
         """
         if isinstance(file_paths, Path):
             file_paths = [file_paths]
 
-        if len(supported_types) > 5:
-            raise ValueError("supported_types can't have more than 5 values.")
-
-        extension = self._get_extension(file_paths)
         output = {"file_paths": file_paths}
-
+        extension = self._get_extension(file_paths)
         try:
-            index = supported_types.index(extension) + 1
-            return output, f"output_{index}"
+            index = self.supported_types.index(extension) + 1
         except ValueError:
-            raise Exception(f"Files with an extension '{extension}' are not supported.")
+            raise ValueError(f"Files of type '{extension}' are not supported. "
+                            f"The supported types are: {self.supported_types}. "
+                            "Consider using the 'supported_types' parameter to "
+                            "change the types accepted by this node.")
+        return output, f"output_{index}"
