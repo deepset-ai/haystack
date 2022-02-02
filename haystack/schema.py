@@ -509,6 +509,7 @@ class MultiLabel:
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
         self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
+        self.query_id = hash((self.query, json.dumps(self.filters, sort_keys=True).encode()))
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
@@ -632,7 +633,9 @@ class EvaluationResult:
         Additional answer or document specific evaluation infos like gold labels 
         and metrics depicting whether the row matches the gold labels are included, too.
         The DataFrames have the following schema:
+        - query_id: the id of the query, which is unique for the pair of query and filters
         - query: the query
+        - filters: the filters used with the query
         - gold_answers (answers only): the answers to be given
         - answer (answers only): the answer
         - context (answers only): the surrounding context of the answer within the document
@@ -867,10 +870,6 @@ class EvaluationResult:
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
         - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
-        # sort gold_document_ids and convert to tuple to make them hashable
-        answers["gold_document_ids"] = answers["gold_document_ids"].apply(lambda x: tuple(sorted(x)))
-        answers.insert(loc=0, column='query_id', value=answers.set_index(['query', 'gold_document_ids']).index.factorize()[0] + 1)
-        answers["gold_document_ids"] = answers["gold_document_ids"].apply(lambda x: list(x))
 
         #simulate top k reader
         if simulated_top_k_reader != -1:
@@ -879,6 +878,7 @@ class EvaluationResult:
         # simulate top k retriever
         if simulated_top_k_retriever != -1:
             documents = self._get_documents_df()
+
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
             for query_id in answers["query_id"].unique():
@@ -951,10 +951,6 @@ class EvaluationResult:
         
         metrics = []
 
-        # sort gold_document_ids and convert to tuple to make them hashable
-        documents["gold_document_ids"] = documents["gold_document_ids"].apply(lambda x: tuple(sorted(x)))
-        documents.insert(loc=0, column='query_id', value=documents.set_index(['query', 'gold_document_ids']).index.factorize()[0] + 1)
-        documents["gold_document_ids"] = documents["gold_document_ids"].apply(lambda x: list(x))
         for query_id in documents["query_id"].unique():
             query_df = documents[documents["query_id"]==query_id]
             gold_ids = list(query_df["gold_document_ids"].iloc[0])

@@ -434,7 +434,7 @@ class Pipeline(BasePipeline):
 
         # reorder columns for better qualitative evaluation
         for key, df in eval_result.node_results.items():
-            desired_col_order = ["query", # generic
+            desired_col_order = ["query_id", "query", "filters",# generic
                                 "gold_answers", "answer", "context", "exact_match", "f1", "sas", # answer-specific
                                 "gold_document_contents", "content", "gold_id_match", "answer_match", "gold_id_or_answer_match", # doc-specific
                                 "rank", "document_id", "gold_document_ids", # generic
@@ -452,7 +452,7 @@ class Pipeline(BasePipeline):
         return df.reindex(columns=reordered_columns)
 
     def _build_eval_dataframe(self, 
-        query: str, 
+        query: str,
         query_labels: MultiLabel, 
         node_name: str, 
         node_output: dict
@@ -513,7 +513,9 @@ class Pipeline(BasePipeline):
 
             # add general info
             df["node"] = node_name
+            df["query_id"] = query_labels.query_id
             df["query"] = query
+            df["filters"] = str(query_labels.filters)
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
@@ -551,7 +553,9 @@ class Pipeline(BasePipeline):
 
             # add general info
             df["node"] = node_name
+            df["query_id"] = query_labels.query_id
             df["query"] = query
+            df["filters"] = str(query_labels.filters)
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
