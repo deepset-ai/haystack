@@ -187,35 +187,6 @@ is therefore only an interim solution until the run function also accepts docume
               If None, the DocumentStore's default index (self.index) will be used.
 - `id_hash_keys`: List of the fields that the hashes of the ids are generated from.
 
-<a name="base.KeywordDocumentStore"></a>
-## KeywordDocumentStore
-
-```python
-class KeywordDocumentStore(BaseDocumentStore)
-```
-
-Base class for implementing Document Stores that support keyword searches.
-
-<a name="base.KeywordDocumentStore.query"></a>
-#### query
-
-```python
- | @abstractmethod
- | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
-```
-
-Scan through documents in DocumentStore and return a small number documents
-that are most relevant to the query as defined by keyword matching algorithms like BM25.
-
-**Arguments**:
-
-- `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-- `top_k`: How many documents to return per query.
-- `custom_query`: Custom query to be executed.
-- `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-
 <a name="base.get_batches_from_generator"></a>
 #### get\_batches\_from\_generator
 
@@ -232,14 +203,14 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 ## ElasticsearchDocumentStore
 
 ```python
-class ElasticsearchDocumentStore(KeywordDocumentStore)
+class ElasticsearchDocumentStore(BaseDocumentStore)
 ```
 
 <a name="elasticsearch.ElasticsearchDocumentStore.__init__"></a>
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym")
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym")
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -274,16 +245,7 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 - `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
 - `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
 - `verify_certs`: Whether to be strict about ca certificates
-- `recreate_index`: If set to True, an existing elasticsearch index will be deleted and a new one will be
-    created using the config you are using for initialization. Be aware that all data in the old index will be
-    lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
-    be recreated.
-- `create_index`: 
-    Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
-    ..deprecated:: 2.0
-        This param is deprecated. In the next major version we will always try to create an index if there is no
-        existing index (the current behaviour when create_index=True). If you are looking to recreate an
-        existing index by deleting it first if it already exist use param recreate_index.
+- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
 - `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                      If set to 'wait_for', continue only after changes are visible (slow, but safe).
                      If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
@@ -331,14 +293,13 @@ Fetch a document by specifying its text id string
  | get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
-to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+Fetch documents by specifying a list of text id strings
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_metadata_values_by_key"></a>
 #### get\_metadata\_values\_by\_key
 
 ```python
- | get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[dict]
+ | get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[dict]
 ```
 
 Get values associated with a metadata key. The output is in the format:
@@ -348,7 +309,39 @@ Get values associated with a metadata key. The output is in the format:
 
 - `key`: the meta key name to get the values for.
 - `query`: narrow down the scope to documents matching the query string.
-- `filters`: narrow down the scope to documents that match the given filters.
+- `filters`: Narrow down the scope to documents that match the given filters.
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `index`: Elasticsearch index where the meta values should be searched. If not supplied,
               self.index will be used.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -428,7 +421,7 @@ Update the metadata dictionary of a document by specifying its string id
 #### get\_document\_count
 
 ```python
- | get_document_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
+ | get_document_count(filters: Optional[Dict[str, Any]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the number of documents in the document store.
@@ -446,7 +439,7 @@ Return the number of labels in the document store
 #### get\_embedding\_count
 
 ```python
- | get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None) -> int
+ | get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -455,7 +448,7 @@ Return the count of embeddings in the document store.
 #### get\_all\_documents
 
 ```python
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Get documents from the document store.
@@ -465,7 +458,38 @@ Get documents from the document store.
 - `index`: Name of the index to get the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
-                Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -475,7 +499,7 @@ Get documents from the document store.
 #### get\_all\_documents\_generator
 
 ```python
- | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -487,7 +511,38 @@ a large number of documents without having to load all documents in memory.
 - `index`: Name of the index to get the documents from. If None, the
               DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
-                Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -497,7 +552,7 @@ a large number of documents without having to load all documents in memory.
 #### get\_all\_labels
 
 ```python
- | get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000) -> List[Label]
+ | get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000) -> List[Label]
 ```
 
 Return all labels in the document store
@@ -506,7 +561,7 @@ Return all labels in the document store
 #### query
 
 ```python
- | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+ | query(query: Optional[str], filters: Optional[Dict[str, Any]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -515,74 +570,41 @@ that are most relevant to the query as defined by the BM25 algorithm.
 **Arguments**:
 
 - `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                conditions.
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `top_k`: How many documents to return per query.
-- `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
-
-                     Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
-                     that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
-                     names must match with the filters dict supplied in self.retrieve().
-                     ::
-
-                         **An example custom_query:**
-                         ```python
-                        |    {
-                        |        "size": 10,
-                        |        "query": {
-                        |            "bool": {
-                        |                "should": [{"multi_match": {
-                        |                    "query": ${query},                 // mandatory query placeholder
-                        |                    "type": "most_fields",
-                        |                    "fields": ["content", "title"]}}],
-                        |                "filter": [                                 // optional custom filters
-                        |                    {"terms": {"year": ${years}}},
-                        |                    {"terms": {"quarter": ${quarters}}},
-                        |                    {"range": {"date": {"gte": ${date}}}}
-                        |                    ],
-                        |            }
-                        |        },
-                        |    }
-                         ```
-
-                        **For this custom_query, a sample retrieve() could be:**
-                        ```python
-                        |    self.retrieve(query="Why did the revenue increase?",
-                        |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
-                        ```
-
-                     Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
-                     See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
-                     You will find the highlighted output in the returned Document's meta field by key "highlighted".
-                     ::
-
-                         **Example custom_query with highlighting:**
-                         ```python
-                        |    {
-                        |        "size": 10,
-                        |        "query": {
-                        |            "bool": {
-                        |                "should": [{"multi_match": {
-                        |                    "query": ${query},                 // mandatory query placeholder
-                        |                    "type": "most_fields",
-                        |                    "fields": ["content", "title"]}}],
-                        |            }
-                        |        },
-                        |        "highlight": {             // enable highlighting
-                        |            "fields": {            // for fields content and title
-                        |                "content": {},
-                        |                "title": {}
-                        |            }
-                        |        },
-                        |    }
-                         ```
-
-                         **For this custom_query, highlighting info can be accessed by:**
-                        ```python
-                        |    docs = self.retrieve(query="Why did the revenue increase?")
-                        |    highlighted_content = docs[0].meta["highlighted"]["content"]
-                        |    highlighted_title = docs[0].meta["highlighted"]["title"]
-                        ```
-
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
         Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -591,7 +613,7 @@ that are most relevant to the query as defined by the BM25 algorithm.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -599,8 +621,40 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 **Arguments**:
 
 - `query_emb`: Embedding of the query (e.g. gathered from DPR)
-- `filters`: Optional filters to narrow down the search space.
-                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                conditions.
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
@@ -624,7 +678,7 @@ Return a summary of the documents in the document store
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None)
+ | update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -639,7 +693,38 @@ This can be useful if want to add or change the embeddings for your documents (e
                                    incremental updating of embeddings, wherein, only newly indexed documents
                                    get processed.
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
-                Example: {"name": ["some", "more"], "category": ["only_one"]}
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
         Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -652,7 +737,7 @@ None
 #### delete\_all\_documents
 
 ```python
- | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None)
+ | delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -661,6 +746,38 @@ Delete documents in an index. All documents are deleted if no filters are passed
 
 - `index`: Index name to delete the document from.
 - `filters`: Optional filters to narrow down the documents to be deleted.
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
         Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
@@ -672,7 +789,7 @@ None
 #### delete\_documents
 
 ```python
- | delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None)
+ | delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -683,10 +800,42 @@ Delete documents in an index. All documents are deleted if no filters are passed
               DocumentStore's default index (self.index) will be used
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
 - `filters`: Optional filters to narrow down the documents to be deleted.
-    Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
-    If filters are provided along with a list of IDs, this method deletes the
-    intersection of the two query results (documents that match the filters and
-    have their ID in the list).
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
+
+                If filters are provided along with a list of IDs, this method deletes the
+                intersection of the two query results (documents that match the filters and
+                have their ID in the list).
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
         Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
@@ -698,7 +847,7 @@ None
 #### delete\_labels
 
 ```python
- | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None)
+ | delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete labels in an index. All labels are deleted if no filters are passed.
@@ -709,7 +858,38 @@ Delete labels in an index. All labels are deleted if no filters are passed.
               DocumentStore's default label index (self.label_index) will be used
 - `ids`: Optional list of IDs to narrow down the labels to be deleted.
 - `filters`: Optional filters to narrow down the labels to be deleted.
-    Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
         Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
@@ -717,22 +897,51 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 
 None
 
-<a name="elasticsearch.ElasticsearchDocumentStore.delete_index"></a>
-#### delete\_index
+<a name="elasticsearch.ElasticsearchDocumentStore.convert_haystack_filter_to_es_query"></a>
+#### convert\_haystack\_filter\_to\_es\_query
 
 ```python
- | delete_index(index: str)
+ | convert_haystack_filter_to_es_query(haystack_filter: Dict[str, Any]) -> Dict[str, Any]
 ```
 
-Delete an existing elasticsearch index. The index including all data will be removed.
+Converts a filter from the format used in haystack to the format used in Elasticsearch.
 
 **Arguments**:
 
-- `index`: The name of the index to delete.
+- `haystack_filter`: Filter dictionary in haystack format.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a
+                        logical operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`,
+                        `"$gt"`, `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators
+                        as value. Metadata field names take a dictionary of comparison operators as value.
+                        Comparison operator keys take a single value or (in case of `"$in"`) a list of values as
+                        value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no
+                        comparison operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list)
+                        is used as default operation.
 
-**Returns**:
-
-None
+                        Example:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "year": {"$gte": 2015, "$lte": 2021},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        # or simpler using default operators
+                        filters = {
+                            "type": "article",
+                            "year": {"$gte": 2015, "$lte": 2021},
+                            "$or": {
+                                "genre": ["economy", "politics"],
+                                "publisher": "nytimes"
+                            }
+                        }
+                        ```
 
 <a name="elasticsearch.OpenSearchDocumentStore"></a>
 ## OpenSearchDocumentStore
@@ -750,7 +959,7 @@ the KNN plugin that can scale to a large number of documents.
 #### query\_by\_embedding
 
 ```python
- | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -758,8 +967,40 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 **Arguments**:
 
 - `query_emb`: Embedding of the query (e.g. gathered from DPR)
-- `filters`: Optional filters to narrow down the search space.
-                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                conditions.
+                Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                operation.
+
+                Example:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "year": {"$gte": 2015, "$lte": 2021},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "year": {"$gte": 2015, "$lte": 2021},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
@@ -2319,158 +2560,4 @@ Execute a SPARQL query on the given index in the GraphDB instance
 **Returns**:
 
 query result
-
-<a name="deepsetcloud"></a>
-# Module deepsetcloud
-
-<a name="deepsetcloud.DeepsetCloudDocumentStore"></a>
-## DeepsetCloudDocumentStore
-
-```python
-class DeepsetCloudDocumentStore(KeywordDocumentStore)
-```
-
-<a name="deepsetcloud.DeepsetCloudDocumentStore.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = 'overwrite', api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False)
-```
-
-A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
-Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
-
-DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
-See https://haystack.deepset.ai/components/document-store for more information.
-
-**Arguments**:
-
-- `api_key`: Secret value of the API key.
-                If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-- `workspace`: workspace in Deepset Cloud
-- `index`: index to access within the Deepset Cloud workspace
-- `duplicate_documents`: Handle duplicates document based on parameter options.
-                            Parameter options : ( 'skip','overwrite','fail')
-                            skip: Ignore the duplicates documents
-                            overwrite: Update any existing documents with the same ID when adding documents.
-                            fail: an error is raised if the document ID of the document being added already
-                            exists.
-- `api_endpoint`: The URL of the Deepset Cloud API.
-                     If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
-- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
-- `return_embedding`: To return document embedding.
-
-<a name="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
-#### get\_all\_documents
-
-```python
- | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
-```
-
-Get documents from the document store.
-
-**Arguments**:
-
-- `index`: Name of the index to get the documents from. If None, the
-              DocumentStore's default index (self.index) will be used.
-- `filters`: Optional filters to narrow down the documents to return.
-                Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `return_embedding`: Whether to return the document embeddings.
-- `batch_size`: Number of documents that are passed to bulk function at a time.
-- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-
-<a name="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents_generator"></a>
-#### get\_all\_documents\_generator
-
-```python
- | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
-```
-
-Get documents from the document store. Under-the-hood, documents are fetched in batches from the
-document store and yielded as individual documents. This method can be used to iteratively process
-a large number of documents without having to load all documents in memory.
-
-**Arguments**:
-
-- `index`: Name of the index to get the documents from. If None, the
-              DocumentStore's default index (self.index) will be used.
-- `filters`: Optional filters to narrow down the documents to return.
-                Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `return_embedding`: Whether to return the document embeddings.
-- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
-- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-
-<a name="deepsetcloud.DeepsetCloudDocumentStore.query_by_embedding"></a>
-#### query\_by\_embedding
-
-```python
- | query_by_embedding(query_emb: np.ndarray, filters: Optional[Optional[Dict[str, List[str]]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
-```
-
-Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
-
-**Arguments**:
-
-- `query_emb`: Embedding of the query (e.g. gathered from DPR)
-- `filters`: Optional filters to narrow down the search space.
-                Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `top_k`: How many documents to return
-- `index`: Index name for storing the docs and metadata
-- `return_embedding`: To return document embedding
-- `headers`: Custom HTTP headers to pass to requests
-
-**Returns**:
-
-
-
-<a name="deepsetcloud.DeepsetCloudDocumentStore.query"></a>
-#### query
-
-```python
- | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
-```
-
-Scan through documents in DocumentStore and return a small number documents
-that are most relevant to the query as defined by the BM25 algorithm.
-
-**Arguments**:
-
-- `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-- `top_k`: How many documents to return per query.
-- `custom_query`: Custom query to be executed.
-- `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `headers`: Custom HTTP headers to pass to requests
-
-<a name="deepsetcloud.DeepsetCloudDocumentStore.write_documents"></a>
-#### write\_documents
-
-```python
- | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
-```
-
-Indexes documents for later queries.
-
-**Arguments**:
-
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
-                  For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                  Optionally: Include meta data via {"text": "<the-actual-text>",
-                  "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-                  It can be used for filtering and is accessible in the responses of the Finder.
-- `index`: Optional name of index where the documents shall be written to.
-              If None, the DocumentStore's default index (self.index) will be used.
-- `batch_size`: Number of documents that are passed to bulk function at a time.
-- `duplicate_documents`: Handle duplicates document based on parameter options.
-                            Parameter options : ( 'skip','overwrite','fail')
-                            skip: Ignore the duplicates documents
-                            overwrite: Update any existing documents with the same ID when adding documents.
-                            fail: an error is raised if the document ID of the document being added already
-                            exists.
-- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-
-**Returns**:
-
-None
 
