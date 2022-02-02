@@ -141,6 +141,14 @@ def pytest_collection_modifyitems(config,items):
                 item.add_marker(skip_docstore)
 
 
+@pytest.fixture
+def tmpdir(tmpdir):
+    """
+    Makes pytest's tmpdir fixture fully compatible with pathlib
+    """
+    return Path(tmpdir)
+
+
 @pytest.fixture(scope="function", autouse=True)
 def gc_cleanup(request):
     """
