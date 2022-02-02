@@ -1,7 +1,9 @@
-<a name="base"></a>
+<a id="base"></a>
+
 # Module base
 
-<a name="base.RootNode"></a>
+<a id="base.RootNode"></a>
+
 ## RootNode
 
 ```python
@@ -10,7 +12,8 @@ class RootNode(BaseComponent)
 
 RootNode feeds inputs together with corresponding params to a Pipeline.
 
-<a name="base.BasePipeline"></a>
+<a id="base.BasePipeline"></a>
+
 ## BasePipeline
 
 ```python
@@ -20,12 +23,13 @@ class BasePipeline()
 Base class for pipelines, providing the most basic methods to load and save them in different ways. 
 See also the `Pipeline` class for the actual pipeline logic.
 
-<a name="base.BasePipeline.load_from_yaml"></a>
+<a id="base.BasePipeline.load_from_yaml"></a>
+
 #### load\_from\_yaml
 
 ```python
- | @classmethod
- | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+@classmethod
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -62,43 +66,41 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-**Arguments**:
-
-- `path`: path of the YAML file.
-- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+:param path: path of the YAML file.
+:param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+:param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
                                      to change index name param for an ElasticsearchDocumentStore, an env
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
 
-<a name="base.BasePipeline.load_from_deepset_cloud"></a>
+<a id="base.BasePipeline.load_from_deepset_cloud"></a>
+
 #### load\_from\_deepset\_cloud
 
 ```python
- | @classmethod
- | load_from_deepset_cloud(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: Optional[str] = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
+@classmethod
+def load_from_deepset_cloud(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: Optional[str] = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
 ```
 
 Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
 a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
 be passed.
 
-**Arguments**:
-
-- `pipeline_config_name`: name of the config file inside the Deepset Cloud workspace.
-- `pipeline_name`: specifies which pipeline to load from config.
+:param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+:param pipeline_name: specifies which pipeline to load from config.
                       Deepset Cloud typically provides a 'query' and a 'index' pipeline per config.
-- `workspace`: workspace in Deepset Cloud
-- `api_key`: Secret value of the API key.
+:param workspace: workspace in Deepset Cloud
+:param api_key: Secret value of the API key. 
                 If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-- `api_endpoint`: The URL of the Deepset Cloud API.
+:param api_endpoint: The URL of the Deepset Cloud API. 
                      If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
-- `overwrite_with_env_variables`: Overwrite the config with environment variables. For example,
+:param overwrite_with_env_variables: Overwrite the config with environment variables. For example,
                                      to change return_no_answer param for a FARMReader, an env
                                      variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
 
-<a name="base.Pipeline"></a>
+<a id="base.Pipeline"></a>
+
 ## Pipeline
 
 ```python
@@ -111,98 +113,93 @@ Under-the-hood, a pipeline is represented as a directed acyclic graph of compone
 flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
 Reader from multiple Retrievers, or re-ranking of candidate documents.
 
-<a name="base.Pipeline.add_node"></a>
+<a id="base.Pipeline.add_node"></a>
+
 #### add\_node
 
 ```python
- | add_node(component, name: str, inputs: List[str])
+def add_node(component, name: str, inputs: List[str])
 ```
 
 Add a new node to the pipeline.
 
-**Arguments**:
-
-- `component`: The object to be called when the data is passed to the node. It can be a Haystack component
+:param component: The object to be called when the data is passed to the node. It can be a Haystack component
                   (like Retriever, Reader, or Generator) or a user-defined object that implements a run()
                   method to process incoming data from predecessor node.
-- `name`: The name for the node. It must not contain any dots.
-- `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+:param name: The name for the node. It must not contain any dots.
+:param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
                of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
                edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
 
                In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                must be specified explicitly as "QueryClassifier.output_2".
 
-<a name="base.Pipeline.get_node"></a>
+<a id="base.Pipeline.get_node"></a>
+
 #### get\_node
 
 ```python
- | get_node(name: str) -> Optional[BaseComponent]
+def get_node(name: str) -> Optional[BaseComponent]
 ```
 
 Get a node from the Pipeline.
 
-**Arguments**:
+:param name: The name of the node.
 
-- `name`: The name of the node.
+<a id="base.Pipeline.set_node"></a>
 
-<a name="base.Pipeline.set_node"></a>
 #### set\_node
 
 ```python
- | set_node(name: str, component)
+def set_node(name: str, component)
 ```
 
 Set the component for a node in the Pipeline.
 
-**Arguments**:
+:param name: The name of the node.
+:param component: The component object to be set at the node.
 
-- `name`: The name of the node.
-- `component`: The component object to be set at the node.
+<a id="base.Pipeline.run"></a>
 
-<a name="base.Pipeline.run"></a>
 #### run
 
 ```python
- | run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 Runs the pipeline, one node at a time.
 
-**Arguments**:
-
-- `query`: The search query (for query pipelines only)
-- `file_paths`: The files to index (for indexing pipelines only)
-- `labels`: 
-- `documents`: 
-- `meta`: 
-- `params`: Dictionary of parameters to be dispatched to the nodes.
+:param query: The search query (for query pipelines only)
+:param file_paths: The files to index (for indexing pipelines only)
+:param labels: 
+:param documents:
+:param meta:
+:param params: Dictionary of parameters to be dispatched to the nodes. 
                If you want to pass a param to all nodes, you can just use: {"top_k":10}
                If you want to pass it to targeted nodes, you can do:
                {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
+:param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
               they received and the output they generated. All debug information can 
               then be found in the dict returned by this method under the key "_debug"
 
-<a name="base.Pipeline.eval"></a>
+<a id="base.Pipeline.eval"></a>
+
 #### eval
 
 ```python
- | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
+def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
 ```
 
-Evaluates the pipeline by running the pipeline once per query in debug mode
+Evaluates the pipeline by running the pipeline once per query in debug mode 
 and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
-**Arguments**:
-
-- `labels`: The labels to evaluate on
-- `params`: Dictionary of parameters to be dispatched to the nodes.
+:param labels: The labels to evaluate on
+:param params: Dictionary of parameters to be dispatched to the nodes. 
             If you want to pass a param to all nodes, you can just use: {"top_k":10}
             If you want to pass it to targeted nodes, you can do:
             {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-- `sas_model_name_or_path`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+:param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
             The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
             Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
             More info in the paper: https://arxiv.org/abs/2108.06130
@@ -213,7 +210,7 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
             - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
             - Large model for German only: "deepset/gbert-large-sts"
-- `add_isolated_node_eval`: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+:param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
             This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
             If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
             If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
@@ -222,11 +219,12 @@ and putting together all data that is needed for evaluation, e.g. calculating me
             The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
             values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
 
-<a name="base.Pipeline.get_nodes_by_class"></a>
+<a id="base.Pipeline.get_nodes_by_class"></a>
+
 #### get\_nodes\_by\_class
 
 ```python
- | get_nodes_by_class(class_type) -> List[Any]
+def get_nodes_by_class(class_type) -> List[Any]
 ```
 
 Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
@@ -236,42 +234,39 @@ Example:
 | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
 | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
 
-**Returns**:
+:return: List of components that are an instance the requested class
 
-List of components that are an instance the requested class
+<a id="base.Pipeline.get_document_store"></a>
 
-<a name="base.Pipeline.get_document_store"></a>
 #### get\_document\_store
 
 ```python
- | get_document_store() -> Optional[BaseDocumentStore]
+def get_document_store() -> Optional[BaseDocumentStore]
 ```
 
 Return the document store object used in the current pipeline.
 
-**Returns**:
+:return: Instance of DocumentStore or None
 
-Instance of DocumentStore or None
+<a id="base.Pipeline.draw"></a>
 
-<a name="base.Pipeline.draw"></a>
 #### draw
 
 ```python
- | draw(path: Path = Path("pipeline.png"))
+def draw(path: Path = Path("pipeline.png"))
 ```
 
 Create a Graphviz visualization of the pipeline.
 
-**Arguments**:
+:param path: the path to save the image.
 
-- `path`: the path to save the image.
+<a id="base.Pipeline.load_from_yaml"></a>
 
-<a name="base.Pipeline.load_from_yaml"></a>
 #### load\_from\_yaml
 
 ```python
- | @classmethod
- | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+@classmethod
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -308,45 +303,42 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-**Arguments**:
-
-- `path`: path of the YAML file.
-- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+:param path: path of the YAML file.
+:param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+:param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
                                      to change index name param for an ElasticsearchDocumentStore, an env
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
 
-<a name="base.Pipeline.save_to_yaml"></a>
+<a id="base.Pipeline.save_to_yaml"></a>
+
 #### save\_to\_yaml
 
 ```python
- | save_to_yaml(path: Path, return_defaults: bool = False)
+def save_to_yaml(path: Path, return_defaults: bool = False)
 ```
 
 Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
 
-**Arguments**:
+:param path: path of the output YAML file.
+:param return_defaults: whether to output parameters that have the default values.
 
-- `path`: path of the output YAML file.
-- `return_defaults`: whether to output parameters that have the default values.
+<a id="base.Pipeline.print_eval_report"></a>
 
-<a name="base.Pipeline.print_eval_report"></a>
 #### print\_eval\_report
 
 ```python
- | print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None)
+def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None)
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
 
-**Arguments**:
+:param eval_result: The evaluation result, can be obtained by running eval().
+:param n_wrong_examples: The number of worst queries to show.
+:param metrics_filter: The metrics to show per node. If None all metrics will be shown.
 
-- `eval_result`: The evaluation result, can be obtained by running eval().
-- `n_wrong_examples`: The number of worst queries to show.
-- `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
+<a id="base.RayPipeline"></a>
 
-<a name="base.RayPipeline"></a>
 ## RayPipeline
 
 ```python
@@ -383,24 +375,13 @@ A RayPipeline can only be created with a YAML Pipeline config.
 By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
 set the `address` parameter when creating the RayPipeline instance.
 
-<a name="base.RayPipeline.__init__"></a>
-#### \_\_init\_\_
+<a id="base.RayPipeline.load_from_yaml"></a>
 
-```python
- | __init__(address: str = None, **kwargs)
-```
-
-**Arguments**:
-
-- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
-- `kwargs`: Optional parameters for initializing Ray.
-
-<a name="base.RayPipeline.load_from_yaml"></a>
 #### load\_from\_yaml
 
 ```python
- | @classmethod
- | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, **kwargs, ,)
+@classmethod
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, **kwargs, ,)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -439,58 +420,20 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-**Arguments**:
-
-- `path`: path of the YAML file.
-- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+:param path: path of the YAML file.
+:param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+:param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
                                      to change index name param for an ElasticsearchDocumentStore, an env
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
-- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+:param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 
-<a name="base._RayDeploymentWrapper"></a>
-## \_RayDeploymentWrapper
+<a id="standard_pipelines"></a>
 
-```python
-class _RayDeploymentWrapper()
-```
-
-Ray Serve supports calling of __init__ methods on the Classes to create "deployment" instances.
-
-In case of Haystack, some Components like Retrievers have complex init methods that needs objects
-like Document Stores.
-
-This wrapper class encapsulates the initialization of Components. Given a Component Class
-name, it creates an instance using the YAML Pipeline config.
-
-<a name="base._RayDeploymentWrapper.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(pipeline_config: dict, component_name: str)
-```
-
-Create an instance of Component.
-
-**Arguments**:
-
-- `pipeline_config`: Pipeline YAML parsed as a dict.
-- `component_name`: Component Class name.
-
-<a name="base._RayDeploymentWrapper.__call__"></a>
-#### \_\_call\_\_
-
-```python
- | __call__(*args, **kwargs)
-```
-
-Ray calls this method which is then re-directed to the corresponding component's run().
-
-<a name="standard_pipelines"></a>
 # Module standard\_pipelines
 
-<a name="standard_pipelines.BaseStandardPipeline"></a>
+<a id="standard_pipelines.BaseStandardPipeline"></a>
+
 ## BaseStandardPipeline
 
 ```python
@@ -500,88 +443,84 @@ class BaseStandardPipeline(ABC)
 Base class for pre-made standard Haystack pipelines.
 This class does not inherit from Pipeline.
 
-<a name="standard_pipelines.BaseStandardPipeline.add_node"></a>
+<a id="standard_pipelines.BaseStandardPipeline.add_node"></a>
+
 #### add\_node
 
 ```python
- | add_node(component, name: str, inputs: List[str])
+def add_node(component, name: str, inputs: List[str])
 ```
 
 Add a new node to the pipeline.
 
-**Arguments**:
-
-- `component`: The object to be called when the data is passed to the node. It can be a Haystack component
+:param component: The object to be called when the data is passed to the node. It can be a Haystack component
                   (like Retriever, Reader, or Generator) or a user-defined object that implements a run()
                   method to process incoming data from predecessor node.
-- `name`: The name for the node. It must not contain any dots.
-- `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+:param name: The name for the node. It must not contain any dots.
+:param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
                of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
                edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
 
                In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                must be specified explicitly as "QueryClassifier.output_2".
 
-<a name="standard_pipelines.BaseStandardPipeline.get_node"></a>
+<a id="standard_pipelines.BaseStandardPipeline.get_node"></a>
+
 #### get\_node
 
 ```python
- | get_node(name: str)
+def get_node(name: str)
 ```
 
 Get a node from the Pipeline.
 
-**Arguments**:
+:param name: The name of the node.
 
-- `name`: The name of the node.
+<a id="standard_pipelines.BaseStandardPipeline.set_node"></a>
 
-<a name="standard_pipelines.BaseStandardPipeline.set_node"></a>
 #### set\_node
 
 ```python
- | set_node(name: str, component)
+def set_node(name: str, component)
 ```
 
 Set the component for a node in the Pipeline.
 
-**Arguments**:
+:param name: The name of the node.
+:param component: The component object to be set at the node.
 
-- `name`: The name of the node.
-- `component`: The component object to be set at the node.
+<a id="standard_pipelines.BaseStandardPipeline.draw"></a>
 
-<a name="standard_pipelines.BaseStandardPipeline.draw"></a>
 #### draw
 
 ```python
- | draw(path: Path = Path("pipeline.png"))
+def draw(path: Path = Path("pipeline.png"))
 ```
 
 Create a Graphviz visualization of the pipeline.
 
-**Arguments**:
+:param path: the path to save the image.
 
-- `path`: the path to save the image.
+<a id="standard_pipelines.BaseStandardPipeline.save_to_yaml"></a>
 
-<a name="standard_pipelines.BaseStandardPipeline.save_to_yaml"></a>
 #### save\_to\_yaml
 
 ```python
- | save_to_yaml(path: Path, return_defaults: bool = False)
+def save_to_yaml(path: Path, return_defaults: bool = False)
 ```
 
 Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
 
-**Arguments**:
+:param path: path of the output YAML file.
+:param return_defaults: whether to output parameters that have the default values.
 
-- `path`: path of the output YAML file.
-- `return_defaults`: whether to output parameters that have the default values.
+<a id="standard_pipelines.BaseStandardPipeline.load_from_yaml"></a>
 
-<a name="standard_pipelines.BaseStandardPipeline.load_from_yaml"></a>
 #### load\_from\_yaml
 
 ```python
- | @classmethod
- | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+@classmethod
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -618,20 +557,19 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-**Arguments**:
-
-- `path`: path of the YAML file.
-- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+:param path: path of the YAML file.
+:param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+:param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
                                      to change index name param for an ElasticsearchDocumentStore, an env
                                      variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                      `_` sign must be used to specify nested hierarchical properties.
 
-<a name="standard_pipelines.BaseStandardPipeline.get_nodes_by_class"></a>
+<a id="standard_pipelines.BaseStandardPipeline.get_nodes_by_class"></a>
+
 #### get\_nodes\_by\_class
 
 ```python
- | get_nodes_by_class(class_type) -> List[Any]
+def get_nodes_by_class(class_type) -> List[Any]
 ```
 
 Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
@@ -642,44 +580,40 @@ Example:
 | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
 | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
 ```
+:return: List of components that are an instance of the requested class
 
-**Returns**:
+<a id="standard_pipelines.BaseStandardPipeline.get_document_store"></a>
 
-List of components that are an instance of the requested class
-
-<a name="standard_pipelines.BaseStandardPipeline.get_document_store"></a>
 #### get\_document\_store
 
 ```python
- | get_document_store() -> Optional[BaseDocumentStore]
+def get_document_store() -> Optional[BaseDocumentStore]
 ```
 
 Return the document store object used in the current pipeline.
 
-**Returns**:
+:return: Instance of DocumentStore or None
 
-Instance of DocumentStore or None
+<a id="standard_pipelines.BaseStandardPipeline.eval"></a>
 
-<a name="standard_pipelines.BaseStandardPipeline.eval"></a>
 #### eval
 
 ```python
- | eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, add_isolated_node_eval: bool = False) -> EvaluationResult
+def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, add_isolated_node_eval: bool = False) -> EvaluationResult
 ```
 
-Evaluates the pipeline by running the pipeline once per query in debug mode
+Evaluates the pipeline by running the pipeline once per query in debug mode 
 and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
-**Arguments**:
-
-- `labels`: The labels to evaluate on
-- `params`: Params for the `retriever` and `reader`. For instance,
+:param labels: The labels to evaluate on
+:param params: Params for the `retriever` and `reader`. For instance,
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
+:param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
                             should be path or string pointing to downloadable models.
-- `add_isolated_node_eval`: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
+:param add_isolated_node_eval: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
 
-<a name="standard_pipelines.ExtractiveQAPipeline"></a>
+<a id="standard_pipelines.ExtractiveQAPipeline"></a>
+
 ## ExtractiveQAPipeline
 
 ```python
@@ -688,37 +622,25 @@ class ExtractiveQAPipeline(BaseStandardPipeline)
 
 Pipeline for Extractive Question Answering.
 
-<a name="standard_pipelines.ExtractiveQAPipeline.__init__"></a>
-#### \_\_init\_\_
+<a id="standard_pipelines.ExtractiveQAPipeline.run"></a>
 
-```python
- | __init__(reader: BaseReader, retriever: BaseRetriever)
-```
-
-**Arguments**:
-
-- `reader`: Reader instance
-- `retriever`: Retriever instance
-
-<a name="standard_pipelines.ExtractiveQAPipeline.run"></a>
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-**Arguments**:
-
-- `query`: The search query string.
-- `params`: Params for the `retriever` and `reader`. For instance,
+:param query: The search query string.
+:param params: Params for the `retriever` and `reader`. For instance,
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
+:param debug: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
               they received and the output they generated. 
               All debug information can then be found in the dict returned
               by this method under the key "_debug"
 
-<a name="standard_pipelines.DocumentSearchPipeline"></a>
+<a id="standard_pipelines.DocumentSearchPipeline"></a>
+
 ## DocumentSearchPipeline
 
 ```python
@@ -727,35 +649,24 @@ class DocumentSearchPipeline(BaseStandardPipeline)
 
 Pipeline for semantic document search.
 
-<a name="standard_pipelines.DocumentSearchPipeline.__init__"></a>
-#### \_\_init\_\_
+<a id="standard_pipelines.DocumentSearchPipeline.run"></a>
 
-```python
- | __init__(retriever: BaseRetriever)
-```
-
-**Arguments**:
-
-- `retriever`: Retriever instance
-
-<a name="standard_pipelines.DocumentSearchPipeline.run"></a>
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-**Arguments**:
-
-- `query`: the query string.
-- `params`: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
+:param query: the query string.
+:param params: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
+:param debug: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
       All debug information can then be found in the dict returned
       by this method under the key "_debug"
 
-<a name="standard_pipelines.GenerativeQAPipeline"></a>
+<a id="standard_pipelines.GenerativeQAPipeline"></a>
+
 ## GenerativeQAPipeline
 
 ```python
@@ -764,37 +675,25 @@ class GenerativeQAPipeline(BaseStandardPipeline)
 
 Pipeline for Generative Question Answering.
 
-<a name="standard_pipelines.GenerativeQAPipeline.__init__"></a>
-#### \_\_init\_\_
+<a id="standard_pipelines.GenerativeQAPipeline.run"></a>
 
-```python
- | __init__(generator: BaseGenerator, retriever: BaseRetriever)
-```
-
-**Arguments**:
-
-- `generator`: Generator instance
-- `retriever`: Retriever instance
-
-<a name="standard_pipelines.GenerativeQAPipeline.run"></a>
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-**Arguments**:
-
-- `query`: the query string.
-- `params`: params for the `retriever` and `generator`. For instance,
+:param query: the query string.
+:param params: params for the `retriever` and `generator`. For instance,
                params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
+:param debug: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
       All debug information can then be found in the dict returned
       by this method under the key "_debug"
 
-<a name="standard_pipelines.SearchSummarizationPipeline"></a>
+<a id="standard_pipelines.SearchSummarizationPipeline"></a>
+
 ## SearchSummarizationPipeline
 
 ```python
@@ -803,40 +702,25 @@ class SearchSummarizationPipeline(BaseStandardPipeline)
 
 Pipeline that retrieves documents for a query and then summarizes those documents.
 
-<a name="standard_pipelines.SearchSummarizationPipeline.__init__"></a>
-#### \_\_init\_\_
+<a id="standard_pipelines.SearchSummarizationPipeline.run"></a>
 
-```python
- | __init__(summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False)
-```
-
-**Arguments**:
-
-- `summarizer`: Summarizer instance
-- `retriever`: Retriever instance
-- `return_in_answer_format`: Whether the results should be returned as documents (False) or in the answer
-                                format used in other QA pipelines (True). With the latter, you can use this
-                                pipeline as a "drop-in replacement" for other QA pipelines.
-
-<a name="standard_pipelines.SearchSummarizationPipeline.run"></a>
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-**Arguments**:
-
-- `query`: the query string.
-- `params`: params for the `retriever` and `summarizer`. For instance,
+:param query: the query string.
+:param params: params for the `retriever` and `summarizer`. For instance,
                params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
+:param debug: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
       All debug information can then be found in the dict returned
       by this method under the key "_debug"
 
-<a name="standard_pipelines.FAQPipeline"></a>
+<a id="standard_pipelines.FAQPipeline"></a>
+
 ## FAQPipeline
 
 ```python
@@ -845,35 +729,24 @@ class FAQPipeline(BaseStandardPipeline)
 
 Pipeline for finding similar FAQs using semantic document search.
 
-<a name="standard_pipelines.FAQPipeline.__init__"></a>
-#### \_\_init\_\_
+<a id="standard_pipelines.FAQPipeline.run"></a>
 
-```python
- | __init__(retriever: BaseRetriever)
-```
-
-**Arguments**:
-
-- `retriever`: Retriever instance
-
-<a name="standard_pipelines.FAQPipeline.run"></a>
 #### run
 
 ```python
- | run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-**Arguments**:
-
-- `query`: the query string.
-- `params`: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
-- `debug`: Whether the pipeline should instruct nodes to collect debug information
+:param query: the query string.
+:param params: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
+:param debug: Whether the pipeline should instruct nodes to collect debug information
       about their execution. By default these include the input parameters
       they received and the output they generated.
       All debug information can then be found in the dict returned
       by this method under the key "_debug"
 
-<a name="standard_pipelines.TranslationWrapperPipeline"></a>
+<a id="standard_pipelines.TranslationWrapperPipeline"></a>
+
 ## TranslationWrapperPipeline
 
 ```python
@@ -883,23 +756,8 @@ class TranslationWrapperPipeline(BaseStandardPipeline)
 Takes an existing search pipeline and adds one "input translation node" after the Query and one
 "output translation" node just before returning the results
 
-<a name="standard_pipelines.TranslationWrapperPipeline.__init__"></a>
-#### \_\_init\_\_
+<a id="standard_pipelines.QuestionGenerationPipeline"></a>
 
-```python
- | __init__(input_translator: BaseTranslator, output_translator: BaseTranslator, pipeline: BaseStandardPipeline)
-```
-
-Wrap a given `pipeline` with the `input_translator` and `output_translator`.
-
-**Arguments**:
-
-- `input_translator`: A Translator node that shall translate the input query from language A to B
-- `output_translator`: A Translator node that shall translate the pipeline results from language B to A
-- `pipeline`: The pipeline object (e.g. ExtractiveQAPipeline) you want to "wrap".
-                 Note that pipelines with split or merge nodes are currently not supported.
-
-<a name="standard_pipelines.QuestionGenerationPipeline"></a>
 ## QuestionGenerationPipeline
 
 ```python
@@ -909,7 +767,8 @@ class QuestionGenerationPipeline(BaseStandardPipeline)
 A simple pipeline that takes documents as input and generates
 questions that it thinks can be answered by the documents.
 
-<a name="standard_pipelines.RetrieverQuestionGenerationPipeline"></a>
+<a id="standard_pipelines.RetrieverQuestionGenerationPipeline"></a>
+
 ## RetrieverQuestionGenerationPipeline
 
 ```python
@@ -919,7 +778,8 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline)
 A simple pipeline that takes a query as input, performs retrieval, and then generates
 questions that it thinks can be answered by the retrieved documents.
 
-<a name="standard_pipelines.QuestionAnswerGenerationPipeline"></a>
+<a id="standard_pipelines.QuestionAnswerGenerationPipeline"></a>
+
 ## QuestionAnswerGenerationPipeline
 
 ```python
@@ -929,36 +789,22 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline)
 This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
 this document, and then performs question answering of this questions using that single document.
 
-<a name="standard_pipelines.MostSimilarDocumentsPipeline"></a>
+<a id="standard_pipelines.MostSimilarDocumentsPipeline"></a>
+
 ## MostSimilarDocumentsPipeline
 
 ```python
 class MostSimilarDocumentsPipeline(BaseStandardPipeline)
 ```
 
-<a name="standard_pipelines.MostSimilarDocumentsPipeline.__init__"></a>
-#### \_\_init\_\_
+<a id="standard_pipelines.MostSimilarDocumentsPipeline.run"></a>
 
-```python
- | __init__(document_store: BaseDocumentStore)
-```
-
-Initialize a Pipeline for finding the most similar documents to a given document.
-This pipeline can be helpful if you already show a relevant document to your end users and they want to search for just similar ones.
-
-**Arguments**:
-
-- `document_store`: Document Store instance with already stored embeddings.
-
-<a name="standard_pipelines.MostSimilarDocumentsPipeline.run"></a>
 #### run
 
 ```python
- | run(document_ids: List[str], top_k: int = 5)
+def run(document_ids: List[str], top_k: int = 5)
 ```
 
-**Arguments**:
-
-- `document_ids`: document ids
-- `top_k`: How many documents id to return against single document
+:param document_ids: document ids
+:param top_k: How many documents id to return against single document
 
