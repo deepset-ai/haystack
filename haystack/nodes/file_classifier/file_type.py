@@ -49,7 +49,7 @@ class FileTypeClassifier(BaseComponent):
 
         return extension.lstrip(".")
 
-    def run(self, file_paths: Union[Path, List[Path], str, List[str]]):  # type: ignore
+    def run(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):  # type: ignore
         """
         Sends out files on a different output edge depending on their extension.
 
@@ -58,10 +58,10 @@ class FileTypeClassifier(BaseComponent):
         if not isinstance(file_paths, list):
             file_paths = [file_paths]
 
-        file_paths = [Path(path) for path in file_paths]
+        paths = [Path(path) for path in file_paths]
 
-        output = {"file_paths": file_paths}
-        extension = self._get_extension(file_paths)
+        output = {"file_paths": paths}
+        extension = self._get_extension(paths)
         try:
             index = self.supported_types.index(extension) + 1
         except ValueError:
