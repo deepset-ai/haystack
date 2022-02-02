@@ -187,6 +187,77 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_extended_filter(document_store_with_docs):
+    filters = {"date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"}}
+    documents = document_store_with_docs.get_all_documents(filters=filters)
+    assert len(documents) == 3
+
+    filters = {
+        "$and": {
+            "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
+            "name": {"$in": ["filename5", "filename3"]}
+    }}
+    documents = document_store_with_docs.get_all_documents(filters=filters)
+    assert len(documents) == 1
+    filters_simplified = {
+        "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
+        "name": ["filename5", "filename3"]
+    }
+    documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
+    assert documents == documents_simplified_filter
+
+    filters = {
+        "$and": {
+            "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
+            "$or": {
+                "name": {"$in": ["filename5", "filename3"]},
+                "numeric_field": {"$lte": 5}
+            }
+        }}
+    documents = document_store_with_docs.get_all_documents(filters=filters)
+    assert len(documents) == 2
+    filters_simplified = {
+        "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
+        "$or": {
+            "name": ["filename5", "filename3"],
+            "numeric_field": {"$lte": 5}
+        }
+    }
+    documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
+    assert documents == documents_simplified_filter
+
+    filters = {
+        "$and": {
+            "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
+            "$or": {
+                "name": {"$in": ["filename5", "filename3"]},
+                "$and": {
+                    "numeric_field": {"$lte": 5},
+                    "$not": {
+                        "meta_field": {"$eq": "test2"}
+                    }
+                }
+            }
+        }}
+    documents = document_store_with_docs.get_all_documents(filters=filters)
+    assert len(documents) == 1
+    filters_simplified = {
+        "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
+        "$or": {
+            "name": ["filename5", "filename3"],
+            "$and": {
+                "numeric_field": {"$lte": 5},
+                "$not": {
+                    "meta_field": "test2"
+                }
+            }
+        }
+    }
+    documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
+    assert documents == documents_simplified_filter
+
+
 def test_get_documents_by_id(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     doc = document_store_with_docs.get_document_by_id(documents[0].id)
