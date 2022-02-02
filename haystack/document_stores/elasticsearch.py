@@ -416,7 +416,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -426,7 +427,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -677,7 +679,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -687,7 +690,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -736,7 +740,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -746,7 +751,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -839,7 +845,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -849,7 +856,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -944,7 +952,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -954,7 +963,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -1169,7 +1179,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -1179,7 +1190,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -1262,7 +1274,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -1272,7 +1285,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -1315,7 +1329,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -1325,7 +1340,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -1381,7 +1397,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -1391,7 +1408,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
@@ -1426,7 +1444,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                 filters = {
                                     "$and": {
                                         "type": {"$eq": "article"},
-                                        "year": {"$gte": 2015, "$lte": 2021},
+                                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                        "rating": {"$gte": 3},
                                         "$or": {
                                             "genre": {"$in": ["economy", "politics"]},
                                             "publisher": {"$eq": "nytimes"}
@@ -1436,7 +1455,8 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                                 # or simpler using default operators
                                 filters = {
                                     "type": "article",
-                                    "year": {"$gte": 2015, "$lte": 2021},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
                                     "$or": {
                                         "genre": ["economy", "politics"],
                                         "publisher": "nytimes"
@@ -1577,7 +1597,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         filters = {
                             "$and": {
                                 "type": {"$eq": "article"},
-                                "year": {"$gte": 2015, "$lte": 2021},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
                                 "$or": {
                                     "genre": {"$in": ["economy", "politics"]},
                                     "publisher": {"$eq": "nytimes"}
@@ -1587,7 +1608,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         # or simpler using default operators
                         filters = {
                             "type": "article",
-                            "year": {"$gte": 2015, "$lte": 2021},
+                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                            "rating": {"$gte": 3},
                             "$or": {
                                 "genre": ["economy", "politics"],
                                 "publisher": "nytimes"
