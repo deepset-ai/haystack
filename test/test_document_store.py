@@ -136,7 +136,7 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
 def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
-    assert len(documents) == 3
+    assert len(documents) == 5
     assert {d.meta["name"] for d in documents} == {"filename1", "filename2", "filename3"}
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3"}
 
@@ -594,7 +594,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
 
 def test_delete_all_documents(document_store_with_docs):
-    assert len(document_store_with_docs.get_all_documents()) == 3
+    assert len(document_store_with_docs.get_all_documents()) == 5
 
     document_store_with_docs.delete_documents()
     documents = document_store_with_docs.get_all_documents()
@@ -602,7 +602,7 @@ def test_delete_all_documents(document_store_with_docs):
 
 
 def test_delete_documents(document_store_with_docs):
-    assert len(document_store_with_docs.get_all_documents()) == 3
+    assert len(document_store_with_docs.get_all_documents()) == 5
 
     document_store_with_docs.delete_documents()
     documents = document_store_with_docs.get_all_documents()
@@ -612,7 +612,7 @@ def test_delete_documents(document_store_with_docs):
 def test_delete_documents_with_filters(document_store_with_docs):
     document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2"]})
     documents = document_store_with_docs.get_all_documents()
-    assert len(documents) == 1
+    assert len(documents) == 3
     assert documents[0].meta["meta_field"] == "test3"
 
 
@@ -622,7 +622,7 @@ def test_delete_documents_by_id(document_store_with_docs):
 
     document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete])
     all_docs_left = document_store_with_docs.get_all_documents()
-    assert len(all_docs_left) == 1
+    assert len(all_docs_left) == 3
     assert all_docs_left[0].meta["meta_field"] == "test3"
 
     all_ids_left = [doc.id for doc in all_docs_left]
@@ -636,7 +636,7 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
     document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete], filters={"meta_field": ["test1"]})
 
     all_docs_left = document_store_with_docs.get_all_documents()
-    assert len(all_docs_left) == 2
+    assert len(all_docs_left) == 4
     assert all(doc.meta["meta_field"] != "test1" for doc in all_docs_left)
 
     all_ids_left = [doc.id for doc in all_docs_left]
@@ -1108,7 +1108,8 @@ def test_similarity_score(document_store_with_docs):
     pipeline = DocumentSearchPipeline(retriever)
     prediction = pipeline.run("Paul lives in New York")
     scores = [document.score for document in prediction["documents"]]
-    assert scores == pytest.approx([0.9102500000000191, 0.6491700000000264, 0.6321699999999737], abs=1e-3)
+    assert scores == pytest.approx([0.9102507941407827, 0.6937791467877008, 0.6491682889305038, 0.6321622491318529,
+                                    0.5909129441370939], abs=1e-3)
 
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["memory", "faiss", "milvus", "elasticsearch"], indirect=True)
 @pytest.mark.embedding_dim(384)
@@ -1118,7 +1119,8 @@ def test_similarity_score_dot_product(document_store_dot_product_with_docs):
     pipeline = DocumentSearchPipeline(retriever)
     prediction = pipeline.run("Paul lives in New York")
     scores = [document.score for document in prediction["documents"]]
-    assert scores == pytest.approx([0.5526493562767626, 0.5189836204008691, 0.5179697571274173], abs=1e-3)
+    assert scores == pytest.approx([0.5526494403409358, 0.5247784342375555, 0.5189836829440964, 0.5179697273254912,
+                                    0.5112024928228626], abs=1e-3)
 
 def test_custom_headers(document_store_with_docs: BaseDocumentStore):
     mock_client = None

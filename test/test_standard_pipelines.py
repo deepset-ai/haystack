@@ -148,7 +148,7 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert len(results["documents"]) == 3
+    assert len(results["documents"]) == 5
 
     # test merge with weights
     join_node = JoinDocuments(join_mode="merge", weights=[1000, 1], top_k_join=2)

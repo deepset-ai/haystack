@@ -548,6 +548,16 @@ def ensure_ids_are_correct_uuids(docs:list,document_store:object)->None:
 def document_store_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path)
+    # TODO: remove the following part once we allow numbers as metadatfield value in WeaviateDocumentStore
+    if request.param == "weaviate":
+        for doc in test_docs_xs:
+            if isinstance(doc, Document):
+                doc.meta["numeric_field"] = str(doc.meta["numeric_field"])
+            else:
+                if "meta" in doc:
+                    doc["meta"]["numeric_field"] = str(doc["meta"]["numeric_field"])
+                else:
+                    doc["numeric_field"] = str(doc["numeric_field"])
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
