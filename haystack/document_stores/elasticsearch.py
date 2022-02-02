@@ -1611,7 +1611,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         else:
             # +1 in similarity to avoid negative numbers (for cosine sim)
-            body = {
+            body: Dict[str, Any] = {
                 "size": top_k,
                 "query": {
                     "bool": {
