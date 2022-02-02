@@ -12,7 +12,7 @@
 import logging
 from haystack.document_stores import ElasticsearchDocumentStore, FAISSDocumentStore
 from haystack.utils import clean_wiki_text, convert_files_to_dicts, fetch_archive_from_http, print_answers, launch_es
-from haystack.nodes import FARMReader, TransformersReader,  ElasticsearchRetriever
+from haystack.nodes import FARMReader, TransformersReader, ElasticsearchRetriever
 
 
 def tutorial1_basic_qa_pipeline():
@@ -38,7 +38,9 @@ def tutorial1_basic_qa_pipeline():
     launch_es()
 
     # Connect to Elasticsearch
-    document_store = FAISSDocumentStore(sql_url="sqlite://") #ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
+    document_store = FAISSDocumentStore(
+        sql_url="sqlite://"
+    )  # ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
 
     # ## Preprocessing of documents
     #
@@ -50,7 +52,6 @@ def tutorial1_basic_qa_pipeline():
 
     # In this tutorial, we download Wikipedia articles about Game of Thrones, apply a basic cleaning function, and add
     # them in Elasticsearch.
-
 
     # Let's first fetch some documents that we want to query
     # Here: 517 Wikipedia articles for Game of Thrones
@@ -117,15 +118,15 @@ def tutorial1_basic_qa_pipeline():
     #    model_name_or_path="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
 
     # ### Pipeline
-    # 
+    #
     # With a Haystack `Pipeline` you can stick together your building blocks to a search pipeline.
     # Under the hood, `Pipelines` are Directed Acyclic Graphs (DAGs) that you can easily customize for your own use cases.
     # To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `ExtractiveQAPipeline` that combines a retriever and a reader to answer our questions.
     # You can learn more about `Pipelines` in the [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd).
     from haystack.pipelines import ExtractiveQAPipeline
-    
+
     pipe = ExtractiveQAPipeline(reader, retriever)
-    
+
     ## Voilà! Ask a question!
     prediction = pipe.run(
         query="Who is the father of Arya Stark?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
@@ -137,9 +138,10 @@ def tutorial1_basic_qa_pipeline():
     # Now you can either print the object directly
     print("\n\nRaw object:\n")
     from pprint import pprint
+
     pprint(prediction)
 
-    # Sample output:    
+    # Sample output:
     # {
     #     'answers': [ <Answer: answer='Eddard', type='extractive', score=0.9919578731060028, offsets_in_document=[{'start': 608, 'end': 615}], offsets_in_context=[{'start': 72, 'end': 79}], document_id='cc75f739897ecbf8c14657b13dda890e', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
     #                  <Answer: answer='Ned', type='extractive', score=0.9767240881919861, offsets_in_document=[{'start': 3687, 'end': 3801}], offsets_in_context=[{'start': 18, 'end': 132}], document_id='9acf17ec9083c4022f69eb4a37187080', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
@@ -164,7 +166,6 @@ def tutorial1_basic_qa_pipeline():
     # Change `minimum` to `medium` or `all` to raise the level of detail
     print("\n\nSimplified output:\n")
     print_answers(prediction, details="minimum")
-
 
 
 if __name__ == "__main__":

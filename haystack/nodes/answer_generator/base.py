@@ -24,7 +24,7 @@ class BaseGenerator(BaseComponent):
         """
         pass
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None): # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
 
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k)

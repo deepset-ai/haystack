@@ -7,6 +7,7 @@ class FileTypeClassifier(BaseComponent):
     """
     Route files in an Indexing Pipeline to corresponding file converters.
     """
+
     outgoing_edges = 5
 
     def __init__(self):

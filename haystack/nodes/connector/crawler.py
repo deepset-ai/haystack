@@ -14,6 +14,7 @@ try:
     from selenium import webdriver
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
+
     _optional_component_not_installed(__name__, "crawler", ie)
 
 
@@ -34,40 +35,47 @@ class Crawler(BaseComponent):
     |                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
     ```
     """
+
     outgoing_edges = 1
 
-    def __init__(self, output_dir: str, urls: Optional[List[str]] = None, crawler_depth: int = 1,
-                 filter_urls: Optional[List] = None, overwrite_existing_files=True):
+    def __init__(
+        self,
+        output_dir: str,
+        urls: Optional[List[str]] = None,
+        crawler_depth: int = 1,
+        filter_urls: Optional[List] = None,
+        overwrite_existing_files=True,
+    ):
         """
         Init object with basic params for crawling (can be overwritten later).
 
         :param output_dir: Path for the directory to store files
         :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options: 
-            0: Only initial list of urls 
-            1: Follow links found on the initial URLs (but no further) 
-        :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with. 
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
+            0: Only initial list of urls
+            1: Follow links found on the initial URLs (but no further)
+        :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
             All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         """
         IN_COLAB = "google.colab" in sys.modules
 
         options = webdriver.chrome.options.Options()
-        options.add_argument('--headless')
+        options.add_argument("--headless")
         if IN_COLAB:
             try:
-                options.add_argument('--no-sandbox')
-                options.add_argument('--disable-dev-shm-usage')
-                self.driver = webdriver.Chrome('chromedriver', options=options)
-            except :
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-dev-shm-usage")
+                self.driver = webdriver.Chrome("chromedriver", options=options)
+            except:
                 raise Exception(
-        """
+                    """
         \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
                         !apt-get update
                         !apt install chromium-driver
                         !cp /usr/lib/chromium-browser/chromedriver /usr/bin
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
-        )
+                )
         else:
             logger.info("'chrome-driver' will be automatically installed.")
             self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
@@ -77,11 +85,14 @@ class Crawler(BaseComponent):
         self.filter_urls = filter_urls
         self.overwrite_existing_files = overwrite_existing_files
 
-    def crawl(self,  output_dir: Union[str, Path, None] = None,
-              urls: Optional[List[str]] = None,
-              crawler_depth: Optional[int] = None,
-              filter_urls: Optional[List] = None,
-              overwrite_existing_files: Optional[bool] = None) -> List[Path]:
+    def crawl(
+        self,
+        output_dir: Union[str, Path, None] = None,
+        urls: Optional[List[str]] = None,
+        crawler_depth: Optional[int] = None,
+        filter_urls: Optional[List] = None,
+        overwrite_existing_files: Optional[bool] = None,
+    ) -> List[Path]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
         file per URL, including text and basic meta data).
@@ -118,9 +129,7 @@ class Crawler(BaseComponent):
         file_paths: list = []
         is_not_empty = len(list(output_dir.rglob("*"))) > 0
         if is_not_empty and not overwrite_existing_files:
-            logger.info(
-                f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data."
-            )
+            logger.info(f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data.")
         else:
             logger.info(f"Fetching from {urls} to `{output_dir}`")
             sub_links: Dict[str, List] = {}
@@ -132,8 +141,11 @@ class Crawler(BaseComponent):
             elif crawler_depth == 1:
                 for url_ in urls:
                     existed_links: List = list(sum(list(sub_links.values()), []))
-                    sub_links[url_] = list(self._extract_sublinks_from_url(base_url=url_, filter_urls=filter_urls,
-                                                                     existed_links=existed_links))
+                    sub_links[url_] = list(
+                        self._extract_sublinks_from_url(
+                            base_url=url_, filter_urls=filter_urls, existed_links=existed_links
+                        )
+                    )
                 for url in sub_links:
                     file_paths += self._write_to_files(sub_links[url], output_dir=output_dir, base_url=url)
 
@@ -144,32 +156,32 @@ class Crawler(BaseComponent):
         for link in urls:
             logger.info(f"writing contents from `{link}`")
             self.driver.get(link)
-            el = self.driver.find_element_by_tag_name('body')
+            el = self.driver.find_element_by_tag_name("body")
             text = el.text
 
-            link_split_values = link.replace('https://', '').split('/')
+            link_split_values = link.replace("https://", "").split("/")
             file_name = f"{'_'.join(link_split_values)}.json"
             file_path = output_dir / file_name
 
             data = {}
-            data['meta'] = {'url': link}
+            data["meta"] = {"url": link}
             if base_url:
-                data['meta']['base_url'] = base_url
-            data['content'] = text
-            with open(file_path, 'w', encoding='utf-8') as f:
+                data["meta"]["base_url"] = base_url
+            data["content"] = text
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f)
             paths.append(file_path)
 
         return paths
 
     def run(  # type: ignore
-            self, 
-            output_dir: Union[str, Path, None] = None,
-            urls: Optional[List[str]] = None,
-            crawler_depth: Optional[int] = None,
-            filter_urls: Optional[List] = None,
-            overwrite_existing_files: Optional[bool] = None,
-            return_documents: Optional[bool] = False,
+        self,
+        output_dir: Union[str, Path, None] = None,
+        urls: Optional[List[str]] = None,
+        crawler_depth: Optional[int] = None,
+        filter_urls: Optional[List] = None,
+        overwrite_existing_files: Optional[bool] = None,
+        return_documents: Optional[bool] = False,
     ) -> Tuple[Dict, str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
@@ -187,8 +199,13 @@ class Crawler(BaseComponent):
         :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
         """
 
-        file_paths = self.crawl(urls=urls, output_dir=output_dir, crawler_depth=crawler_depth,
-                                  filter_urls=filter_urls, overwrite_existing_files=overwrite_existing_files)
+        file_paths = self.crawl(
+            urls=urls,
+            output_dir=output_dir,
+            crawler_depth=crawler_depth,
+            filter_urls=filter_urls,
+            overwrite_existing_files=overwrite_existing_files,
+        )
         if return_documents:
             crawled_data = []
             for _file in file_paths:
@@ -212,24 +229,25 @@ class Crawler(BaseComponent):
         sub_link_ = urlparse(sub_link)
         return base_url_.path == sub_link_.path and base_url_.netloc == sub_link_.netloc
 
-    def _extract_sublinks_from_url(self, base_url: str,
-                                   filter_urls: Optional[List] = None,
-                                  existed_links: List = None) -> set:
+    def _extract_sublinks_from_url(
+        self, base_url: str, filter_urls: Optional[List] = None, existed_links: List = None
+    ) -> set:
         self.driver.get(base_url)
-        a_elements = self.driver.find_elements_by_tag_name('a')
+        a_elements = self.driver.find_elements_by_tag_name("a")
         sub_links = set()
         if not (existed_links and base_url in existed_links):
             if filter_urls:
-                if re.compile('|'.join(filter_urls)).search(base_url):
+                if re.compile("|".join(filter_urls)).search(base_url):
                     sub_links.add(base_url)
 
         for i in a_elements:
-            sub_link = i.get_attribute('href')
+            sub_link = i.get_attribute("href")
             if not (existed_links and sub_link in existed_links):
-                if self._is_internal_url(base_url=base_url, sub_link=sub_link) \
-                        and (not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)):
+                if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
+                    not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
+                ):
                     if filter_urls:
-                        if re.compile('|'.join(filter_urls)).search(sub_link):
+                        if re.compile("|".join(filter_urls)).search(sub_link):
                             sub_links.add(sub_link)
                     else:
                         sub_links.add(sub_link)

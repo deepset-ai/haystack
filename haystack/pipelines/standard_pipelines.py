@@ -25,6 +25,7 @@ class BaseStandardPipeline(ABC):
     Base class for pre-made standard Haystack pipelines.
     This class does not inherit from Pipeline.
     """
+
     pipeline: Pipeline
     metrics_filter: Optional[Dict[str, List[str]]] = None
 
@@ -70,7 +71,7 @@ class BaseStandardPipeline(ABC):
         :param path: the path to save the image.
         """
         self.pipeline.draw(path)
-    
+
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
         """
         Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
@@ -79,7 +80,7 @@ class BaseStandardPipeline(ABC):
         :param return_defaults: whether to output parameters that have the default values.
         """
         return self.pipeline.save_to_yaml(path, return_defaults)
-    
+
     @classmethod
     def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
         """
@@ -124,10 +125,12 @@ class BaseStandardPipeline(ABC):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        standard_pipeline_object = cls.__new__(cls) # necessary because we can't call __init__ as we can't provide parameters
+        standard_pipeline_object = cls.__new__(
+            cls
+        )  # necessary because we can't call __init__ as we can't provide parameters
         standard_pipeline_object.pipeline = Pipeline.load_from_yaml(path, pipeline_name, overwrite_with_env_variables)
         return standard_pipeline_object
-    
+
     def get_nodes_by_class(self, class_type) -> List[Any]:
         """
         Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
@@ -141,7 +144,7 @@ class BaseStandardPipeline(ABC):
         :return: List of components that are an instance of the requested class
         """
         return self.pipeline.get_nodes_by_class(class_type)
-    
+
     def get_document_store(self) -> Optional[BaseDocumentStore]:
         """
         Return the document store object used in the current pipeline.
@@ -150,44 +153,51 @@ class BaseStandardPipeline(ABC):
         """
         return self.pipeline.get_document_store()
 
-    def eval(self,
-             labels: List[MultiLabel],
-             params: Optional[dict] = None,
-             sas_model_name_or_path: Optional[str] = None,
-             add_isolated_node_eval: bool = False) -> EvaluationResult:
+    def eval(
+        self,
+        labels: List[MultiLabel],
+        params: Optional[dict] = None,
+        sas_model_name_or_path: Optional[str] = None,
+        add_isolated_node_eval: bool = False,
+    ) -> EvaluationResult:
 
         """
-        Evaluates the pipeline by running the pipeline once per query in debug mode 
+        Evaluates the pipeline by running the pipeline once per query in debug mode
         and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
         :param labels: The labels to evaluate on
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-        :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
+        :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
                                     should be path or string pointing to downloadable models.
         :param add_isolated_node_eval: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
         """
-        output = self.pipeline.eval(labels=labels, params=params,
-                                    sas_model_name_or_path=sas_model_name_or_path, add_isolated_node_eval=add_isolated_node_eval)
+        output = self.pipeline.eval(
+            labels=labels,
+            params=params,
+            sas_model_name_or_path=sas_model_name_or_path,
+            add_isolated_node_eval=add_isolated_node_eval,
+        )
         return output
 
     def print_eval_report(
-        self, 
-        eval_result: EvaluationResult, 
-        n_wrong_examples: int = 3, 
-        metrics_filter: Optional[Dict[str, List[str]]] = None):
+        self,
+        eval_result: EvaluationResult,
+        n_wrong_examples: int = 3,
+        metrics_filter: Optional[Dict[str, List[str]]] = None,
+    ):
         if metrics_filter is None:
             metrics_filter = self.metrics_filter
         self.pipeline.print_eval_report(
-            eval_result=eval_result, 
-            n_wrong_examples=n_wrong_examples, 
-            metrics_filter=metrics_filter)
+            eval_result=eval_result, n_wrong_examples=n_wrong_examples, metrics_filter=metrics_filter
+        )
 
 
 class ExtractiveQAPipeline(BaseStandardPipeline):
     """
     Pipeline for Extractive Question Answering.
     """
+
     def __init__(self, reader: BaseReader, retriever: BaseRetriever):
         """
         :param reader: Reader instance
@@ -198,17 +208,14 @@ class ExtractiveQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=reader, name="Reader", inputs=["Retriever"])
         self.metrics_filter = {"Retriever": ["recall_single_hit"]}
 
-    def run(self,
-            query: str,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None):
+    def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
         """
         :param query: The search query string.
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
         :param debug: Whether the pipeline should instruct nodes to collect debug information
                       about their execution. By default these include the input parameters
-                      they received and the output they generated. 
+                      they received and the output they generated.
                       All debug information can then be found in the dict returned
                       by this method under the key "_debug"
         """
@@ -220,6 +227,7 @@ class DocumentSearchPipeline(BaseStandardPipeline):
     """
     Pipeline for semantic document search.
     """
+
     def __init__(self, retriever: BaseRetriever):
         """
         :param retriever: Retriever instance
@@ -227,10 +235,7 @@ class DocumentSearchPipeline(BaseStandardPipeline):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
 
-    def run(self,
-            query: str,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None):
+    def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
@@ -248,6 +253,7 @@ class GenerativeQAPipeline(BaseStandardPipeline):
     """
     Pipeline for Generative Question Answering.
     """
+
     def __init__(self, generator: BaseGenerator, retriever: BaseRetriever):
         """
         :param generator: Generator instance
@@ -257,10 +263,7 @@ class GenerativeQAPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=generator, name="Generator", inputs=["Retriever"])
 
-    def run(self,
-            query: str,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None):
+    def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `generator`. For instance,
@@ -279,6 +282,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
     """
     Pipeline that retrieves documents for a query and then summarizes those documents.
     """
+
     def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False):
         """
         :param summarizer: Summarizer instance
@@ -292,10 +296,7 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
         self.return_in_answer_format = return_in_answer_format
 
-    def run(self,
-            query: str,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None):
+    def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever` and `summarizer`. For instance,
@@ -334,6 +335,7 @@ class FAQPipeline(BaseStandardPipeline):
     """
     Pipeline for finding similar FAQs using semantic document search.
     """
+
     def __init__(self, retriever: BaseRetriever):
         """
         :param retriever: Retriever instance
@@ -342,10 +344,7 @@ class FAQPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=Docs2Answers(), name="Docs2Answers", inputs=["Retriever"])
 
-    def run(self,
-            query: str,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None):
+    def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
         """
         :param query: the query string.
         :param params: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
@@ -364,11 +363,9 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
     Takes an existing search pipeline and adds one "input translation node" after the Query and one
     "output translation" node just before returning the results
     """
+
     def __init__(
-        self,
-        input_translator: BaseTranslator,
-        output_translator: BaseTranslator,
-        pipeline: BaseStandardPipeline
+        self, input_translator: BaseTranslator, output_translator: BaseTranslator, pipeline: BaseStandardPipeline
     ):
         """
         Wrap a given `pipeline` with the `input_translator` and `output_translator`.
@@ -408,14 +405,12 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
     A simple pipeline that takes documents as input and generates
     questions that it thinks can be answered by the documents.
     """
+
     def __init__(self, question_generator: QuestionGenerator):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Query"])
 
-    def run(self,
-            documents,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None):
+    def run(self, documents, params: Optional[dict] = None, debug: Optional[bool] = None):
         output = self.pipeline.run(documents=documents, params=params, debug=debug)
         return output
 
@@ -425,15 +420,13 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
     A simple pipeline that takes a query as input, performs retrieval, and then generates
     questions that it thinks can be answered by the retrieved documents.
     """
+
     def __init__(self, retriever: BaseRetriever, question_generator: QuestionGenerator):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
         self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
 
-    def run(self,
-            query: str,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None):
+    def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
         output = self.pipeline.run(query=query, params=params, debug=debug)
         return output
 
@@ -443,6 +436,7 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
     This is a pipeline which takes a document as input, generates questions that the model thinks can be answered by
     this document, and then performs question answering of this questions using that single document.
     """
+
     def __init__(self, question_generator: QuestionGenerator, reader: BaseReader):
         setattr(question_generator, "run", self.formatting_wrapper(question_generator.run))
         # Overwrite reader.run function so it can handle a batch of questions being passed on by the QuestionGenerator
@@ -463,12 +457,12 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
                 query_doc_list.append({"queries": q, "docs": documents})
             kwargs["query_doc_list"] = query_doc_list
             return kwargs, output_stream
+
         return wrapper
 
-    def run(self,
-            documents: List[Document], # type: ignore
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None):
+    def run(
+        self, documents: List[Document], params: Optional[dict] = None, debug: Optional[bool] = None  # type: ignore
+    ):
         output = self.pipeline.run(documents=documents, params=params, debug=debug)
         return output
 
@@ -477,9 +471,9 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
     def __init__(self, document_store: BaseDocumentStore):
         """
         Initialize a Pipeline for finding the most similar documents to a given document.
-        This pipeline can be helpful if you already show a relevant document to your end users and they want to search for just similar ones.  
+        This pipeline can be helpful if you already show a relevant document to your end users and they want to search for just similar ones.
 
-        :param document_store: Document Store instance with already stored embeddings. 
+        :param document_store: Document Store instance with already stored embeddings.
         """
         self.document_store = document_store
 
@@ -492,9 +486,11 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         self.document_store.return_embedding = True  # type: ignore
 
         for document in self.document_store.get_documents_by_id(ids=document_ids):
-            similar_documents.append(self.document_store.query_by_embedding(query_emb=document.embedding,
-                                                                            return_embedding=False,
-                                                                            top_k=top_k))
+            similar_documents.append(
+                self.document_store.query_by_embedding(
+                    query_emb=document.embedding, return_embedding=False, top_k=top_k
+                )
+            )
 
         self.document_store.return_embedding = False  # type: ignore
         return similar_documents

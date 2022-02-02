@@ -17,7 +17,7 @@ def safe_import(import_path: str, classname: str, dep_group: str):
     Method that allows the import of nodes that depend on missing dependencies.
     These nodes can be installed one by one with extras_require (see setup.cfg)
     but they need to be all imported in their respective package's __init__()
-    
+
     Therefore, in case of an ImportError, the class to import is replaced by
     a hollow MissingDependency function, which will throw an error when
     inizialized.
@@ -35,8 +35,8 @@ def _missing_dependency_stub_factory(classname: str, dep_group: str, import_erro
     Create custom versions of MissingDependency using the given parameters.
     See `safe_import()`
     """
-    class MissingDependency:
 
+    class MissingDependency:
         def __init__(self, *args, **kwargs):
             _optional_component_not_installed(classname, dep_group, import_error)
 
@@ -46,11 +46,13 @@ def _missing_dependency_stub_factory(classname: str, dep_group: str, import_erro
     return MissingDependency
 
 
-def _optional_component_not_installed(component: str, dep_group: str, source_error: Exception): 
-    raise ImportError (f"Failed to import '{component}', " \
-           "which is an optional component in Haystack.\n" \
-           f"Run 'pip install farm-haystack[{dep_group}]' " \
-           "to install the required dependencies and make this component available.") from source_error
+def _optional_component_not_installed(component: str, dep_group: str, source_error: Exception):
+    raise ImportError(
+        f"Failed to import '{component}', "
+        "which is an optional component in Haystack.\n"
+        f"Run 'pip install farm-haystack[{dep_group}]' "
+        "to install the required dependencies and make this component available."
+    ) from source_error
 
 
 def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None) -> bool:
@@ -69,9 +71,7 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
 
     is_not_empty = len(list(Path(path).rglob("*"))) > 0
     if is_not_empty:
-        logger.info(
-            f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data."
-        )
+        logger.info(f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data.")
         return False
     else:
         logger.info(f"Fetching from {url} to `{output_dir}`")
@@ -86,7 +86,9 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
             tar_archive = tarfile.open(fileobj=io.BytesIO(request_data.content), mode="r|*")
             tar_archive.extractall(output_dir)
         else:
-            logger.warning('Skipped url {0} as file type is not supported here. '
-                           'See haystack documentation for support of more file types'.format(url))
+            logger.warning(
+                "Skipped url {0} as file type is not supported here. "
+                "See haystack documentation for support of more file types".format(url)
+            )
 
         return True

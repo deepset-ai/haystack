@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class Converter:
-
     @staticmethod
     def convert_to_transformers(adaptive_model):
         """
@@ -37,13 +36,23 @@ class Converter:
                 transformers_model = Converter._convert_to_transformers_qa(adaptive_model, prediction_head)
                 converted_models.append(transformers_model)
             else:
-                logger.error(f"Haystack -> Transformers conversion is not supported yet for"
-                             f" prediction heads of type {prediction_head.model_type}")
+                logger.error(
+                    f"Haystack -> Transformers conversion is not supported yet for"
+                    f" prediction heads of type {prediction_head.model_type}"
+                )
 
         return converted_models
 
     @staticmethod
-    def convert_from_transformers(model_name_or_path, device, revision=None, task_type=None, processor=None,  use_auth_token: Union[bool, str] = None, **kwargs):
+    def convert_from_transformers(
+        model_name_or_path,
+        device,
+        revision=None,
+        task_type=None,
+        processor=None,
+        use_auth_token: Union[bool, str] = None,
+        **kwargs,
+    ):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
          - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
@@ -67,24 +76,35 @@ class Converter:
         :return: AdaptiveModel
         """
 
-        lm = LanguageModel.load(model_name_or_path, revision=revision,use_auth_token=use_auth_token, **kwargs)
+        lm = LanguageModel.load(model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs)
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]
             if "QuestionAnswering" in architecture:
                 task_type = "question_answering"
             else:
-                logger.error("Could not infer task type from model config. Please provide task type manually. "
-                             "('question_answering' or 'embeddings')")
-
+                logger.error(
+                    "Could not infer task type from model config. Please provide task type manually. "
+                    "('question_answering' or 'embeddings')"
+                )
 
         if task_type == "question_answering":
             ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, **kwargs)
-            adaptive_model = am.AdaptiveModel(language_model=lm, prediction_heads=[ph], embeds_dropout_prob=0.1,
-                                              lm_output_types="per_token", device=device)
+            adaptive_model = am.AdaptiveModel(
+                language_model=lm,
+                prediction_heads=[ph],
+                embeds_dropout_prob=0.1,
+                lm_output_types="per_token",
+                device=device,
+            )
         elif task_type == "embeddings":
-            adaptive_model = am.AdaptiveModel(language_model=lm, prediction_heads=[], embeds_dropout_prob=0.1,
-                                              lm_output_types=["per_token", "per_sequence"], device=device)
+            adaptive_model = am.AdaptiveModel(
+                language_model=lm,
+                prediction_heads=[],
+                embeds_dropout_prob=0.1,
+                lm_output_types=["per_token", "per_sequence"],
+                device=device,
+            )
 
         if processor:
             adaptive_model.connect_heads_with_processor(processor.tasks)
@@ -101,7 +121,6 @@ class Converter:
         transformers_model = AutoModelForQuestionAnswering.from_config(adaptive_model.language_model.model.config)
         # transfer weights for language model + prediction head
         setattr(transformers_model, transformers_model.base_model_prefix, adaptive_model.language_model.model)
-        transformers_model.qa_outputs.load_state_dict(
-            prediction_head.feed_forward.feed_forward[0].state_dict())
+        transformers_model.qa_outputs.load_state_dict(prediction_head.feed_forward.feed_forward[0].state_dict())
 
         return transformers_model
