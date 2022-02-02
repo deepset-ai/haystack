@@ -53,6 +53,32 @@ def test_init_elastic_client():
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
 
 
+@pytest.mark.elasticsearch
+def test_init_elastic_doc_store_with_index_recreation():
+    index_name = 'test_index_recreation'
+    label_index_name = 'test_index_recreation_labels'
+
+    document_store = ElasticsearchDocumentStore(index=index_name, label_index=label_index_name)
+    documents = [Document(content="Doc1")]
+    labels = [Label(
+        query='query',
+        document=documents[0],
+        is_correct_document=True,
+        is_correct_answer=False,
+        origin='user-feedback',
+        answer=None
+    )]
+    document_store.write_documents(documents, index=index_name)
+    document_store.write_labels(labels, index=label_index_name)
+
+    document_store = ElasticsearchDocumentStore(index=index_name, label_index=label_index_name, recreate_index=True)
+    docs = document_store.get_all_documents(index=index_name)
+    labels = document_store.get_all_labels(index=label_index_name)
+
+    assert len(docs) == 0
+    assert len(labels) == 0
+
+
 def test_write_with_duplicate_doc_ids(document_store):
     duplicate_documents = [
         Document(
@@ -908,6 +934,24 @@ def test_elasticsearch_custom_fields():
     assert len(documents) == 1
     assert documents[0].content == "test"
     np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_delete_index():
+    client = Elasticsearch()
+    index_name = "haystack_test_deletion"
+
+    document_store = ElasticsearchDocumentStore(index=index_name)
+
+    # the index should exist
+    index_exists = client.indices.exists(index=index_name)
+    assert index_exists
+
+    document_store.delete_index(index_name)
+
+    # the index was deleted and should not exist
+    index_exists = client.indices.exists(index=index_name)
+    assert not index_exists
 
 
 @pytest.mark.elasticsearch
