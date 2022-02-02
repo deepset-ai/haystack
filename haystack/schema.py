@@ -870,10 +870,6 @@ class EvaluationResult:
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
         - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
-
-        #simulate top k reader
-        if simulated_top_k_reader != -1:
-            answers = answers[answers["rank"] <= simulated_top_k_reader]
         
         # simulate top k retriever
         if simulated_top_k_retriever != -1:
@@ -884,10 +880,18 @@ class EvaluationResult:
             for query_id in answers["query_id"].unique():
                 top_k_document_ids = top_k_documents[top_k_documents["query_id"] == query_id]["document_id"].unique()
                 query_answers = answers[answers["query_id"] == query_id]
+                #consider only the answers within simulated_top_k_retriever documents
                 simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
+                # simulate top k reader
+                if simulated_top_k_reader != -1:
+                    # consider only the simulated_top_k_reader answers within simulated_query_answers
+                    simulated_query_answers = simulated_query_answers.nsmallest(simulated_top_k_reader, 'rank')
                 simulated_query_answers["rank"] = np.arange(1, len(simulated_query_answers)+1)
                 simulated_answers.append(simulated_query_answers)
             answers = pd.concat(simulated_answers)
+        # simulate top k reader
+        elif simulated_top_k_reader != -1:
+            answers = answers[answers["rank"] <= simulated_top_k_reader]
 
         # build metrics df
         metrics = []

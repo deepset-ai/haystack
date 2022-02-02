@@ -477,7 +477,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     
     assert metrics_top_3["Reader"]["exact_match"] == 1.0
     assert metrics_top_3["Reader"]["f1"] == 1.0
-    assert metrics_top_3["Reader"]["sas"] == pytest.approx(1.0)
+    assert metrics_top_3["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
     assert metrics_top_3["Retriever"]["mrr"] == 0.5
     assert metrics_top_3["Retriever"]["map"] == 0.5
     assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
@@ -562,8 +562,8 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=1)
     
-    assert metrics_top_1["Reader"]["exact_match"] == 0.5
-    assert metrics_top_1["Reader"]["f1"] == 0.5
+    assert metrics_top_1["Reader"]["exact_match"] == 1.0
+    assert metrics_top_1["Reader"]["f1"] == 1.0
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
