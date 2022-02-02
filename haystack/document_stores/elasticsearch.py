@@ -649,7 +649,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
             _label = {
                 "_op_type": "index"
-                if self.duplicate_documents == "overwrite" or label.id in duplicate_ids
+                if self.duplicate_documents == "overwrite" or label.id in duplicate_ids  # type: ignore
                 else "create",  # type: ignore
                 "_index": index,
                 **label.to_dict(),  # type: ignore
