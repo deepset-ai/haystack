@@ -4,13 +4,16 @@ from pathlib import Path
 from haystack.nodes.base import BaseComponent
 
 
+DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]
+
+
 class FileTypeClassifier(BaseComponent):
     """
     Route files in an Indexing Pipeline to corresponding file converters.
     """
     outgoing_edges = 10
 
-    def __init__(self, supported_types: List[str] = ["txt", "pdf", "md", "docx", "html"]):
+    def __init__(self, supported_types: List[str] = DEFAULT_TYPES):
         """
         Node that sends out files on a different output edge depending on their extension.
 
@@ -23,11 +26,13 @@ class FileTypeClassifier(BaseComponent):
         """
         if len(supported_types) > 5:
             raise ValueError("supported_types can't have more than 5 values.")
+        if len(set(supported_types)) != len(supported_types):
+            raise ValueError("supported_types can't contain duplicate values.")
 
         self.set_config(supported_types=supported_types)
         self.supported_types = supported_types
 
-    def _get_extension(self, file_paths: list) -> str:
+    def _get_extension(self, file_paths: List[Path]) -> str:
         """
         Return the extension found in the given list of files.
         Also makes sure that all files have the same extension.
@@ -44,14 +49,16 @@ class FileTypeClassifier(BaseComponent):
 
         return extension.lstrip(".")
 
-    def run(self, file_paths: Union[Path, List[Path]]):  # type: ignore
+    def run(self, file_paths: Union[Path, List[Path], str, List[str]]):  # type: ignore
         """
         Sends out files on a different output edge depending on their extension.
 
         :param file_paths: paths to route on different edges.
         """
-        if isinstance(file_paths, Path):
+        if not isinstance(file_paths, list):
             file_paths = [file_paths]
+
+        file_paths = [Path(path) for path in file_paths]
 
         output = {"file_paths": file_paths}
         extension = self._get_extension(file_paths)
