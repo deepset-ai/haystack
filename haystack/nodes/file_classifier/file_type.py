@@ -24,8 +24,8 @@ class FileTypeClassifier(BaseComponent):
             elements will not be allowed. Lists with duplicate elements will 
             also be rejected.
         """
-        if len(supported_types) > 5:
-            raise ValueError("supported_types can't have more than 5 values.")
+        if len(supported_types) > 10:
+            raise ValueError("supported_types can't have more than 10 values.")
         if len(set(supported_types)) != len(supported_types):
             raise ValueError("supported_types can't contain duplicate values.")
 
@@ -45,7 +45,7 @@ class FileTypeClassifier(BaseComponent):
 
         for path in file_paths:
             if path.suffix != extension:
-                raise ValueError(f"Multiple files types are not allowed at once.")
+                raise ValueError(f"Multiple file types are not allowed at once.")
 
         return extension.lstrip(".")
 
