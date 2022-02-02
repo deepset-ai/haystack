@@ -50,6 +50,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         scheme: str = "http",
         ca_certs: Optional[str] = None,
         verify_certs: bool = True,
+        recreate_index: bool = False,
         create_index: bool = True,
         refresh_type: str = "wait_for",
         similarity="dot_product",
@@ -93,7 +94,16 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
         :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
         :param verify_certs: Whether to be strict about ca certificates
-        :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
+        :param recreate_index: If set to True, an existing elasticsearch index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
+        :param create_index:
+            Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+            ..deprecated:: 2.0
+                This param is deprecated. In the next major version we will always try to create an index if there is no
+                existing index (the current behaviour when create_index=True). If you are looking to recreate an
+                existing index by deleting it first if it already exist use param recreate_index.
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                              If set to 'wait_for', continue only after changes are visible (slow, but safe).
                              If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
@@ -175,6 +185,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if index_type == "hnsw" and type(self) == ElasticsearchDocumentStore:
             raise Exception("The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
                             "Try the OpenSearchDocumentStore instead.")
+        if recreate_index:
+            self.delete_index(index)
+            self.delete_index(label_index)
+            self._create_document_index(index)
+            self._create_label_index(index)
+
         if create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
@@ -1242,6 +1258,16 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
         index = index or self.label_index
         self.delete_documents(index=index, ids=ids, filters=filters, headers=headers)
+
+    def delete_index(self, index: str):
+        """
+        Delete an existing elasticsearch index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        self.client.indices.delete(index=index, ignore=[400, 404])
+        logger.debug(f'deleted elasticsearch index {index}')
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
