@@ -13,6 +13,14 @@ logger = logging.getLogger(__name__)
 
 @router.post("/feedback")
 def post_feedback(feedback: LabelSerialized):
+    """
+    This endpoint allows the API user to submit feedback on 
+    an answer for a particular query. For example, the user 
+    can send feedback on whether the answer was correct and 
+    whether the right snippet was identified as the answer. 
+    Information submitted through this endpoint is used to 
+    train the underlying QA model.
+    """
     if feedback.origin is None:
         feedback.origin = "user-feedback"
     DOCUMENT_STORE.write_labels([feedback])
@@ -20,6 +28,11 @@ def post_feedback(feedback: LabelSerialized):
 
 @router.get("/feedback")
 def get_feedback():
+    """
+    This endpoint allows the API user to retrieve all the
+    feedback that has been sumbitted through the 
+    `POST /feedback` endpoint
+    """
     labels = DOCUMENT_STORE.get_all_labels()
     return labels
 
@@ -27,17 +40,14 @@ def get_feedback():
 @router.post("/eval-feedback")
 def get_feedback_metrics(filters: FilterRequest = None):
     """
-    Return basic accuracy metrics based on the user feedback.
-    Which ratio of answers was correct? Which ratio of documents was correct?
-    You can supply filters in the request to only use a certain subset of labels.
+    This endpoint returns basic accuracy metrics based on user feedback, 
+    e.g., the ratio of correct answers or correctly identified documents. 
+    You can filter the output by document or label.
 
-    **Example:**
-
-        ```
-            | curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback' \
-            | --header 'Content-Type: application/json' \
-            | --data-raw '{ "filters": {"document_id": ["XRR3xnEBCYVTkbTystOB"]} }'
-
+    Example:
+    `curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback' \
+     --header 'Content-Type: application/json' \
+     --data-raw '{ "filters": {"document_id": ["XRR3xnEBCYVTkbTystOB"]} }'`
     """
 
     if filters:
@@ -66,7 +76,8 @@ def export_feedback(
     context_size: int = 100_000, full_document_context: bool = True, only_positive_labels: bool = False
 ):
     """
-    SQuAD format JSON export for question/answer pairs that were marked as "relevant".
+    This endpoint returns JSON output in the SQuAD format for question/answer pairs 
+    that were marked as "relevant" by user feedback through the `POST /feedback` endpoint.
 
     The context_size param can be used to limit response size for large documents.
     """

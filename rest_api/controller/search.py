@@ -2,6 +2,7 @@ import logging
 import time
 import json
 from pathlib import Path
+from numpy import ndarray
 
 from fastapi import APIRouter
 
@@ -47,11 +48,18 @@ def check_status():
 
 @router.get("/hs_version")
 def haystack_version():
+    """
+    Get the running Haystack version.
+    """
     return {"hs_version": haystack.__version__}
 
 
 @router.post("/query", response_model=QueryResponse, response_model_exclude_none=True)
 def query(request: QueryRequest):
+    """
+    This endpoint receives the question as a string and allows the requester to set 
+    additional parameters that will be passed on to the Haystack pipeline.
+    """
     with concurrency_limiter.run():
         result = _process_request(PIPELINE, request)
         return result
@@ -72,6 +80,12 @@ def _process_request(pipeline, request) -> QueryResponse:
             params[key]["filters"] = _format_filters(params[key]["filters"])
 
     result = pipeline.run(query=request.query, params=params,debug=request.debug)
+    
+    # if any of the documents contains an embedding as an ndarray the latter needs to be converted to list of float
+    for document in result['documents'] or []:
+        if isinstance(document.embedding, ndarray):
+            document.embedding = document.embedding.tolist()
+    
     end_time = time.time()
     logger.info(json.dumps({"request": request, "response": result, "time": f"{(end_time - start_time):.2f}"}, default=str))
 

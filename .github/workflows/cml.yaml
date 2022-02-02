@@ -78,8 +78,7 @@ jobs:
         run: |
           apt-get update -y
           apt-get install python3-dev -y
-          pip install -r requirements.txt
-          pip install .
+          pip install .[elasticsearch,faiss,milvus,weaviate,graphdb,ray,rest,ui,dev]
           cd test/benchmarks && python run.py --retriever_index --retriever_query --reader --ci --save_markdown
           echo -en "## Benchmarks: Retriever Indexing\n" >> report.md
           cat retriever_index_results.md >> report.md

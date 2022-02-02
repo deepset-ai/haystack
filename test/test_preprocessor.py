@@ -1,9 +1,9 @@
 from pathlib import Path
 
-import pytest
+from haystack.nodes.file_converter.pdf import PDFToTextConverter
+from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
-from haystack.file_converter.pdf import PDFToTextConverter
-from haystack.preprocessor.preprocessor import PreProcessor
+from conftest import SAMPLES_PATH
 
 TEXT = """
 This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in 
@@ -67,7 +67,7 @@ def test_preprocess_passage_split():
 
 def test_clean_header_footer():
     converter = PDFToTextConverter()
-    document = converter.convert(file_path=Path("samples/pdf/sample_pdf_2.pdf"))  # file contains header/footer
+    document = converter.convert(file_path=Path(SAMPLES_PATH/"pdf"/"sample_pdf_2.pdf"))  # file contains header/footer
 
     preprocessor = PreProcessor(clean_header_footer=True, split_by=None)
     documents = preprocessor.process(document)

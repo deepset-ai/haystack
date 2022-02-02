@@ -6,6 +6,8 @@ from haystack.modeling.model.tokenization import Tokenizer
 from haystack.modeling.utils import set_all_seeds
 import torch
 
+from conftest import SAMPLES_PATH
+
 
 def test_processor_saving_loading(caplog):
     if caplog is not None:
@@ -25,17 +27,17 @@ def test_processor_saving_loading(caplog):
         train_filename="train-sample.json",
         dev_filename="dev-sample.json",
         test_filename=None,
-        data_dir=Path("samples/qa"),
+        data_dir=SAMPLES_PATH/"qa",
     )
 
-    dicts = processor.file_to_dicts(file=Path("samples/qa/dev-sample.json"))
+    dicts = processor.file_to_dicts(file=SAMPLES_PATH/"qa"/"dev-sample.json")
     data, tensor_names, _ = processor.dataset_from_dicts(dicts=dicts, indices=[1])
 
     save_dir = Path("testsave/processor")
     processor.save(save_dir)
 
     processor = processor.load_from_dir(save_dir)
-    dicts = processor.file_to_dicts(file=Path("samples/qa/dev-sample.json"))
+    dicts = processor.file_to_dicts(file=SAMPLES_PATH/"qa"/"dev-sample.json")
     data_loaded, tensor_names_loaded, _ = processor.dataset_from_dicts(dicts, indices=[1])
 
     assert tensor_names == tensor_names_loaded

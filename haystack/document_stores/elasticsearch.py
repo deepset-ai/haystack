@@ -1,3 +1,4 @@
+from modulefinder import Module
 from typing import List, Optional, Union, Dict, Any, Generator
 
 import json
@@ -10,11 +11,16 @@ from collections import defaultdict
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
-from elasticsearch import Elasticsearch, RequestsHttpConnection
-from elasticsearch.helpers import bulk, scan
-from elasticsearch.exceptions import RequestError
 
-from haystack.document_stores import BaseDocumentStore
+try:
+    from elasticsearch import Elasticsearch, RequestsHttpConnection
+    from elasticsearch.helpers import bulk, scan
+    from elasticsearch.exceptions import RequestError
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
+
+from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 
@@ -26,40 +32,41 @@ def nested_defaultdict():
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchDocumentStore(BaseDocumentStore):
+class ElasticsearchDocumentStore(KeywordDocumentStore):
     def __init__(
-            self,
-            host: Union[str, List[str]] = "localhost",
-            port: Union[int, List[int]] = 9200,
-            username: str = "",
-            password: str = "",
-            api_key_id: Optional[str] = None,
-            api_key: Optional[str] = None,
-            aws4auth=None,
-            index: str = "document",
-            label_index: str = "label",
-            search_fields: Union[str, list] = "content",
-            content_field: str = "content",
-            name_field: str = "name",
-            embedding_field: str = "embedding",
-            embedding_dim: int = 768,
-            custom_mapping: Optional[dict] = None,
-            excluded_meta_data: Optional[list] = None,
-            analyzer: str = "standard",
-            scheme: str = "http",
-            ca_certs: Optional[str] = None,
-            verify_certs: bool = True,
-            create_index: bool = True,
-            refresh_type: str = "wait_for",
-            similarity="dot_product",
-            timeout=30,
-            return_embedding: bool = False,
-            duplicate_documents: str = 'overwrite',
-            index_type: str = "flat",
-            scroll: str = "1d",
-            skip_missing_embeddings: bool = True,
-            synonyms: Optional[List] = None,
-            synonym_type: str = "synonym"
+        self,
+        host: Union[str, List[str]] = "localhost",
+        port: Union[int, List[int]] = 9200,
+        username: str = "",
+        password: str = "",
+        api_key_id: Optional[str] = None,
+        api_key: Optional[str] = None,
+        aws4auth = None,
+        index: str = "document",
+        label_index: str = "label",
+        search_fields: Union[str, list] = "content",
+        content_field: str = "content",
+        name_field: str = "name",
+        embedding_field: str = "embedding",
+        embedding_dim: int = 768,
+        custom_mapping: Optional[dict] = None,
+        excluded_meta_data: Optional[list] = None,
+        analyzer: str = "standard",
+        scheme: str = "http",
+        ca_certs: Optional[str] = None,
+        verify_certs: bool = True,
+        recreate_index: bool = False,
+        create_index: bool = True,
+        refresh_type: str = "wait_for",
+        similarity="dot_product",
+        timeout=30,
+        return_embedding: bool = False,
+        duplicate_documents: str = 'overwrite',
+        index_type: str = "flat",
+        scroll: str = "1d",
+        skip_missing_embeddings: bool = True,
+        synonyms: Optional[List] = None,
+        synonym_type: str = "synonym"
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -92,7 +99,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
         :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
         :param verify_certs: Whether to be strict about ca certificates
-        :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
+        :param recreate_index: If set to True, an existing elasticsearch index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
+        :param create_index:
+            Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+            ..deprecated:: 2.0
+                This param is deprecated. In the next major version we will always try to create an index if there is no
+                existing index (the current behaviour when create_index=True). If you are looking to recreate an
+                existing index by deleting it first if it already exist use param recreate_index.
         :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                              If set to 'wait_for', continue only after changes are visible (slow, but safe).
                              If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
@@ -128,26 +144,24 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         # save init parameters to enable export of component config as YAML
         self.set_config(
             host=host, port=port, username=username, password=password, api_key_id=api_key_id, api_key=api_key,
-            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields,
-            content_field=content_field,
+            aws4auth=aws4auth, index=index, label_index=label_index, search_fields=search_fields, content_field=content_field,
             name_field=name_field, embedding_field=embedding_field, embedding_dim=embedding_dim,
             custom_mapping=custom_mapping, excluded_meta_data=excluded_meta_data, analyzer=analyzer, scheme=scheme,
             ca_certs=ca_certs, verify_certs=verify_certs, create_index=create_index,
             duplicate_documents=duplicate_documents, refresh_type=refresh_type, similarity=similarity,
             timeout=timeout, return_embedding=return_embedding, index_type=index_type, scroll=scroll,
-            skip_missing_embeddings=skip_missing_embeddings, synonyms=synonyms, synonym_type=synonym_type
+            skip_missing_embeddings=skip_missing_embeddings, synonyms=synonyms,synonym_type=synonym_type
         )
 
         self.client = self._init_elastic_client(host=host, port=port, username=username, password=password,
-                                                api_key=api_key, api_key_id=api_key_id, aws4auth=aws4auth,
-                                                scheme=scheme,
-                                                ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
+                                           api_key=api_key, api_key_id=api_key_id, aws4auth=aws4auth, scheme=scheme,
+                                           ca_certs=ca_certs, verify_certs=verify_certs,timeout=timeout)
 
         # configure mappings to ES fields that will be used for querying / displaying results
         if type(search_fields) == str:
             search_fields = [search_fields]
 
-        # TODO we should implement a more flexible interal mapping here that simplifies the usage of additional,
+        #TODO we should implement a more flexible interal mapping here that simplifies the usage of additional,
         # custom fields (e.g. meta data you want to return)
         self.search_fields = search_fields
         self.content_field = content_field
@@ -168,16 +182,20 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity = similarity
         else:
-            raise Exception(
-                f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'")
+            raise Exception(f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'")
         if index_type in ["flat", "hnsw"]:
             self.index_type = index_type
         else:
             raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
         if index_type == "hnsw" and type(self) == ElasticsearchDocumentStore:
-            raise Exception(
-                "The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
-                "Try the OpenSearchDocumentStore instead.")
+            raise Exception("The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
+                            "Try the OpenSearchDocumentStore instead.")
+        if recreate_index:
+            self.delete_index(index)
+            self.delete_index(label_index)
+            self._create_document_index(index)
+            self._create_label_index(index)
+
         if create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
@@ -200,28 +218,27 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
         hosts = self._prepare_hosts(host, port)
 
-        if (api_key or api_key_id) and not (api_key and api_key_id):
+        if (api_key or api_key_id) and not(api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
 
         if api_key:
             # api key authentication
             client = Elasticsearch(hosts=hosts, api_key=(api_key_id, api_key),
-                                   scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
+                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout)
         elif aws4auth:
             # aws elasticsearch with IAM
             # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
             client = Elasticsearch(
-                hosts=hosts, http_auth=aws4auth, connection_class=RequestsHttpConnection, use_ssl=True,
-                verify_certs=True, timeout=timeout)
+                hosts=hosts, http_auth=aws4auth, connection_class=RequestsHttpConnection, use_ssl=True, verify_certs=True, timeout=timeout)
         elif username:
             # standard http_auth
             client = Elasticsearch(hosts=hosts, http_auth=(username, password),
-                                   scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
-                                   timeout=timeout)
+                                        scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
+                                        timeout=timeout)
         else:
             # there is no authentication for this elasticsearch instance
             client = Elasticsearch(hosts=hosts, scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs,
-                                   timeout=timeout)
+                                        timeout=timeout)
 
         # Test connection
         try:
@@ -245,7 +262,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if isinstance(port, list):
                 if not len(port) == len(host):
                     raise ValueError("Length of list `host` must match length of list `port`")
-                hosts = [{"host": h, "port": p} for h, p in zip(host, port)]
+                hosts = [{"host":h, "port":p} for h, p in zip(host,port)]
             else:
                 hosts = [{"host": h, "port": port} for h in host]
         else:
@@ -263,19 +280,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             if self.search_fields:
                 for search_field in self.search_fields:
                     if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
-                        raise Exception(
-                            f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
-                            f"Note, that all data stored in the index will be lost!")
+                        raise Exception(f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
+                                        f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
+                                        f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
+                                        f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                                        f"Note, that all data stored in the index will be lost!")
             if self.embedding_field:
-                if self.embedding_field in mapping["properties"] and mapping["properties"][self.embedding_field][
-                    "type"] != "dense_vector":
-                    raise Exception(
-                        f"The '{index_name}' index in Elasticsearch already has a field called '{self.embedding_field}'"
-                        f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
-                        f"document_store to use a different name for the embedding_field parameter.")
+                if self.embedding_field in mapping["properties"] and mapping["properties"][self.embedding_field]["type"] != "dense_vector":
+                    raise Exception(f"The '{index_name}' index in Elasticsearch already has a field called '{self.embedding_field}'"
+                                    f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
+                                    f"document_store to use a different name for the embedding_field parameter.")
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
                 self.client.indices.put_mapping(index=index_name, body=mapping, headers=headers)
             return
@@ -287,7 +301,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "mappings": {
                     "properties": {
                         self.name_field: {"type": "keyword"},
-                        self.content_field: {"type": "text"},
+                        self.content_field: {"type": "text"}
                     },
                     "dynamic_templates": [
                         {
@@ -307,17 +321,23 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     }
                 }
             }
+
             if self.synonyms:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
                 mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+
                 mapping["settings"]["analysis"]["analyzer"]["synonym"] = {"tokenizer": "whitespace",
                                                                           "filter": ["lowercase",
                                                                                      "synonym"]}
-                mapping["settings"]["analysis"]["filter"] = {
-                    "synonym": {"type": self.synonym_type, "synonyms": self.synonyms}}
+                mapping["settings"]["analysis"]["filter"] = {"synonym": {"type": self.synonym_type, "synonyms": self.synonyms}}
+
+            else:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
 
             if self.embedding_field:
-                mapping["mappings"]["properties"][self.embedding_field] = {"type": "dense_vector",
-                                                                           "dims": self.embedding_dim}
+                mapping["mappings"]["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
 
         try:
             self.client.indices.create(index=index_name, body=mapping, headers=headers)
@@ -336,7 +356,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             "mappings": {
                 "properties": {
                     "query": {"type": "text"},
-                    "answer": {"type": "flattened"},  # light-weight but less search options than full object
+                    "answer": {"type": "flattened"}, #light-weight but less search options than full object
                     "document": {"type": "flattened"},
                     "is_correct_answer": {"type": "boolean"},
                     "is_correct_document": {"type": "boolean"},
@@ -346,7 +366,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                     "pipeline_id": {"type": "keyword"},
                     "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
                     "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
-                    # TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
+                    #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
                 }
             }
         }
@@ -367,8 +387,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding"
         }
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> \
-    Optional[Document]:
+    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
         """Fetch a document by specifying its text id string"""
         index = index or self.index
         documents = self.get_documents_by_id([id], index=index, headers=headers)
@@ -377,11 +396,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000,
-                            headers: Optional[Dict[str, str]] = None) -> List[Document]:
-        """Fetch documents by specifying a list of text id strings"""
+    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
+        """
+        Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
+        to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+        """
         index = index or self.index
-        query = {"query": {"ids": {"values": ids}}}
+        query = {"size": len(ids), "query": {"ids": {"values": ids}}}
         result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
@@ -544,11 +565,11 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
     def write_labels(
-            self,
-            labels: Union[List[Label], List[dict]],
-            index: Optional[str] = None,
-            headers: Optional[Dict[str, str]] = None,
-            batch_size: int = 10_000
+        self, 
+        labels: Union[List[Label], List[dict]], 
+        index: Optional[str] = None, 
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: int = 10_000
     ):
         """Write annotation labels into document store.
 
@@ -598,8 +619,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         if labels_to_index:
             bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None,
-                             index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
@@ -865,6 +885,72 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                         }
                         ```
         :param top_k: How many documents to return per query.
+        :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
+
+                             Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+                             that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
+                             names must match with the filters dict supplied in self.retrieve().
+                             ::
+
+                                 **An example custom_query:**
+                                 ```python
+                                |    {
+                                |        "size": 10,
+                                |        "query": {
+                                |            "bool": {
+                                |                "should": [{"multi_match": {
+                                |                    "query": ${query},                 // mandatory query placeholder
+                                |                    "type": "most_fields",
+                                |                    "fields": ["content", "title"]}}],
+                                |                "filter": [                                 // optional custom filters
+                                |                    {"terms": {"year": ${years}}},
+                                |                    {"terms": {"quarter": ${quarters}}},
+                                |                    {"range": {"date": {"gte": ${date}}}}
+                                |                    ],
+                                |            }
+                                |        },
+                                |    }
+                                 ```
+
+                                **For this custom_query, a sample retrieve() could be:**
+                                ```python
+                                |    self.retrieve(query="Why did the revenue increase?",
+                                |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                                ```
+
+                             Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+                             See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
+                             You will find the highlighted output in the returned Document's meta field by key "highlighted".
+                             ::
+
+                                 **Example custom_query with highlighting:**
+                                 ```python
+                                |    {
+                                |        "size": 10,
+                                |        "query": {
+                                |            "bool": {
+                                |                "should": [{"multi_match": {
+                                |                    "query": ${query},                 // mandatory query placeholder
+                                |                    "type": "most_fields",
+                                |                    "fields": ["content", "title"]}}],
+                                |            }
+                                |        },
+                                |        "highlight": {             // enable highlighting
+                                |            "fields": {            // for fields content and title
+                                |                "content": {},
+                                |                "title": {}
+                                |            }
+                                |        },
+                                |    }
+                                 ```
+
+                                 **For this custom_query, highlighting info can be accessed by:**
+                                ```python
+                                |    docs = self.retrieve(query="Why did the revenue increase?")
+                                |    highlighted_content = docs[0].meta["highlighted"]["content"]
+                                |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                                ```
+
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -906,8 +992,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
                 "size": str(top_k),
                 "query": {
                     "bool": {
-                        "should": [{"multi_match": {"query": query, "type": "most_fields",
-                                                    "fields": self.search_fields}}]
+                        "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
                     }
                 },
             }
@@ -1014,8 +1099,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
             logger.debug(f"Retriever query: {body}")
             try:
-                result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"][
-                    "hits"]
+                result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
                 if len(result) == 0:
                     count_embeddings = self.get_embedding_count(index=index, headers=headers)
                     if count_embeddings == 0:
@@ -1047,8 +1131,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
             elif type(self) == ElasticsearchDocumentStore:
                 similarity_fn_name = "dotProduct"
         else:
-            raise Exception(
-                "Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
+            raise Exception("Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between \'cosine\' and \'dot_product\'")
 
         # To handle scenarios where embeddings may be missing
         script_score_query: dict = {"match_all": {}}
@@ -1089,11 +1172,13 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
 
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k: v for k, v in hit["_source"].items() if
-                     k not in (self.content_field, "content_type", self.embedding_field)}
+        meta_data = {k:v for k,v in hit["_source"].items() if k not in (self.content_field, "content_type", self.embedding_field)}
         name = meta_data.pop(self.name_field, None)
         if name:
             meta_data["name"] = name
+
+        if 'highlight' in hit:
+            meta_data['highlighted'] = hit['highlight']
 
         score = hit["_score"]
         if score:
@@ -1298,7 +1383,7 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         :return: None
         """
         logger.warning(
-            """DEPRECATION WARNINGS: 
+                """DEPRECATION WARNINGS: 
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
@@ -1422,6 +1507,16 @@ class ElasticsearchDocumentStore(BaseDocumentStore):
         """
         index = index or self.label_index
         self.delete_documents(index=index, ids=ids, filters=filters, headers=headers)
+
+    def delete_index(self, index: str):
+        """
+        Delete an existing elasticsearch index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        self.client.indices.delete(index=index, ignore=[400, 404])
+        logger.debug(f'deleted elasticsearch index {index}')
 
     def convert_haystack_filter_to_es_query(self, haystack_filter: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1682,7 +1777,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 "mappings": {
                     "properties": {
                         self.name_field: {"type": "keyword"},
-                        self.content_field: {"type": "text"},
+                        self.content_field: {"type": "text"}
                     },
                     "dynamic_templates": [
                         {
@@ -1702,6 +1797,21 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     }
                 }
             }
+
+            if self.synonyms:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
+                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+
+                mapping["settings"]["analysis"]["analyzer"]["synonym"] = {"tokenizer": "whitespace",
+                                                                          "filter": ["lowercase",
+                                                                                     "synonym"]}
+                mapping["settings"]["analysis"]["filter"] = {"synonym": {"type": self.synonym_type, "synonyms": self.synonyms}}
+
+            else:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
+
             if self.embedding_field:
 
                 if self.similarity == "cosine":
@@ -1754,8 +1864,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             "mappings": {
                 "properties": {
                     "query": {"type": "text"},
-                    "answer": {"type": "nested"},
-                    # In elasticsearch we use type:flattened, but this is not supported in opensearch
+                    "answer": {"type": "nested"}, # In elasticsearch we use type:flattened, but this is not supported in opensearch
                     "document": {"type": "nested"},
                     "is_correct_answer": {"type": "boolean"},
                     "is_correct_document": {"type": "boolean"},
@@ -1765,7 +1874,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     "pipeline_id": {"type": "keyword"},
                     "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
                     "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
-                    # TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
+                    #TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
                 }
             }
         }

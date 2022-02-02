@@ -1,0 +1,16 @@
+# Dummy pipeline, used when the CI needs to load the REST API to
+# extract the OpenAPI specs. DO NOT USE.
+
+version: '0.9'
+
+components:
+  - name: FileTypeClassifier
+    type: FileTypeClassifier
+  
+pipelines:
+  - name: query
+    type: Query
+    nodes:
+      - name: FileTypeClassifier
+        inputs: [File]
+
