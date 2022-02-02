@@ -24,6 +24,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     """
     In-memory document store
     """
+
     def __init__(
         self,
         index: str = "document",
@@ -33,7 +34,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return_embedding: bool = False,
         similarity: str = "dot_product",
         progress_bar: bool = True,
-        duplicate_documents: str = 'overwrite',
+        duplicate_documents: str = "overwrite",
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -55,9 +56,14 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
-                index=index, label_index=label_index, embedding_field=embedding_field, embedding_dim=embedding_dim,
-                return_embedding=return_embedding, similarity=similarity, progress_bar=progress_bar,
-                duplicate_documents=duplicate_documents,
+            index=index,
+            label_index=label_index,
+            embedding_field=embedding_field,
+            embedding_dim=embedding_dim,
+            return_embedding=return_embedding,
+            similarity=similarity,
+            progress_bar=progress_bar,
+            duplicate_documents=duplicate_documents,
         )
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
@@ -70,50 +76,59 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, 
-                        headers: Optional[Dict[str, str]] = None):
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
-        Indexes documents for later queries.
+         Indexes documents for later queries.
 
 
-       :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                          Optionally: Include meta data via {"text": "<the-actual-text>",
-                          "meta": {"name": "<some-document-name>, "author": "somebody", ...}}
-                          It can be used for filtering and is accessible in the responses of the Finder.
-        :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
-                      separate index than the documents for search.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :raises DuplicateDocumentError: Exception trigger on duplicate document
-        :return: None
+        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                           Optionally: Include meta data via {"text": "<the-actual-text>",
+                           "meta": {"name": "<some-document-name>, "author": "somebody", ...}}
+                           It can be used for filtering and is accessible in the responses of the Finder.
+         :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
+                       separate index than the documents for search.
+         :param duplicate_documents: Handle duplicates document based on parameter options.
+                                     Parameter options : ( 'skip','overwrite','fail')
+                                     skip: Ignore the duplicates documents
+                                     overwrite: Update any existing documents with the same ID when adding documents.
+                                     fail: an error is raised if the document ID of the document being added already
+                                     exists.
+         :raises DuplicateDocumentError: Exception trigger on duplicate document
+         :return: None
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
 
         index = index or self.index
         duplicate_documents = duplicate_documents or self.duplicate_documents
-        assert duplicate_documents in self.duplicate_documents_options, \
-            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
+        assert (
+            duplicate_documents in self.duplicate_documents_options
+        ), f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
         field_map = self._create_document_field_map()
         documents = deepcopy(documents)
-        documents_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in
-                             documents]
+        documents_objects = [
+            Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents
+        ]
         documents_objects = self._drop_duplicate_documents(documents=documents_objects)
         for document in documents_objects:
             if document.id in self.indexes[index]:
                 if duplicate_documents == "fail":
-                    raise DuplicateDocumentError(f"Document with id '{document.id} already "
-                                                 f"exists in index '{index}'")
+                    raise DuplicateDocumentError(
+                        f"Document with id '{document.id} already " f"exists in index '{index}'"
+                    )
                 elif duplicate_documents == "skip":
-                    logger.warning(f"Duplicate Documents: Document with id '{document.id} already exists in index "
-                                   f"'{index}'")
+                    logger.warning(
+                        f"Duplicate Documents: Document with id '{document.id} already exists in index " f"'{index}'"
+                    )
                     continue
             self.indexes[index][document.id] = document
 
@@ -122,22 +137,29 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.embedding_field: "embedding",
         }
 
-    def write_labels(self, labels: Union[List[dict], List[Label]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
+    def write_labels(
+        self,
+        labels: Union[List[dict], List[Label]],
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Write annotation labels into document store.
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
+
         index = index or self.label_index
         label_objects = [Label.from_dict(l) if isinstance(l, dict) else l for l in labels]
 
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_objects, index=index)]
         if len(duplicate_ids) > 0:
-            logger.warning(f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                           f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                           f" the answer annotation and not the question."
-                           f" Problematic ids: {','.join(duplicate_ids)}")
+            logger.warning(
+                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                f" the answer annotation and not the question."
+                f" Problematic ids: {','.join(duplicate_ids)}"
+            )
 
         for label in label_objects:
             # create timestamps if not available yet
@@ -147,13 +169,15 @@ class InMemoryDocumentStore(BaseDocumentStore):
                 label.updated_at = label.created_at
             self.indexes[index][label.id] = label
 
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
+    def get_document_by_id(
+        self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+    ) -> Optional[Document]:
         """
         Fetch a document by specifying its text id string.
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
+
         index = index or self.index
         documents = self.get_documents_by_id([id], index=index)
         if documents:
@@ -168,14 +192,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
-        
-    def query_by_embedding(self,
-                           query_emb: np.ndarray,
-                           filters: Optional[Dict[str, List[str]]] = None,
-                           top_k: int = 10,
-                           index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None,
-                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
+
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Dict[str, List[str]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -189,7 +215,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
+
         index = index or self.index
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -201,12 +227,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         candidate_docs = []
         for doc in document_to_search:
             curr_meta = deepcopy(doc.meta)
-            new_document = Document(
-                id=doc.id,
-                content=doc.content,
-                meta=curr_meta,
-                embedding=doc.embedding
-            )
+            new_document = Document(id=doc.id, content=doc.content, meta=curr_meta, embedding=doc.embedding)
             new_document.embedding = doc.embedding if return_embedding is True else None
 
             if self.similarity == "dot_product":
@@ -221,7 +242,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: 'BaseRetriever',
+        retriever: "BaseRetriever",
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         update_existing_embeddings: bool = True,
@@ -255,30 +276,41 @@ class InMemoryDocumentStore(BaseDocumentStore):
         document_count = len(result)
         logger.info(f"Updating embeddings for {document_count} docs ...")
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=not self.progress_bar, position=0, unit=" docs",
-                  desc="Updating Embedding") as progress_bar:
+        with tqdm(
+            total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
+        ) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
 
                 if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                                       f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                                       "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()")
+                    raise RuntimeError(
+                        f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                        f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
+                        "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()"
+                    )
 
                 for doc, emb in zip(document_batch, embeddings):
                     self.indexes[index][doc.id].embedding = emb
                 progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
 
-    def get_document_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int:
+    def get_document_count(
+        self,
+        filters: Optional[Dict[str, List[str]]] = None,
+        index: Optional[str] = None,
+        only_documents_without_embedding: bool = False,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> int:
         """
         Return the number of documents in the document store.
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
-        documents = self._query(index=index, filters=filters, only_documents_without_embedding=only_documents_without_embedding)
+
+        documents = self._query(
+            index=index, filters=filters, only_documents_without_embedding=only_documents_without_embedding
+        )
         return len(documents)
 
     def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
@@ -295,7 +327,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
+
         index = index or self.label_index
         return len(self.indexes[index].items())
 
@@ -304,7 +336,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
-        only_documents_without_embedding: bool = False
+        only_documents_without_embedding: bool = False,
     ):
         index = index or self.index
         documents = deepcopy(list(self.indexes[index].values()))
@@ -342,7 +374,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
         Get all documents from the document store as a list.
@@ -355,8 +387,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
-        result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size)
+
+        result = self.get_all_documents_generator(
+            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
+        )
         documents = list(result)
         return documents
 
@@ -366,7 +400,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. The methods returns a Python Generator that yields individual
@@ -380,21 +414,22 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
-        result = self._query(
-            index=index,
-            filters=filters,
-            return_embedding=return_embedding
-        )
+
+        result = self._query(index=index, filters=filters, return_embedding=return_embedding)
         yield from result
 
-    def get_all_labels(self, index: str = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]:
+    def get_all_labels(
+        self,
+        index: str = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Label]:
         """
         Return all labels in the document store.
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
+
         index = index or self.label_index
 
         if filters:
@@ -413,7 +448,12 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return result
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_all_documents(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -423,16 +463,22 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
+
         logger.warning(
-                """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS: 
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_documents(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -449,7 +495,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
+
         index = index or self.index
         if not filters and not ids:
             self.indexes[index] = {}
@@ -460,7 +506,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for doc in docs_to_delete:
             del self.indexes[index][doc.id]
 
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_labels(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
@@ -473,7 +525,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-        
+
         index = index or self.label_index
         if not filters and not ids:
             self.indexes[index] = {}
@@ -483,4 +535,3 @@ class InMemoryDocumentStore(BaseDocumentStore):
             labels_to_delete = [label for label in labels_to_delete if label.id in ids]
         for label in labels_to_delete:
             del self.indexes[index][label.id]
-
