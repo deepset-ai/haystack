@@ -1,4 +1,4 @@
-name: Update Docstrings and Tutorials
+name: Documentation and Code Style
 
 # Controls when the action will run. Triggers the workflow on push 
 # events but only for the master branch
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+          fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
 
       - name: Set up Python 3.8.10
         uses: actions/setup-python@v2
@@ -28,27 +28,32 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pydoc-markdown==3.11.0
-          pip install mkdocs
-          pip install jupytercontrib
-          pip install watchdog==1.0.2
+          pip install pydoc-markdown==3.11.0 mkdocs jupytercontrib watchdog==1.0.2 black
 
-      # Generates the docstrings and tutorials so that we have the latest for the deployment
-      - name: Generate Docstrings and Tutorials
+      # Generate documentation pages from the latest docstrings
+      - name: Generate Docstrings
         run: |
           cd docs/_src/api/api/
-          ./generate_docstrings.sh 
-          cd ../../tutorials/tutorials/
+          ./generate_docstrings.sh
+        
+      # Generates new tutorial pages for deployment
+      - name: Generate Tutorials
+        run: |
+          cd docs/_src/tutorials/tutorials/
           python3 convert_ipynb.py
-          cd ../../../../
-          git status
+        
+      # Apply black on the entire codebase
+      - name: Blacken
+        run: python3 -m black
 
       - name: Commit files
         run: |
+          git status
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
-          git commit -m "Add latest docstring and tutorial changes" -a || echo "No changes to commit"
+          git commit -m "Apply Black and update documentation" -a || echo "No changes to commit"
+      
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
