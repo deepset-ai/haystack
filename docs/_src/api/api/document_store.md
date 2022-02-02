@@ -239,7 +239,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym")
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym")
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -274,7 +274,16 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 - `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
 - `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
 - `verify_certs`: Whether to be strict about ca certificates
-- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
+- `recreate_index`: If set to True, an existing elasticsearch index will be deleted and a new one will be
+    created using the config you are using for initialization. Be aware that all data in the old index will be
+    lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+    be recreated.
+- `create_index`: 
+    Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+    ..deprecated:: 2.0
+        This param is deprecated. In the next major version we will always try to create an index if there is no
+        existing index (the current behaviour when create_index=True). If you are looking to recreate an
+        existing index by deleting it first if it already exist use param recreate_index.
 - `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                      If set to 'wait_for', continue only after changes are visible (slow, but safe).
                      If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
@@ -703,6 +712,23 @@ Delete labels in an index. All labels are deleted if no filters are passed.
     Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
         Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+
+**Returns**:
+
+None
+
+<a name="elasticsearch.ElasticsearchDocumentStore.delete_index"></a>
+#### delete\_index
+
+```python
+ | delete_index(index: str)
+```
+
+Delete an existing elasticsearch index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
 
 **Returns**:
 
