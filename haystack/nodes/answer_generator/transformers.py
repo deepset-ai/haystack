@@ -227,15 +227,10 @@ class RAGenerator(BaseGenerator):
             logger.warning(f'top_k value should not be greater than num_beams, hence setting it to {top_k}')
 
         # Flatten the documents so easy to reference
-        flat_docs_dict: Dict[str, Any] = {}
-        for document in documents:
-            for k, v in document.__dict__.items():
-                if k not in flat_docs_dict:
-                    flat_docs_dict[k] = []
-                flat_docs_dict[k].append(v)
+        flat_docs_dict = self._flatten_docs(documents)
 
         # Extract title
-        titles = [d.meta["name"] if d.meta and "name" in d.meta else "" for d in documents]
+        titles = [d.get("name", "") for d in flat_docs_dict["meta"]]
 
         # Raw document embedding and set device of query_embedding
         passage_embeddings = self._prepare_passage_embeddings(docs=documents, embeddings=flat_docs_dict["embedding"])
@@ -274,18 +269,7 @@ class RAGenerator(BaseGenerator):
         )
 
         generated_answers = self.tokenizer.batch_decode(generator_ids, skip_special_tokens=True)
-        answers: List[Any] = []
-
-        for generated_answer in generated_answers:
-            answers.append(Answer(
-                answer=generated_answer,
-                type="generative",
-                meta={
-                    "doc_ids": flat_docs_dict["id"],
-                    "doc_scores": flat_docs_dict["score"],
-                    "content": flat_docs_dict["content"],
-                    "titles": titles,
-                }))
+        answers = self._create_answers(generated_answers, documents)
         result = {"query": query, "answers": answers}
 
         return result
@@ -332,9 +316,16 @@ class Seq2SeqGenerator(BaseGenerator):
         |
         |     # Answer
         |
-        |     {'answers': [" The Dothraki language is a constructed fictional language. It's important because George R.R. Martin wrote it."],
-        |      'query': 'Why is Dothraki language important?'}
-        |
+        |     {'query': 'who got the first nobel prize in physics',
+        |      'answers':
+        |          [{'query': 'who got the first nobel prize in physics',
+        |            'answer': ' albert einstein',
+        |            'meta': { 'doc_ids': [...],
+        |                      'doc_scores': [80.42758 ...],
+        |                      'doc_probabilities': [40.71379089355469, ...
+        |                      'content': ['Albert Einstein was a ...]
+        |                      'titles': ['"Albert Einstein"', ...]
+        |      }}]}
         ```
     """
 
@@ -449,8 +440,12 @@ class Seq2SeqGenerator(BaseGenerator):
             num_return_sequences=top_k,
             decoder_start_token_id=self.tokenizer.bos_token_id
         )
+
         generated_answers = self.tokenizer.batch_decode(generated_answers_encoded, skip_special_tokens=True)
-        return {"query": query, "answers": generated_answers}
+        answers = self._create_answers(generated_answers, documents)
+        result = {"query": query, "answers": answers}
+
+        return result
 
 
 class _BartEli5Converter:
