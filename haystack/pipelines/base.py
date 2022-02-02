@@ -1,3 +1,5 @@
+from abc import abstractmethod
+from __future__ import annotations
 from typing import Dict, List, Optional, Any
 
 import copy
@@ -47,6 +49,9 @@ class BasePipeline:
     See also the `Pipeline` class for the actual pipeline logic.
     """
     def run(self, **kwargs):
+        raise NotImplementedError
+
+    def get_config(self, return_defaults: bool = False) -> dict:
         raise NotImplementedError
 
     @classmethod
@@ -195,13 +200,59 @@ class BasePipeline:
                         'indexing': {'status': 'IN_PROGRESS',
                         'pending_file_count': 3,
                         'total_file_count': 31}}]
-            """
+        """
         client = DeepsetCloud.get_pipeline_client(
             api_key=api_key, 
             api_endpoint=api_endpoint, 
             workspace=workspace)
         pipeline_config_infos = client.list_pipeline_configs()
         return pipeline_config_infos
+
+    @classmethod
+    def save_to_deepset_could(
+        cls,
+        query_pipeline: BasePipeline,
+        index_pipeline: BasePipeline,
+        pipeline_config_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        overwrite: bool = False
+    ):
+        """
+        Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
+        a Pipeline. A single config must declare a query pipeline and a index pipeline.
+
+        :param query_pipeline: the query pipeline to save.
+        :param index_pipeline: the index pipeline to save.
+        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+        :param workspace: workspace in Deepset Cloud
+        :param api_key: Secret value of the API key. 
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API. 
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        """
+        query_config = query_pipeline.get_config()
+        index_config = index_pipeline.get_config()
+        pipelines = query_config["pipelines"] + index_config["pipelines"]
+        all_components = query_config["components"] + index_config["components"]
+        components = {component["name"]: component for component in all_components}.values()
+        config = {"components": components, "pipelines": pipelines, "version": "0.8"}
+        client = DeepsetCloud.get_pipeline_client(
+            api_key=api_key, 
+            api_endpoint=api_endpoint, 
+            workspace=workspace)
+        pipeline_config_infos = client.list_pipeline_configs()
+        pipeline_config_names = [info["name"] for info in pipeline_config_infos]
+        if pipeline_config_name in pipeline_config_names:
+            if overwrite:
+                client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
+                logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
+            else:
+                raise ValueError(f"Pipeline config {pipeline_config_name} already exists. Set `overwrite=True` to overwrite pipeline config.")
+        else:
+            client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
+            logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
 
     @classmethod
     def _get_pipeline_definition(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None):
@@ -807,6 +858,16 @@ class Pipeline(BasePipeline):
         :param path: path of the output YAML file.
         :param return_defaults: whether to output parameters that have the default values.
         """
+        config = self.get_config(return_defaults=return_defaults)
+        with open(path, 'w') as outfile:
+            yaml.dump(config, outfile, default_flow_style=False)
+
+    def get_config(self, return_defaults: bool = False) -> dict:
+        """
+        Returns a configuration for the Pipeline that can be used with `Pipeline.load()`.
+
+        :param return_defaults: whether to output parameters that have the default values.
+        """
         nodes = self.graph.nodes
 
         pipeline_name = self.root_node.lower()
@@ -849,10 +910,7 @@ class Pipeline(BasePipeline):
             pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
 
         config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
-
-        with open(path, 'w') as outfile:
-            yaml.dump(config, outfile, default_flow_style=False)
-
+        return config
     
     def _format_document_answer(self, document_or_answer: dict):
         return "\n \t".join([f'{name}: {value}' for name, value in document_or_answer.items()])

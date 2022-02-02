@@ -1,7 +1,8 @@
 import logging
 import os
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import requests
+import yaml
 
 DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1" #TODO
 
@@ -55,11 +56,20 @@ class DeepsetCloudClient:
         
         return data
 
-    def post(self, url: str, json: dict = {}, stream: bool = False, headers: dict = None, raise_on_error: bool = True):
-        json = self._remove_null_values(json)
-        response = requests.post(url=url, json=json, stream=stream, headers=headers, auth=BearerAuth(self.api_key))
+    def post(self, url: str, json: dict = None, data: Any = None, stream: bool = False, headers: dict = None, raise_on_error: bool = True):
+        if json is not None:
+            json = self._remove_null_values(json)
+        response = requests.post(url=url, json=json, data=data, stream=stream, headers=headers, auth=BearerAuth(self.api_key))
         if raise_on_error and response.status_code > 299:
             raise Exception(f"POST {url} failed: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
+        return response
+
+    def put(self, url: str, json: dict = None, data: Any = None, stream: bool = False, headers: dict = None, raise_on_error: bool = True):
+        if json is not None:
+            json = self._remove_null_values(json)
+        response = requests.put(url=url, json=json, data=data, stream=stream, headers=headers, auth=BearerAuth(self.api_key))
+        if raise_on_error and response.status_code > 299:
+            raise Exception(f"PUT {url} failed: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}")
         return response
 
     def build_workspace_url(self, workspace: str = None):        
@@ -195,10 +205,24 @@ class PipelineClient:
         return response.json()
 
     def list_pipeline_configs(self, workspace: Optional[str] = None, headers: dict = None) -> List[dict]:
-        workspace_url = self._build_workspace_url(workspace)
+        workspace_url = self._build_workspace_url(workspace=workspace)
         pipelines_url = f"{workspace_url}/pipelines"
         data = self.client.get_paginated(url=pipelines_url, headers=headers)
         return data
+
+    def save_pipeline_config(self, config: dict, pipeline_config_name: str, workspace: Optional[str] = None, headers: dict = None):
+        config["name"] = pipeline_config_name
+        workspace_url = self._build_workspace_url(workspace=workspace)
+        pipelines_url = f"{workspace_url}/pipelines"
+        response = self.client.post(url=pipelines_url, data=yaml.dump(config), headers=headers)
+        assert response.json()["name"] == pipeline_config_name
+
+    def update_pipeline_config(self, config: dict, pipeline_config_name: str, workspace: Optional[str] = None, headers: dict = None):
+        config["name"] = pipeline_config_name
+        pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
+        yaml_url = f"{pipeline_url}/yaml"
+        response = self.client.put(url=yaml_url, data=yaml.dump(config), headers=headers)
+        assert response.json()["name"] == pipeline_config_name
 
     def _build_pipeline_url(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None):
         if pipeline_config_name is None:
