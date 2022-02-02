@@ -38,7 +38,7 @@ jobs:
           # that the code changes to Haystack are not being cached along with the dependencies.
           # TODO for the tests refactoring: We could speed up the process by caching only 
           # the dependencies and installing Haystack again separately for each test runner.
-          key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('pyproject.toml') }}
+          key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
 
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
