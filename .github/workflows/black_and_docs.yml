@@ -1,7 +1,5 @@
 name: Documentation and Code Style
 
-# Controls when the action will run. Triggers the workflow on push 
-# events but only for the master branch
 on:
   push:
     branches-ignore:
@@ -9,9 +7,7 @@ on:
       - benchmarks
 
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
     steps:
