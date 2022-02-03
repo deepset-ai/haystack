@@ -16,6 +16,7 @@ from haystack.errors import DuplicateDocumentError
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 
+from .filter import LogOp
 
 logger = logging.getLogger(__name__)
 
@@ -321,16 +322,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if only_documents_without_embedding:
             documents = [doc for doc in documents if doc.embedding is None]
         if filters:
-            for doc in documents:
-                is_hit = True
-                for key, values in filters.items():
-                    if doc.meta.get(key):
-                        if doc.meta[key] not in values:
-                            is_hit = False
-                    else:
-                        is_hit = False
-                if is_hit:
-                    filtered_documents.append(doc)
+            parsed_filter = LogOp.deserialize(filters)
+            filtered_documents = filter(lambda doc: parsed_filter.evaluate(doc.meta), documents)
         else:
             filtered_documents = documents
 
