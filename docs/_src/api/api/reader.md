@@ -59,47 +59,53 @@ def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None
 ```
 
 Fine-tune a model on a QA dataset. Options:
+
 - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
 - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
 
 Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
 If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
-:param data_dir: Path to directory containing your training data in SQuAD style
-:param train_filename: Filename of training data
-:param dev_filename: Filename of dev / eval data
-:param test_filename: Filename of test data
-:param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
-                  that gets split off from training data for eval.
-:param use_gpu: Whether to use GPU (if available)
-:param batch_size: Number of samples the model receives in one batch for training
-:param n_epochs: Number of iterations on the whole training data set
-:param learning_rate: Learning rate of the optimizer
-:param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.
-:param warmup_proportion: Proportion of training steps until maximum learning rate is reached.
-                          Until that point LR is increasing linearly. After that it's decreasing again linearly.
-                          Options for different schedules are available in FARM.
-:param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
-:param save_dir: Path to store the final model
-:param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
-                      Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
-                      Set to None to use all CPU cores minus one.
-:param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-                Available options:
-                None (Don't use AMP)
-                "O0" (Normal FP32 training)
-                "O1" (Mixed Precision => Recommended)
-                "O2" (Almost FP16)
-                "O3" (Pure FP16).
-                See details on: https://nvidia.github.io/apex/amp.html
-:param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
-       checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-:param checkpoint_every: save a train checkpoint after this many steps of training.
-:param checkpoints_to_keep: maximum number of train checkpoints to save.
-:param caching: whether or not to use caching for preprocessed dataset
-:param cache_path: Path to cache the preprocessed dataset
-:param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
-:return: None
+**Arguments**:
+
+- `data_dir`: Path to directory containing your training data in SQuAD style
+- `train_filename`: Filename of training data
+- `dev_filename`: Filename of dev / eval data
+- `test_filename`: Filename of test data
+- `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
+that gets split off from training data for eval.
+- `use_gpu`: Whether to use GPU (if available)
+- `batch_size`: Number of samples the model receives in one batch for training
+- `n_epochs`: Number of iterations on the whole training data set
+- `learning_rate`: Learning rate of the optimizer
+- `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
+- `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
+Until that point LR is increasing linearly. After that it's decreasing again linearly.
+Options for different schedules are available in FARM.
+- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
+- `save_dir`: Path to store the final model
+- `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
+Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
+Set to None to use all CPU cores minus one.
+- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+Available options:
+None (Don't use AMP)
+"O0" (Normal FP32 training)
+"O1" (Mixed Precision => Recommended)
+"O2" (Almost FP16)
+"O3" (Pure FP16).
+See details on: https://nvidia.github.io/apex/amp.html
+- `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
+checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+- `checkpoint_every`: save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: maximum number of train checkpoints to save.
+- `caching`: whether or not to use caching for preprocessed dataset
+- `cache_path`: Path to cache the preprocessed dataset
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+
+**Returns**:
+
+None
 
 <a id="farm.FARMReader.distil_prediction_layer_from"></a>
 
@@ -110,6 +116,7 @@ def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, tra
 ```
 
 Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
+
 and a student model that will be trained using the teacher's logits. The idea of this is to increase the accuracy of a lightweight student model.
 using a more complex teacher.
 Originally proposed in: https://arxiv.org/pdf/1503.02531.pdf
@@ -126,50 +133,55 @@ student.distil_prediction_layer_from(teacher, data_dir="squad2", train_filename=
 Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
 If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
-:param teacher_model: Model whose logits will be used to improve accuracy
-:param data_dir: Path to directory containing your training data in SQuAD style
-:param train_filename: Filename of training data
-:param dev_filename: Filename of dev / eval data
-:param test_filename: Filename of test data
-:param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
-                  that gets split off from training data for eval.
-:param use_gpu: Whether to use GPU (if available)
-:param student_batch_size: Number of samples the student model receives in one batch for training
-:param student_batch_size: Number of samples the teacher model receives in one batch for distillation
-:param n_epochs: Number of iterations on the whole training data set
-:param learning_rate: Learning rate of the optimizer
-:param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.
-:param warmup_proportion: Proportion of training steps until maximum learning rate is reached.
-                          Until that point LR is increasing linearly. After that it's decreasing again linearly.
-                          Options for different schedules are available in FARM.
-:param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
-:param save_dir: Path to store the final model
-:param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
-                      Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
-                      Set to None to use all CPU cores minus one.
-:param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-                Available options:
-                None (Don't use AMP)
-                "O0" (Normal FP32 training)
-                "O1" (Mixed Precision => Recommended)
-                "O2" (Almost FP16)
-                "O3" (Pure FP16).
-                See details on: https://nvidia.github.io/apex/amp.html
-:param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
-       checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-:param checkpoint_every: save a train checkpoint after this many steps of training.
-:param checkpoints_to_keep: maximum number of train checkpoints to save.
-:param caching: whether or not to use caching for preprocessed dataset and teacher logits
-:param cache_path: Path to cache the preprocessed dataset and teacher logits
-:param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
-:param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
-:param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
-:param tinybert_loss: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
-:param tinybert_epochs: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
-:param tinybert_learning_rate: Learning rate to use when training the student model with the TinyBERT loss function.
-:param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
-:param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
-:return: None
+**Arguments**:
+
+- `teacher_model`: Model whose logits will be used to improve accuracy
+- `data_dir`: Path to directory containing your training data in SQuAD style
+- `train_filename`: Filename of training data
+- `dev_filename`: Filename of dev / eval data
+- `test_filename`: Filename of test data
+- `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
+that gets split off from training data for eval.
+- `use_gpu`: Whether to use GPU (if available)
+- `student_batch_size`: Number of samples the student model receives in one batch for training
+- `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
+- `n_epochs`: Number of iterations on the whole training data set
+- `learning_rate`: Learning rate of the optimizer
+- `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
+- `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
+Until that point LR is increasing linearly. After that it's decreasing again linearly.
+Options for different schedules are available in FARM.
+- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
+- `save_dir`: Path to store the final model
+- `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
+Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
+Set to None to use all CPU cores minus one.
+- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+Available options:
+None (Don't use AMP)
+"O0" (Normal FP32 training)
+"O1" (Mixed Precision => Recommended)
+"O2" (Almost FP16)
+"O3" (Pure FP16).
+See details on: https://nvidia.github.io/apex/amp.html
+- `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
+checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+- `checkpoint_every`: save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: maximum number of train checkpoints to save.
+- `caching`: whether or not to use caching for preprocessed dataset and teacher logits
+- `cache_path`: Path to cache the preprocessed dataset and teacher logits
+- `distillation_loss_weight`: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
+- `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
+- `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+- `tinybert_loss`: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
+- `tinybert_epochs`: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
+- `tinybert_learning_rate`: Learning rate to use when training the student model with the TinyBERT loss function.
+- `tinybert_train_filename`: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+
+**Returns**:
+
+None
 
 <a id="farm.FARMReader.distil_intermediate_layers_from"></a>
 
@@ -180,6 +192,7 @@ def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, 
 ```
 
 The first stage of distillation finetuning as described in the TinyBERT paper:
+
 https://arxiv.org/pdf/1909.10351.pdf
 **Example**
 ```python
@@ -192,46 +205,51 @@ student.distil_intermediate_layers_from(teacher, data_dir="squad2", train_filena
 Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
 If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
-:param teacher_model: Model whose logits will be used to improve accuracy
-:param data_dir: Path to directory containing your training data in SQuAD style
-:param train_filename: Filename of training data. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script
-:param dev_filename: Filename of dev / eval data
-:param test_filename: Filename of test data
-:param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
-                  that gets split off from training data for eval.
-:param use_gpu: Whether to use GPU (if available)
-:param student_batch_size: Number of samples the student model receives in one batch for training
-:param student_batch_size: Number of samples the teacher model receives in one batch for distillation
-:param n_epochs: Number of iterations on the whole training data set
-:param learning_rate: Learning rate of the optimizer
-:param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.
-:param warmup_proportion: Proportion of training steps until maximum learning rate is reached.
-                          Until that point LR is increasing linearly. After that it's decreasing again linearly.
-                          Options for different schedules are available in FARM.
-:param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
-:param save_dir: Path to store the final model
-:param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
-                      Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
-                      Set to None to use all CPU cores minus one.
-:param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
-                Available options:
-                None (Don't use AMP)
-                "O0" (Normal FP32 training)
-                "O1" (Mixed Precision => Recommended)
-                "O2" (Almost FP16)
-                "O3" (Pure FP16).
-                See details on: https://nvidia.github.io/apex/amp.html
-:param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
-       checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-:param checkpoint_every: save a train checkpoint after this many steps of training.
-:param checkpoints_to_keep: maximum number of train checkpoints to save.
-:param caching: whether or not to use caching for preprocessed dataset and teacher logits
-:param cache_path: Path to cache the preprocessed dataset and teacher logits
-:param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
-:param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
-:param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
-:param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
-:return: None
+**Arguments**:
+
+- `teacher_model`: Model whose logits will be used to improve accuracy
+- `data_dir`: Path to directory containing your training data in SQuAD style
+- `train_filename`: Filename of training data. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script
+- `dev_filename`: Filename of dev / eval data
+- `test_filename`: Filename of test data
+- `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
+that gets split off from training data for eval.
+- `use_gpu`: Whether to use GPU (if available)
+- `student_batch_size`: Number of samples the student model receives in one batch for training
+- `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
+- `n_epochs`: Number of iterations on the whole training data set
+- `learning_rate`: Learning rate of the optimizer
+- `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
+- `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
+Until that point LR is increasing linearly. After that it's decreasing again linearly.
+Options for different schedules are available in FARM.
+- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
+- `save_dir`: Path to store the final model
+- `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
+Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
+Set to None to use all CPU cores minus one.
+- `use_amp`: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+Available options:
+None (Don't use AMP)
+"O0" (Normal FP32 training)
+"O1" (Mixed Precision => Recommended)
+"O2" (Almost FP16)
+"O3" (Pure FP16).
+See details on: https://nvidia.github.io/apex/amp.html
+- `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
+checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+- `checkpoint_every`: save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: maximum number of train checkpoints to save.
+- `caching`: whether or not to use caching for preprocessed dataset and teacher logits
+- `cache_path`: Path to cache the preprocessed dataset and teacher logits
+- `distillation_loss_weight`: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
+- `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
+- `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+
+**Returns**:
+
+None
 
 <a id="farm.FARMReader.update_parameters"></a>
 
@@ -253,7 +271,9 @@ def save(directory: Path)
 
 Saves the Reader model so that it can be reused at a later point in time.
 
-:param directory: Directory where the Reader model should be saved
+**Arguments**:
+
+- `directory`: Directory where the Reader model should be saved
 
 <a id="farm.FARMReader.predict_batch"></a>
 
@@ -267,10 +287,15 @@ Use loaded QA model to find answers for a list of queries in each query's suppli
 
 Returns list of dictionaries containing answers sorted by (desc.) score
 
-:param query_doc_list: List of dictionaries containing queries with their retrieved documents
-:param top_k: The maximum number of answers to return for each query
-:param batch_size: Number of samples the model receives in one batch for inference
-:return: List of dictionaries containing query and answers
+**Arguments**:
+
+- `query_doc_list`: List of dictionaries containing queries with their retrieved documents
+- `top_k`: The maximum number of answers to return for each query
+- `batch_size`: Number of samples the model receives in one batch for inference
+
+**Returns**:
+
+List of dictionaries containing query and answers
 
 <a id="farm.FARMReader.predict"></a>
 
@@ -299,10 +324,15 @@ Example:
     |}
  ```
 
-:param query: Query string
-:param documents: List of Document in which to search for the answer
-:param top_k: The maximum number of answers to return
-:return: Dict containing query and answers
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
 
 <a id="farm.FARMReader.eval_on_file"></a>
 
@@ -313,17 +343,17 @@ def eval_on_file(data_dir: str, test_filename: str, device: Optional[str] = None
 ```
 
 Performs evaluation on a SQuAD-formatted file.
+
 Returns a dict containing the following metrics:
     - "EM": exact match score
     - "f1": F1-Score
     - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
-:param data_dir: The directory in which the test set can be found
-:type data_dir: Path or str
-:param test_filename: The name of the file containing the test data in SQuAD format.
-:type test_filename: str
-:param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
-:type device: str
+**Arguments**:
+
+- `data_dir` (`Path or str`): The directory in which the test set can be found
+- `test_filename` (`str`): The name of the file containing the test data in SQuAD format.
+- `device` (`str`): The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
 
 <a id="farm.FARMReader.eval"></a>
 
@@ -334,17 +364,20 @@ def eval(document_store: BaseDocumentStore, device: Optional[str] = None, label_
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
+
 Returns a dict containing the following metrics:
       - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
       - "f1": Average overlap between predicted answers and their corresponding correct answers
       - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
-:param document_store: DocumentStore containing the evaluation documents
-:param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
-:param label_index: Index/Table name where labeled questions are stored
-:param doc_index: Index/Table name where documents that are used for evaluation are stored
-:param label_origin: Field name where the gold labels are stored
-:param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
+**Arguments**:
+
+- `document_store`: DocumentStore containing the evaluation documents
+- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+- `label_index`: Index/Table name where labeled questions are stored
+- `doc_index`: Index/Table name where documents that are used for evaluation are stored
+- `label_origin`: Field name where the gold labels are stored
+- `calibrate_conf_scores`: Whether to calibrate the temperature for temperature scaling of the confidence scores
 
 <a id="farm.FARMReader.calibrate_confidence_scores"></a>
 
@@ -356,11 +389,13 @@ def calibrate_confidence_scores(document_store: BaseDocumentStore, device: Optio
 
 Calibrates confidence scores on evaluation documents in the DocumentStore.
 
-:param document_store: DocumentStore containing the evaluation documents
-:param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
-:param label_index: Index/Table name where labeled questions are stored
-:param doc_index: Index/Table name where documents that are used for evaluation are stored
-:param label_origin: Field name where the gold labels are stored
+**Arguments**:
+
+- `document_store`: DocumentStore containing the evaluation documents
+- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+- `label_index`: Index/Table name where labeled questions are stored
+- `doc_index`: Index/Table name where documents that are used for evaluation are stored
+- `label_origin`: Field name where the gold labels are stored
 
 <a id="farm.FARMReader.predict_on_texts"></a>
 
@@ -371,6 +406,7 @@ def predict_on_texts(question: str, texts: List[str], top_k: Optional[int] = Non
 ```
 
 Use loaded QA model to find answers for a question in the supplied list of Document.
+
 Returns dictionaries containing answers sorted by (desc.) score.
 Example:
  ```python
@@ -388,10 +424,15 @@ Example:
     |}
  ```
 
-:param question: Question string
-:param documents: List of documents as string type
-:param top_k: The maximum number of answers to return
-:return: Dict containing question and answers
+**Arguments**:
+
+- `question`: Question string
+- `documents`: List of documents as string type
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing question and answers
 
 <a id="farm.FARMReader.convert_to_onnx"></a>
 
@@ -403,6 +444,7 @@ def convert_to_onnx(cls, model_name: str, output_path: Path, convert_to_float16:
 ```
 
 Convert a PyTorch BERT model to ONNX format and write to ./onnx-export dir. The converted ONNX model
+
 can be loaded with in the `FARMReader` using the export path as `model_name_or_path` param.
 
 Usage:
@@ -413,14 +455,16 @@ Usage:
     FARMReader.convert_to_onnx(model_name="deepset/bert-base-cased-squad2", output_path=onnx_model_path)
     reader = FARMReader(onnx_model_path)`
 
-:param model_name: transformers model name
-:param output_path: Path to output the converted model
-:param convert_to_float16: Many models use float32 precision by default. With the half precision of float16,
-                           inference is faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs,
-                           float32 could still be be more performant.
-:param quantize: convert floating point number to integers
-:param task_type: Type of task for the model. Available options: "question_answering" or "embeddings".
-:param opset_version: ONNX opset version
+**Arguments**:
+
+- `model_name`: transformers model name
+- `output_path`: Path to output the converted model
+- `convert_to_float16`: Many models use float32 precision by default. With the half precision of float16,
+inference is faster on Nvidia GPUs with Tensor core like T4 or V100. On older GPUs,
+float32 could still be be more performant.
+- `quantize`: convert floating point number to integers
+- `task_type`: Type of task for the model. Available options: "question_answering" or "embeddings".
+- `opset_version`: ONNX opset version
 
 <a id="transformers"></a>
 
@@ -467,10 +511,15 @@ Example:
     |}
  ```
 
-:param query: Query string
-:param documents: List of Document in which to search for the answer
-:param top_k: The maximum number of answers to return
-:return: Dict containing query and answers
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
 
 <a id="table"></a>
 
@@ -488,7 +537,8 @@ Transformer-based model for extractive Question Answering on Tables with TaPas
 using the HuggingFace's transformers framework (https://github.com/huggingface/transformers).
 With this reader, you can directly get predictions via predict()
 
-Example:
+**Example**:
+
 ```python
 from haystack import Document
 from haystack.reader import TableReader
@@ -517,17 +567,23 @@ def predict(query: str, documents: List[Document], top_k: Optional[int] = None) 
 ```
 
 Use loaded TableQA model to find answers for a query in the supplied list of Documents
+
 of content_type ``'table'``.
 
 Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
 WARNING: The answer scores are not reliable, as they are always extremely high, even if
          a question cannot be answered by a given table.
 
-:param query: Query string
-:param documents: List of Document in which to search for the answer. Documents should be
-                  of content_type ``'table'``.
-:param top_k: The maximum number of answers to return
-:return: Dict containing query and answers
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer. Documents should be
+of content_type ``'table'``.
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
 
 <a id="table.RCIReader"></a>
 
@@ -561,15 +617,21 @@ def predict(query: str, documents: List[Document], top_k: Optional[int] = None) 
 ```
 
 Use loaded RCI models to find answers for a query in the supplied list of Documents
+
 of content_type ``'table'``.
 
 Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
 The existing RCI models on the HF model hub don"t allow aggregation, therefore, the answer will always be
 composed of a single cell.
 
-:param query: Query string
-:param documents: List of Document in which to search for the answer. Documents should be
-                  of content_type ``'table'``.
-:param top_k: The maximum number of answers to return
-:return: Dict containing query and answers
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document in which to search for the answer. Documents should be
+of content_type ``'table'``.
+- `top_k`: The maximum number of answers to return
+
+**Returns**:
+
+Dict containing query and answers
 
