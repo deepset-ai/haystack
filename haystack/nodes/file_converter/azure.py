@@ -26,16 +26,17 @@ class AzureConverter(BaseConverter):
 
     """
 
-    def __init__(self,
-                 endpoint: str,
-                 credential_key: str,
-                 model_id: str = "prebuilt-document",
-                 valid_languages: Optional[List[str]] = None,
-                 save_json: bool = False,
-                 preceding_context_len: int = 3,
-                 following_context_len: int = 3,
-                 merge_multiple_column_headers: bool = True,
-                 ):
+    def __init__(
+        self,
+        endpoint: str,
+        credential_key: str,
+        model_id: str = "prebuilt-document",
+        valid_languages: Optional[List[str]] = None,
+        save_json: bool = False,
+        preceding_context_len: int = 3,
+        following_context_len: int = 3,
+        merge_multiple_column_headers: bool = True,
+    ):
         """
         :param endpoint: Your Form Recognizer or Cognitive Services resource's endpoint.
         :param credential_key: Your Form Recognizer or Cognitive Services resource's subscription key.
@@ -57,13 +58,20 @@ class AzureConverter(BaseConverter):
                                               rows to a single row.
         """
         # save init parameters to enable export of component config as YAML
-        self.set_config(endpoint=endpoint, credential_key=credential_key, model_id=model_id,
-                        valid_languages=valid_languages, save_json=save_json,
-                        preceding_context_len=preceding_context_len, following_context_len=following_context_len,
-                        merge_multiple_column_headers=merge_multiple_column_headers)
+        self.set_config(
+            endpoint=endpoint,
+            credential_key=credential_key,
+            model_id=model_id,
+            valid_languages=valid_languages,
+            save_json=save_json,
+            preceding_context_len=preceding_context_len,
+            following_context_len=following_context_len,
+            merge_multiple_column_headers=merge_multiple_column_headers,
+        )
 
-        self.document_analysis_client = DocumentAnalysisClient(endpoint=endpoint,
-                                                               credential=AzureKeyCredential(credential_key))
+        self.document_analysis_client = DocumentAnalysisClient(
+            endpoint=endpoint, credential=AzureKeyCredential(credential_key)
+        )
         self.model_id = model_id
         self.valid_languages = valid_languages
         self.save_json = save_json
@@ -73,15 +81,16 @@ class AzureConverter(BaseConverter):
 
         super().__init__(valid_languages=valid_languages)
 
-    def convert(self,
-                file_path: Path,
-                meta: Optional[Dict[str, str]] = None,
-                remove_numeric_tables: Optional[bool] = None,
-                valid_languages: Optional[List[str]] = None,
-                encoding: Optional[str] = "utf-8",
-                pages: Optional[str] = None,
-                known_language: Optional[str] = None,
-                ) -> List[Dict[str, Any]]:
+    def convert(
+        self,
+        file_path: Path,
+        meta: Optional[Dict[str, str]] = None,
+        remove_numeric_tables: Optional[bool] = None,
+        valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = "utf-8",
+        pages: Optional[str] = None,
+        known_language: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
 
         """
         Extract text and tables from a PDF, JPEG, PNG, BMP or TIFF file using Azure's Form Recognizer service.
@@ -109,8 +118,9 @@ class AzureConverter(BaseConverter):
             valid_languages = self.valid_languages
 
         with open(file_path, "rb") as file:
-            poller = self.document_analysis_client.begin_analyze_document(self.model_id, file, pages=pages,
-                                                                          locale=known_language)
+            poller = self.document_analysis_client.begin_analyze_document(
+                self.model_id, file, pages=pages, locale=known_language
+            )
             result = poller.result()
 
         if self.save_json:
@@ -121,11 +131,12 @@ class AzureConverter(BaseConverter):
 
         return docs
 
-    def convert_azure_json(self,
-                           file_path: Path,
-                           meta: Optional[Dict[str, str]] = None,
-                           valid_languages: Optional[List[str]] = None,
-                           ) -> List[Dict[str, Any]]:
+    def convert_azure_json(
+        self,
+        file_path: Path,
+        meta: Optional[Dict[str, str]] = None,
+        valid_languages: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Extract text and tables from the JSON output of Azure's Form Recognizer service.
 
@@ -149,15 +160,21 @@ class AzureConverter(BaseConverter):
 
         return docs
 
-    def _convert_tables_and_text(self, result: AnalyzeResult, meta: Optional[Dict[str, str]],
-                                 valid_languages: Optional[List[str]], file_path: Path) -> List[Dict[str, Any]]:
+    def _convert_tables_and_text(
+        self,
+        result: AnalyzeResult,
+        meta: Optional[Dict[str, str]],
+        valid_languages: Optional[List[str]],
+        file_path: Path,
+    ) -> List[Dict[str, Any]]:
         tables = self._convert_tables(result, meta)
         text = self._convert_text(result, meta)
         docs = tables + [text]
 
         if valid_languages:
             file_text = text["content"] + " ".join(
-                [cell for table in tables for row in table["content"] for cell in row])
+                [cell for table in tables for row in table["content"] for cell in row]
+            )
             if not self.validate_language(file_text, valid_languages):
                 logger.warning(
                     f"The language for {file_path} is not one of {valid_languages}. The file may not have "
@@ -191,9 +208,11 @@ class AzureConverter(BaseConverter):
 
                 for c in range(cell.column_span):
                     for r in range(cell.row_span):
-                        if self.merge_multiple_column_headers \
-                                and cell.kind == "columnHeader" \
-                                and cell.row_index > row_idx_start:
+                        if (
+                            self.merge_multiple_column_headers
+                            and cell.kind == "columnHeader"
+                            and cell.row_index > row_idx_start
+                        ):
                             # More than one row serves as column header
                             table_list[0][cell.column_index + c] += f"\n{cell.content}"
                             additional_column_header_rows.add(cell.row_index - row_idx_start)
@@ -205,21 +224,25 @@ class AzureConverter(BaseConverter):
                 del table_list[row_idx]
 
             # Get preceding context of table
-            table_beginning_page = next(page for page in result.pages
-                                        if page.page_number == table.bounding_regions[0].page_number)
+            table_beginning_page = next(
+                page for page in result.pages if page.page_number == table.bounding_regions[0].page_number
+            )
             table_start_offset = table.spans[0].offset
-            preceding_lines = [line.content for line in table_beginning_page.lines
-                               if line.spans[0].offset < table_start_offset]
-            preceding_context = "\n".join(preceding_lines[-self.preceding_context_len:]) + f"\n{caption}"
+            preceding_lines = [
+                line.content for line in table_beginning_page.lines if line.spans[0].offset < table_start_offset
+            ]
+            preceding_context = "\n".join(preceding_lines[-self.preceding_context_len :]) + f"\n{caption}"
             preceding_context = preceding_context.strip()
 
             # Get following context
-            table_end_page = table_beginning_page if len(table.bounding_regions) == 1 else \
-                next(page for page in result.pages
-                     if page.page_number == table.bounding_regions[-1].page_number)
+            table_end_page = (
+                table_beginning_page
+                if len(table.bounding_regions) == 1
+                else next(page for page in result.pages if page.page_number == table.bounding_regions[-1].page_number)
+            )
             table_end_offset = table_start_offset + table.spans[0].length
             following_lines = [line.content for line in table_end_page.lines if line.spans[0].offset > table_end_offset]
-            following_context = "\n".join(following_lines[:self.following_context_len])
+            following_context = "\n".join(following_lines[: self.following_context_len])
 
             table_meta = copy.deepcopy(meta)
 

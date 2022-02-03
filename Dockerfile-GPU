@@ -35,27 +35,20 @@ RUN curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz | tar -xvzf -
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 && \
     update-alternatives --set python3 /usr/bin/python3.7
 
-# Copy package setup files
-COPY setup.py requirements.txt README.md /home/user/
+# Copy Haystack code
+COPY haystack /home/user/haystack
+# Copy package files & models
+COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
+# Copy REST API code
+COPY rest_api /home/user/
 
 RUN pip install --upgrade pip
 RUN echo "Install required packages" && \
     # Install PyTorch for CUDA 11
-    pip3 install --no-cache-dir torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html && \
-    # Install from requirements.txt
-    pip3 install --no-cache-dir -r requirements.txt
-
-# copy saved models
-COPY README.md models* /home/user/models/
-
-# Copy REST API code
-COPY rest_api /home/user/rest_api
-
-# copy code
-COPY haystack /home/user/haystack
+    pip3 install --no-cache-dir torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 
 # Install package
-RUN pip3 install -e .
+RUN pip install --no-cache .[docstores_gpu,crawler,preprocessing,ocr,ray,rest]
 
 # Cache Roberta and NLTK data
 RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"

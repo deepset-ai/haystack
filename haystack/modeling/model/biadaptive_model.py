@@ -15,8 +15,9 @@ from haystack.modeling.logger import MLFlowLogger as MlLogger
 logger = logging.getLogger(__name__)
 
 
-def loss_per_head_sum(loss_per_head: List[torch.Tensor], global_step: Optional[int] = None,
-                      batch: Optional[Dict] = None):
+def loss_per_head_sum(
+    loss_per_head: List[torch.Tensor], global_step: Optional[int] = None, batch: Optional[Dict] = None
+):
     """
     Sums up the loss of each prediction head.
 
@@ -26,7 +27,7 @@ def loss_per_head_sum(loss_per_head: List[torch.Tensor], global_step: Optional[i
 
 
 class BiAdaptiveModel(nn.Module):
-    """ PyTorch implementation containing all the modelling needed for your NLP task. Combines 2 language
+    """PyTorch implementation containing all the modelling needed for your NLP task. Combines 2 language
     models for representation of 2 sequences and a prediction head. Allows for gradient flow back to the 2 language model components."""
 
     def __init__(
@@ -78,12 +79,8 @@ class BiAdaptiveModel(nn.Module):
         self.dropout1 = nn.Dropout(embeds_dropout_prob)
         self.dropout2 = nn.Dropout(embeds_dropout_prob)
         self.prediction_heads = nn.ModuleList([ph.to(device) for ph in prediction_heads])
-        self.lm1_output_types = (
-            [lm1_output_types] if isinstance(lm1_output_types, str) else lm1_output_types
-        )
-        self.lm2_output_types = (
-            [lm2_output_types] if isinstance(lm2_output_types, str) else lm2_output_types
-        )
+        self.lm1_output_types = [lm1_output_types] if isinstance(lm1_output_types, str) else lm1_output_types
+        self.lm2_output_types = [lm2_output_types] if isinstance(lm2_output_types, str) else lm2_output_types
         self.log_params()
         # default loss aggregation function is a simple sum (without using any of the optional params)
         if not loss_aggregation_fn:
@@ -108,8 +105,15 @@ class BiAdaptiveModel(nn.Module):
             ph.save(save_dir, i)
 
     @classmethod
-    def load(cls, load_dir: Path, device: str, strict: bool = False, lm1_name: str = "lm1",
-             lm2_name: str = "lm2", processor: Optional[Processor] = None):
+    def load(
+        cls,
+        load_dir: Path,
+        device: str,
+        strict: bool = False,
+        lm1_name: str = "lm1",
+        lm2_name: str = "lm2",
+        processor: Optional[Processor] = None,
+    ):
         """
         Loads a BiAdaptiveModel from a directory. The directory must contain:
 
@@ -168,10 +172,11 @@ class BiAdaptiveModel(nn.Module):
         all_losses = []
         for head, logits_for_one_head in zip(self.prediction_heads, logits):
             # check if PredictionHead connected to Processor
-            assert hasattr(head, "label_tensor_name"), \
-                (f"Label_tensor_names are missing inside the {head.task_name} Prediction Head. Did you connect the model"
+            assert hasattr(head, "label_tensor_name"), (
+                f"Label_tensor_names are missing inside the {head.task_name} Prediction Head. Did you connect the model"
                 " with the processor through either 'model.connect_heads_with_processor(processor.tasks)'"
-                " or by passing the processor to the Adaptive Model?")
+                " or by passing the processor to the Adaptive Model?"
+            )
             all_losses.append(head.logits_to_loss(logits=logits_for_one_head, **kwargs))
         return all_losses
 
@@ -326,8 +331,7 @@ class BiAdaptiveModel(nn.Module):
             "lm2_type": self.language_model2.__class__.__name__,
             "lm2_name": self.language_model2.name,
             "lm2_output_types": ",".join(self.lm2_output_types),
-            "prediction_heads": ",".join(
-                [head.__class__.__name__ for head in self.prediction_heads])
+            "prediction_heads": ",".join([head.__class__.__name__ for head in self.prediction_heads]),
         }
         try:
             MlLogger.log_params(params)
@@ -342,16 +346,20 @@ class BiAdaptiveModel(nn.Module):
 
         model1_vocab_len = self.language_model1.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
 
-        msg = f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model1_vocab_len}. " \
-              "If you added a custom vocabulary to the tokenizer, " \
-              "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+        msg = (
+            f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model1_vocab_len}. "
+            "If you added a custom vocabulary to the tokenizer, "
+            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+        )
         assert vocab_size1 == model1_vocab_len, msg
 
         model2_vocab_len = self.language_model2.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
 
-        msg = f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model2_vocab_len}. " \
-              "If you added a custom vocabulary to the tokenizer, " \
-              "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+        msg = (
+            f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model2_vocab_len}. "
+            "If you added a custom vocabulary to the tokenizer, "
+            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+        )
         assert vocab_size2 == model2_vocab_len, msg
 
     def connect_heads_with_processor(self, tasks: Dict, require_labels: bool = True):
@@ -367,7 +375,7 @@ class BiAdaptiveModel(nn.Module):
             head.label_tensor_name = tasks[head.task_name]["label_tensor_name"]
             label_list = tasks[head.task_name]["label_list"]
             if not label_list and require_labels:
-                raise Exception(f"The task \'{head.task_name}\' is missing a valid set of labels")
+                raise Exception(f"The task '{head.task_name}' is missing a valid set of labels")
             label_list = tasks[head.task_name]["label_list"]
             head.label_list = label_list
             num_labels = len(label_list)
@@ -380,20 +388,19 @@ class BiAdaptiveModel(nn.Module):
     def _get_prediction_head_files(cls, load_dir: Union[str, Path]):
         load_dir = Path(load_dir)
         files = os.listdir(load_dir)
-        config_files = [
-            load_dir / f
-            for f in files
-            if "config.json" in f and "prediction_head" in f
-        ]
+        config_files = [load_dir / f for f in files if "config.json" in f and "prediction_head" in f]
         # sort them to get correct order in case of multiple prediction heads
         config_files.sort()
         return config_files
 
     def convert_to_transformers(self):
         from transformers import DPRContextEncoder, DPRQuestionEncoder, AutoModel
+
         if len(self.prediction_heads) != 1:
-            raise ValueError(f"Currently conversion only works for models with a SINGLE prediction head. "
-                             f"Your model has {len(self.prediction_heads)}")
+            raise ValueError(
+                f"Currently conversion only works for models with a SINGLE prediction head. "
+                f"Your model has {len(self.prediction_heads)}"
+            )
 
         if self.prediction_heads[0].model_type == "text_similarity":
             # init model
@@ -412,16 +419,24 @@ class BiAdaptiveModel(nn.Module):
             logger.warning("No prediction head weights are required for DPR")
 
         else:
-            raise NotImplementedError(f"Haystack -> Transformers conversion is not supported yet for"
-                                      f" prediction heads of type {self.prediction_heads[0].model_type}")
+            raise NotImplementedError(
+                f"Haystack -> Transformers conversion is not supported yet for"
+                f" prediction heads of type {self.prediction_heads[0].model_type}"
+            )
         pass
 
         return transformers_model1, transformers_model2
 
     @classmethod
-    def convert_from_transformers(cls, model_name_or_path1: Union[str, Path], model_name_or_path2: Union[str, Path],
-                                  device: str, task_type: str, processor: Optional[Processor] = None,
-                                  similarity_function: str = "dot_product"):
+    def convert_from_transformers(
+        cls,
+        model_name_or_path1: Union[str, Path],
+        model_name_or_path2: Union[str, Path],
+        device: str,
+        task_type: str,
+        processor: Optional[Processor] = None,
+        similarity_function: str = "dot_product",
+    ):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
          - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
@@ -443,23 +458,30 @@ class BiAdaptiveModel(nn.Module):
         :type processor: Processor
         :return: AdaptiveModel
         """
-        lm1 = LanguageModel.load(pretrained_model_name_or_path=model_name_or_path1, language_model_class="DPRQuestionEncoder")
-        lm2 = LanguageModel.load(pretrained_model_name_or_path=model_name_or_path2, language_model_class="DPRContextEncoder")
+        lm1 = LanguageModel.load(
+            pretrained_model_name_or_path=model_name_or_path1, language_model_class="DPRQuestionEncoder"
+        )
+        lm2 = LanguageModel.load(
+            pretrained_model_name_or_path=model_name_or_path2, language_model_class="DPRContextEncoder"
+        )
         prediction_head = TextSimilarityHead(similarity_function=similarity_function)
-        #TODO Infer type of head automatically from config
+        # TODO Infer type of head automatically from config
         if task_type == "text_similarity":
-            bi_adaptive_model = cls(language_model1=lm1,
-                                    language_model2=lm2,
-                                    prediction_heads=[prediction_head],
-                                    embeds_dropout_prob=0.1,
-                                    lm1_output_types=["per_sequence"],
-                                    lm2_output_types=["per_sequence"],
-                                    device=device)
+            bi_adaptive_model = cls(
+                language_model1=lm1,
+                language_model2=lm2,
+                prediction_heads=[prediction_head],
+                embeds_dropout_prob=0.1,
+                lm1_output_types=["per_sequence"],
+                lm2_output_types=["per_sequence"],
+                device=device,
+            )
         else:
-            raise NotImplementedError(f"Huggingface's transformer models of type {task_type} are not supported yet for BiAdaptive Models")
+            raise NotImplementedError(
+                f"Huggingface's transformer models of type {task_type} are not supported yet for BiAdaptive Models"
+            )
 
         if processor:
             bi_adaptive_model.connect_heads_with_processor(processor.tasks)  # type: ignore
 
         return bi_adaptive_model
-
