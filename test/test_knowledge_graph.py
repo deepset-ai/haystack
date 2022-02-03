@@ -21,10 +21,13 @@ def test_graph_retrieval():
 
     kg = GraphDBKnowledgeGraph(index="tutorial_10_index")
     kg.delete_index()
-    kg.create_index(config_path=Path(graph_dir+"repo-config.ttl"))
-    kg.import_from_ttl_file(index="tutorial_10_index",
-                            path=Path(graph_dir+"triples.ttl"))
-    triple = {'p': {'type': 'uri', 'value': 'https://deepset.ai/harry_potter/_paternalgrandfather'}, 's': {'type': 'uri', 'value': 'https://deepset.ai/harry_potter/Melody_fawley'}, 'o': {'type': 'uri', 'value': 'https://deepset.ai/harry_potter/Marshall_fawley'}}
+    kg.create_index(config_path=Path(graph_dir + "repo-config.ttl"))
+    kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir + "triples.ttl"))
+    triple = {
+        "p": {"type": "uri", "value": "https://deepset.ai/harry_potter/_paternalgrandfather"},
+        "s": {"type": "uri", "value": "https://deepset.ai/harry_potter/Melody_fawley"},
+        "o": {"type": "uri", "value": "https://deepset.ai/harry_potter/Marshall_fawley"},
+    }
     triples = kg.get_all_triples()
     assert len(triples) > 0
     assert triple in triples
@@ -36,15 +39,23 @@ def test_graph_retrieval():
     """
     kg.prefixes = prefixes
 
-    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg,
-                                          model_name_or_path=model_dir+"hp_v3.4")
+    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path=model_dir + "hp_v3.4")
 
     result = kgqa_retriever.retrieve(query="In which house is Harry Potter?")
-    assert result[0] == {'answer': ['https://deepset.ai/harry_potter/Gryffindor'], 'prediction_meta': {'model': 'Text2SparqlRetriever', 'sparql_query': 'select ?a { hp:Harry_potter hp:house ?a . }'}}
+    assert result[0] == {
+        "answer": ["https://deepset.ai/harry_potter/Gryffindor"],
+        "prediction_meta": {
+            "model": "Text2SparqlRetriever",
+            "sparql_query": "select ?a { hp:Harry_potter hp:house ?a . }",
+        },
+    }
 
-    result = kgqa_retriever._query_kg(sparql_query="select distinct ?sbj where { ?sbj hp:job hp:Keeper_of_keys_and_grounds . }")
+    result = kgqa_retriever._query_kg(
+        sparql_query="select distinct ?sbj where { ?sbj hp:job hp:Keeper_of_keys_and_grounds . }"
+    )
     assert result[0][0] == "https://deepset.ai/harry_potter/Rubeus_hagrid"
 
     result = kgqa_retriever._query_kg(
-        sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }")
+        sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }"
+    )
     assert result[0][0] == "https://deepset.ai/harry_potter/Otter"

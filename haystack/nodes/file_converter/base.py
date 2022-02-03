@@ -33,9 +33,7 @@ class BaseConverter(BaseComponent):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
-        )
+        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         self.remove_numeric_tables = remove_numeric_tables
         self.valid_languages = valid_languages
@@ -91,10 +89,13 @@ class BaseConverter(BaseComponent):
         else:
             return False
 
-    def run(self, file_paths: Union[Path, List[Path]],  # type: ignore
-            meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None,  # type: ignore
-            remove_numeric_tables: Optional[bool] = None,  # type: ignore
-            valid_languages: Optional[List[str]] = None):  # type: ignore
+    def run(  # type: ignore
+        self,
+        file_paths: Union[Path, List[Path]],  # type: ignore
+        meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None,  # type: ignore
+        remove_numeric_tables: Optional[bool] = None,  # type: ignore
+        valid_languages: Optional[List[str]] = None,  # type: ignore
+    ):
 
         if isinstance(file_paths, Path):
             file_paths = [file_paths]
@@ -104,10 +105,12 @@ class BaseConverter(BaseComponent):
 
         documents: list = []
         for file_path, file_meta in zip(file_paths, meta):
-            for doc in self.convert(file_path=file_path,
-                                    meta=file_meta,
-                                    remove_numeric_tables=remove_numeric_tables,
-                                    valid_languages=valid_languages):
+            for doc in self.convert(
+                file_path=file_path,
+                meta=file_meta,
+                remove_numeric_tables=remove_numeric_tables,
+                valid_languages=valid_languages,
+            ):
                 documents.append(doc)
 
         result = {"documents": documents}

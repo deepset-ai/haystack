@@ -37,7 +37,7 @@ logging.info("Concurrent requests per worker: {CONCURRENT_REQUEST_PER_WORKER}")
 @router.get("/initialized")
 def check_status():
     """
-    This endpoint can be used during startup to understand if the 
+    This endpoint can be used during startup to understand if the
     server is ready to take any requests, or is still loading.
 
     The recommended approach is to call this endpoint with a short timeout,
@@ -57,7 +57,7 @@ def haystack_version():
 @router.post("/query", response_model=QueryResponse, response_model_exclude_none=True)
 def query(request: QueryRequest):
     """
-    This endpoint receives the question as a string and allows the requester to set 
+    This endpoint receives the question as a string and allows the requester to set
     additional parameters that will be passed on to the Haystack pipeline.
     """
     with concurrency_limiter.run():
@@ -67,7 +67,7 @@ def query(request: QueryRequest):
 
 def _process_request(pipeline, request) -> QueryResponse:
     start_time = time.time()
-    
+
     params = request.params or {}
 
     # format global, top-level filters (e.g. "params": {"filters": {"name": ["some"]}})
@@ -79,15 +79,17 @@ def _process_request(pipeline, request) -> QueryResponse:
         if "filters" in params[key].keys():
             params[key]["filters"] = _format_filters(params[key]["filters"])
 
-    result = pipeline.run(query=request.query, params=params,debug=request.debug)
-    
+    result = pipeline.run(query=request.query, params=params, debug=request.debug)
+
     # if any of the documents contains an embedding as an ndarray the latter needs to be converted to list of float
-    for document in result['documents'] or []:
+    for document in result["documents"] or []:
         if isinstance(document.embedding, ndarray):
             document.embedding = document.embedding.tolist()
-    
+
     end_time = time.time()
-    logger.info(json.dumps({"request": request, "response": result, "time": f"{(end_time - start_time):.2f}"}, default=str))
+    logger.info(
+        json.dumps({"request": request, "response": result, "time": f"{(end_time - start_time):.2f}"}, default=str)
+    )
 
     return result
 
@@ -99,17 +101,23 @@ def _format_filters(filters):
     """
     new_filters = {}
     if filters is None:
-        logger.warning(f"Request with deprecated filter format ('\"filters\": null'). "
-                       f"Remove empty filters from params to be compliant with future versions")
+        logger.warning(
+            f"Request with deprecated filter format ('\"filters\": null'). "
+            f"Remove empty filters from params to be compliant with future versions"
+        )
     else:
         for key, values in filters.items():
             if values is None:
-                logger.warning(f"Request with deprecated filter format ('{key}: null'). "
-                               f"Remove null values from filters to be compliant with future versions")
+                logger.warning(
+                    f"Request with deprecated filter format ('{key}: null'). "
+                    f"Remove null values from filters to be compliant with future versions"
+                )
                 continue
             elif not isinstance(values, list):
-                logger.warning(f"Request with deprecated filter format ('{key}': {values}). "
-                               f"Change to '{key}':[{values}]' to be compliant with future versions")
+                logger.warning(
+                    f"Request with deprecated filter format ('{key}': {values}). "
+                    f"Change to '{key}':[{values}]' to be compliant with future versions"
+                )
                 values = [values]
 
             new_filters[key] = values
