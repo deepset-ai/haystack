@@ -1991,7 +1991,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 "query": {"bool": {"must": [self._get_vector_similarity_query(query_emb, top_k)]}},
             }
             if filters:
-                body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
+                body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
             excluded_meta_data: Optional[list] = None
 
