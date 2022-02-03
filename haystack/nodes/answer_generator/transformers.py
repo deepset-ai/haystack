@@ -285,55 +285,55 @@ class RAGenerator(BaseGenerator):
 class Seq2SeqGenerator(BaseGenerator):
 
     """
-        A generic sequence-to-sequence generator based on HuggingFace's transformers.
+    A generic sequence-to-sequence generator based on HuggingFace's transformers.
 
-        Text generation is supported by so called auto-regressive language models like GPT2,
-        XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
-        GenerationMixin can be used by Seq2SeqGenerator.
+    Text generation is supported by so called auto-regressive language models like GPT2,
+    XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
+    GenerationMixin can be used by Seq2SeqGenerator.
 
-        Moreover, as language models prepare model input in their specific encoding, each model
-        specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
-        accompanying model input converter that takes care of prefixes, separator tokens etc.
-        By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5). 
-        It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter 
-        is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
+    Moreover, as language models prepare model input in their specific encoding, each model
+    specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
+    accompanying model input converter that takes care of prefixes, separator tokens etc.
+    By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5).
+    It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter
+    is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
 
-        For mode details on custom model input converters refer to _BartEli5Converter
+    For mode details on custom model input converters refer to _BartEli5Converter
 
 
-        See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
-        as well as https://huggingface.co/blog/how-to-generate
+    See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
+    as well as https://huggingface.co/blog/how-to-generate
 
-        For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text-generation
+    For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text-generation
 
-        **Example**
+    **Example**
 
-        ```python
-        |     query = "Why is Dothraki language important?"
-        |
-        |     # Retrieve related documents from retriever
-        |     retrieved_docs = retriever.retrieve(query=query)
-        |
-        |     # Now generate answer from query and retrieved documents
-        |     generator.predict(
-        |        query=query,
-        |        documents=retrieved_docs,
-        |        top_k=1
-        |     )
-        |
-        |     # Answer
-        |
-        |     {'query': 'who got the first nobel prize in physics',
-        |      'answers':
-        |          [{'query': 'who got the first nobel prize in physics',
-        |            'answer': ' albert einstein',
-        |            'meta': { 'doc_ids': [...],
-        |                      'doc_scores': [80.42758 ...],
-        |                      'doc_probabilities': [40.71379089355469, ...
-        |                      'content': ['Albert Einstein was a ...]
-        |                      'titles': ['"Albert Einstein"', ...]
-        |      }}]}
-        ```
+    ```python
+    |     query = "Why is Dothraki language important?"
+    |
+    |     # Retrieve related documents from retriever
+    |     retrieved_docs = retriever.retrieve(query=query)
+    |
+    |     # Now generate answer from query and retrieved documents
+    |     generator.predict(
+    |        query=query,
+    |        documents=retrieved_docs,
+    |        top_k=1
+    |     )
+    |
+    |     # Answer
+    |
+    |     {'query': 'who got the first nobel prize in physics',
+    |      'answers':
+    |          [{'query': 'who got the first nobel prize in physics',
+    |            'answer': ' albert einstein',
+    |            'meta': { 'doc_ids': [...],
+    |                      'doc_scores': [80.42758 ...],
+    |                      'doc_probabilities': [40.71379089355469, ...
+    |                      'content': ['Albert Einstein was a ...]
+    |                      'titles': ['"Albert Einstein"', ...]
+    |      }}]}
+    ```
     """
 
     _model_input_converters: Dict[str, Callable] = dict()

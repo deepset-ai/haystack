@@ -11,6 +11,7 @@ class FileTypeClassifier(BaseComponent):
     """
     Route files in an Indexing Pipeline to corresponding file converters.
     """
+
     outgoing_edges = 10
 
     def __init__(self, supported_types: List[str] = DEFAULT_TYPES):
@@ -18,10 +19,10 @@ class FileTypeClassifier(BaseComponent):
         Node that sends out files on a different output edge depending on their extension.
 
         :param supported_types: the file types that this node can distinguish.
-            Note that it's limited to a maximum of 10 outgoing edges, which 
+            Note that it's limited to a maximum of 10 outgoing edges, which
             correspond each to a file extension. Such extension are, by default
             `txt`, `pdf`, `md`, `docx`, `html`. Lists containing more than 10
-            elements will not be allowed. Lists with duplicate elements will 
+            elements will not be allowed. Lists with duplicate elements will
             also be rejected.
         """
         if len(supported_types) > 10:
@@ -65,8 +66,10 @@ class FileTypeClassifier(BaseComponent):
         try:
             index = self.supported_types.index(extension) + 1
         except ValueError:
-            raise ValueError(f"Files of type '{extension}' are not supported. "
-                            f"The supported types are: {self.supported_types}. "
-                            "Consider using the 'supported_types' parameter to "
-                            "change the types accepted by this node.")
+            raise ValueError(
+                f"Files of type '{extension}' are not supported. "
+                f"The supported types are: {self.supported_types}. "
+                "Consider using the 'supported_types' parameter to "
+                "change the types accepted by this node."
+            )
         return output, f"output_{index}"
