@@ -506,7 +506,7 @@ class Pipeline(BasePipeline):
         # reorder columns for better qualitative evaluation
         for key, df in eval_result.node_results.items():
             desired_col_order = [
-                "query_id",
+                "multilabel_id",
                 "query",
                 "filters",  # generic
                 "gold_answers",
@@ -601,7 +601,7 @@ class Pipeline(BasePipeline):
 
             # add general info
             df["node"] = node_name
-            df["query_id"] = query_labels.query_id
+            df["multilabel_id"] = query_labels.id
             df["query"] = query
             df["filters"] = str(query_labels.filters)
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
@@ -644,7 +644,7 @@ class Pipeline(BasePipeline):
 
             # add general info
             df["node"] = node_name
-            df["query_id"] = query_labels.query_id
+            df["multilabel_id"] = query_labels.id
             df["query"] = query
             df["filters"] = str(query_labels.filters)
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"

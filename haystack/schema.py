@@ -515,7 +515,7 @@ class MultiLabel:
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
         self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
-        self.query_id = hash((self.query, json.dumps(self.filters, sort_keys=True).encode()))
+        self.id = hash((self.query, json.dumps(self.filters, sort_keys=True).encode()))
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
@@ -641,7 +641,7 @@ class EvaluationResult:
         Additional answer or document specific evaluation infos like gold labels
         and metrics depicting whether the row matches the gold labels are included, too.
         The DataFrames have the following schema:
-        - query_id: the id of the query, which is unique for the pair of query and filters
+        - multilabel_id: the id of the multilabel, which is unique for the pair of query and filters
         - query: the query
         - filters: the filters used with the query
         - gold_answers (answers only): the answers to be given
@@ -792,8 +792,8 @@ class EvaluationResult:
             )
             worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
             wrong_examples = []
-            for query_id, metrics in worst_df.iterrows():
-                query_answers = answers[answers["query_id"] == query_id]
+            for multilabel_id, metrics in worst_df.iterrows():
+                query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 query_dict = {
                     "query": query_answers["query"].iloc[0],
                     "metrics": metrics.to_dict(),
@@ -814,8 +814,8 @@ class EvaluationResult:
             )
             worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
             wrong_examples = []
-            for query_id, metrics in worst_df.iterrows():
-                query_documents = documents[documents["query_id"] == query_id]
+            for multilabel_id, metrics in worst_df.iterrows():
+                query_documents = documents[documents["multilabel_id"] == multilabel_id]
                 query_dict = {
                     "query": query_documents["query"].iloc[0],
                     "metrics": metrics.to_dict(),
@@ -885,9 +885,9 @@ class EvaluationResult:
 
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
-            for query_id in answers["query_id"].unique():
-                top_k_document_ids = top_k_documents[top_k_documents["query_id"] == query_id]["document_id"].unique()
-                query_answers = answers[answers["query_id"] == query_id]
+            for multilabel_id in answers["multilabel_id"].unique():
+                top_k_document_ids = top_k_documents[top_k_documents["multilabel_id"] == multilabel_id]["document_id"].unique()
+                query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 # consider only the answers within simulated_top_k_retriever documents
                 simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
                 # simulate top k reader
@@ -904,15 +904,15 @@ class EvaluationResult:
         # build metrics df
         metrics = []
 
-        for query_id in answers["query_id"].unique():
-            query_df = answers[answers["query_id"] == query_id]
+        for multilabel_id in answers["multilabel_id"].unique():
+            query_df = answers[answers["multilabel_id"] == multilabel_id]
 
             metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
 
             query_metrics = {metric: query_df[metric].max() if len(query_df) > 0 else 0.0 for metric in metrics_cols}
             metrics.append(query_metrics)
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=answers["query_id"].unique())
+        metrics_df = pd.DataFrame.from_records(metrics, index=answers["multilabel_id"].unique())
         return metrics_df
 
     def _get_documents_df(self):
@@ -955,8 +955,8 @@ class EvaluationResult:
 
         metrics = []
 
-        for query_id in documents["query_id"].unique():
-            query_df = documents[documents["query_id"] == query_id]
+        for multilabel_id in documents["multilabel_id"].unique():
+            query_df = documents[documents["multilabel_id"] == multilabel_id]
             gold_ids = list(query_df["gold_document_ids"].iloc[0])
             retrieved = len(query_df)
 
@@ -994,7 +994,7 @@ class EvaluationResult:
                 }
             )
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=documents["query_id"].unique())
+        metrics_df = pd.DataFrame.from_records(metrics, index=documents["multilabel_id"].unique())
         return metrics_df
 
     def save(self, out_dir: Union[str, Path]):
