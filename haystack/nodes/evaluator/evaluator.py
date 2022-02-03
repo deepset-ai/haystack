@@ -376,7 +376,7 @@ def semantic_answer_similarity(predictions: List[List[str]],
                                      pointing to downloadable models.
 
 
-    :return top_1_sas, top_k_sas
+    :return: top_1_sas, top_k_sas
     """
     assert len(predictions) == len(gold_labels)
 
