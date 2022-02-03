@@ -23,6 +23,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.filter_utils import LogicalFilterClause
 
 
 def nested_defaultdict():
@@ -471,7 +472,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if filters:
             if not body.get("query"):
                 body["query"] = {"bool": {}}
-            body["query"]["bool"].update({"filter": self.convert_haystack_filter_to_es_query(filters)})
+            body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
         result = self.client.search(body=body, index=index, headers=headers)
         buckets = result["aggregations"]["metadata_agg"]["buckets"]
         for bucket in buckets:
@@ -641,7 +642,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
 
         if filters:
-            body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
+            body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         result = self.client.count(index=index, body=body, headers=headers)
         count = result["count"]
@@ -664,7 +665,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         body: dict = {"query": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}
         if filters:
-            body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
+            body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         result = self.client.count(index=index, body=body, headers=headers)
         count = result["count"]
@@ -826,7 +827,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         body: dict = {"query": {"bool": {}}}
 
         if filters:
-            body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
+            body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         if only_documents_without_embedding:
             body['query']['bool']['must_not'] = [{"exists": {"field": self.embedding_field}}]
@@ -965,7 +966,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         {"bool": {"must":
                                       {"match_all": {}}}}}  # type: Dict[str, Any]
             if filters:
-                body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
+                body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         # Retrieval via custom query
         elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
@@ -998,7 +999,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             }
 
             if filters:
-                body["query"]["bool"]["filter"] = self.convert_haystack_filter_to_es_query(filters)
+                body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         if self.excluded_meta_data:
             body["_source"] = {"excludes": self.excluded_meta_data}
@@ -1079,7 +1080,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             }
             if filters:
                 body["query"]["script_score"]["query"] = {
-                    "bool": {"filter": self.convert_haystack_filter_to_es_query(filters)}
+                    "bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}
                 }
 
             excluded_meta_data: Optional[list] = None
@@ -1444,7 +1445,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         index = index or self.index
         query: Dict[str, Any] = {"query": {}}
         if filters:
-            query["query"]["bool"] = {"filter": self.convert_haystack_filter_to_es_query(filters)}
+            query["query"]["bool"] = {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}
 
             if ids:
                 query["query"]["bool"]["must"] = {"ids": {"values": ids}}
