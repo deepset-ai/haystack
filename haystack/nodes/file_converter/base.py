@@ -89,13 +89,13 @@ class BaseConverter(BaseComponent):
         else:
             return False
 
-    def run(
+    def run(  # type: ignore
         self,
         file_paths: Union[Path, List[Path]],  # type: ignore
         meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None,  # type: ignore
         remove_numeric_tables: Optional[bool] = None,  # type: ignore
-        valid_languages: Optional[List[str]] = None,
-    ):  # type: ignore
+        valid_languages: Optional[List[str]] = None,  # type: ignore
+    ):
 
         if isinstance(file_paths, Path):
             file_paths = [file_paths]

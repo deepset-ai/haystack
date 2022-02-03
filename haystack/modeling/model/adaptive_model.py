@@ -258,13 +258,13 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # Need to save config and pipeline
 
     @classmethod
-    def load(
+    def load(  #  type: ignore
         cls,
-        load_dir: Union[str, Path],
-        device: str,
-        strict: bool = True,
+        load_dir: Union[str, Path],  #  type: ignore
+        device: str,  #  type: ignore
+        strict: bool = True,  #  type: ignore
         lm_name: Optional[str] = None,  #  type: ignore
-        processor: Optional[Processor] = None,
+        processor: Optional[Processor] = None,  #  type: ignore
     ):
         """
         Loads an AdaptiveModel from a directory. The directory must contain:
