@@ -200,19 +200,19 @@ def test_generate_doc_id_using_custom_list():
     assert doc1_text1.id != doc3_text2.id
 
     with pytest.raises(ValueError):
-        _ = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content","non_existing_field"])
+        _ = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content", "non_existing_field"])
 
 
 def test_aggregate_labels_with_labels():
     label1_with_filter1 = Label(
-            query="question",
-            answer=Answer(answer="1"),
-            is_correct_answer=True,
-            is_correct_document=True,
-            document=Document(content="some", id="777"),
-            origin="gold-label",
-            filters={"name": ["filename1"]}
-        )
+        query="question",
+        answer=Answer(answer="1"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        document=Document(content="some", id="777"),
+        origin="gold-label",
+        filters={"name": ["filename1"]},
+    )
     label2_with_filter1 = Label(
         query="question",
         answer=Answer(answer="2"),
@@ -220,7 +220,7 @@ def test_aggregate_labels_with_labels():
         is_correct_document=True,
         document=Document(content="some", id="777"),
         origin="gold-label",
-        filters={"name": ["filename1"]}
+        filters={"name": ["filename1"]},
     )
     label3_with_filter2 = Label(
         query="question",
@@ -229,9 +229,9 @@ def test_aggregate_labels_with_labels():
         is_correct_document=True,
         document=Document(content="some", id="777"),
         origin="gold-label",
-        filters={"name": ["filename2"]}
+        filters={"name": ["filename2"]},
     )
     label = MultiLabel(labels=[label1_with_filter1, label2_with_filter1])
-    assert label.filters == {"name":["filename1"]}
+    assert label.filters == {"name": ["filename1"]}
     with pytest.raises(ValueError):
         label = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])

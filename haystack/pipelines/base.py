@@ -482,14 +482,13 @@ class Pipeline(BasePipeline):
                 if params_per_label is None:
                     params_per_label = {"filters": label.filters}
                 else:
-                    # join both filters and overwrite filters in params with filters in labels 
+                    # join both filters and overwrite filters in params with filters in labels
                     params_per_label["filters"] = {**params_per_label.get("filters", {}), **label.filters}
             predictions = self.run(query=label.query, labels=label, params=params_per_label, debug=True)
-            
+
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
-                df = self._build_eval_dataframe(
-                    label.query, label, node_name, node_output)
+                df = self._build_eval_dataframe(label.query, label, node_name, node_output)
                 eval_result.append(node_name, df)
 
         # add sas values in batch mode for whole Dataframe
@@ -506,12 +505,30 @@ class Pipeline(BasePipeline):
 
         # reorder columns for better qualitative evaluation
         for key, df in eval_result.node_results.items():
-            desired_col_order = ["query_id", "query", "filters",# generic
-                                "gold_answers", "answer", "context", "exact_match", "f1", "sas", # answer-specific
-                                "gold_document_contents", "content", "gold_id_match", "answer_match", "gold_id_or_answer_match", # doc-specific
-                                "rank", "document_id", "gold_document_ids", # generic
-                                "offsets_in_document", "gold_offsets_in_documents", # answer-specific
-                                "type", "node", "eval_mode"] # generic
+            desired_col_order = [
+                "query_id",
+                "query",
+                "filters",  # generic
+                "gold_answers",
+                "answer",
+                "context",
+                "exact_match",
+                "f1",
+                "sas",  # answer-specific
+                "gold_document_contents",
+                "content",
+                "gold_id_match",
+                "answer_match",
+                "gold_id_or_answer_match",  # doc-specific
+                "rank",
+                "document_id",
+                "gold_document_ids",  # generic
+                "offsets_in_document",
+                "gold_offsets_in_documents",  # answer-specific
+                "type",
+                "node",
+                "eval_mode",
+            ]  # generic
             eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
 
         return eval_result
@@ -523,11 +540,8 @@ class Pipeline(BasePipeline):
         assert len(reordered_columns) == len(df.columns)
         return df.reindex(columns=reordered_columns)
 
-    def _build_eval_dataframe(self, 
-        query: str,
-        query_labels: MultiLabel, 
-        node_name: str, 
-        node_output: dict
+    def _build_eval_dataframe(
+        self, query: str, query_labels: MultiLabel, node_name: str, node_output: dict
     ) -> DataFrame:
         """
         Builds a Dataframe for each query from which evaluation metrics can be calculated.

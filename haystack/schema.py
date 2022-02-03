@@ -344,21 +344,22 @@ class Label:
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
-    def __init__(self,
-                 query: str,
-                 document: Document,
-                 is_correct_answer: bool,
-                 is_correct_document: bool,
-                 origin: Literal["user-feedback", "gold-label"],
-                 answer: Optional[Answer],
-                 id: Optional[str] = None,
-                 no_answer: Optional[bool] = None,
-                 pipeline_id: Optional[str] = None,
-                 created_at: Optional[str] = None,
-                 updated_at: Optional[str] = None,
-                 meta: Optional[dict] = None,
-                 filters: Optional[dict] = None
-                 ):
+    def __init__(
+        self,
+        query: str,
+        document: Document,
+        is_correct_answer: bool,
+        is_correct_document: bool,
+        origin: Literal["user-feedback", "gold-label"],
+        answer: Optional[Answer],
+        id: Optional[str] = None,
+        no_answer: Optional[bool] = None,
+        pipeline_id: Optional[str] = None,
+        created_at: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        meta: Optional[dict] = None,
+        filters: Optional[dict] = None,
+    ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
         This includes labels from dataset like SQuAD, annotations from labeling tools,
@@ -561,7 +562,9 @@ class MultiLabel:
         else:
             unique_values = list(set([getattr(l, key) for l in self.labels]))
         if must_be_single_value and len(unique_values) > 1:
-            raise ValueError(f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}")
+            raise ValueError(
+                f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}"
+            )
         else:
             return unique_values
 
@@ -885,13 +888,13 @@ class EvaluationResult:
             for query_id in answers["query_id"].unique():
                 top_k_document_ids = top_k_documents[top_k_documents["query_id"] == query_id]["document_id"].unique()
                 query_answers = answers[answers["query_id"] == query_id]
-                #consider only the answers within simulated_top_k_retriever documents
+                # consider only the answers within simulated_top_k_retriever documents
                 simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
                 # simulate top k reader
                 if simulated_top_k_reader != -1:
                     # consider only the simulated_top_k_reader answers within simulated_query_answers
-                    simulated_query_answers = simulated_query_answers.nsmallest(simulated_top_k_reader, 'rank')
-                simulated_query_answers["rank"] = np.arange(1, len(simulated_query_answers)+1)
+                    simulated_query_answers = simulated_query_answers.nsmallest(simulated_top_k_reader, "rank")
+                simulated_query_answers["rank"] = np.arange(1, len(simulated_query_answers) + 1)
                 simulated_answers.append(simulated_query_answers)
             answers = pd.concat(simulated_answers)
         # simulate top k reader
@@ -902,7 +905,7 @@ class EvaluationResult:
         metrics = []
 
         for query_id in answers["query_id"].unique():
-            query_df = answers[answers["query_id"]==query_id]
+            query_df = answers[answers["query_id"] == query_id]
 
             metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
 
@@ -953,7 +956,7 @@ class EvaluationResult:
         metrics = []
 
         for query_id in documents["query_id"].unique():
-            query_df = documents[documents["query_id"]==query_id]
+            query_df = documents[documents["query_id"] == query_id]
             gold_ids = list(query_df["gold_document_ids"].iloc[0])
             retrieved = len(query_df)
 
