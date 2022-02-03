@@ -34,17 +34,24 @@ jobs:
           pip install watchdog==1.0.2
 
       # Generates the docstrings and tutorials so that we have the latest for the deployment
+      - name: Generate Tutorials
+        run: |
+          cd docs/_src/tutorials/tutorials/
+          python3 convert_ipynb.py
+
+      # Generates the docstrings and tutorials so that we have the latest for the deployment
       - name: Generate Docstrings and Tutorials
         run: |
+          set -e   # Fails on any error in the following loop
           cd docs/_src/api/api/
-          ./generate_docstrings.sh 
-          cd ../../tutorials/tutorials/
-          python3 convert_ipynb.py
-          cd ../../../../
-          git status
+          for file in ../pydoc/* ; do
+            echo "Processing" $file
+            pydoc-markdown "$file"
+          done
 
       - name: Commit files
         run: |
+          git status
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
