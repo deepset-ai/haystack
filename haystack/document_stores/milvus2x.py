@@ -12,7 +12,7 @@ from scipy.special import expit
 from tqdm import tqdm
 
 try:
-    from pymilvus import FieldSchema, CollectionSchema, Collection, connections
+    from pymilvus import FieldSchema, CollectionSchema, Collection, connections, utility
     from pymilvus.client.abstract import QueryResult
     from pymilvus.client.types import DataType
 except (ImportError, ModuleNotFoundError) as ie:
@@ -23,8 +23,6 @@ except (ImportError, ModuleNotFoundError) as ie:
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
-
-from .filter import LogOp
 
 
 logger = logging.getLogger(__name__)
@@ -212,8 +210,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index_param = index_param or self.index_param
         custom_fields = self.custom_fields or []
 
-        connection = connections.get_connection()
-        has_collection = connection.has_collection(collection_name=index)
+        has_collection = utility.has_collection(collection_name=index)
         if not has_collection:
             fields = [
                 FieldSchema(name=self.id_field, dtype=DataType.INT64, is_primary=True, auto_id=True),
@@ -228,8 +225,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
             collection_schema = CollectionSchema(fields=fields)
         else:
-            resp = connection.describe_collection(index)
-            collection_schema = CollectionSchema.construct_from_dict(resp)
+            collection_schema = None
 
         collection = Collection(name=index, schema=collection_schema)
 
@@ -358,7 +354,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     #            connection.compact(collection_name=index)
 
     @staticmethod
-    def _get_field_to_idx(connection, index):
+    def _get_field_to_idx(index):
         resp = connection.describe_collection(index)
         collection_schema = CollectionSchema.construct_from_dict(resp)
         field_to_idx: Dict[str, int] = {}
@@ -377,7 +373,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         batch_size: int = 10_000,
         update_existing_embeddings: bool = True,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -390,40 +386,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                            only documents without embeddings are processed. This mode can be used for
                                            incremental updating of embeddings, wherein, only newly indexed documents
                                            get processed.
-        :param filters: Narrow down the scope to documents that match the given filters.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
-                        Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
-                                }
-                            }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
         index = index or self.index
@@ -435,8 +399,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        connection = connections.get_connection()
-        field_to_idx, field_to_type = self._get_field_to_idx(connection, index)
 
         result = self._query(
             index=index,
@@ -450,32 +412,13 @@ class Milvus2DocumentStore(SQLDocumentStore):
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
             for document_batch in batched_documents:
-                records: List[Dict[str, Any]] = [
-                    {
-                        "name": field_name,
-                        "type": dtype,
-                        "values": [],
-                    }
-                    for field_name, dtype in field_to_type.items()
-                ]
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 embeddings_list = [embedding.tolist() for embedding in embeddings]
                 assert len(document_batch) == len(embeddings_list)
 
-                records[field_to_idx[self.embedding_field]]["values"] = embeddings_list
-                for doc in document_batch:
-                    for k, v in field_to_idx.items():
-                        if k == self.embedding_field:
-                            continue
-                        if k in doc.meta:
-                            records[v]["values"].append(doc.meta[k])
-                        else:
-                            # TODO: check whether to throw error or not?
-                            pass
-
-                mutation_result = connection.insert(index, records)
+                mutation_result = self.collection.insert([embeddings_list])
 
                 vector_id_map = {}
                 for vector_id, doc in zip(mutation_result.primary_keys, document_batch):
@@ -491,7 +434,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[dict] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -501,40 +444,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Narrow down the scope to documents that match the given filters.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
-                        Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
-                                }
-                            }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
         :param return_embedding: To return document embedding
@@ -544,38 +455,22 @@ class Milvus2DocumentStore(SQLDocumentStore):
             raise NotImplementedError("Milvus2DocumentStore does not support headers.")
 
         index = index or self.index
-        connection = connections.get_connection()
-        has_collection = connection.has_collection(collection_name=index)
+        has_collection = utility.has_collection(collection_name=index)
         if not has_collection:
             raise Exception("No index exists. Use 'update_embeddings()` to create an index.")
 
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        connection.load_collection(index)
+        self.collection.load()
 
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
+        query_emb = query_emb.reshape(-1).astype(np.float32)
 
-        dsl: Dict[str, Any] = {
-            "bool": {
-                "must": [
-                    {
-                        "vector": {
-                            self.embedding_field: {
-                                "metric_type": self.metric_type,
-                                "params": self.search_param,
-                                "query": query_emb.tolist(),
-                                "topk": top_k,
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-        deserialized_filters = LogOp.deserialize(filters)
-
-        search_result: QueryResult = connection.search(
-            collection_name=index, dsl=dsl, fields=[self.id_field], expr=deserialized_filters.serialize_milvusv2()
+        search_result: QueryResult = self.collection.search(
+            data=[query_emb.tolist()],
+            anns_field=self.embedding_field,
+            param={"metric_type": self.metric_type, **self.search_param},
+            limit=top_k
         )
 
         vector_ids_for_query = []
@@ -599,46 +494,14 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
         Delete all documents (from SQL AND Milvus).
         :param index: (SQL) index name for storing the docs and metadata
-        :param filters: Narrow down the scope to documents that match the given filters.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
-                        Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
-                                }
-                            }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+        :param filters: Optional filters to narrow down the search space.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
         :return: None
         """
         if headers:
@@ -664,7 +527,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -676,40 +539,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Narrow down the scope to documents that match the given filters.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
-                        Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
-                                }
-                            }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -729,7 +560,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -739,40 +570,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Narrow down the scope to documents that match the given filters.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
-                        Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
-                                }
-                            }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+        :param filters: Optional filters to narrow down the documents to return.
+                        Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -860,15 +659,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
             if "vector_id" in doc.meta:
                 existing_vector_ids.append(str(doc.meta["vector_id"]))
 
-        if len(existing_vector_ids) > 0:
-            # TODO: adjust when Milvus 2.0 is released and supports deletion of vectors again
-            #  (https://github.com/milvus-io/milvus/issues/7130)
-            raise NotImplementedError("Milvus 2.0rc is not yet supporting the deletion of vectors.")
-            # expression = f'{self.id_field} in [ {",".join(existing_vector_ids)} ]'
-            # res = self.collection.delete(expression)
-            # assert len(res) == len(existing_vector_ids)
+        self.collection.delete(f"{self.id_field} in [ {','.join(existing_vector_ids)} ]")
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
