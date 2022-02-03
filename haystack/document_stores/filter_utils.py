@@ -243,7 +243,7 @@ class InOperation(ComparisonOperation):
     """
 
     def evaluate(self, fields) -> bool:
-        return fields[self.field_name] in self.comparison_value # type: ignore
+        return fields[self.field_name] in self.comparison_value  # type: ignore
         # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
     def convert_to_elasticsearch(self):
@@ -268,7 +268,7 @@ class NinOperation(ComparisonOperation):
     """
 
     def evaluate(self, fields) -> bool:
-        return fields[self.field_name] not in self.comparison_value # type: ignore
+        return fields[self.field_name] not in self.comparison_value  # type: ignore
         # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
     def convert_to_elasticsearch(self):
