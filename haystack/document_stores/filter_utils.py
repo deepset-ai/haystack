@@ -77,7 +77,7 @@ class LogicalFilterClause(ABC):
 
     def __init__(self, conditions: List["LogicalFilterClause"]):
         self.conditions = conditions
-    
+
     @abstractmethod
     def evaluate(self, fields) -> bool:
         pass
@@ -142,11 +142,10 @@ class LogicalFilterClause(ABC):
 
 
 class ComparisonOperation(ABC):
-
     def __init__(self, field_name: str, comparison_value: Union[str, float, List]):
         self.field_name = field_name
         self.comparison_value = comparison_value
-    
+
     @abstractmethod
     def evaluate(self, fields) -> bool:
         pass
@@ -188,6 +187,7 @@ class NotOperation(LogicalFilterClause):
     """
     Handles conversion of logical 'NOT' operations.
     """
+
     def evaluate(self, fields) -> bool:
         return not self.conditions[0].evaluate(fields)
 
@@ -201,6 +201,7 @@ class AndOperation(LogicalFilterClause):
     """
     Handles conversion of logical 'AND' operations.
     """
+
     def evaluate(self, fields) -> bool:
         return all(condition.evaluate(fields) for condition in self.conditions)
 
@@ -214,6 +215,7 @@ class OrOperation(LogicalFilterClause):
     """
     Handles conversion of logical 'OR' operations.
     """
+
     def evaluate(self, fields) -> bool:
         return any(condition.evaluate(fields) for condition in self.conditions)
 
@@ -227,6 +229,7 @@ class EqOperation(ComparisonOperation):
     """
     Handles conversion of the '$eq' comparison operation.
     """
+
     def evaluate(self, fields) -> bool:
         return fields[self.field_name] == self.comparison_value
 
@@ -238,6 +241,7 @@ class InOperation(ComparisonOperation):
     """
     Handles conversion of the '$in' comparison operation.
     """
+
     def evaluate(self, fields) -> bool:
         return fields[self.field_name] in self.comparison_value
 
@@ -249,6 +253,7 @@ class NeOperation(ComparisonOperation):
     """
     Handles conversion of the '$ne' comparison operation.
     """
+
     def evaluate(self, fields) -> bool:
         return fields[self.field_name] != self.comparison_value
 
@@ -260,6 +265,7 @@ class NinOperation(ComparisonOperation):
     """
     Handles conversion of the '$nin' comparison operation.
     """
+
     def evaluate(self, fields) -> bool:
         return fields[self.field_name] not in self.comparison_value
 
@@ -271,6 +277,7 @@ class GtOperation(ComparisonOperation):
     """
     Handles conversion of the '$gt' comparison operation.
     """
+
     def evaluate(self, fields) -> bool:
         return fields[self.field_name] > self.comparison_value
 
@@ -282,6 +289,7 @@ class GteOperation(ComparisonOperation):
     """
     Handles conversion of the '$gte' comparison operation.
     """
+
     def evaluate(self, fields) -> bool:
         return fields[self.field_name] >= self.comparison_value
 
@@ -293,6 +301,7 @@ class LtOperation(ComparisonOperation):
     """
     Handles conversion of the '$lt' comparison operation.
     """
+
     def evaluate(self, fields) -> bool:
         return fields[self.field_name] < self.comparison_value
 
@@ -304,6 +313,7 @@ class LteOperation(ComparisonOperation):
     """
     Handles conversion of the '$lte' comparison operation.
     """
+
     def evaluate(self, fields) -> bool:
         return fields[self.field_name] <= self.comparison_value
 

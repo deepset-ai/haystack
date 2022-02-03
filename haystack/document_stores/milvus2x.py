@@ -470,7 +470,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             data=[query_emb.tolist()],
             anns_field=self.embedding_field,
             param={"metric_type": self.metric_type, **self.search_param},
-            limit=top_k
+            limit=top_k,
         )
 
         vector_ids_for_query = []
