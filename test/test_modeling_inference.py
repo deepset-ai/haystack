@@ -54,18 +54,22 @@ def test_qa_format_and_results(adaptive_model_qa, multiprocessing_chunksize):
     # ]
     predictions = list(results)[0]["predictions"]
 
-    for prediction, ground_truth, qa_input_dict in zip(
-        predictions, ground_truths, qa_inputs_dicts
-    ):
+    for prediction, ground_truth, qa_input_dict in zip(predictions, ground_truths, qa_inputs_dicts):
         assert prediction["question"] == qa_input_dict["questions"][0]
         answer = prediction["answers"][0]
         assert answer["answer"] in answer["context"]
         assert answer["answer"] == ground_truth
-        assert (
-                {"answer", "score", "probability", "offset_answer_start", "offset_answer_end", "context",
-                 "offset_context_start", "offset_context_end", "document_id"}
-                == answer.keys()
-        )
+        assert {
+            "answer",
+            "score",
+            "probability",
+            "offset_answer_start",
+            "offset_answer_end",
+            "context",
+            "offset_context_start",
+            "offset_context_end",
+            "document_id",
+        } == answer.keys()
 
 
 if __name__ == "__main__":

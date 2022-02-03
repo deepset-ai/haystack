@@ -18,13 +18,14 @@ class BaseComponent:
     """
     A base class for implementing nodes in a Pipeline.
     """
+
     outgoing_edges: int
     subclasses: dict = {}
     pipeline_config: dict = {}
     name: Optional[str] = None
 
     def __init_subclass__(cls, **kwargs):
-        """ 
+        """
         Automatically keeps track of all available subclasses.
         Enables generic load() for all specific component implementations.
         """
@@ -42,9 +43,9 @@ class BaseComponent:
     def load_from_args(cls, component_type: str, **kwargs):
         """
         Load a component instance of the given type using the kwargs.
-        
+
         :param component_type: name of the component class to load.
-        :param kwargs: parameters to pass to the __init__() for the component. 
+        :param kwargs: parameters to pass to the __init__() for the component.
         """
         subclass = cls.get_subclass(component_type)
         instance = subclass(**kwargs)
@@ -80,7 +81,7 @@ class BaseComponent:
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None
+        meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
         """
         Method that will be executed when the node in the graph is called.
@@ -141,7 +142,9 @@ class BaseComponent:
             debug_info["input"] = {**run_inputs, **run_params}
             debug_info["input"]["debug"] = self.debug
             # Include output
-            filtered_output = {key: value for key, value in output.items() if key != "_debug"}  # Exclude _debug to avoid recursion
+            filtered_output = {
+                key: value for key, value in output.items() if key != "_debug"
+            }  # Exclude _debug to avoid recursion
             debug_info["output"] = filtered_output
         # Include custom debug info
         custom_debug = output.get("_debug", {})

@@ -48,7 +48,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, proxies=None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str,bool]] = None, **kwargs)
+ | __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -99,7 +99,7 @@ and that FARM includes no_answer in the sorted list of predictions.
 - `local_files_only`: Whether to force checking for local files only (and forbid downloads)
 - `force_download`: Whether fo force a (re-)download even if the model exists locally in the cache.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="farm.FARMReader.train"></a>
@@ -110,7 +110,6 @@ and that FARM includes no_answer in the sorted list of predictions.
 ```
 
 Fine-tune a model on a QA dataset. Options:
-
 - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
 - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
 
@@ -152,6 +151,7 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `checkpoints_to_keep`: maximum number of train checkpoints to save.
 :param caching whether or not to use caching for preprocessed dataset
 - `cache_path`: Path to cache the preprocessed dataset
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
 
 **Returns**:
 
@@ -170,12 +170,10 @@ using a more complex teacher.
 Originally proposed in: https://arxiv.org/pdf/1503.02531.pdf
 This can also be considered as the second stage of distillation finetuning as described in the TinyBERT paper:
 https://arxiv.org/pdf/1909.10351.pdf
-
 **Example**
 ```python
 student = FARMReader(model_name_or_path="prajjwal1/bert-medium")
 teacher = FARMReader(model_name_or_path="deepset/bert-large-uncased-whole-word-masking-squad2")
-
 student.distil_prediction_layer_from(teacher, data_dir="squad2", train_filename="train.json", test_filename="dev.json",
                     learning_rate=3e-5, distillation_loss_weight=1.0, temperature=5)
 ```
@@ -227,6 +225,7 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `tinybert_epochs`: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
 - `tinybert_learning_rate`: Learning rate to use when training the student model with the TinyBERT loss function.
 - `tinybert_train_filename`: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
 
 **Returns**:
 
@@ -236,17 +235,15 @@ None
 #### distil\_intermediate\_layers\_from
 
 ```python
- | distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0)
+ | distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None)
 ```
 
 The first stage of distillation finetuning as described in the TinyBERT paper:
 https://arxiv.org/pdf/1909.10351.pdf
-
 **Example**
 ```python
 student = FARMReader(model_name_or_path="prajjwal1/bert-medium")
 teacher = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D")
-
 student.distil_intermediate_layers_from(teacher, data_dir="squad2", train_filename="train.json", test_filename="dev.json",
                     learning_rate=3e-5, distillation_loss_weight=1.0, temperature=5)
 ```
@@ -294,6 +291,7 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `distillation_loss_weight`: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
 - `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
 - `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
 
 **Returns**:
 
@@ -632,7 +630,7 @@ answer = prediction["answers"][0].answer  # "10 june 1996"
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
+ | __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256)
 ```
 
 Load a TableQA model from Transformers.
@@ -640,18 +638,30 @@ Available models include:
 
 - ``'google/tapas-base-finetuned-wtq`'``
 - ``'google/tapas-base-finetuned-wikisql-supervised``'
+- ``'deepset/tapas-large-nq-hn-reader'``
+- ``'deepset/tapas-large-nq-reader'``
 
 See https://huggingface.co/models?pipeline_tag=table-question-answering
 for full list of available TableQA models.
+
+The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
+over multiple cells. The returned answers are sorted first by a general table score and then by answer span
+scores.
+All the other models can handle aggregation questions, but don't provide reasonable confidence scores.
 
 **Arguments**:
 
 - `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
 See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
-- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
+                      or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `use_gpu`: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
 - `top_k`: The maximum number of answers to return
+- `top_k_per_candidate`: How many answers to extract for each candidate table that is coming from
+                            the retriever.
+- `return_no_answer`: Whether to include no_answer predictions in the results.
+                         (Only applicable with nq-reader models.)
 - `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
                     query + table exceed max_seq_len, the table will be truncated by removing rows until the
                     input size fits the model.
