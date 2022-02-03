@@ -795,7 +795,9 @@ class EvaluationResult:
             for multilabel_id, metrics in worst_df.iterrows():
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 query_dict = {
+                    "multilabel_id": query_answers["multilabel_id"].iloc[0],
                     "query": query_answers["query"].iloc[0],
+                    "filters": query_answers["filters"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "answers": query_answers.drop(
                         ["node", "query", "type", "gold_answers", "gold_offsets_in_documents", "gold_document_ids"],
@@ -817,10 +819,12 @@ class EvaluationResult:
             for multilabel_id, metrics in worst_df.iterrows():
                 query_documents = documents[documents["multilabel_id"] == multilabel_id]
                 query_dict = {
+                    "multilabel_id": query_documents["multilabel_id"].iloc[0],
                     "query": query_documents["query"].iloc[0],
+                    "filters": query_documents["filters"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "documents": query_documents.drop(
-                        ["node", "query", "type", "gold_document_ids", "gold_document_contents"], axis=1
+                        ["node", "query", "multilabel_id", "filters", "type", "gold_document_ids", "gold_document_contents"], axis=1
                     ).to_dict(orient="records"),
                     "gold_document_ids": query_documents["gold_document_ids"].iloc[0],
                 }
