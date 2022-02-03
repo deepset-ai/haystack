@@ -43,8 +43,8 @@ def test_squad_augmentation():
 
 def test_squad_to_df():
     df = pd.DataFrame(
-        [['title', 'context', 'question', 'id', 'answer', 1, False]],
-        columns=['title', 'context', 'question', 'id', 'answer_text', 'answer_start', 'is_impossible']
+        [["title", "context", "question", "id", "answer", 1, False]],
+        columns=["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"],
     )
 
     expected_result = [
