@@ -2,11 +2,12 @@ import json
 from tqdm import tqdm
 import time
 import random
+
 random.seed(42)
 
 lines = []
 with open("psgs_w100_minus_gold_unshuffled.tsv") as f:
-    f.readline()    # Remove column header
+    f.readline()  # Remove column header
     lines = [l for l in tqdm(f)]
 
 tic = time.perf_counter()

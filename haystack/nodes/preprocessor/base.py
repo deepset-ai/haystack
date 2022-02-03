@@ -23,7 +23,11 @@ class BasePreProcessor(BaseComponent):
         raise NotImplementedError
 
     def clean(
-        self, document: dict, clean_whitespace: bool, clean_header_footer: bool, clean_empty_lines: bool,
+        self,
+        document: dict,
+        clean_whitespace: bool,
+        clean_header_footer: bool,
+        clean_empty_lines: bool,
     ) -> Dict[str, Any]:
         raise NotImplementedError
 

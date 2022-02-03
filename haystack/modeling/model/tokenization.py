@@ -22,17 +22,28 @@ import re
 import logging
 import numpy as np
 from transformers import (
-    AlbertTokenizer, AlbertTokenizerFast,
-    BertTokenizer, BertTokenizerFast,
-    DistilBertTokenizer, DistilBertTokenizerFast,
-    ElectraTokenizer, ElectraTokenizerFast,
-    RobertaTokenizer, RobertaTokenizerFast,
-    XLMRobertaTokenizer, XLMRobertaTokenizerFast,
-    XLNetTokenizer, XLNetTokenizerFast,
-    CamembertTokenizer, CamembertTokenizerFast,
-    DPRContextEncoderTokenizer, DPRContextEncoderTokenizerFast,
-    DPRQuestionEncoderTokenizer, DPRQuestionEncoderTokenizerFast,
-    BigBirdTokenizer, BigBirdTokenizerFast
+    AlbertTokenizer,
+    AlbertTokenizerFast,
+    BertTokenizer,
+    BertTokenizerFast,
+    DistilBertTokenizer,
+    DistilBertTokenizerFast,
+    ElectraTokenizer,
+    ElectraTokenizerFast,
+    RobertaTokenizer,
+    RobertaTokenizerFast,
+    XLMRobertaTokenizer,
+    XLMRobertaTokenizerFast,
+    XLNetTokenizer,
+    XLNetTokenizerFast,
+    CamembertTokenizer,
+    CamembertTokenizerFast,
+    DPRContextEncoderTokenizer,
+    DPRContextEncoderTokenizerFast,
+    DPRQuestionEncoderTokenizer,
+    DPRQuestionEncoderTokenizerFast,
+    BigBirdTokenizer,
+    BigBirdTokenizerFast,
 )
 from transformers import AutoConfig
 
@@ -45,13 +56,22 @@ logger = logging.getLogger(__name__)
 # Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
-#TODO analyse if tokenizers can be completely used through HF transformers
+# TODO analyse if tokenizers can be completely used through HF transformers
 class Tokenizer:
     """
     Simple Wrapper for Tokenizers from the transformers package. Enables loading of different Tokenizer classes with a uniform interface.
     """
+
     @classmethod
-    def load(cls, pretrained_model_name_or_path, revision=None, tokenizer_class=None, use_fast=True, use_auth_token: Union[bool, str] = None, **kwargs):
+    def load(
+        cls,
+        pretrained_model_name_or_path,
+        revision=None,
+        tokenizer_class=None,
+        use_fast=True,
+        use_auth_token: Union[bool, str] = None,
+        **kwargs,
+    ):
         """
         Enables loading of different Tokenizer classes with a uniform interface. Either infer the class from
         model config or define it manually via `tokenizer_class`.
@@ -73,66 +93,110 @@ class Tokenizer:
         kwargs["revision"] = revision
 
         if tokenizer_class is None:
-            tokenizer_class = cls._infer_tokenizer_class(pretrained_model_name_or_path,use_auth_token=use_auth_token)
+            tokenizer_class = cls._infer_tokenizer_class(pretrained_model_name_or_path, use_auth_token=use_auth_token)
 
         logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
         ret = None
         if "AlbertTokenizer" in tokenizer_class:
             if use_fast:
-                ret = AlbertTokenizerFast.from_pretrained(pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs)
+                ret = AlbertTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = AlbertTokenizer.from_pretrained(pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs)
+                ret = AlbertTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
+                )
         elif "XLMRobertaTokenizer" in tokenizer_class:
             if use_fast:
-                ret = XLMRobertaTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = XLMRobertaTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = XLMRobertaTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = XLMRobertaTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         elif "RobertaTokenizer" in tokenizer_class:
             if use_fast:
-                ret = RobertaTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = RobertaTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = RobertaTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = RobertaTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         elif "DistilBertTokenizer" in tokenizer_class:
             if use_fast:
-                ret = DistilBertTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = DistilBertTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = DistilBertTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = DistilBertTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         elif "BertTokenizer" in tokenizer_class:
             if use_fast:
-                ret = BertTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = BertTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = BertTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = BertTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         elif "XLNetTokenizer" in tokenizer_class:
             if use_fast:
-                ret = XLNetTokenizerFast.from_pretrained(pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs)
+                ret = XLNetTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = XLNetTokenizer.from_pretrained(pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs)
+                ret = XLNetTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
+                )
         elif "ElectraTokenizer" in tokenizer_class:
             if use_fast:
-                ret = ElectraTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = ElectraTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = ElectraTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = ElectraTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         elif "CamembertTokenizer" in tokenizer_class:
             if use_fast:
-                ret = CamembertTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = CamembertTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = CamembertTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = CamembertTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         elif "DPRQuestionEncoderTokenizer" in tokenizer_class:
             if use_fast:
-                ret = DPRQuestionEncoderTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = DPRQuestionEncoderTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = DPRQuestionEncoderTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
-        elif "DPRContextEncoderTokenizer"  in tokenizer_class:
+                ret = DPRQuestionEncoderTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
+        elif "DPRContextEncoderTokenizer" in tokenizer_class:
             if use_fast:
-                ret = DPRContextEncoderTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = DPRContextEncoderTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = DPRContextEncoderTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = DPRContextEncoderTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         elif "BigBirdTokenizer" in tokenizer_class:
             if use_fast:
-                ret = BigBirdTokenizerFast.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = BigBirdTokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
-                ret = BigBirdTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = BigBirdTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         if ret is None:
             raise Exception("Unable to load tokenizer")
         else:
@@ -146,7 +210,9 @@ class Tokenizer:
         except OSError:
             # Haystack model (no 'config.json' file)
             try:
-                config = AutoConfig.from_pretrained(pretrained_model_name_or_path + "/language_model_config.json", use_auth_token=use_auth_token)
+                config = AutoConfig.from_pretrained(
+                    pretrained_model_name_or_path + "/language_model_config.json", use_auth_token=use_auth_token
+                )
             except Exception as e:
                 logger.warning("No config file found. Trying to infer Tokenizer type from model name")
                 tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
@@ -183,8 +249,9 @@ class Tokenizer:
             tokenizer_class = "BigBirdTokenizer"
         else:
             # Fall back to inferring type from model name
-            logger.warning("Could not infer Tokenizer type from config. Trying to infer "
-                           "Tokenizer type from model name.")
+            logger.warning(
+                "Could not infer Tokenizer type from config. Trying to infer " "Tokenizer type from model name."
+            )
             tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
 
         return tokenizer_class
@@ -223,12 +290,14 @@ class Tokenizer:
         elif "dpr-ctx_encoder" in pretrained_model_name_or_path.lower():
             tokenizer_class = "DPRContextEncoderTokenizer"
         else:
-            raise ValueError(f"Could not infer tokenizer_class from model config or "
-                             f"name '{pretrained_model_name_or_path}'. Set arg `tokenizer_class` "
-                             f"in Tokenizer.load() to one of: AlbertTokenizer, XLMRobertaTokenizer, "
-                             f"RobertaTokenizer, DistilBertTokenizer, BertTokenizer, XLNetTokenizer, "
-                             f"CamembertTokenizer, ElectraTokenizer, DPRQuestionEncoderTokenizer,"
-                             f"DPRContextEncoderTokenizer.")
+            raise ValueError(
+                f"Could not infer tokenizer_class from model config or "
+                f"name '{pretrained_model_name_or_path}'. Set arg `tokenizer_class` "
+                f"in Tokenizer.load() to one of: AlbertTokenizer, XLMRobertaTokenizer, "
+                f"RobertaTokenizer, DistilBertTokenizer, BertTokenizer, XLNetTokenizer, "
+                f"CamembertTokenizer, ElectraTokenizer, DPRQuestionEncoderTokenizer,"
+                f"DPRContextEncoderTokenizer."
+            )
 
         return tokenizer_class
 
@@ -248,12 +317,16 @@ def tokenize_batch_question_answering(pre_baskets, tokenizer, indices):
     :return: baskets, list containing question and corresponding document information
     """
     assert len(indices) == len(pre_baskets)
-    assert tokenizer.is_fast, "Processing QA data is only supported with fast tokenizers for now.\n" \
-                              "Please load Tokenizers with 'use_fast=True' option."
+    assert tokenizer.is_fast, (
+        "Processing QA data is only supported with fast tokenizers for now.\n"
+        "Please load Tokenizers with 'use_fast=True' option."
+    )
     baskets = []
     # # Tokenize texts in batch mode
     texts = [d["context"] for d in pre_baskets]
-    tokenized_docs_batch = tokenizer.batch_encode_plus(texts, return_offsets_mapping=True, return_special_tokens_mask=True, add_special_tokens=False, verbose=False)
+    tokenized_docs_batch = tokenizer.batch_encode_plus(
+        texts, return_offsets_mapping=True, return_special_tokens_mask=True, add_special_tokens=False, verbose=False
+    )
 
     # Extract relevant data
     tokenids_batch = tokenized_docs_batch["input_ids"]
@@ -269,7 +342,9 @@ def tokenize_batch_question_answering(pre_baskets, tokenizer, indices):
         # # Tokenize questions one by one
         for i_q, q in enumerate(d["qas"]):
             question_text = q["question"]
-            tokenized_q = tokenizer.encode_plus(question_text, return_offsets_mapping=True, return_special_tokens_mask=True, add_special_tokens=False)
+            tokenized_q = tokenizer.encode_plus(
+                question_text, return_offsets_mapping=True, return_special_tokens_mask=True, add_special_tokens=False
+            )
 
             # Extract relevant data
             question_tokenids = tokenized_q["input_ids"]
@@ -279,16 +354,17 @@ def tokenize_batch_question_answering(pre_baskets, tokenizer, indices):
             external_id = q["id"]
             # The internal_id depends on unique ids created for each process before forking
             internal_id = f"{indices[i_doc]}-{i_q}"
-            raw = {"document_text": document_text,
-                   "document_tokens": tokenids_batch[i_doc],
-                   "document_offsets": offsets_batch[i_doc],
-                   "document_start_of_word": start_of_words_batch[i_doc],
-                   "question_text": question_text,
-                   "question_tokens": question_tokenids,
-                   "question_offsets": question_offsets,
-                   "question_start_of_word": question_sow,
-                   "answers": q["answers"],
-                   }
+            raw = {
+                "document_text": document_text,
+                "document_tokens": tokenids_batch[i_doc],
+                "document_offsets": offsets_batch[i_doc],
+                "document_start_of_word": start_of_words_batch[i_doc],
+                "question_text": question_text,
+                "question_tokens": question_tokenids,
+                "question_offsets": question_offsets,
+                "question_start_of_word": question_sow,
+                "answers": q["answers"],
+            }
             # TODO add only during debug mode (need to create debug mode)
             raw["document_tokens_strings"] = tokenized_docs_batch.encodings[i_doc].tokens
             raw["question_tokens_strings"] = tokenized_q.encodings[0].tokens
@@ -328,12 +404,12 @@ def tokenize_with_metadata(text: str, tokenizer) -> Dict[str, Any]:
     text = re.sub(r"\s", " ", text)
     # Fast Tokenizers return offsets, so we don't need to calculate them ourselves
     if tokenizer.is_fast:
-        #tokenized = tokenizer(text, return_offsets_mapping=True, return_special_tokens_mask=True)
+        # tokenized = tokenizer(text, return_offsets_mapping=True, return_special_tokens_mask=True)
         tokenized2 = tokenizer.encode_plus(text, return_offsets_mapping=True, return_special_tokens_mask=True)
 
         tokens2 = tokenized2["input_ids"]
         offsets2 = np.array([x[0] for x in tokenized2["offset_mapping"]])
-        #offsets2 = [x[0] for x in tokenized2["offset_mapping"]]
+        # offsets2 = [x[0] for x in tokenized2["offset_mapping"]]
         words = np.array(tokenized2.encodings[0].words)
 
         # TODO check for validity for all tokenizer and special token types
@@ -363,22 +439,20 @@ def tokenize_with_metadata(text: str, tokenizer) -> Dict[str, Any]:
             cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
 
         # split "words" into "subword tokens"
-        tokens, offsets, start_of_word = _words_to_tokens(
-            words, word_offsets, tokenizer
-        )
+        tokens, offsets, start_of_word = _words_to_tokens(words, word_offsets, tokenizer)
         tokenized_dict = {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
     return tokenized_dict
 
 
 def truncate_sequences(
-        seq_a: list, 
-        seq_b: Optional[list], 
-        tokenizer,
-        max_seq_len: int, 
-        truncation_strategy: str = 'longest_first',
-        with_special_tokens: bool = True, 
-        stride: int = 0
-    ) -> Tuple[List[Any], Optional[List[Any]], List[Any]]:
+    seq_a: list,
+    seq_b: Optional[list],
+    tokenizer,
+    max_seq_len: int,
+    truncation_strategy: str = "longest_first",
+    with_special_tokens: bool = True,
+    stride: int = 0,
+) -> Tuple[List[Any], Optional[List[Any]], List[Any]]:
     """
     Reduces a single sequence or a pair of sequences to a maximum sequence length.
     The sequences can contain tokens or any other elements (offsets, masks ...).
@@ -408,10 +482,13 @@ def truncate_sequences(
     overflowing_tokens = []
 
     if max_seq_len and total_len > max_seq_len:
-        seq_a, seq_b, overflowing_tokens = tokenizer.truncate_sequences(seq_a, pair_ids=seq_b,
-                                                                        num_tokens_to_remove=total_len - max_seq_len,
-                                                                        truncation_strategy=truncation_strategy,
-                                                                        stride=stride)
+        seq_a, seq_b, overflowing_tokens = tokenizer.truncate_sequences(
+            seq_a,
+            pair_ids=seq_b,
+            num_tokens_to_remove=total_len - max_seq_len,
+            truncation_strategy=truncation_strategy,
+            stride=stride,
+        )
     return (seq_a, seq_b, overflowing_tokens)
 
 
@@ -437,7 +514,7 @@ def _words_to_tokens(words, word_offsets, tokenizer):
 
         # empty / pure whitespace
         if len(w) == 0:
-          continue
+            continue
         # For the first word of a text: we just call the regular tokenize function.
         # For later words: we need to call it with add_prefix_space=True to get the same results with roberta / gpt2 tokenizer
         # see discussion here. https://github.com/huggingface/transformers/issues/1196

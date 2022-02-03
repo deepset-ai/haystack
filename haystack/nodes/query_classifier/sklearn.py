@@ -52,6 +52,7 @@ class SklearnQueryClassifier(BaseQueryClassifier):
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
     """
+
     def __init__(
         self,
         model_name_or_path: Union[
@@ -59,23 +60,17 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
         vectorizer_name_or_path: Union[
             str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle"
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
     ):
         """
         :param model_name_or_path: Gradient boosting based binary classifier to classify between keyword vs statement/question
         queries or statement vs question queries.
         :param vectorizer_name_or_path: A ngram based Tfidf vectorizer for extracting features from query.
         """
-        if (
-            (not isinstance(model_name_or_path, Path))
-            and (not isinstance(model_name_or_path, str))
-        ) or (
-            (not isinstance(vectorizer_name_or_path, Path))
-            and (not isinstance(vectorizer_name_or_path, str))
+        if ((not isinstance(model_name_or_path, Path)) and (not isinstance(model_name_or_path, str))) or (
+            (not isinstance(vectorizer_name_or_path, Path)) and (not isinstance(vectorizer_name_or_path, str))
         ):
-            raise TypeError(
-                "model_name_or_path and vectorizer_name_or_path must either be of type Path or str"
-            )
+            raise TypeError("model_name_or_path and vectorizer_name_or_path must either be of type Path or str")
 
         # save init parameters to enable export of component config as YAML
         self.set_config(model_name_or_path=model_name_or_path, vectorizer_name_or_path=vectorizer_name_or_path)
@@ -90,7 +85,6 @@ class SklearnQueryClassifier(BaseQueryClassifier):
 
         self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
-
 
     def run(self, query):
         query_vector = self.vectorizer.transform([query])

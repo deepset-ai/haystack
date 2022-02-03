@@ -19,6 +19,7 @@ class BaseGraphRetriever(BaseComponent):
     """
     Base classfor knowledge graph retrievers.
     """
+
     knowledge_graph: BaseKnowledgeGraph
     outgoing_edges = 1
 
@@ -39,6 +40,7 @@ class BaseRetriever(BaseComponent):
     """
     Base class for regular retrievers.
     """
+
     document_store: BaseDocumentStore
     outgoing_edges = 1
     query_count = 0
@@ -49,12 +51,13 @@ class BaseRetriever(BaseComponent):
 
     @abstractmethod
     def retrieve(
-        self, 
-        query: str, 
-        filters: dict = None, 
-        top_k: Optional[int] = None, 
+        self,
+        query: str,
+        filters: dict = None,
+        top_k: Optional[int] = None,
         index: str = None,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]:
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -68,7 +71,8 @@ class BaseRetriever(BaseComponent):
         pass
 
     def timing(self, fn, attr_name):
-        """Wrapper method used to time functions. """
+        """Wrapper method used to time functions."""
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if attr_name not in self.__dict__:
@@ -78,6 +82,7 @@ class BaseRetriever(BaseComponent):
             toc = perf_counter()
             self.__dict__[attr_name] += toc - tic
             return ret
+
         return wrapper
 
     def eval(
@@ -88,7 +93,7 @@ class BaseRetriever(BaseComponent):
         top_k: int = 10,
         open_domain: bool = False,
         return_preds: bool = False,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> dict:
         """
         Performs evaluation on the Retriever.
@@ -123,11 +128,14 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters,
-                                                                                 open_domain=open_domain,
-                                                                                 drop_negative_labels=True,
-                                                                                 drop_no_answers=False,
-                                                                                 headers=headers)
+        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(
+            index=label_index,
+            filters=filters,
+            open_domain=open_domain,
+            drop_negative_labels=True,
+            drop_no_answers=False,
+            headers=headers,
+        )
 
         correct_retrievals = 0
         summed_avg_precision = 0.0
@@ -200,16 +208,20 @@ class BaseRetriever(BaseComponent):
         mean_reciprocal_rank = summed_reciprocal_rank / number_of_questions
         mean_avg_precision = summed_avg_precision / number_of_questions
 
-        logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
-                     f" the top-{top_k} candidate passages selected by the retriever."))
+        logger.info(
+            (
+                f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
+                f" the top-{top_k} candidate passages selected by the retriever."
+            )
+        )
 
-        metrics =  {
+        metrics = {
             "recall": recall,
             "map": mean_avg_precision,
             "mrr": mean_reciprocal_rank,
             "retrieve_time": self.retrieve_time,
             "n_questions": number_of_questions,
-            "top_k": top_k
+            "top_k": top_k,
         }
 
         if return_preds:
@@ -225,7 +237,7 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         documents: Optional[List[dict]] = None,
         index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ):
         if root_node == "Query":
             self.query_count += 1
@@ -245,7 +257,7 @@ class BaseRetriever(BaseComponent):
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ):
         documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
         document_ids = [doc.id for doc in documents]

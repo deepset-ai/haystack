@@ -1,10 +1,10 @@
-name: Generate OpenAPI Specs
+name: Documentation
 
 on:
-  workflow_dispatch:
   push:
-    paths:
-      - "rest_api/**"
+    branches-ignore:
+      - master
+      - benchmarks
 
 jobs:
   build:
@@ -14,32 +14,38 @@ jobs:
       - uses: actions/checkout@v2
         with:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+          fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
 
-      - name: Set up Python 3.8.10
+      - name: Set up Python 3.7
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8.10
+          python-version: 3.7
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install rest_api/
-
-      # Generates the OpenAPI specs file to be used on the documentation website
-      - name: Generate OpenAPI Specs
+          pip install pydoc-markdown==3.11.0 mkdocs jupytercontrib watchdog==1.0.2
+      
+      # Generate documentation pages from the latest docstrings
+      - name: Generate Docstrings
         run: |
-          cd docs/_src/api/openapi/
-          python generate_openapi_specs.py
-
+          cd docs/_src/api/api/
+          ./generate_docstrings.sh
+        
+      # Generates new tutorial pages for deployment
+      - name: Generate Tutorials
+        run: |
+          cd docs/_src/tutorials/tutorials/
+          python3 convert_ipynb.py
+        
       - name: Commit files
         run: |
           git status
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
-          git commit -m "Update OpenAPI Specs" -a || echo "No changes to commit"
-
+          git commit -m "Update documentation" -a || echo "No changes to commit"
+      
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:

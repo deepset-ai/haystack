@@ -27,17 +27,20 @@ class EvalDocuments(BaseComponent):
     EvalDocuments node is deprecated and will be removed in a future version.
     Please use pipeline.eval() instead.
     """
+
     outgoing_edges = 1
 
-    def __init__(self, debug: bool=False, open_domain: bool=True, top_k: int=10):
+    def __init__(self, debug: bool = False, open_domain: bool = True, top_k: int = 10):
         """
         :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
                             When False, correct retrieval is evaluated based on document_id.
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
         :param top_k: calculate eval metrics for top k results, e.g., recall@k
         """
-        logger.warning("EvalDocuments node is deprecated and will be removed in a future version. "
-                       "Please use pipeline.eval() instead.")
+        logger.warning(
+            "EvalDocuments node is deprecated and will be removed in a future version. "
+            "Please use pipeline.eval() instead."
+        )
         self.init_counts()
         self.no_answer_warning = False
         self.debug = debug
@@ -70,15 +73,18 @@ class EvalDocuments(BaseComponent):
         if not self.top_k_used:
             self.top_k_used = top_k
         elif self.top_k_used != top_k:
-            logger.warning(f"EvalDocuments was last run with top_k_eval_documents={self.top_k_used} but is "
-                           f"being run again with top_k={self.top_k}. "
-                           f"The evaluation counter is being reset from this point so that the evaluation "
-                           f"metrics are interpretable.")
+            logger.warning(
+                f"EvalDocuments was last run with top_k_eval_documents={self.top_k_used} but is "
+                f"being run again with top_k={self.top_k}. "
+                f"The evaluation counter is being reset from this point so that the evaluation "
+                f"metrics are interpretable."
+            )
             self.init_counts()
 
         if len(documents) < top_k and not self.too_few_docs_warning:
-            logger.warning(f"EvalDocuments is being provided less candidate documents than top_k "
-                           f"(currently set to {top_k}).")
+            logger.warning(
+                f"EvalDocuments is being provided less candidate documents than top_k " f"(currently set to {top_k})."
+            )
             self.too_few_docs_warning = True
 
         # TODO retriever_labels is currently a Multilabel object but should eventually be a RetrieverLabel object
@@ -90,9 +96,11 @@ class EvalDocuments(BaseComponent):
             self.reciprocal_rank_sum += 1
             if not self.no_answer_warning:
                 self.no_answer_warning = True
-                logger.warning("There seem to be empty string labels in the dataset suggesting that there "
-                               "are samples with is_impossible=True. "
-                               "Retrieval of these samples is always treated as correct.")
+                logger.warning(
+                    "There seem to be empty string labels in the dataset suggesting that there "
+                    "are samples with is_impossible=True. "
+                    "Retrieval of these samples is always treated as correct."
+                )
         # If there are answer span annotations in the labels
         else:
             self.has_answer_count += 1
@@ -107,11 +115,18 @@ class EvalDocuments(BaseComponent):
         self.correct_retrieval_count += correct_retrieval
         self.recall = self.correct_retrieval_count / self.query_count
         self.mean_reciprocal_rank = self.reciprocal_rank_sum / self.query_count
-        
+
         self.top_k_used = top_k
 
         if self.debug:
-            self.log.append({"documents": documents, "labels": labels, "correct_retrieval": correct_retrieval, "retrieved_reciprocal_rank": retrieved_reciprocal_rank})
+            self.log.append(
+                {
+                    "documents": documents,
+                    "labels": labels,
+                    "correct_retrieval": correct_retrieval,
+                    "retrieved_reciprocal_rank": retrieved_reciprocal_rank,
+                }
+            )
         return {"correct_retrieval": correct_retrieval}, "output_1"
 
     def is_correctly_retrieved(self, retriever_labels, predictions):
@@ -122,14 +137,14 @@ class EvalDocuments(BaseComponent):
             for answer in retriever_labels.answers:
                 for rank, p in enumerate(predictions[:top_k_eval_documents]):
                     if answer.lower() in p.content.lower():
-                        return 1/(rank+1)
+                        return 1 / (rank + 1)
             return False
         else:
             prediction_ids = [p.id for p in predictions[:top_k_eval_documents]]
             label_ids = retriever_labels.document_ids
             for rank, p in enumerate(prediction_ids):
                 if p in label_ids:
-                    return 1/(rank+1)
+                    return 1 / (rank + 1)
             return 0
 
     def print(self):
@@ -138,13 +153,15 @@ class EvalDocuments(BaseComponent):
         print("-----------------")
         if self.no_answer_count:
             print(
-                f"has_answer recall@{self.top_k_used}: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})")
+                f"has_answer recall@{self.top_k_used}: {self.has_answer_recall:.4f} ({self.has_answer_correct}/{self.has_answer_count})"
+            )
             print(
-                f"no_answer recall@{self.top_k_used}:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)")
+                f"no_answer recall@{self.top_k_used}:  1.00 ({self.no_answer_count}/{self.no_answer_count}) (no_answer samples are always treated as correctly retrieved)"
+            )
+            print(f"has_answer mean_reciprocal_rank@{self.top_k_used}: {self.has_answer_mean_reciprocal_rank:.4f}")
             print(
-                f"has_answer mean_reciprocal_rank@{self.top_k_used}: {self.has_answer_mean_reciprocal_rank:.4f}")
-            print(
-                f"no_answer mean_reciprocal_rank@{self.top_k_used}:  1.0000 (no_answer samples are always treated as correctly retrieved at rank 1)")
+                f"no_answer mean_reciprocal_rank@{self.top_k_used}:  1.0000 (no_answer samples are always treated as correctly retrieved at rank 1)"
+            )
         print(f"recall@{self.top_k_used}: {self.recall:.4f} ({self.correct_retrieval_count} / {self.query_count})")
         print(f"mean_reciprocal_rank@{self.top_k_used}: {self.mean_reciprocal_rank:.4f}")
 
@@ -164,12 +181,13 @@ class EvalAnswers(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self,
-                 skip_incorrect_retrieval: bool = True,
-                 open_domain: bool = True,
-                 sas_model: str = None,
-                 debug: bool = False,
-                 ):
+    def __init__(
+        self,
+        skip_incorrect_retrieval: bool = True,
+        open_domain: bool = True,
+        sas_model: str = None,
+        debug: bool = False,
+    ):
         """
         :param skip_incorrect_retrieval: When set to True, this eval will ignore the cases where the retriever returned no correct documents
         :param open_domain: When True, extracted answers are evaluated purely on string similarity rather than the position of the extracted answer
@@ -186,8 +204,10 @@ class EvalAnswers(BaseComponent):
                           - Large model for German only: "deepset/gbert-large-sts"
         :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
         """
-        logger.warning("EvalAnswers node is deprecated and will be removed in a future version. "
-                       "Please use pipeline.eval() instead.")
+        logger.warning(
+            "EvalAnswers node is deprecated and will be removed in a future version. "
+            "Please use pipeline.eval() instead."
+        )
         self.log: List = []
         self.debug = debug
         self.skip_incorrect_retrieval = skip_incorrect_retrieval
@@ -230,10 +250,13 @@ class EvalAnswers(BaseComponent):
                 if predictions[0].answer is None:
                     self.top_1_no_answer_count += 1
                 if self.debug:
-                    self.log.append({"predictions": predictions,
-                                     "gold_labels": multi_labels,
-                                     "top_1_no_answer": int(predictions[0] == ""),
-                                     })
+                    self.log.append(
+                        {
+                            "predictions": predictions,
+                            "gold_labels": multi_labels,
+                            "top_1_no_answer": int(predictions[0] == ""),
+                        }
+                    )
                 self.update_no_answer_metrics()
             # If there are answer span annotations in the labels
             else:
@@ -247,16 +270,20 @@ class EvalAnswers(BaseComponent):
                     top_1_sas, top_k_sas = semantic_answer_similarity(
                         predictions=[predictions_str],
                         gold_labels=[multi_labels.answers],
-                        sas_model_name_or_path=self.sas_model)
+                        sas_model_name_or_path=self.sas_model,
+                    )
                     self.top_1_sas_sum += top_1_sas[0]
                     self.top_k_sas_sum += top_k_sas[0]
 
                 if self.debug:
-                    self.log.append({"predictions": predictions,
-                                     "gold_labels": multi_labels,
-                                     "top_k_f1": top_k_f1,
-                                     "top_k_em": top_k_em
-                                     })
+                    self.log.append(
+                        {
+                            "predictions": predictions,
+                            "gold_labels": multi_labels,
+                            "top_k_f1": top_k_f1,
+                            "top_k_em": top_k_em,
+                        }
+                    )
                     if self.sas_model:
                         self.log[-1].update({"top_k_sas": top_k_sas})
 
@@ -274,8 +301,10 @@ class EvalAnswers(BaseComponent):
             top_k_em = max([calculate_em_str_multi(gold_labels, p) for p in predictions])
             top_k_f1 = max([calculate_f1_str_multi(gold_labels, p) for p in predictions])
         else:
-            logger.error("Closed Domain Reader Evaluation not yet implemented for Pipelines. Use Reader.eval() instead.")
-            return 0,0,0,0
+            logger.error(
+                "Closed Domain Reader Evaluation not yet implemented for Pipelines. Use Reader.eval() instead."
+            )
+            return 0, 0, 0, 0
         return top_1_em, top_1_f1, top_k_em, top_k_f1
 
     def update_has_answer_metrics(self):
@@ -361,10 +390,11 @@ def calculate_f1_str_multi(gold_labels, prediction):
         return 0.0
 
 
-def semantic_answer_similarity(predictions: List[List[str]],
-                               gold_labels: List[List[str]],
-                               sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-                               ) -> Tuple[List[float],List[float]]:
+def semantic_answer_similarity(
+    predictions: List[List[str]],
+    gold_labels: List[List[str]],
+    sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+) -> Tuple[List[float], List[float]]:
     """
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
     Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
@@ -383,38 +413,38 @@ def semantic_answer_similarity(predictions: List[List[str]],
     config = AutoConfig.from_pretrained(sas_model_name_or_path)
     cross_encoder_used = False
     if config.architectures is not None:
-        cross_encoder_used = any([arch.endswith('ForSequenceClassification') for arch in config.architectures])
+        cross_encoder_used = any([arch.endswith("ForSequenceClassification") for arch in config.architectures])
 
     # Compute similarities
     top_1_sas = []
     top_k_sas = []
-    lengths: List[Tuple[int,int]] = []
+    lengths: List[Tuple[int, int]] = []
 
     # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
     # Similarity computation changes for both approaches
     if cross_encoder_used:
-        model = CrossEncoder(sas_model_name_or_path)        
+        model = CrossEncoder(sas_model_name_or_path)
         grid = []
-        for preds, labels in zip (predictions,gold_labels):          
+        for preds, labels in zip(predictions, gold_labels):
             for p in preds:
                 for l in labels:
-                    grid.append((p,l))
+                    grid.append((p, l))
             lengths.append((len(preds), len(labels)))
         scores = model.predict(grid)
 
         current_position = 0
         for len_p, len_l in lengths:
-            scores_window = scores[current_position:current_position+len_p*len_l]
+            scores_window = scores[current_position : current_position + len_p * len_l]
             # Per predicted doc there are len_l entries comparing it to all len_l labels.
             # So to only consider the first doc we have to take the first len_l entries
             top_1_sas.append(np.max(scores_window[:len_l]))
             top_k_sas.append(np.max(scores_window))
-            current_position += len_p*len_l
+            current_position += len_p * len_l
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
         model = SentenceTransformer(sas_model_name_or_path)
         all_texts: List[str] = []
-        for p, l in zip(predictions, gold_labels):                                  # type: ignore
+        for p, l in zip(predictions, gold_labels):  # type: ignore
             # TODO potentially exclude (near) exact matches from computations
             all_texts.extend(p)
             all_texts.extend(l)
@@ -425,9 +455,9 @@ def semantic_answer_similarity(predictions: List[List[str]],
         # then select which embeddings will be used for similarity computations
         current_position = 0
         for len_p, len_l in lengths:
-            pred_embeddings = embeddings[current_position:current_position + len_p, :]
+            pred_embeddings = embeddings[current_position : current_position + len_p, :]
             current_position += len_p
-            label_embeddings = embeddings[current_position:current_position + len_l, :]
+            label_embeddings = embeddings[current_position : current_position + len_l, :]
             current_position += len_l
             sims = cosine_similarity(pred_embeddings, label_embeddings)
             top_1_sas.append(np.max(sims[0, :]))
@@ -437,17 +467,15 @@ def semantic_answer_similarity(predictions: List[List[str]],
 
 
 def _count_overlap(
-    gold_span: Dict[str, Any],
-    predicted_span: Dict[str, Any],
-    metric_counts: Dict[str, float],
-    answer_idx: int
-    ):
+    gold_span: Dict[str, Any], predicted_span: Dict[str, Any], metric_counts: Dict[str, float], answer_idx: int
+):
     # Checks if overlap between prediction and real answer.
 
     found_answer = False
 
-    if (gold_span["offset_start"] <= predicted_span["offset_end"]) and \
-       (predicted_span["offset_start"] <= gold_span["offset_end"]):
+    if (gold_span["offset_start"] <= predicted_span["offset_end"]) and (
+        predicted_span["offset_start"] <= gold_span["offset_end"]
+    ):
         # top-1 answer
         if answer_idx == 0:
             metric_counts["correct_readings_top1"] += 1
@@ -461,18 +489,16 @@ def _count_overlap(
 
 
 def _count_exact_match(
-    gold_span: Dict[str, Any],
-    predicted_span: Dict[str, Any],
-    metric_counts: Dict[str, float],
-    answer_idx: int
-    ):
+    gold_span: Dict[str, Any], predicted_span: Dict[str, Any], metric_counts: Dict[str, float], answer_idx: int
+):
     # Check if exact match between prediction and real answer.
     # As evaluation needs to be framework independent, we cannot use the farm.evaluation.metrics.py functions.
 
     found_em = False
 
-    if (gold_span["offset_start"] == predicted_span["offset_start"]) and \
-       (gold_span["offset_end"] == predicted_span["offset_end"]):
+    if (gold_span["offset_start"] == predicted_span["offset_start"]) and (
+        gold_span["offset_end"] == predicted_span["offset_end"]
+    ):
         if metric_counts:
             # top-1 answer
             if answer_idx == 0:
@@ -523,4 +549,3 @@ def _count_no_answer(answers: List[dict], metric_counts: Dict[str, float]):
             break
 
     return metric_counts
-
