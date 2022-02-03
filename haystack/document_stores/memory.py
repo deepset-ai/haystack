@@ -193,14 +193,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
         documents = [self.indexes[index][id] for id in ids]
         return documents
-        
-    def query_by_embedding(self,
-                           query_emb: np.ndarray,
-                           filters: Optional[Dict[str, Any]] = None,
-                           top_k: int = 10,
-                           index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None,
-                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
+
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -537,7 +539,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         result = self._query(index=index, filters=filters, return_embedding=return_embedding)
         yield from result
 
-    def get_all_labels(self, index: str = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]:
+    def get_all_labels(
+        self, index: str = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None
+    ) -> List[Label]:
         """
         Return all labels in the document store.
         """
@@ -562,7 +566,12 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         return result
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_all_documents(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
@@ -614,7 +623,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_documents(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 

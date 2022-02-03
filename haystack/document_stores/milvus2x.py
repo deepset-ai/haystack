@@ -488,13 +488,15 @@ class Milvus2DocumentStore(SQLDocumentStore):
         # TODO: Equivalent in 2.0?
         # self.milvus_server.compact(collection_name=index)
 
-    def query_by_embedding(self,
-                           query_emb: np.ndarray,
-                           filters: Optional[Dict[str, Any]] = None,
-                           top_k: int = 10,
-                           index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None,
-                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
@@ -573,10 +575,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         deserialized_filters = LogOp.deserialize(filters)
 
         search_result: QueryResult = connection.search(
-            collection_name=index,
-            dsl=dsl,
-            fields=[self.id_field],
-            expr=deserialized_filters.serialize_milvusv2()
+            collection_name=index, dsl=dsl, fields=[self.id_field], expr=deserialized_filters.serialize_milvusv2()
         )
 
         vector_ids_for_query = []
@@ -596,7 +595,13 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         return documents
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_documents(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete all documents (from SQL AND Milvus).
         :param index: (SQL) index name for storing the docs and metadata
@@ -722,12 +727,12 @@ class Milvus2DocumentStore(SQLDocumentStore):
             yield doc
 
     def get_all_documents(
-            self,
-            index: Optional[str] = None,
-            filters: Optional[Dict[str, Any]] = None,
-            return_embedding: Optional[bool] = None,
-            batch_size: int = 10_000,
-            headers: Optional[Dict[str, str]] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
         Get documents from the document store (optionally using filter criteria).
