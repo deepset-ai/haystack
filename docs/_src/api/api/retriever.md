@@ -24,7 +24,7 @@ Base class for regular retrievers.
 
 ```python
  | @abstractmethod
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -36,6 +36,7 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
 <a name="base.BaseRetriever.timing"></a>
 #### timing
@@ -50,7 +51,7 @@ Wrapper method used to time functions.
 #### eval
 
 ```python
- | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+ | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False, headers: Optional[Dict[str, str]] = None) -> dict
 ```
 
 Performs evaluation on the Retriever.
@@ -79,6 +80,7 @@ position in the ranking of documents the correct document is.
                     are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
                      contains the keys "predictions" and "metrics".
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
 <a name="sparse"></a>
 # Module sparse
@@ -94,12 +96,12 @@ class ElasticsearchRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: ElasticsearchDocumentStore, top_k: int = 10, custom_query: str = None)
+ | __init__(document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None)
 ```
 
 **Arguments**:
 
-- `document_store`: an instance of a DocumentStore to retrieve documents from.
+- `document_store`: an instance of an ElasticsearchDocumentStore to retrieve documents from.
 - `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
                      Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
@@ -132,13 +134,47 @@ class ElasticsearchRetriever(BaseRetriever)
                     |    self.retrieve(query="Why did the revenue increase?",
                     |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                     ```
+
+                     Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+                     See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
+                     You will find the highlighted output in the returned Document's meta field by key "highlighted".
+                     ::
+
+                         **Example custom_query with highlighting:**
+                         ```python
+                        |    {
+                        |        "size": 10,
+                        |        "query": {
+                        |            "bool": {
+                        |                "should": [{"multi_match": {
+                        |                    "query": ${query},                 // mandatory query placeholder
+                        |                    "type": "most_fields",
+                        |                    "fields": ["content", "title"]}}],
+                        |            }
+                        |        },
+                        |        "highlight": {             // enable highlighting
+                        |            "fields": {            // for fields content and title
+                        |                "content": {},
+                        |                "title": {}
+                        |            }
+                        |        },
+                        |    }
+                         ```
+
+                         **For this custom_query, highlighting info can be accessed by:**
+                        ```python
+                        |    docs = self.retrieve(query="Why did the revenue increase?")
+                        |    highlighted_content = docs[0].meta["highlighted"]["content"]
+                        |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                        ```
+
 - `top_k`: How many documents to return per query.
 
 <a name="sparse.ElasticsearchRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -150,6 +186,8 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="sparse.ElasticsearchFilterOnlyRetriever"></a>
 ## ElasticsearchFilterOnlyRetriever
@@ -165,7 +203,7 @@ Helpful for benchmarking, testing and if you want to do QA on small documents wi
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -177,6 +215,8 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a name="sparse.TfidfRetriever"></a>
 ## TfidfRetriever
@@ -209,7 +249,7 @@ It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -250,7 +290,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -292,7 +332,7 @@ The checkpoint format matches huggingface transformers' model format
                     {"text": "my text", "meta": {"name": "my title"}}.
 - `use_fast_tokenizers`: Whether to use fast Rust tokenizers
 - `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
-                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
+                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
 - `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
                             Options: `dot_product` (Default) or `cosine`
 - `global_loss_buffer_size`: Buffer size for all_gather() in DDP.
@@ -302,14 +342,14 @@ The checkpoint format matches huggingface transformers' model format
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.DensePassageRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -360,7 +400,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### train
 
 ```python
- | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
+ | train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
 ```
 
 train a DensePassageRetrieval model
@@ -374,6 +414,9 @@ train a DensePassageRetrieval model
 - `max_samples`: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
 - `max_processes`: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                       It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+- `multiprocessing_strategy`: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
+                                 If your system has low limits for the number of open file descriptors, and you can’t raise them,
+                                 you should use the file_system strategy.
 - `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None
 - `batch_size`: total number of samples in 1 batch of data
 - `embed_title`: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
@@ -445,7 +488,7 @@ Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -483,7 +526,7 @@ The checkpoint format matches huggingface transformers' model format
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.TableTextRetriever.embed_queries"></a>
@@ -611,7 +654,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -639,16 +682,16 @@ class EmbeddingRetriever(BaseRetriever)
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list. 
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
 #### retrieve
 
 ```python
- | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None) -> List[Document]
+ | retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -705,7 +748,7 @@ Embeddings, one per input document
 class Text2SparqlRetriever(BaseGraphRetriever)
 ```
 
-Graph retriever that uses a pre-trained Bart model to translate natural language questions 
+Graph retriever that uses a pre-trained Bart model to translate natural language questions
 given in text form to queries in SPARQL format.
 The generated SPARQL query is executed on a knowledge graph.
 

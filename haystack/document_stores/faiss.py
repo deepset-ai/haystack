@@ -8,17 +8,23 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
+import warnings
+import numpy as np
+from inspect import Signature, signature
 
 try:
     import faiss
-except ImportError:
-    faiss = None
-import numpy as np
+    from haystack.document_stores.sql import (
+        SQLDocumentStore,
+    )  # its deps are optional, but get installed with the `faiss` extra
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "faiss", ie)
+
 
 from haystack.schema import Document
-from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
-from inspect import Signature, signature
 
 
 logger = logging.getLogger(__name__)
@@ -34,26 +40,30 @@ class FAISSDocumentStore(SQLDocumentStore):
     The document text and meta-data (for filtering) are stored using the SQLDocumentStore, while
     the vector embeddings are indexed in a FAISS Index.
     """
+
     def __init__(
         self,
         sql_url: str = "sqlite:///faiss_document_store.db",
-        vector_dim: int = 768,
+        vector_dim: int = None,
+        embedding_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
-        faiss_index: Optional["faiss.swigfaiss.Index"] = None,
+        faiss_index: "Optional[faiss.swigfaiss.Index]" = None,
         return_embedding: bool = False,
         index: str = "document",
         similarity: str = "dot_product",
         embedding_field: str = "embedding",
         progress_bar: bool = True,
-        duplicate_documents: str = 'overwrite',
+        duplicate_documents: str = "overwrite",
         faiss_index_path: Union[str, Path] = None,
         faiss_config_path: Union[str, Path] = None,
+        isolation_level: str = None,
         **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
-        :param vector_dim: the embedding vector size.
+        :param vector_dim: Deprecated. Use embedding_dim instead.
+        :param embedding_dim: The embedding vector size. Default: 768.
         :param faiss_index_factory_str: Create a new FAISS index of the specified type.
                                         The type is determined from the given string following the conventions
                                         of the original FAISS index factory.
@@ -71,11 +81,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                                         Benchmarks: XXX
         :param faiss_index: Pass an existing FAISS Index, i.e. an empty one that you configured manually
                             or one with docs that you used in Haystack before and want to load again.
-        :param return_embedding: To return document embedding
+        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
-                   In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+                   In both cases, the returned values in Document.score are normalized to be in range [0,1]:
                    For `dot_product`: expit(np.asarray(raw_score / 100))
                    FOr `cosine`: (raw_score + 1) / 2
         :param embedding_field: Name of field containing an embedding vector.
@@ -89,8 +99,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     exists.
         :param faiss_index_path: Stored FAISS index file. Can be created via calling `save()`.
             If specified no other params besides faiss_config_path must be specified.
-        :param faiss_config_path: Stored FAISS initial configuration parameters. 
+        :param faiss_config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
+        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again
@@ -103,16 +114,17 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            sql_url=sql_url, 
-            vector_dim=vector_dim, 
+            sql_url=sql_url,
+            vector_dim=vector_dim,
+            embedding_dim=embedding_dim,
             faiss_index_factory_str=faiss_index_factory_str,
-            faiss_index=faiss_index, 
             return_embedding=return_embedding,
-            duplicate_documents=duplicate_documents, 
-            index=index, 
+            duplicate_documents=duplicate_documents,
+            index=index,
             similarity=similarity,
-            embedding_field=embedding_field, 
-            progress_bar=progress_bar
+            embedding_field=embedding_field,
+            progress_bar=progress_bar,
+            isolation_level=isolation_level,
         )
 
         if similarity in ("dot_product", "cosine"):
@@ -122,31 +134,38 @@ class FAISSDocumentStore(SQLDocumentStore):
             self.similarity = similarity
             self.metric_type = faiss.METRIC_L2
         else:
-            raise ValueError("The FAISS document store can currently only support dot_product, cosine and l2 similarity. "
-                             "Please set similarity to one of the above.")
+            raise ValueError(
+                "The FAISS document store can currently only support dot_product, cosine and l2 similarity. "
+                "Please set similarity to one of the above."
+            )
 
-        self.vector_dim = vector_dim
+        if vector_dim is not None:
+            warnings.warn(
+                "The 'vector_dim' parameter is deprecated, " "use 'embedding_dim' instead.", DeprecationWarning, 2
+            )
+            self.embedding_dim = vector_dim
+        else:
+            self.embedding_dim = embedding_dim
+
         self.faiss_index_factory_str = faiss_index_factory_str
         self.faiss_indexes: Dict[str, faiss.swigfaiss.Index] = {}
         if faiss_index:
             self.faiss_indexes[index] = faiss_index
         else:
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index_factory=faiss_index_factory_str,
                 metric_type=self.metric_type,
-                **kwargs
+                **kwargs,
             )
 
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
 
         self.progress_bar = progress_bar
-        self.duplicate_documents = duplicate_documents
 
         super().__init__(
-            url=sql_url,
-            index=index
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
         )
 
         self._validate_index_sync()
@@ -157,40 +176,50 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         for param in sig.parameters.values():
             if param.name not in allowed_params and param.default != locals[param.name]:
-                    invalid_param_set = True
-                    break
-        
+                invalid_param_set = True
+                break
+
         if invalid_param_set or len(kwargs) > 0:
             raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
 
-    def _validate_index_sync(self):        
+    def _validate_index_sync(self):
         # This check ensures the correct document database was loaded.
         # If it fails, make sure you provided the path to the database
         # used when creating the original FAISS index
         if not self.get_document_count() == self.get_embedding_count():
-            raise ValueError("The number of documents present in the SQL database does not "
-                             "match the number of embeddings in FAISS. Make sure your FAISS "
-                             "configuration file correctly points to the same database that "
-                             "was used when creating the original index.")
+            raise ValueError(
+                "The number of documents present in the SQL database does not "
+                "match the number of embeddings in FAISS. Make sure your FAISS "
+                "configuration file correctly points to the same database that "
+                "was used when creating the original index."
+            )
 
-    def _create_new_index(self, vector_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
+    def _create_new_index(self, embedding_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
         if index_factory == "HNSW":
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
             n_links = kwargs.get("n_links", 64)
-            index = faiss.IndexHNSWFlat(vector_dim, n_links, metric_type)
-            index.hnsw.efSearch = kwargs.get("efSearch", 20)#20
-            index.hnsw.efConstruction = kwargs.get("efConstruction", 80)#80
+            index = faiss.IndexHNSWFlat(embedding_dim, n_links, metric_type)
+            index.hnsw.efSearch = kwargs.get("efSearch", 20)  # 20
+            index.hnsw.efConstruction = kwargs.get("efConstruction", 80)  # 80
             if "ivf" in index_factory.lower():  # enable reconstruction of vectors for inverted index
                 self.faiss_indexes[index].set_direct_map_type(faiss.DirectMap.Hashtable)
 
-            logger.info(f"HNSW params: n_links: {n_links}, efSearch: {index.hnsw.efSearch}, efConstruction: {index.hnsw.efConstruction}")
+            logger.info(
+                f"HNSW params: n_links: {n_links}, efSearch: {index.hnsw.efSearch}, efConstruction: {index.hnsw.efConstruction}"
+            )
         else:
-            index = faiss.index_factory(vector_dim, index_factory, metric_type)
+            index = faiss.index_factory(embedding_dim, index_factory, metric_type)
         return index
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None) -> None:
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> None:
         """
         Add new documents to the DocumentStore.
 
@@ -207,55 +236,68 @@ class FAISSDocumentStore(SQLDocumentStore):
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+
         index = index or self.index
         duplicate_documents = duplicate_documents or self.duplicate_documents
-        assert duplicate_documents in self.duplicate_documents_options, \
-            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
+        assert (
+            duplicate_documents in self.duplicate_documents_options
+        ), f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
         if not self.faiss_indexes.get(index):
             self.faiss_indexes[index] = self._create_new_index(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index_factory=self.faiss_index_factory_str,
                 metric_type=faiss.METRIC_INNER_PRODUCT,
             )
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self._handle_duplicate_documents(documents=document_objects,
-                                                            index=index,
-                                                            duplicate_documents=duplicate_documents)
+        document_objects = self._handle_duplicate_documents(
+            documents=document_objects, index=index, duplicate_documents=duplicate_documents
+        )
         if len(document_objects) > 0:
             add_vectors = False if document_objects[0].embedding is None else True
 
             if self.duplicate_documents == "overwrite" and add_vectors:
-                logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
-                               "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
-                               "Please call `update_embeddings` method to repopulate `faiss_index`")
+                logger.warning(
+                    "You have to provide `duplicate_documents = 'overwrite'` arg and "
+                    "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
+                    "Please call `update_embeddings` method to repopulate `faiss_index`"
+                )
 
             vector_id = self.faiss_indexes[index].ntotal
-            with tqdm(total = len(document_objects), disable =not self.progress_bar, position=0,
-                    desc="Writing Documents") as progress_bar:
+            with tqdm(
+                total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
+            ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
                     if add_vectors:
-                        embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
+                        embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                        if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
+                        if self.similarity == "cosine":
+                            self.normalize_embedding(embeddings_to_index)
 
                         self.faiss_indexes[index].add(embeddings_to_index)
 
                     docs_to_write_in_sql = []
-                    for doc in document_objects[i: i + batch_size]:
+                    for doc in document_objects[i : i + batch_size]:
                         meta = doc.meta
                         if add_vectors:
                             meta["vector_id"] = vector_id
                             vector_id += 1
                         docs_to_write_in_sql.append(doc)
 
-                    super(FAISSDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
-                                                                duplicate_documents=duplicate_documents)
+                    super(FAISSDocumentStore, self).write_documents(
+                        docs_to_write_in_sql,
+                        index=index,
+                        duplicate_documents=duplicate_documents,
+                        batch_size=batch_size,
+                    )
                     progress_bar.update(batch_size)
             progress_bar.close()
+
     def _create_document_field_map(self) -> Dict:
         return {
             self.index: self.embedding_field,
@@ -263,11 +305,11 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: 'BaseRetriever',
+        retriever: "BaseRetriever",
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict[str, List[str]]] = None,
-        batch_size: int = 10_000
+        batch_size: int = 10_000,
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -302,31 +344,33 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        vector_id = self.faiss_indexes[index].ntotal
+        vector_id = sum([self.faiss_indexes[index].ntotal for index in self.faiss_indexes.keys()])
 
         result = self._query(
             index=index,
             vector_ids=None,
             batch_size=batch_size,
             filters=filters,
-            only_documents_without_embedding=not update_existing_embeddings
+            only_documents_without_embedding=not update_existing_embeddings,
         )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=not self.progress_bar, position=0, unit=" docs",
-                  desc="Updating Embedding") as progress_bar:
+        with tqdm(
+            total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
+        ) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
+                if self.similarity == "cosine":
+                    self.normalize_embedding(embeddings_to_index)
 
                 self.faiss_indexes[index].add(embeddings_to_index)
 
                 vector_id_map = {}
                 for doc in document_batch:
-                    vector_id_map[doc.id] = vector_id
+                    vector_id_map[str(doc.id)] = str(vector_id)
                     vector_id += 1
                 self.update_vector_ids(vector_id_map, index=index)
                 progress_bar.set_description_str("Documents Processed")
@@ -338,7 +382,11 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+
         result = self.get_all_documents_generator(
             index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
@@ -351,6 +399,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -361,12 +410,15 @@ class FAISSDocumentStore(SQLDocumentStore):
                       DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :param return_embedding: Whether to return the document embeddings.
+        :param return_embedding: Whether to return the document embeddings. Unlike other document stores, FAISS will return normalized embeddings
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+
         index = index or self.index
         documents = super(FAISSDocumentStore, self).get_all_documents_generator(
-            index=index, filters=filters, batch_size=batch_size, return_embedding=False,
+            index=index, filters=filters, batch_size=batch_size, return_embedding=False
         )
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -378,10 +430,17 @@ class FAISSDocumentStore(SQLDocumentStore):
             yield doc
 
     def get_documents_by_id(
-        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000
+        self,
+        ids: List[str],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+
         index = index or self.index
-        documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index)
+        documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if self.return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
@@ -424,19 +483,33 @@ class FAISSDocumentStore(SQLDocumentStore):
         if embeddings:
             self.faiss_indexes[index].train(embeddings)
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_all_documents(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete all documents from the document store.
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+
         logger.warning(
-                """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS: 
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
         )
         self.delete_documents(index, None, filters)
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None):
+    def delete_documents(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
@@ -450,6 +523,9 @@ class FAISSDocumentStore(SQLDocumentStore):
             have their ID in the list).
         :return: None
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+
         index = index or self.index
         if index in self.faiss_indexes.keys():
             if not filters and not ids:
@@ -458,7 +534,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                 affected_docs = self.get_all_documents(filters=filters)
                 if ids:
                     affected_docs = [doc for doc in affected_docs if doc.id in ids]
-                doc_ids = [doc.meta.get("vector_id") for doc in affected_docs if doc.meta and doc.meta.get("vector_id") is not None]
+                doc_ids = [
+                    doc.meta.get("vector_id")
+                    for doc in affected_docs
+                    if doc.meta and doc.meta.get("vector_id") is not None
+                ]
                 self.faiss_indexes[index].remove_ids(np.array(doc_ids, dtype="int64"))
 
         super().delete_documents(index=index, ids=ids, filters=filters)
@@ -469,7 +549,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         filters: Optional[Dict[str, List[str]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
-        return_embedding: Optional[bool] = None
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -479,9 +560,12 @@ class FAISSDocumentStore(SQLDocumentStore):
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
-        :param return_embedding: To return document embedding
+        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
         :return:
         """
+        if headers:
+            raise NotImplementedError("FAISSDocumentStore does not support headers.")
+
         if filters:
             logger.warning("Query filters are not implemented for the FAISSDocumentStore.")
 
@@ -494,18 +578,21 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
-        if self.similarity=="cosine": self.normalize_embedding(query_emb)
+        if self.similarity == "cosine":
+            self.normalize_embedding(query_emb)
 
         score_matrix, vector_id_matrix = self.faiss_indexes[index].search(query_emb, top_k)
         vector_ids_for_query = [str(vector_id) for vector_id in vector_id_matrix[0] if vector_id != -1]
 
         documents = self.get_documents_by_vector_ids(vector_ids_for_query, index=index)
 
-        #assign query score to each document
-        scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])}
+        # assign query score to each document
+        scores_for_vector_ids: Dict[str, float] = {
+            str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])
+        }
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = self.finalize_raw_score(raw_score,self.similarity)
+            doc.score = self.finalize_raw_score(raw_score, self.similarity)
 
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
@@ -517,10 +604,10 @@ class FAISSDocumentStore(SQLDocumentStore):
         Save FAISS Index to the specified file.
 
         :param index_path: Path to save the FAISS index to.
-        :param config_path: Path to save the initial configuration parameters to. 
+        :param config_path: Path to save the initial configuration parameters to.
             Defaults to the same as the file path, save the extension (.json).
             This file contains all the parameters passed to FAISSDocumentStore()
-            at creation time (for example the SQL path, vector_dim, etc), and will be 
+            at creation time (for example the SQL path, embedding_dim, etc), and will be
             used by the `load` method to restore the index with the appropriate configuration.
         :return: None
         """
@@ -529,28 +616,32 @@ class FAISSDocumentStore(SQLDocumentStore):
             config_path = index_path.with_suffix(".json")
 
         faiss.write_index(self.faiss_indexes[self.index], str(index_path))
-        with open(config_path, 'w') as ipp:
+        with open(config_path, "w") as ipp:
             json.dump(self.pipeline_config["params"], ipp)
 
-    def _load_init_params_from_config(self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
+    def _load_init_params_from_config(
+        self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None
+    ):
         if not config_path:
             index_path = Path(index_path)
             config_path = index_path.with_suffix(".json")
 
         init_params: dict = {}
         try:
-            with open(config_path, 'r') as ipp:
+            with open(config_path, "r") as ipp:
                 init_params = json.load(ipp)
         except OSError as e:
-            raise ValueError(f"Can't open FAISS configuration file `{config_path}`. "
-                             "Make sure the file exists and the you have the correct permissions "
-                             "to access it.") from e
+            raise ValueError(
+                f"Can't open FAISS configuration file `{config_path}`. "
+                "Make sure the file exists and the you have the correct permissions "
+                "to access it."
+            ) from e
 
         faiss_index = faiss.read_index(str(index_path))
 
         # Add other init params to override the ones defined in the init params file
         init_params["faiss_index"] = faiss_index
-        init_params["vector_dim"] = faiss_index.d
+        init_params["embedding_dim"] = faiss_index.d
 
         return init_params
 
@@ -562,7 +653,7 @@ class FAISSDocumentStore(SQLDocumentStore):
               make sure to use the same SQL DB that you used when calling `save()`.
 
         :param index_path: Stored FAISS index file. Can be created via calling `save()`
-        :param config_path: Stored FAISS initial configuration parameters. 
+        :param config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
         """
         return cls(faiss_index_path=index_path, faiss_config_path=config_path)

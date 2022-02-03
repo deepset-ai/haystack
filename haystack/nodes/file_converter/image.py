@@ -3,9 +3,15 @@ from typing import List, Optional, Dict, Any, Union
 import logging
 import subprocess
 from pathlib import Path
-import pytesseract
-from PIL.PpmImagePlugin import PpmImageFile
-from PIL import Image
+
+try:
+    import pytesseract
+    from PIL.PpmImagePlugin import PpmImageFile
+    from PIL import Image
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "ocr", ie)
 
 from haystack.nodes.file_converter import BaseConverter
 
@@ -35,9 +41,7 @@ class ImageToTextConverter(BaseConverter):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
-        )
+        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         verify_installation = subprocess.run(["tesseract -v"], shell=True)
         if verify_installation.returncode == 127:
@@ -56,10 +60,7 @@ class ImageToTextConverter(BaseConverter):
         tesseract_langs = []
         if valid_languages:
             for language in valid_languages:
-                if (
-                    language in pytesseract.get_languages(config="")
-                    and language not in tesseract_langs
-                ):
+                if language in pytesseract.get_languages(config="") and language not in tesseract_langs:
                     tesseract_langs.append(language)
                 else:
                     raise Exception(
@@ -73,13 +74,11 @@ class ImageToTextConverter(BaseConverter):
 
         ## if you have more than one language in images, then pass it to tesseract like this e.g., `fra+eng`
         self.tesseract_langs = "+".join(tesseract_langs)
-        super().__init__(
-            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
-        )
+        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(
         self,
-        file_path: Union[Path,str],
+        file_path: Union[Path, str],
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
@@ -120,11 +119,7 @@ class ImageToTextConverter(BaseConverter):
 
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
-                    if (
-                        words
-                        and len(digits) / len(words) > 0.4
-                        and not line.strip().endswith(".")
-                    ):
+                    if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
                         logger.debug(f"Removing line '{line}' from file")
                         continue
                 cleaned_lines.append(line)
@@ -134,9 +129,9 @@ class ImageToTextConverter(BaseConverter):
 
         if valid_languages:
             document_text = "".join(cleaned_pages)
-            if not self.validate_language(document_text):
+            if not self.validate_language(document_text, valid_languages):
                 logger.warning(
-                    f"The language for image is not one of {self.valid_languages}. The file may not have "
+                    f"The language for image is not one of {valid_languages}. The file may not have "
                     f"been decoded in the correct text format."
                 )
 

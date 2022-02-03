@@ -12,6 +12,7 @@ class BaseMLLogger:
 
     This class can be extended to implement custom logging backends like MLFlow, Tensorboard, or Sacred.
     """
+
     disable_logging = False
 
     def __init__(self, tracking_uri, **kwargs):
@@ -34,7 +35,7 @@ class BaseMLLogger:
 
 
 class StdoutLogger(BaseMLLogger):
-    """ Minimal logger printing metrics and params to stdout.
+    """Minimal logger printing metrics and params to stdout.
     Useful for services like AWS SageMaker, where you parse metrics from the actual logs"""
 
     def init_experiment(self, experiment_name, run_name=None, nested=True):
@@ -123,18 +124,16 @@ class TensorBoardLogger(BaseMLLogger):
 
     def __init__(self, **kwargs):
         from tensorboardX import SummaryWriter
+
         TensorBoardLogger.summary_writer = SummaryWriter()
         super().__init__(**kwargs)
 
     @classmethod
     def log_metrics(cls, metrics, step):
         for key, value in metrics.items():
-            TensorBoardLogger.summary_writer.add_scalar(
-                tag=key, scalar_value=value, global_step=step
-            )
+            TensorBoardLogger.summary_writer.add_scalar(tag=key, scalar_value=value, global_step=step)
 
     @classmethod
     def log_params(cls, params):
         for key, value in params.items():
             TensorBoardLogger.summary_writer.add_text(tag=key, text_string=str(value))
-

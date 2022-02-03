@@ -155,8 +155,8 @@ GenerationMixin can be used by Seq2SeqGenerator.
 Moreover, as language models prepare model input in their specific encoding, each model
 specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
 accompanying model input converter that takes care of prefixes, separator tokens etc.
-By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5). 
-It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter 
+By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5).
+It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter
 is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
 
 For mode details on custom model input converters refer to _BartEli5Converter
@@ -184,9 +184,16 @@ For a list of all text-generation models see https://huggingface.co/models?pipel
 |
 |     # Answer
 |
-|     {'answers': [" The Dothraki language is a constructed fictional language. It's important because George R.R. Martin wrote it."],
-|      'query': 'Why is Dothraki language important?'}
-|
+|     {'query': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'query': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'content': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
 ```
 
 <a name="transformers.Seq2SeqGenerator.__init__"></a>

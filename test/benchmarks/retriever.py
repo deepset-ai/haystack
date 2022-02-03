@@ -38,7 +38,20 @@ DEVICES = None
 seed = 42
 random.seed(42)
 
-def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_gold, filename_negative, data_s3_url, embeddings_filenames, embeddings_dir, update_json, save_markdown, **kwargs):
+
+def benchmark_indexing(
+    n_docs_options,
+    retriever_doc_stores,
+    data_dir,
+    filename_gold,
+    filename_negative,
+    data_s3_url,
+    embeddings_filenames,
+    embeddings_dir,
+    update_json,
+    save_markdown,
+    **kwargs,
+):
 
     retriever_results = []
     for n_docs in n_docs_options:
@@ -47,13 +60,15 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
             try:
                 doc_store = get_document_store(doc_store_name)
                 retriever = get_retriever(retriever_name, doc_store, DEVICES)
-                docs, _ = prepare_data(data_dir=data_dir,
-                                       filename_gold=filename_gold,
-                                       filename_negative=filename_negative,
-                                       remote_url=data_s3_url,
-                                       embeddings_filenames=embeddings_filenames,
-                                       embeddings_dir=embeddings_dir,
-                                       n_docs=n_docs)
+                docs, _ = prepare_data(
+                    data_dir=data_dir,
+                    filename_gold=filename_gold,
+                    filename_negative=filename_negative,
+                    remote_url=data_s3_url,
+                    embeddings_filenames=embeddings_filenames,
+                    embeddings_dir=embeddings_dir,
+                    n_docs=n_docs,
+                )
 
                 tic = perf_counter()
                 index_to_doc_store(doc_store, docs, retriever)
@@ -62,14 +77,17 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
 
                 print(indexing_time)
 
-                retriever_results.append({
-                    "retriever": retriever_name,
-                    "doc_store": doc_store_name,
-                    "n_docs": n_docs,
-                    "indexing_time": indexing_time,
-                    "docs_per_second": n_docs / indexing_time,
-                    "date_time": datetime.datetime.now(),
-                    "error": None})
+                retriever_results.append(
+                    {
+                        "retriever": retriever_name,
+                        "doc_store": doc_store_name,
+                        "n_docs": n_docs,
+                        "indexing_time": indexing_time,
+                        "docs_per_second": n_docs / indexing_time,
+                        "date_time": datetime.datetime.now(),
+                        "error": None,
+                    }
+                )
                 retriever_df = pd.DataFrame.from_records(retriever_results)
                 retriever_df = retriever_df.sort_values(by="retriever").sort_values(by="doc_store")
                 retriever_df.to_csv(index_results_file)
@@ -92,16 +110,21 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
 
             except Exception:
                 tb = traceback.format_exc()
-                logging.error(f"##### The following Error was raised while running indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
+                logging.error(
+                    f"##### The following Error was raised while running indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs #####"
+                )
                 logging.error(tb)
-                retriever_results.append({
-                    "retriever": retriever_name,
-                    "doc_store": doc_store_name,
-                    "n_docs": n_docs,
-                    "indexing_time": 0,
-                    "docs_per_second": 0,
-                    "date_time": datetime.datetime.now(),
-                    "error": str(tb)})
+                retriever_results.append(
+                    {
+                        "retriever": retriever_name,
+                        "doc_store": doc_store_name,
+                        "n_docs": n_docs,
+                        "indexing_time": 0,
+                        "docs_per_second": 0,
+                        "date_time": datetime.datetime.now(),
+                        "error": str(tb),
+                    }
+                )
                 logger.info("Deleting all docs from this run ...")
                 if isinstance(doc_store, FAISSDocumentStore):
                     doc_store.session.close()
@@ -116,21 +139,22 @@ def benchmark_indexing(n_docs_options, retriever_doc_stores, data_dir, filename_
         populate_retriever_json()
 
 
-
-def benchmark_querying(n_docs_options,
-                       retriever_doc_stores,
-                       data_dir,
-                       data_s3_url,
-                       filename_gold,
-                       filename_negative,
-                       n_queries,
-                       embeddings_filenames,
-                       embeddings_dir,
-                       update_json,
-                       save_markdown,
-                       wait_write_limit=100,
-                       **kwargs):
-    """ Benchmark the time it takes to perform querying. Doc embeddings are loaded from file."""
+def benchmark_querying(
+    n_docs_options,
+    retriever_doc_stores,
+    data_dir,
+    data_s3_url,
+    filename_gold,
+    filename_negative,
+    n_queries,
+    embeddings_filenames,
+    embeddings_dir,
+    update_json,
+    save_markdown,
+    wait_write_limit=100,
+    **kwargs,
+):
+    """Benchmark the time it takes to perform querying. Doc embeddings are loaded from file."""
     retriever_results = []
 
     for n_docs in n_docs_options:
@@ -145,15 +169,17 @@ def benchmark_querying(n_docs_options,
                 retriever = get_retriever(retriever_name, doc_store, DEVICES)
                 add_precomputed = retriever_name in ["dpr"]
                 # For DPR, precomputed embeddings are loaded from file
-                docs, labels = prepare_data(data_dir=data_dir,
-                                            filename_gold=filename_gold,
-                                            filename_negative=filename_negative,
-                                            remote_url=data_s3_url,
-                                            embeddings_filenames=embeddings_filenames,
-                                            embeddings_dir=embeddings_dir,
-                                            n_docs=n_docs,
-                                            n_queries=n_queries,
-                                            add_precomputed=add_precomputed)
+                docs, labels = prepare_data(
+                    data_dir=data_dir,
+                    filename_gold=filename_gold,
+                    filename_negative=filename_negative,
+                    remote_url=data_s3_url,
+                    embeddings_filenames=embeddings_filenames,
+                    embeddings_dir=embeddings_dir,
+                    n_docs=n_docs,
+                    n_queries=n_queries,
+                    add_precomputed=add_precomputed,
+                )
                 logger.info("Start indexing...")
                 index_to_doc_store(doc_store, docs, retriever, labels)
 
@@ -167,12 +193,12 @@ def benchmark_querying(n_docs_options,
                     "n_queries": raw_results["n_questions"],
                     "retrieve_time": raw_results["retrieve_time"],
                     "queries_per_second": raw_results["n_questions"] / raw_results["retrieve_time"],
-                    "seconds_per_query": raw_results["retrieve_time"]/ raw_results["n_questions"],
+                    "seconds_per_query": raw_results["retrieve_time"] / raw_results["n_questions"],
                     "recall": raw_results["recall"] * 100,
                     "map": raw_results["map"] * 100,
                     "top_k": raw_results["top_k"],
                     "date_time": datetime.datetime.now(),
-                    "error": None
+                    "error": None,
                 }
 
                 logger.info("Deleting all docs from this run ...")
@@ -187,21 +213,23 @@ def benchmark_querying(n_docs_options,
                 del retriever
             except Exception:
                 tb = traceback.format_exc()
-                logging.error(f"##### The following Error was raised while running querying run: {retriever_name}, {doc_store_name}, {n_docs} docs #####")
+                logging.error(
+                    f"##### The following Error was raised while running querying run: {retriever_name}, {doc_store_name}, {n_docs} docs #####"
+                )
                 logging.error(tb)
                 results = {
                     "retriever": retriever_name,
                     "doc_store": doc_store_name,
                     "n_docs": n_docs,
                     "n_queries": 0,
-                    "retrieve_time": 0.,
-                    "queries_per_second": 0.,
-                    "seconds_per_query": 0.,
-                    "recall": 0.,
-                    "map": 0.,
+                    "retrieve_time": 0.0,
+                    "queries_per_second": 0.0,
+                    "seconds_per_query": 0.0,
+                    "recall": 0.0,
+                    "map": 0.0,
                     "top_k": 0,
                     "date_time": datetime.datetime.now(),
-                    "error": str(tb)
+                    "error": str(tb),
                 }
                 logger.info("Deleting all docs from this run ...")
                 if isinstance(doc_store, FAISSDocumentStore):
@@ -227,8 +255,9 @@ def benchmark_querying(n_docs_options,
 
 
 def populate_retriever_json():
-    retriever_overview_data, retriever_map_data, retriever_speed_data = retriever_json(index_csv=index_results_file,
-                                                                                       query_csv=query_results_file)
+    retriever_overview_data, retriever_map_data, retriever_speed_data = retriever_json(
+        index_csv=index_results_file, query_csv=query_results_file
+    )
     overview = RETRIEVER_TEMPLATE
     overview["data"] = retriever_overview_data
     map = RETRIEVER_MAP_TEMPLATE
@@ -259,7 +288,17 @@ def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
     return ret
 
 
-def prepare_data(data_dir, filename_gold, filename_negative, remote_url, embeddings_filenames, embeddings_dir, n_docs=None, n_queries=None, add_precomputed=False):
+def prepare_data(
+    data_dir,
+    filename_gold,
+    filename_negative,
+    remote_url,
+    embeddings_filenames,
+    embeddings_dir,
+    n_docs=None,
+    n_queries=None,
+    add_precomputed=False,
+):
     """
     filename_gold points to a squad format file.
     filename_negative points to a csv file where the first column is doc_id and second is document text.
@@ -271,7 +310,10 @@ def prepare_data(data_dir, filename_gold, filename_negative, remote_url, embeddi
     download_from_url(remote_url + filename_negative, filepath=data_dir + filename_negative)
     if add_precomputed:
         for embedding_filename in embeddings_filenames:
-            download_from_url(remote_url + str(embeddings_dir) + embedding_filename, filepath=data_dir + str(embeddings_dir) + embedding_filename)
+            download_from_url(
+                remote_url + str(embeddings_dir) + embedding_filename,
+                filepath=data_dir + str(embeddings_dir) + embedding_filename,
+            )
     logging.getLogger("farm").setLevel(logging.WARN)
 
     gold_docs, labels = eval_data_from_json(data_dir + filename_gold)
@@ -297,21 +339,20 @@ def prepare_data(data_dir, filename_gold, filename_negative, remote_url, embeddi
 
     return docs, labels
 
+
 def prepare_negative_passages(data_dir, filename_negative, n_docs):
     if n_docs == 0:
         return []
     with open(data_dir + filename_negative) as f:
         lines = []
-        _ = f.readline() # Skip column titles line
+        _ = f.readline()  # Skip column titles line
         for _ in range(n_docs):
             lines.append(f.readline()[:-1])
 
     docs = []
     for l in lines[:n_docs]:
         id, text, title = l.split("\t")
-        d = {"text": text,
-             "meta": {"passage_id": int(id),
-                      "title": title}}
+        d = {"text": text, "meta": {"passage_id": int(id), "title": title}}
         d = Document(**d)
         docs.append(d)
     return docs
@@ -321,4 +362,3 @@ if __name__ == "__main__":
     params, filenames = load_config(config_filename="config.json", ci=True)
     benchmark_indexing(**params, **filenames, update_json=True, save_markdown=False)
     benchmark_querying(**params, **filenames, update_json=True, save_markdown=False)
-

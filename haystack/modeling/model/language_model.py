@@ -30,15 +30,24 @@ import torch
 from torch import nn
 import transformers
 from transformers import (
-    BertModel, BertConfig,
-    RobertaModel, RobertaConfig,
-    XLNetModel, XLNetConfig,
-    AlbertModel, AlbertConfig,
-    XLMRobertaModel, XLMRobertaConfig,
-    DistilBertModel, DistilBertConfig,
-    ElectraModel, ElectraConfig,
-    CamembertModel, CamembertConfig,
-    BigBirdModel, BigBirdConfig
+    BertModel,
+    BertConfig,
+    RobertaModel,
+    RobertaConfig,
+    XLNetModel,
+    XLNetConfig,
+    AlbertModel,
+    AlbertConfig,
+    XLMRobertaModel,
+    XLMRobertaConfig,
+    DistilBertModel,
+    DistilBertConfig,
+    ElectraModel,
+    ElectraConfig,
+    CamembertModel,
+    CamembertConfig,
+    BigBirdModel,
+    BigBirdConfig,
 )
 from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
@@ -52,6 +61,7 @@ def silence_transformers_logs(from_pretrained_func):
     Wrapper that raises the log level of Transformers to
     ERROR to hide some unnecessary warnings
     """
+
     @wraps(from_pretrained_func)
     def quiet_from_pretrained_func(cls, *args, **kwargs):
 
@@ -74,17 +84,18 @@ def silence_transformers_logs(from_pretrained_func):
 # in the output vectors
 OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
 
-#TODO analyse if LMs can be completely used through HF transformers
+# TODO analyse if LMs can be completely used through HF transformers
 class LanguageModel(nn.Module):
     """
     The parent class for any kind of model that can embed language into a semantic vector space. Practically
     speaking, these models read in tokenized sentences and return vectors that capture the meaning of sentences
     or of tokens.
     """
+
     subclasses: dict = {}
 
     def __init_subclass__(cls, **kwargs):
-        """ 
+        """
         This automatically keeps track of all available subclasses.
         Enables generic load() or all specific LanguageModel implementation.
         """
@@ -101,7 +112,13 @@ class LanguageModel(nn.Module):
         raise NotImplementedError
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[bool, str] = None,  **kwargs):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        use_auth_token: Union[bool, str] = None,
+        **kwargs,
+    ):
         """
         Load a pretrained language model either by
 
@@ -158,10 +175,14 @@ class LanguageModel(nn.Module):
             logger.info(f"Could not find {pretrained_model_name_or_path} locally.")
             logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
             if language_model_class is None:
-                language_model_class = cls.get_language_model_class(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                language_model_class = cls.get_language_model_class(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
 
             if language_model_class:
-                language_model = cls.subclasses[language_model_class].load(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                language_model = cls.subclasses[language_model_class].load(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
             else:
                 language_model = None
 
@@ -181,7 +202,8 @@ class LanguageModel(nn.Module):
             model_emb_size = language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
             vocab_size = model_emb_size + n_added_tokens
             logger.info(
-                f"Resizing embedding layer of LM from {model_emb_size} to {vocab_size} to cope with custom vocab.")
+                f"Resizing embedding layer of LM from {model_emb_size} to {vocab_size} to cope with custom vocab."
+            )
             language_model.model.resize_token_embeddings(vocab_size)
             # verify
             model_emb_size = language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
@@ -190,7 +212,7 @@ class LanguageModel(nn.Module):
         return language_model
 
     @staticmethod
-    def get_language_model_class(model_name_or_path, use_auth_token: Union[str,bool] = None, **kwargs):
+    def get_language_model_class(model_name_or_path, use_auth_token: Union[str, bool] = None, **kwargs):
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
 
@@ -225,8 +247,10 @@ class LanguageModel(nn.Module):
             language_model_class = "BigBird"
         else:
             # Fall back to inferring type from model name
-            logger.warning("Could not infer LanguageModel class from config. Trying to infer "
-                           "LanguageModel class from model name.")
+            logger.warning(
+                "Could not infer LanguageModel class from config. Trying to infer "
+                "LanguageModel class from model name."
+            )
             language_model_class = LanguageModel._infer_language_model_class_from_string(model_name_or_path)
 
         return language_model_class
@@ -249,17 +273,17 @@ class LanguageModel(nn.Module):
         elif "camembert" in model_name_or_path.lower() or "umberto" in model_name_or_path.lower():
             language_model_class = "Camembert"
         elif "albert" in model_name_or_path.lower():
-            language_model_class = 'Albert'
+            language_model_class = "Albert"
         elif "distilbert" in model_name_or_path.lower():
-            language_model_class = 'DistilBert'
+            language_model_class = "DistilBert"
         elif "bert" in model_name_or_path.lower():
-            language_model_class = 'Bert'
+            language_model_class = "Bert"
         elif "xlnet" in model_name_or_path.lower():
-            language_model_class = 'XLNet'
+            language_model_class = "XLNet"
         elif "electra" in model_name_or_path.lower():
-            language_model_class = 'Electra'
+            language_model_class = "Electra"
         elif "word2vec" in model_name_or_path.lower() or "glove" in model_name_or_path.lower():
-            language_model_class = 'WordEmbedding_LM'
+            language_model_class = "WordEmbedding_LM"
         elif "minilm" in model_name_or_path.lower():
             language_model_class = "Bert"
         elif "dpr-question_encoder" in model_name_or_path.lower():
@@ -280,11 +304,11 @@ class LanguageModel(nn.Module):
             raise Exception("Could not infer the output dimensions of the language model")
 
     def freeze(self, layers):
-        """ To be implemented"""
+        """To be implemented"""
         raise NotImplementedError()
 
     def unfreeze(self):
-        """ To be implemented"""
+        """To be implemented"""
         raise NotImplementedError()
 
     def save_config(self, save_dir):
@@ -339,28 +363,21 @@ class LanguageModel(nn.Module):
         matches = [lang for lang in known_languages if lang in name]
         if "camembert" in name:
             language = "french"
-            logger.info(
-                f"Automatically detected language from language model name: {language}"
-            )
+            logger.info(f"Automatically detected language from language model name: {language}")
         elif "umberto" in name:
             language = "italian"
-            logger.info(
-                f"Automatically detected language from language model name: {language}"
-            )
+            logger.info(f"Automatically detected language from language model name: {language}")
         elif len(matches) == 0:
             language = "english"
         elif len(matches) > 1:
             language = matches[0]
         else:
             language = matches[0]
-            logger.info(
-                f"Automatically detected language from language model name: {language}"
-            )
+            logger.info(f"Automatically detected language from language model name: {language}")
 
         return language
 
-    def formatted_preds(self, logits, samples, ignore_first_token=True,
-                        padding_mask=None, input_ids=None, **kwargs):
+    def formatted_preds(self, logits, samples, ignore_first_token=True, padding_mask=None, input_ids=None, **kwargs):
         """
         Extracting vectors from language model (e.g. for extracting sentence embeddings).
         Different pooling strategies and layers are available and will be determined from the object attributes
@@ -379,8 +396,10 @@ class LanguageModel(nn.Module):
         :return: list of dicts containing preds, e.g. [{"context": "some text", "vec": [-0.01, 0.5 ...]}]
         """
         if not hasattr(self, "extraction_layer") or not hasattr(self, "extraction_strategy"):
-            raise ValueError("`extraction_layer` or `extraction_strategy` not specified for LM. "
-                             "Make sure to set both, e.g. via Inferencer(extraction_strategy='cls_token', extraction_layer=-1)`")
+            raise ValueError(
+                "`extraction_layer` or `extraction_strategy` not specified for LM. "
+                "Make sure to set both, e.g. via Inferencer(extraction_strategy='cls_token', extraction_layer=-1)`"
+            )
 
         # unpack the tuple from LM forward pass
         sequence_output = logits[0][0]
@@ -389,14 +408,20 @@ class LanguageModel(nn.Module):
         # aggregate vectors
         if self.extraction_strategy == "pooled":
             if self.extraction_layer != -1:
-                raise ValueError(f"Pooled output only works for the last layer, but got extraction_layer = {self.extraction_layer}. Please set `extraction_layer=-1`.)")
+                raise ValueError(
+                    f"Pooled output only works for the last layer, but got extraction_layer = {self.extraction_layer}. Please set `extraction_layer=-1`.)"
+                )
             vecs = pooled_output.cpu().numpy()
         elif self.extraction_strategy == "per_token":
             vecs = sequence_output.cpu().numpy()
         elif self.extraction_strategy == "reduce_mean":
-            vecs = self._pool_tokens(sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token)
+            vecs = self._pool_tokens(
+                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token
+            )
         elif self.extraction_strategy == "reduce_max":
-            vecs = self._pool_tokens(sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token)
+            vecs = self._pool_tokens(
+                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token
+            )
         elif self.extraction_strategy == "cls_token":
             vecs = sequence_output[:, 0, :].cpu().numpy()
         else:
@@ -434,6 +459,7 @@ class Bert(LanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1810.04805
     """
+
     def __init__(self):
         super(Bert, self).__init__()
         self.model = None
@@ -484,6 +510,8 @@ class Bert(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -495,19 +523,24 @@ class Bert(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
-        :return: Embeddings for each token in the input sequence.
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
+        :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if specified via the arguments output_hidden_states and output_attentions
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            return_dict=False,
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
@@ -521,6 +554,7 @@ class Albert(LanguageModel):
     An ALBERT model that wraps the HuggingFace's implementation
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     """
+
     def __init__(self):
         super(Albert, self).__init__()
         self.model = None
@@ -565,6 +599,8 @@ class Albert(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -576,19 +612,24 @@ class Albert(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            return_dict=False,
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
@@ -603,6 +644,7 @@ class Roberta(LanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1907.11692
     """
+
     def __init__(self):
         super(Roberta, self).__init__()
         self.model = None
@@ -647,6 +689,8 @@ class Roberta(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -658,19 +702,24 @@ class Roberta(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            return_dict=False,
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
@@ -685,6 +734,7 @@ class XLMRoberta(LanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1907.11692
     """
+
     def __init__(self):
         super(XLMRoberta, self).__init__()
         self.model = None
@@ -729,6 +779,8 @@ class XLMRoberta(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -740,19 +792,24 @@ class XLMRoberta(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            return_dict=False,
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True
@@ -773,6 +830,7 @@ class DistilBert(LanguageModel):
     - Unlike the other BERT variants, DistilBert does not output the
     pooled_output. An additional pooler is initialized.
     """
+
     def __init__(self):
         super(DistilBert, self).__init__()
         self.model = None
@@ -815,8 +873,8 @@ class DistilBert(LanguageModel):
         # We don't want a dropout in the end of the pooler, since we do that already in the adaptive model before we
         # feed everything to the prediction head
         config.summary_last_dropout = 0
-        config.summary_type = 'first'
-        config.summary_activation = 'tanh'
+        config.summary_type = "first"
+        config.summary_activation = "tanh"
         distilbert.pooler = SequenceSummary(config)
         distilbert.pooler.apply(distilbert.model._init_weights)
         return distilbert
@@ -825,28 +883,35 @@ class DistilBert(LanguageModel):
         self,
         input_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
-    ):  
+    ):
         """
         Perform the forward pass of the DistilBERT model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            return_dict=False,
         )
         # We need to manually aggregate that to get a pooled output (one vec per seq)
         pooled_output = self.pooler(output_tuple[0])
-        if self.model.config.output_hidden_states == True:
-            sequence_output, all_hidden_states = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
-        else:
-            sequence_output = output_tuple[0]
-            return sequence_output, pooled_output
+        return (output_tuple[0], pooled_output) + output_tuple[1:]
 
     def enable_hidden_states_output(self):
         self.model.config.output_hidden_states = True
@@ -861,6 +926,7 @@ class XLNet(LanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1906.08237
     """
+
     def __init__(self):
         super(XLNet, self).__init__()
         self.model = None
@@ -914,6 +980,8 @@ class XLNet(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -925,26 +993,29 @@ class XLNet(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         # Note: XLNet has a couple of special input tensors for pretraining / text generation  (perm_mask, target_mapping ...)
         # We will need to implement them, if we wanna support LM adaptation
         output_tuple = self.model(
             input_ids,
-            token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            return_dict=False,
         )
         # XLNet also only returns the sequence_output (one vec per token)
         # We need to manually aggregate that to get a pooled output (one vec per seq)
         # TODO verify that this is really doing correct pooling
         pooled_output = self.pooler(output_tuple[0])
-
-        if self.model.output_hidden_states == True:
-            sequence_output, all_hidden_states = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output = output_tuple[0]
-            return sequence_output, pooled_output
+        return (output_tuple[0], pooled_output) + output_tuple[1:]
 
     def enable_hidden_states_output(self):
         self.model.output_hidden_states = True
@@ -1011,8 +1082,8 @@ class Electra(LanguageModel):
         # feed everything to the prediction head.
         # Note: ELECTRA uses gelu as activation (BERT uses tanh instead)
         config.summary_last_dropout = 0
-        config.summary_type = 'first'
-        config.summary_activation = 'gelu'
+        config.summary_type = "first"
+        config.summary_activation = "gelu"
         config.summary_use_proj = False
         electra.pooler = SequenceSummary(config)
         electra.pooler.apply(electra.model._init_weights)
@@ -1023,6 +1094,8 @@ class Electra(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -1031,26 +1104,26 @@ class Electra(LanguageModel):
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
+        output_tuple = self.model(input_ids, token_type_ids=segment_ids, attention_mask=padding_mask, return_dict=False)
+
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
-            token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
         )
-
         # We need to manually aggregate that to get a pooled output (one vec per seq)
         pooled_output = self.pooler(output_tuple[0])
-
-        if self.model.config.output_hidden_states == True:
-            sequence_output, all_hidden_states = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
-        else:
-            sequence_output = output_tuple[0]
-            return sequence_output, pooled_output
-
-    def enable_hidden_states_output(self):
-        self.model.config.output_hidden_states = True
+        return (output_tuple[0], pooled_output) + output_tuple[1:]
 
     def disable_hidden_states_output(self):
         self.model.config.output_hidden_states = False
@@ -1061,6 +1134,7 @@ class Camembert(Roberta):
     A Camembert model that wraps the HuggingFace's implementation
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     """
+
     def __init__(self):
         super(Camembert, self).__init__()
         self.model = None
@@ -1105,6 +1179,7 @@ class DPRQuestionEncoder(LanguageModel):
     """
     A DPRQuestionEncoder model that wraps HuggingFace's implementation
     """
+
     def __init__(self):
         super(DPRQuestionEncoder, self).__init__()
         self.model = None
@@ -1112,7 +1187,13 @@ class DPRQuestionEncoder(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[str,bool] = None, **kwargs):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        use_auth_token: Union[str, bool] = None,
+        **kwargs,
+    ):
         """
         Load a pretrained model by supplying
 
@@ -1137,36 +1218,54 @@ class DPRQuestionEncoder(LanguageModel):
 
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
-                dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(haystack_lm_model, config=dpr_config, **kwargs)
+                dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(
+                    haystack_lm_model, config=dpr_config, **kwargs
+                )
             else:
                 if original_model_config.model_type != "bert":
-                    logger.warning(f"Using a model of type '{original_model_config.model_type}' which might be incompatible with DPR encoders."
-                                   f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors.")
+                    logger.warning(
+                        f"Using a model of type '{original_model_config.model_type}' which might be incompatible with DPR encoders."
+                        f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors."
+                    )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                dpr_question_encoder.model = transformers.DPRQuestionEncoder(config=transformers.DPRConfig(**original_config_dict))
+                dpr_question_encoder.model = transformers.DPRQuestionEncoder(
+                    config=transformers.DPRConfig(**original_config_dict)
+                )
                 language_model_class = cls.get_language_model_class(haystack_lm_config, use_auth_token, **kwargs)
-                dpr_question_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
+                dpr_question_encoder.model.base_model.bert_model = (
+                    cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
+                )
             dpr_question_encoder.language = dpr_question_encoder.model.config.language
         else:
-            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token)
+            original_model_config = AutoConfig.from_pretrained(
+                pretrained_model_name_or_path, use_auth_token=use_auth_token
+            )
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRQuestionEncoder model
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs
+                )
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRQuestionEncoder
                 # but keep config values from original architecture
                 # TODO test for architectures other than BERT, e.g. Electra
                 if original_model_config.model_type != "bert":
-                    logger.warning(f"Using a model of type '{original_model_config.model_type}' which might be incompatible with DPR encoders."
-                                   f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors.")
+                    logger.warning(
+                        f"Using a model of type '{original_model_config.model_type}' which might be incompatible with DPR encoders."
+                        f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors."
+                    )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                dpr_question_encoder.model = transformers.DPRQuestionEncoder(config=transformers.DPRConfig(**original_config_dict))
+                dpr_question_encoder.model = transformers.DPRQuestionEncoder(
+                    config=transformers.DPRConfig(**original_config_dict)
+                )
                 dpr_question_encoder.model.base_model.bert_model = AutoModel.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict)
-            dpr_question_encoder.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict
+                )
+            dpr_question_encoder.language = cls._get_or_infer_language_from_name(
+                language, pretrained_model_name_or_path
+            )
 
         return dpr_question_encoder
 
@@ -1175,12 +1274,10 @@ class DPRQuestionEncoder(LanguageModel):
         Save the model state_dict and its config file so that it can be loaded again.
 
         :param save_dir: The directory in which the model should be saved.
-        :param state_dict: A dictionary containing a whole state of the module including names of layers. 
+        :param state_dict: A dictionary containing a whole state of the module including names of layers.
                            By default, the unchanged state dict of the module is used
         """
-        model_to_save = (
-            self.model.module if hasattr(self.model, "module") else self.model
-        )  # Only save the model itself
+        model_to_save = self.model.module if hasattr(self.model, "module") else self.model  # Only save the model itself
 
         if self.model.config.model_type != "dpr" and model_to_save.base_model_prefix.startswith("question_"):
             state_dict = model_to_save.state_dict()
@@ -1218,7 +1315,7 @@ class DPRQuestionEncoder(LanguageModel):
             input_ids=query_input_ids,
             token_type_ids=query_segment_ids,
             attention_mask=query_attention_mask,
-            return_dict=True
+            return_dict=True,
         )
         if self.model.question_encoder.config.output_hidden_states == True:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
@@ -1238,6 +1335,7 @@ class DPRContextEncoder(LanguageModel):
     """
     A DPRContextEncoder model that wraps HuggingFace's implementation
     """
+
     def __init__(self):
         super(DPRContextEncoder, self).__init__()
         self.model = None
@@ -1245,7 +1343,13 @@ class DPRContextEncoder(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, use_auth_token: Union[str,bool] = None, **kwargs):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        use_auth_token: Union[str, bool] = None,
+        **kwargs,
+    ):
         """
         Load a pretrained model by supplying
 
@@ -1270,27 +1374,38 @@ class DPRContextEncoder(LanguageModel):
 
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
-                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(haystack_lm_model,config=dpr_config, use_auth_token=use_auth_token, **kwargs)
+                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(
+                    haystack_lm_model, config=dpr_config, use_auth_token=use_auth_token, **kwargs
+                )
             else:
                 if original_model_config.model_type != "bert":
                     logger.warning(
                         f"Using a model of type '{original_model_config.model_type}' which might be incompatible with DPR encoders."
-                        f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors.")
+                        f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors."
+                    )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                dpr_context_encoder.model = transformers.DPRContextEncoder(config=transformers.DPRConfig(**original_config_dict))
+                dpr_context_encoder.model = transformers.DPRContextEncoder(
+                    config=transformers.DPRConfig(**original_config_dict)
+                )
                 language_model_class = cls.get_language_model_class(haystack_lm_config, **kwargs)
-                dpr_context_encoder.model.base_model.bert_model = cls.subclasses[language_model_class].load(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token).model
+                dpr_context_encoder.model.base_model.bert_model = (
+                    cls.subclasses[language_model_class]
+                    .load(str(pretrained_model_name_or_path), use_auth_token=use_auth_token)
+                    .model
+                )
             dpr_context_encoder.language = dpr_context_encoder.model.config.language
 
         else:
             # Pytorch-transformer Style
-            original_model_config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token)
+            original_model_config = AutoConfig.from_pretrained(
+                pretrained_model_name_or_path, use_auth_token=use_auth_token
+            )
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRContextEncoder model
                 dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs
+                )
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRContextEncoder
                 # but keep config values from original architecture
@@ -1298,13 +1413,16 @@ class DPRContextEncoder(LanguageModel):
                 if original_model_config.model_type != "bert":
                     logger.warning(
                         f"Using a model of type '{original_model_config.model_type}' which might be incompatible with DPR encoders."
-                        f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors.")
+                        f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors."
+                    )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
                 dpr_context_encoder.model = transformers.DPRContextEncoder(
-                    config=transformers.DPRConfig(**original_config_dict))
+                    config=transformers.DPRConfig(**original_config_dict)
+                )
                 dpr_context_encoder.model.base_model.bert_model = AutoModel.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict)
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict
+                )
             dpr_context_encoder.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
 
         return dpr_context_encoder
@@ -1360,7 +1478,7 @@ class DPRContextEncoder(LanguageModel):
             input_ids=passage_input_ids,
             token_type_ids=passage_segment_ids,
             attention_mask=passage_attention_mask,
-            return_dict=True
+            return_dict=True,
         )
         if self.model.ctx_encoder.config.output_hidden_states == True:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
@@ -1382,6 +1500,7 @@ class BigBird(LanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     Paper: https://arxiv.org/abs/1810.04805
     """
+
     def __init__(self):
         super(BigBird, self).__init__()
         self.model = None
@@ -1432,10 +1551,12 @@ class BigBird(LanguageModel):
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
-        Perform the forward pass of the BERT model.
+        Perform the forward pass of the BigBird model.
 
         :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
         :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
@@ -1443,19 +1564,24 @@ class BigBird(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
+        :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
+        if output_hidden_states is None:
+            output_hidden_states = self.model.encoder.config.output_hidden_states
+        if output_attentions is None:
+            output_attentions = self.model.encoder.config.output_attentions
+
         output_tuple = self.model(
             input_ids,
             token_type_ids=segment_ids,
             attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            return_dict=False,
         )
-        if self.model.encoder.config.output_hidden_states == True:
-            sequence_output, pooled_output, all_hidden_states = output_tuple[0], output_tuple[1], output_tuple[2]
-            return sequence_output, pooled_output, all_hidden_states
-        else:
-            sequence_output, pooled_output = output_tuple[0], output_tuple[1]
-            return sequence_output, pooled_output
+        return output_tuple
 
     def enable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = True

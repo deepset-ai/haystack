@@ -63,7 +63,7 @@ supplied meta data like author, url, external IDs can be supplied as a dictionar
 #### validate\_language
 
 ```python
- | validate_language(text: str) -> bool
+ | validate_language(text: str, valid_languages: Optional[List[str]] = None) -> bool
 ```
 
 Validate if the language of the text is one of valid languages.
@@ -141,7 +141,7 @@ class ImageToTextConverter(BaseConverter)
 #### convert
 
 ```python
- | convert(file_path: Union[Path,str], meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> List[Dict[str, Any]]
+ | convert(file_path: Union[Path, str], meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8") -> List[Dict[str, Any]]
 ```
 
 Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
