@@ -19,7 +19,6 @@ from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,9 +36,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         return_embedding: bool = False,
         similarity: str = "dot_product",
         progress_bar: bool = True,
-        duplicate_documents: str = 'overwrite',
+        duplicate_documents: str = "overwrite",
         use_gpu: bool = True,
-        scoring_batch_size: int = 500000
+        scoring_batch_size: int = 500000,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -221,7 +220,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if len(query_emb.shape) == 1:
             query_emb = query_emb.unsqueeze(dim=0)
 
-        doc_embeds = np.array([ doc.embedding for doc in document_to_search ])
+        doc_embeds = np.array([doc.embedding for doc in document_to_search])
         doc_embeds = torch.as_tensor(doc_embeds, dtype=torch.float)
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
             doc_embeds = doc_embeds.unsqueeze(dim=0)
@@ -239,7 +238,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         curr_pos = 0
         scores = []
         while curr_pos < len(doc_embeds):
-            doc_embeds_slice = doc_embeds[curr_pos:curr_pos + self.scoring_batch_size]
+            doc_embeds_slice = doc_embeds[curr_pos : curr_pos + self.scoring_batch_size]
             doc_embeds_slice = doc_embeds_slice.to(self.main_device)
             with torch.no_grad():
                 slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()
@@ -261,7 +260,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if len(query_emb.shape) == 1:
             query_emb = np.expand_dims(query_emb, 0)
 
-        doc_embeds = np.array([ doc.embedding for doc in document_to_search ])
+        doc_embeds = np.array([doc.embedding for doc in document_to_search])
         if len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 1:
             doc_embeds = doc_embeds.unsqueeze(dim=0)
         elif len(doc_embeds.shape) == 1 and doc_embeds.shape[0] == 0:
