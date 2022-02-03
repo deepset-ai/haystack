@@ -16,9 +16,7 @@ def test_processor_saving_loading(caplog):
     set_all_seeds(seed=42)
     lang_model = "roberta-base"
 
-    tokenizer = Tokenizer.load(
-        pretrained_model_name_or_path=lang_model, do_lower_case=False
-    )
+    tokenizer = Tokenizer.load(pretrained_model_name_or_path=lang_model, do_lower_case=False)
 
     processor = SquadProcessor(
         tokenizer=tokenizer,
@@ -27,17 +25,17 @@ def test_processor_saving_loading(caplog):
         train_filename="train-sample.json",
         dev_filename="dev-sample.json",
         test_filename=None,
-        data_dir=SAMPLES_PATH/"qa",
+        data_dir=SAMPLES_PATH / "qa",
     )
 
-    dicts = processor.file_to_dicts(file=SAMPLES_PATH/"qa"/"dev-sample.json")
+    dicts = processor.file_to_dicts(file=SAMPLES_PATH / "qa" / "dev-sample.json")
     data, tensor_names, _ = processor.dataset_from_dicts(dicts=dicts, indices=[1])
 
     save_dir = Path("testsave/processor")
     processor.save(save_dir)
 
     processor = processor.load_from_dir(save_dir)
-    dicts = processor.file_to_dicts(file=SAMPLES_PATH/"qa"/"dev-sample.json")
+    dicts = processor.file_to_dicts(file=SAMPLES_PATH / "qa" / "dev-sample.json")
     data_loaded, tensor_names_loaded, _ = processor.dataset_from_dicts(dicts, indices=[1])
 
     assert tensor_names == tensor_names_loaded

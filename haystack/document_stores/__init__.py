@@ -3,9 +3,15 @@ import importlib
 from haystack.utils.import_utils import safe_import
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, KeywordDocumentStore
 
-ElasticsearchDocumentStore = safe_import("haystack.document_stores.elasticsearch", "ElasticsearchDocumentStore", "elasticsearch")
-OpenDistroElasticsearchDocumentStore = safe_import("haystack.document_stores.elasticsearch", "OpenDistroElasticsearchDocumentStore", "elasticsearch")
-OpenSearchDocumentStore = safe_import("haystack.document_stores.elasticsearch", "OpenSearchDocumentStore", "elasticsearch")
+ElasticsearchDocumentStore = safe_import(
+    "haystack.document_stores.elasticsearch", "ElasticsearchDocumentStore", "elasticsearch"
+)
+OpenDistroElasticsearchDocumentStore = safe_import(
+    "haystack.document_stores.elasticsearch", "OpenDistroElasticsearchDocumentStore", "elasticsearch"
+)
+OpenSearchDocumentStore = safe_import(
+    "haystack.document_stores.elasticsearch", "OpenSearchDocumentStore", "elasticsearch"
+)
 
 SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
 FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumentStore", "faiss")

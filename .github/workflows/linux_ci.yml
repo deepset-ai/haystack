@@ -11,14 +11,18 @@ jobs:
   type-check:
     runs-on: ubuntu-20.04
     steps:
+
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: 3.8
+
+      - name: Install dependencies
+        run:  pip install mypy types-Markdown types-requests types-PyYAML pydantic
+
       - name: Test with mypy
-        run: |
-          pip install mypy==0.910 types-Markdown types-requests types-PyYAML pydantic
-          mypy haystack
+        run: mypy haystack
+
 
   build-cache:
     needs: type-check

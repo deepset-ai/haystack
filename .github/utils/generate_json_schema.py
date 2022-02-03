@@ -82,9 +82,7 @@ def get_json_schema():
     # the prefix "Base" in the name. Maybe it could make sense to have a list of
     # all the valid nodes to include in the main source code and then using that here.
     for module, node in possible_nodes:
-        if lenient_issubclass(
-            node, haystack.nodes.BaseComponent
-        ) and not node.__name__.startswith("Base"):
+        if lenient_issubclass(node, haystack.nodes.BaseComponent) and not node.__name__.startswith("Base"):
             logging.info(f"Processing node: {node.__name__}")
             init_method = getattr(node, "__init__", None)
             if init_method:
@@ -228,9 +226,7 @@ def main():
 
     logging.info("Setting up GitHub Actions git user")
     subprocess.run(["git", "config", "user.name", "github-actions"], check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "github-actions@github.com"], check=True
-    )
+    subprocess.run(["git", "config", "user.email", "github-actions@github.com"], check=True)
     branch_name = "generate-json-schema"
     logging.info(f"Creating a new branch {branch_name}")
     subprocess.run(["git", "checkout", "-b", branch_name], check=True)

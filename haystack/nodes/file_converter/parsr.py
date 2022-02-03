@@ -1,4 +1,5 @@
 from typing import Optional, Dict, List, Any
+
 try:
     from typing import Literal
 except ImportError:
@@ -23,17 +24,18 @@ class ParsrConverter(BaseConverter):
     Supported file formats are: PDF, DOCX
     """
 
-    def __init__(self,
-                 parsr_url: str = "http://localhost:3001",
-                 extractor: Literal["pdfminer", "pdfjs"] = "pdfminer",
-                 table_detection_mode: Literal["lattice", "stream"] = "lattice",
-                 preceding_context_len: int = 1,
-                 following_context_len: int = 1,
-                 remove_page_headers: bool = False,
-                 remove_page_footers: bool = False,
-                 remove_table_of_contents: bool = False,
-                 valid_languages: Optional[List[str]] = None,
-                 ):
+    def __init__(
+        self,
+        parsr_url: str = "http://localhost:3001",
+        extractor: Literal["pdfminer", "pdfjs"] = "pdfminer",
+        table_detection_mode: Literal["lattice", "stream"] = "lattice",
+        preceding_context_len: int = 1,
+        following_context_len: int = 1,
+        remove_page_headers: bool = False,
+        remove_page_footers: bool = False,
+        remove_table_of_contents: bool = False,
+        valid_languages: Optional[List[str]] = None,
+    ):
         """
         :param parsr_url: URL endpoint to Parsr"s REST API.
         :param extractor: Backend used to extract textual structured from PDFs. ("pdfminer" or "pdfjs")
@@ -54,10 +56,17 @@ class ParsrConverter(BaseConverter):
                                 in garbled text.
         """
         # save init parameters to enable export of component config as YAML
-        self.set_config(parsr_url=parsr_url, extractor=extractor, table_detection_mode=table_detection_mode,
-                        preceding_context_len=preceding_context_len,  following_context_len=following_context_len,
-                        remove_page_headers=remove_page_headers, remove_page_footers=remove_page_footers,
-                        remove_table_of_contents=remove_table_of_contents, valid_languages=valid_languages)
+        self.set_config(
+            parsr_url=parsr_url,
+            extractor=extractor,
+            table_detection_mode=table_detection_mode,
+            preceding_context_len=preceding_context_len,
+            following_context_len=following_context_len,
+            remove_page_headers=remove_page_headers,
+            remove_page_footers=remove_page_footers,
+            remove_table_of_contents=remove_table_of_contents,
+            valid_languages=valid_languages,
+        )
 
         try:
             ping = requests.get(parsr_url)
@@ -76,7 +85,7 @@ class ParsrConverter(BaseConverter):
         self.valid_languages = valid_languages
         self.config = json.loads(requests.get(f"{self.parsr_url}/api/v1/default-config").content)
         self.config["extractor"]["pdf"] = extractor
-        self.config['cleaner'][5][1]['runConfig'][0]['flavor'] = table_detection_mode
+        self.config["cleaner"][5][1]["runConfig"][0]["flavor"] = table_detection_mode
         self.preceding_context_len = preceding_context_len
         self.following_context_len = following_context_len
         self.remove_page_headers = remove_page_headers
@@ -84,13 +93,14 @@ class ParsrConverter(BaseConverter):
         self.remove_table_of_contents = remove_table_of_contents
         super().__init__(valid_languages=valid_languages)
 
-    def convert(self,
-                file_path: Path,
-                meta: Optional[Dict[str, str]] = None,
-                remove_numeric_tables: Optional[bool] = None,
-                valid_languages: Optional[List[str]] = None,
-                encoding: Optional[str] = "utf-8",
-                ) -> List[Dict[str, Any]]:
+    def convert(
+        self,
+        file_path: Path,
+        meta: Optional[Dict[str, str]] = None,
+        remove_numeric_tables: Optional[bool] = None,
+        valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = "utf-8",
+    ) -> List[Dict[str, Any]]:
         """
         Extract text and tables from a PDF or DOCX using the open-source Parsr tool.
 
@@ -114,8 +124,8 @@ class ParsrConverter(BaseConverter):
                 url=f"{self.parsr_url}/api/v1/document",
                 files={
                     "file": (file_path, pdf_file, "application/pdf"),
-                    "config": ("config", json.dumps(self.config), "application/json")
-                }
+                    "config": ("config", json.dumps(self.config), "application/json"),
+                },
             )
             queue_id = send_response.text
 
@@ -143,8 +153,7 @@ class ParsrConverter(BaseConverter):
                         tables.append(table)
 
         if valid_languages:
-            file_text = text + " ".join(
-                [cell for table in tables for row in table["content"] for cell in row])
+            file_text = text + " ".join([cell for table in tables for row in table["content"] for cell in row])
             if not self.validate_language(file_text, valid_languages):
                 logger.warning(
                     f"The language for {file_path} is not one of {valid_languages}. The file may not have "
@@ -179,12 +188,17 @@ class ParsrConverter(BaseConverter):
         current_paragraph = self._get_paragraph_string(element)
         return current_paragraph
 
-    def _convert_table_element(self, element: Dict[str, Any], all_pages: List[Dict], page_idx: int, elem_idx: int,
-                               meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    def _convert_table_element(
+        self,
+        element: Dict[str, Any],
+        all_pages: List[Dict],
+        page_idx: int,
+        elem_idx: int,
+        meta: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
         row_idx_start = 0
         caption = ""
-        table_list = [[""] * len(element["content"][0]["content"])
-                      for _ in range(len(element["content"]))]
+        table_list = [[""] * len(element["content"][0]["content"]) for _ in range(len(element["content"]))]
 
         for row_idx, row in enumerate(element["content"]):
             for col_idx, cell in enumerate(row["content"]):
@@ -210,9 +224,11 @@ class ParsrConverter(BaseConverter):
         following_elements = []
         for cur_page_idx, cur_page in enumerate(all_pages):
             for cur_elem_index, elem in enumerate(cur_page["elements"]):
-                if (elem["type"] in ["paragraph", "heading"]) \
-                        and (self.remove_page_headers and "isHeader" not in elem["properties"]) \
-                        and (self.remove_page_footers and "isFooter" not in elem["properties"]):
+                if (
+                    (elem["type"] in ["paragraph", "heading"])
+                    and (self.remove_page_headers and "isHeader" not in elem["properties"])
+                    and (self.remove_page_footers and "isFooter" not in elem["properties"])
+                ):
                     if cur_page_idx < page_idx:
                         preceding_elements.append(elem)
                     elif cur_page_idx == page_idx:
@@ -223,11 +239,11 @@ class ParsrConverter(BaseConverter):
                     elif cur_page_idx > page_idx:
                         following_elements.append(elem)
 
-        preceding_context = "\n\n".join([self._get_paragraph_string(elem)
-                                         for elem in preceding_elements]) + f"\n\n{caption}"
+        preceding_context = (
+            "\n\n".join([self._get_paragraph_string(elem) for elem in preceding_elements]) + f"\n\n{caption}"
+        )
         preceding_context = preceding_context.strip()
-        following_context = "\n\n".join([self._get_paragraph_string(elem)
-                                         for elem in following_elements])
+        following_context = "\n\n".join([self._get_paragraph_string(elem) for elem in following_elements])
         following_context = following_context.strip()
 
         if meta is not None:
@@ -235,7 +251,6 @@ class ParsrConverter(BaseConverter):
             table_meta["preceding_context"] = preceding_context
             table_meta["following_context"] = following_context
         else:
-            table_meta = {"preceding_context": preceding_context,
-                          "following_context": following_context}
+            table_meta = {"preceding_context": preceding_context, "following_context": following_context}
 
         return {"content": table_list, "content_type": "table", "meta": table_meta}

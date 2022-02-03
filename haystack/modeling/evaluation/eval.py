@@ -19,12 +19,11 @@ class Evaluator:
     """
     Handles evaluation of a given model over a specified dataset.
     """
-    def __init__(
-        self, data_loader: torch.utils.data.DataLoader, tasks, device: str, report: bool = True
-    ):
+
+    def __init__(self, data_loader: torch.utils.data.DataLoader, tasks, device: str, report: bool = True):
         """
         :param data_loader: The PyTorch DataLoader that will return batches of data from the evaluation dataset
-        :param tesks: 
+        :param tesks:
         :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
         :param report: Whether an eval report should be generated (e.g. classification report per class).
         """
@@ -33,7 +32,9 @@ class Evaluator:
         self.device = device
         self.report = report
 
-    def eval(self, model: AdaptiveModel, return_preds_and_labels: bool = False, calibrate_conf_scores: bool = False) -> List[Dict]:
+    def eval(
+        self, model: AdaptiveModel, return_preds_and_labels: bool = False, calibrate_conf_scores: bool = False
+    ) -> List[Dict]:
         """
         Performs evaluation on a given model.
 
@@ -53,9 +54,7 @@ class Evaluator:
         passage_start_t_all = [[] for _ in model.prediction_heads]  # type: List
         logits_all = [[] for _ in model.prediction_heads]  # type: List
 
-        for step, batch in enumerate(
-            tqdm(self.data_loader, desc="Evaluating", mininterval=10)
-        ):
+        for step, batch in enumerate(tqdm(self.data_loader, desc="Evaluating", mininterval=10)):
             batch = {key: batch[key].to(self.device) for key in batch}
 
             with torch.no_grad():
@@ -76,7 +75,6 @@ class Evaluator:
                     if calibrate_conf_scores:
                         logits_all[head_num] += list(_to_numpy(logits))
 
-
         # Evaluate per prediction head
         all_results = []
         for head_num, head in enumerate(model.prediction_heads):
@@ -88,29 +86,31 @@ class Evaluator:
                 logger.info(f"temperature used for confidence scores after calibration: {temperature_current}")
                 temperature_change = (abs(temperature_current - temperature_previous) / temperature_previous) * 100.0
                 if temperature_change > 50:
-                    logger.warning(f"temperature used for calibration of confidence scores changed by more than {temperature_change} percent")
-            if hasattr(head, 'aggregate_preds'):
+                    logger.warning(
+                        f"temperature used for calibration of confidence scores changed by more than {temperature_change} percent"
+                    )
+            if hasattr(head, "aggregate_preds"):
                 # Needed to convert NQ ids from np arrays to strings
                 ids_all_str = [x.astype(str) for x in ids_all[head_num]]
                 ids_all_list = [list(x) for x in ids_all_str]
                 head_ids = ["-".join(x) for x in ids_all_list]
-                preds_all[head_num], label_all[head_num] = head.aggregate_preds(preds=preds_all[head_num],
-                                                                                labels=label_all[head_num],
-                                                                                passage_start_t=passage_start_t_all[head_num],
-                                                                                ids=head_ids)
-            result = {"loss": loss_all[head_num] / len(self.data_loader.dataset),
-                      "task_name": head.task_name}
-            result.update(
-                compute_metrics(metric=head.metric, preds=preds_all[head_num], labels=label_all[head_num]
+                preds_all[head_num], label_all[head_num] = head.aggregate_preds(
+                    preds=preds_all[head_num],
+                    labels=label_all[head_num],
+                    passage_start_t=passage_start_t_all[head_num],
+                    ids=head_ids,
                 )
-            )
+            result = {"loss": loss_all[head_num] / len(self.data_loader.dataset), "task_name": head.task_name}
+            result.update(compute_metrics(metric=head.metric, preds=preds_all[head_num], labels=label_all[head_num]))
             # Select type of report depending on prediction head output type
             if self.report:
                 try:
                     result["report"] = compute_report_metrics(head, preds_all[head_num], label_all[head_num])
                 except:
-                    logger.error(f"Couldn't create eval report for head {head_num} with following preds and labels:"
-                                 f"\n Preds: {preds_all[head_num]} \n Labels: {label_all[head_num]}")
+                    logger.error(
+                        f"Couldn't create eval report for head {head_num} with following preds and labels:"
+                        f"\n Preds: {preds_all[head_num]} \n Labels: {label_all[head_num]}"
+                    )
                     result["report"] = "Error"
 
             if return_preds_and_labels:
@@ -122,13 +122,22 @@ class Evaluator:
         return all_results
 
     @staticmethod
-    def log_results(results: List[Any], dataset_name: str, steps: int, logging: bool = True, print: bool = True, num_fold: Optional[int] = None):
+    def log_results(
+        results: List[Any],
+        dataset_name: str,
+        steps: int,
+        logging: bool = True,
+        print: bool = True,
+        num_fold: Optional[int] = None,
+    ):
         # Print a header
         header = "\n\n"
         header += BUSH_SEP + "\n"
         header += "***************************************************\n"
         if num_fold:
-            header += f"***** EVALUATION | FOLD: {num_fold} | {dataset_name.upper()} SET | AFTER {steps} BATCHES *****\n"
+            header += (
+                f"***** EVALUATION | FOLD: {num_fold} | {dataset_name.upper()} SET | AFTER {steps} BATCHES *****\n"
+            )
         else:
             header += f"***** EVALUATION | {dataset_name.upper()} SET | AFTER {steps} BATCHES *****\n"
         header += "***************************************************\n"
@@ -136,16 +145,14 @@ class Evaluator:
         logger.info(header)
 
         for head_num, head in enumerate(results):
-            logger.info("\n _________ {} _________".format(head['task_name']))
+            logger.info("\n _________ {} _________".format(head["task_name"]))
             for metric_name, metric_val in head.items():
                 # log with ML framework (e.g. Mlflow)
                 if logging:
-                    if not metric_name in ["preds","labels"] and not metric_name.startswith("_"):
+                    if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
                         if isinstance(metric_val, numbers.Number):
                             MlLogger.log_metrics(
-                                metrics={
-                                    f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val
-                                },
+                                metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val},
                                 step=steps,
                             )
                 # print via standard python logger

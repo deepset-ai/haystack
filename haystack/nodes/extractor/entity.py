@@ -17,11 +17,10 @@ class EntityExtractor(BaseComponent):
     or it can be placed in an indexing pipeline so that all documents in the document store have extracted entities.
     The entities extracted by this Node will populate Document.entities
     """
+
     outgoing_edges = 1
 
-    def __init__(self,
-                 model_name_or_path: str = "dslim/bert-base-NER",
-                 use_gpu: bool = True):
+    def __init__(self, model_name_or_path: str = "dslim/bert-base-NER", use_gpu: bool = True):
 
         self.set_config(model_name_or_path=model_name_or_path)
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
@@ -29,8 +28,13 @@ class EntityExtractor(BaseComponent):
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
         token_classifier.to(str(self.devices[0]))
-        self.model = pipeline("ner", model=token_classifier, tokenizer=tokenizer, aggregation_strategy="simple",
-                              device=0 if self.devices[0].type == "cuda" else -1)
+        self.model = pipeline(
+            "ner",
+            model=token_classifier,
+            tokenizer=tokenizer,
+            aggregation_strategy="simple",
+            device=0 if self.devices[0].type == "cuda" else -1,
+        )
 
     def run(self, documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]:  # type: ignore
         """
@@ -55,12 +59,12 @@ class EntityExtractor(BaseComponent):
         return entities
 
 
-def simplify_ner_for_qa(output): 
+def simplify_ner_for_qa(output):
     """
     Returns a simplified version of the output dictionary
     with the following structure:
     [
-        { 
+        {
             answer: { ... }
             entities: [ { ... }, {} ]
         }
@@ -73,11 +77,11 @@ def simplify_ner_for_qa(output):
 
         entities = []
         for entity in answer.meta["entities"]:
-            if entity["start"] >= answer.offsets_in_document[0].start and entity["end"] <= answer.offsets_in_document[0].end:
-                entities.append(entity["word"])  
+            if (
+                entity["start"] >= answer.offsets_in_document[0].start
+                and entity["end"] <= answer.offsets_in_document[0].end
+            ):
+                entities.append(entity["word"])
 
-        compact_output.append({
-            "answer": answer.answer,
-            "entities": entities
-        })
+        compact_output.append({"answer": answer.answer, "entities": entities})
     return compact_output

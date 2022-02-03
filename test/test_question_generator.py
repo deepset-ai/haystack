@@ -1,4 +1,8 @@
-from haystack.pipelines import QuestionAnswerGenerationPipeline, QuestionGenerationPipeline, RetrieverQuestionGenerationPipeline
+from haystack.pipelines import (
+    QuestionAnswerGenerationPipeline,
+    QuestionGenerationPipeline,
+    RetrieverQuestionGenerationPipeline,
+)
 from haystack.schema import Document
 import pytest
 
@@ -35,4 +39,3 @@ def test_qag_pipeline(question_generator, reader):
     assert results[0]["query"]
     assert len(results[0]["answers"]) > 0
     assert results[0]["answers"][0].answer is not None
-

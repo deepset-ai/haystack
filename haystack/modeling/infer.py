@@ -12,7 +12,13 @@ from torch.utils.data import Dataset
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
 from haystack.modeling.data_handler.samples import SampleBasket
-from haystack.modeling.utils import grouper, initialize_device_settings, set_all_seeds, calc_chunksize, log_ascii_workers
+from haystack.modeling.utils import (
+    grouper,
+    initialize_device_settings,
+    set_all_seeds,
+    calc_chunksize,
+    log_ascii_workers,
+)
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.logger import MLFlowLogger
@@ -27,6 +33,7 @@ class Inferencer:
     Loads a saved AdaptiveModel/ONNXAdaptiveModel from disk and runs it in inference mode. Can be used for a
     model with prediction head (down-stream predictions) and without (using LM as embedder).
     """
+
     def __init__(
         self,
         model: AdaptiveModel,
@@ -39,7 +46,7 @@ class Inferencer:
         extraction_strategy: Optional[str] = None,
         extraction_layer: Optional[int] = None,
         num_processes: Optional[int] = None,
-        disable_tqdm: bool = False
+        disable_tqdm: bool = False,
     ):
         """
         Initializes Inferencer from an AdaptiveModel and a Processor instance.
@@ -83,8 +90,10 @@ class Inferencer:
 
         if task_type == "embeddings":
             if not extraction_layer or not extraction_strategy:
-                    logger.warning("Using task_type='embeddings', but couldn't find one of the args `extraction_layer` and `extraction_strategy`. "
-                                   "Since FARM 0.4.2, you set both when initializing the Inferencer and then call inferencer.inference_from_dicts() instead of inferencer.extract_vectors()")
+                logger.warning(
+                    "Using task_type='embeddings', but couldn't find one of the args `extraction_layer` and `extraction_strategy`. "
+                    "Since FARM 0.4.2, you set both when initializing the Inferencer and then call inferencer.inference_from_dicts() instead of inferencer.extract_vectors()"
+                )
             self.model.prediction_heads = torch.nn.ModuleList([])
             self.model.language_model.extraction_layer = extraction_layer
             self.model.language_model.extraction_strategy = extraction_strategy
@@ -106,22 +115,22 @@ class Inferencer:
         revision: Optional[str] = None,
         batch_size: int = 4,
         gpu: bool = False,
-        task_type: Optional[str] =None,
+        task_type: Optional[str] = None,
         return_class_probs: bool = False,
         strict: bool = True,
         max_seq_len: int = 256,
         doc_stride: int = 128,
         extraction_strategy: Optional[str] = None,
         extraction_layer: Optional[int] = None,
-        num_processes: Optional[int] =None,
+        num_processes: Optional[int] = None,
         disable_tqdm: bool = False,
         tokenizer_class: Optional[str] = None,
         use_fast: bool = True,
-        tokenizer_args: Dict =None,
+        tokenizer_args: Dict = None,
         multithreading_rust: bool = True,
         devices: Optional[List[Union[int, str, torch.device]]] = None,
         use_auth_token: Union[bool, str] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Load an Inferencer incl. all relevant components (model, tokenizer, processor ...) either by
@@ -182,34 +191,42 @@ class Inferencer:
         # b) or from remote transformers model hub
         else:
             if not task_type:
-                raise ValueError("Please specify the 'task_type' of the model you want to load from transformers. "
-                                 "Valid options for arg `task_type`:"
-                                 "'question_answering'")
+                raise ValueError(
+                    "Please specify the 'task_type' of the model you want to load from transformers. "
+                    "Valid options for arg `task_type`:"
+                    "'question_answering'"
+                )
 
-            model = AdaptiveModel.convert_from_transformers(model_name_or_path,
-                                                            revision=revision,
-                                                            device=devices[0],  # type: ignore
-                                                            task_type=task_type,
-                                                            use_auth_token=use_auth_token,
-                                                            **kwargs)
-            processor = Processor.convert_from_transformers(model_name_or_path,
-                                                            revision=revision,
-                                                            task_type=task_type,
-                                                            max_seq_len=max_seq_len,
-                                                            doc_stride=doc_stride,
-                                                            tokenizer_class=tokenizer_class,
-                                                            tokenizer_args=tokenizer_args,
-                                                            use_fast=use_fast,
-                                                            use_auth_token=use_auth_token,
-                                                            **kwargs)
+            model = AdaptiveModel.convert_from_transformers(
+                model_name_or_path,
+                revision=revision,
+                device=devices[0],  # type: ignore
+                task_type=task_type,
+                use_auth_token=use_auth_token,
+                **kwargs,
+            )
+            processor = Processor.convert_from_transformers(
+                model_name_or_path,
+                revision=revision,
+                task_type=task_type,
+                max_seq_len=max_seq_len,
+                doc_stride=doc_stride,
+                tokenizer_class=tokenizer_class,
+                tokenizer_args=tokenizer_args,
+                use_fast=use_fast,
+                use_auth_token=use_auth_token,
+                **kwargs,
+            )
 
         # override processor attributes loaded from config or HF with inferencer params
         processor.max_seq_len = max_seq_len
         processor.multithreading_rust = multithreading_rust
         if hasattr(processor, "doc_stride"):
-            assert doc_stride < max_seq_len, "doc_stride is longer than max_seq_len. This means that there will be gaps " \
-                                             "as the passage windows slide, causing the model to skip over parts of the document. " \
-                                             "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384) "
+            assert doc_stride < max_seq_len, (
+                "doc_stride is longer than max_seq_len. This means that there will be gaps "
+                "as the passage windows slide, causing the model to skip over parts of the document. "
+                "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384) "
+            )
             processor.doc_stride = doc_stride
 
         return cls(
@@ -223,7 +240,7 @@ class Inferencer:
             extraction_strategy=extraction_strategy,
             extraction_layer=extraction_layer,
             num_processes=num_processes,
-            disable_tqdm=disable_tqdm
+            disable_tqdm=disable_tqdm,
         )
 
     def _set_multiprocessing_pool(self, num_processes: Optional[int]) -> None:
@@ -250,10 +267,8 @@ class Inferencer:
                 else:
                     num_processes = mp.cpu_count()
             self.process_pool = mp.Pool(processes=num_processes)
-            logger.info(
-                f"Got ya {num_processes} parallel workers to do inference ..."
-            )
-            log_ascii_workers(n=num_processes,logger=logger)
+            logger.info(f"Got ya {num_processes} parallel workers to do inference ...")
+            log_ascii_workers(n=num_processes, logger=logger)
 
     def close_multiprocessing_pool(self, join: bool = False):
         """Close the `multiprocessing.Pool` again.
@@ -328,7 +343,10 @@ class Inferencer:
                 multiprocessing_chunksize = _chunk_size
 
             predictions = self._inference_with_multiprocessing(
-                dicts, return_json, aggregate_preds, multiprocessing_chunksize,
+                dicts,
+                return_json,
+                aggregate_preds,
+                multiprocessing_chunksize,
             )
 
             self.processor.log_problematic(self.problematic_sample_ids)
@@ -371,7 +389,11 @@ class Inferencer:
         return preds_all
 
     def _inference_with_multiprocessing(
-        self, dicts: Union[List[Dict], Generator[Dict, None, None]], return_json: bool, aggregate_preds: bool, multiprocessing_chunksize: int
+        self,
+        dicts: Union[List[Dict], Generator[Dict, None, None]],
+        return_json: bool,
+        aggregate_preds: bool,
+        multiprocessing_chunksize: int,
     ) -> Generator[Dict, None, None]:
         """
         Implementation of inference. This method is a generator that yields the results.
@@ -398,14 +420,14 @@ class Inferencer:
         for dataset, tensor_names, problematic_sample_ids, baskets in results:
             self.problematic_sample_ids.update(problematic_sample_ids)
             if dataset is None:
-                logger.error(f"Part of the dataset could not be converted! \n"
-                             f"BE AWARE: The order of predictions will not conform with the input order!")
+                logger.error(
+                    f"Part of the dataset could not be converted! \n"
+                    f"BE AWARE: The order of predictions will not conform with the input order!"
+                )
             else:
                 # TODO change format of formatted_preds in QA (list of dicts)
                 if aggregate_preds:
-                    predictions = self._get_predictions_and_aggregate(
-                        dataset, tensor_names, baskets
-                    )
+                    predictions = self._get_predictions_and_aggregate(dataset, tensor_names, baskets)
                 else:
                     predictions = self._get_predictions(dataset, tensor_names, baskets)
 
@@ -424,7 +446,9 @@ class Inferencer:
         The resulting datasets of the processes are merged together afterwards"""
         dicts = [d[1] for d in chunk]
         indices = [d[0] for d in chunk]
-        dataset, tensor_names, problematic_sample_ids, baskets = processor.dataset_from_dicts(dicts, indices, return_baskets=True)
+        dataset, tensor_names, problematic_sample_ids, baskets = processor.dataset_from_dicts(
+            dicts, indices, return_baskets=True
+        )
         return dataset, tensor_names, problematic_sample_ids, baskets
 
     def _get_predictions(self, dataset: Dataset, tensor_names: List, baskets):
@@ -444,7 +468,9 @@ class Inferencer:
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )  # type ignore
         preds_all = []
-        for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)):
+        for i, batch in enumerate(
+            tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
+        ):
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
 
@@ -456,7 +482,8 @@ class Inferencer:
                     samples=batch_samples,
                     tokenizer=self.processor.tokenizer,
                     return_class_probs=self.return_class_probs,
-                    **batch)
+                    **batch,
+                )
                 preds_all += preds
         return preds_all
 
@@ -482,7 +509,9 @@ class Inferencer:
         # TODO so that preds of the right shape are passed in to formatted_preds
         unaggregated_preds_all = []
 
-        for i, batch in enumerate(tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)):
+        for i, batch in enumerate(
+            tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
+        ):
 
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
@@ -504,13 +533,16 @@ class Inferencer:
 
         # can assume that we have only complete docs i.e. all the samples of one doc are in the current chunk
         logits = [None]
-        preds_all = self.model.formatted_preds(logits=logits, # For QA we collected preds per batch and do not want to pass logits
-                                               preds=unaggregated_preds_all,
-                                               baskets=baskets)  # type ignore
+        preds_all = self.model.formatted_preds(
+            logits=logits,  # For QA we collected preds per batch and do not want to pass logits
+            preds=unaggregated_preds_all,
+            baskets=baskets,
+        )  # type ignore
         return preds_all
 
-
-    def extract_vectors(self, dicts: List[Dict], extraction_strategy: Optional[str] = "cls_token", extraction_layer: Optional[int] = -1):
+    def extract_vectors(
+        self, dicts: List[Dict], extraction_strategy: Optional[str] = "cls_token", extraction_layer: Optional[int] = -1
+    ):
         """
         Converts a text into vector(s) using the language model only (no prediction head involved).
 
@@ -538,31 +570,33 @@ class QAInferencer(Inferencer):
 
         # FIXME
         if self.task_type != "question_answering":
-            logger.warning("QAInferencer always has task_type='question_answering' even if another value is provided "
-                           "to Inferencer.load() or QAInferencer()")
+            logger.warning(
+                "QAInferencer always has task_type='question_answering' even if another value is provided "
+                "to Inferencer.load() or QAInferencer()"
+            )
             self.task_type = "question_answering"
 
-    def inference_from_dicts(self,
-                             dicts: List[dict],
-                             return_json: bool = True,
-                             multiprocessing_chunksize: Optional[int] = None) -> List[QAPred]:
-        return Inferencer.inference_from_dicts(self, dicts, return_json=return_json,
-                                               multiprocessing_chunksize=multiprocessing_chunksize)
+    def inference_from_dicts(
+        self, dicts: List[dict], return_json: bool = True, multiprocessing_chunksize: Optional[int] = None
+    ) -> List[QAPred]:
+        return Inferencer.inference_from_dicts(
+            self, dicts, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
+        )
 
-    def inference_from_file(self,
-                            file: str,
-                            multiprocessing_chunksize: Optional[int] = None,
-                            return_json=True) -> List[QAPred]:
-        return Inferencer.inference_from_file(self, file, return_json=return_json,
-                                              multiprocessing_chunksize=multiprocessing_chunksize)
+    def inference_from_file(
+        self, file: str, multiprocessing_chunksize: Optional[int] = None, return_json=True
+    ) -> List[QAPred]:
+        return Inferencer.inference_from_file(
+            self, file, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
+        )
 
-    def inference_from_objects(self,
-                               objects: List[QAInput],
-                               return_json: bool = True,
-                               multiprocessing_chunksize: Optional[int] = None) -> List[QAPred]:
+    def inference_from_objects(
+        self, objects: List[QAInput], return_json: bool = True, multiprocessing_chunksize: Optional[int] = None
+    ) -> List[QAPred]:
         dicts = [o.to_dict() for o in objects]
-        # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects, 
+        # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects,
         # then we can and should use inference from (input) objects!
-        #logger.warning("QAInferencer.inference_from_objects() will soon be deprecated. Use QAInferencer.inference_from_dicts() instead")
-        return self.inference_from_dicts(dicts, return_json=return_json,
-                                         multiprocessing_chunksize=multiprocessing_chunksize)
+        # logger.warning("QAInferencer.inference_from_objects() will soon be deprecated. Use QAInferencer.inference_from_dicts() instead")
+        return self.inference_from_dicts(
+            dicts, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
+        )
