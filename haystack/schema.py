@@ -824,7 +824,16 @@ class EvaluationResult:
                     "filters": query_documents["filters"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "documents": query_documents.drop(
-                        ["node", "query", "multilabel_id", "filters", "type", "gold_document_ids", "gold_document_contents"], axis=1
+                        [
+                            "node",
+                            "query",
+                            "multilabel_id",
+                            "filters",
+                            "type",
+                            "gold_document_ids",
+                            "gold_document_contents",
+                        ],
+                        axis=1,
                     ).to_dict(orient="records"),
                     "gold_document_ids": query_documents["gold_document_ids"].iloc[0],
                 }
