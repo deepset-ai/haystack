@@ -38,7 +38,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         use_gpu: bool = True,
-        scoring_batch_size: int = 500000
+        scoring_batch_size: int = 500000,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
