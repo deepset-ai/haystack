@@ -374,8 +374,6 @@ def semantic_answer_similarity(predictions: List[List[str]],
     :param gold_labels: Labels as list of multiple possible answers per question
     :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model, should be path or string
                                      pointing to downloadable models.
-
-
     :return: top_1_sas, top_k_sas
     """
     assert len(predictions) == len(gold_labels)
