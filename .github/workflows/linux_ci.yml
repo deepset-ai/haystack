@@ -66,17 +66,24 @@ jobs:
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
+          echo "============= Documentation changes ============="
           git add docs/_src/api/api/
-          git commit -m "Update Documentation" -a || echo "No documentation changes to commit"
+          git commit -m " -> Update Documentation" -a || echo "No documentation changes to commit"
 
+          echo "============= API Specs changes: ============="
           git add docs/_src/api/openapi/
           git commit -m "Update OpenAPI specs" -a || echo "No API specification changes to commit"
           
+          echo "============= JSON schema changes: ============="
           git add json-schemas/
           git commit -m "Update JSON schema" -a || echo "No JSON schema changes to commit"
 
+          echo "============= Code Style (Black): ============="
           git add .
           git commit -m "Apply Black" -a || echo "No code changes to commit"
+
+          echo "============= Summary: ============="
+          git status
       
       - name: Push changes
         uses: ad-m/github-push-action@master
