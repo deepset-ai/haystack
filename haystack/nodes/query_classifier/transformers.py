@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 class TransformersQueryClassifier(BaseQueryClassifier):
     """
-    A node to classify an incoming query into one of two categories using a (small) BERT transformer model. 
-    Depending on the result, the query flows to a different branch in your pipeline and the further processing 
+    A node to classify an incoming query into one of two categories using a (small) BERT transformer model.
+    Depending on the result, the query flows to a different branch in your pipeline and the further processing
     can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2`
     from this node.
 
@@ -35,7 +35,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
 
     Models:
 
-    Pass your own `Transformer` binary classification model from file/huggingface or use one of the following 
+    Pass your own `Transformer` binary classification model from file/huggingface or use one of the following
     pretrained ones hosted on Huggingface:
     1) Keywords vs. Questions/Statements (Default)
        model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
@@ -50,9 +50,10 @@ class TransformersQueryClassifier(BaseQueryClassifier):
      output_2 => statement
      [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
 
-    
+
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
     """
+
     def __init__(
         self,
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
@@ -70,14 +71,10 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
-        self.query_classification_pipeline = TextClassificationPipeline(
-            model=model, tokenizer=tokenizer, device=device
-        )
+        self.query_classification_pipeline = TextClassificationPipeline(model=model, tokenizer=tokenizer, device=device)
 
     def run(self, query):
-        is_question: bool = (
-            self.query_classification_pipeline(query)[0]["label"] == "LABEL_1"
-        )
+        is_question: bool = self.query_classification_pipeline(query)[0]["label"] == "LABEL_1"
 
         if is_question:
             return {}, "output_1"

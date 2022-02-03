@@ -7,12 +7,15 @@ except ModuleNotFoundError:
     # Python <= 3.7
     import importlib_metadata as metadata  # type: ignore
 
-__version__ = metadata.version('farm-haystack')
+__version__ = metadata.version("farm-haystack")
 
 
 # This configuration must be done before any import to apply to all submodules
 import logging
-logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING)
+
+logging.basicConfig(
+    format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING
+)
 logging.getLogger("haystack").setLevel(logging.INFO)
 
 from haystack import pipelines
@@ -21,8 +24,8 @@ from haystack.nodes import BaseComponent
 from haystack.pipelines import Pipeline
 
 import pandas as pd
-pd.options.display.max_colwidth = 80
 
+pd.options.display.max_colwidth = 80
 
 
 # ###########################################
@@ -33,12 +36,13 @@ logger = logging.getLogger(__name__)
 
 # Wrapper emitting a warning on import
 def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True):
-    """ 
-    Return a wrapped object that warns about deprecated accesses at import 
     """
+    Return a wrapped object that warns about deprecated accesses at import
+    """
+
     class DeprecationWrapper(object):
         warned = []
-        
+
         def __getattr__(self, attr):
             is_a_deprecated_attr = deprecated_attributes and attr in deprecated_attributes
             is_a_deprecated_module = is_module_deprecated and attr not in ["__path__", "__spec__", "__name__"]
@@ -46,19 +50,22 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
             attribute_exists = getattr(mod, attr) is not None
 
             if (is_a_deprecated_attr or is_a_deprecated_module) and not warning_already_emitted and attribute_exists:
-                logger.warn(f"Object '{attr}' is imported through a deprecated path. Please check out the docs for the new import path.")
+                logger.warn(
+                    f"Object '{attr}' is imported through a deprecated path. Please check out the docs for the new import path."
+                )
                 self.warned.append(attr)
             return getattr(mod, attr)
 
     return DeprecationWrapper()
 
+
 # All modules to be aliased need to be imported here
 import haystack
 from haystack.nodes import (
-    connector, 
-    document_classifier, 
-    extractor, 
-    file_converter, 
+    connector,
+    document_classifier,
+    extractor,
+    file_converter,
     answer_generator as generator,
     preprocessor,
     question_generator,
@@ -66,11 +73,11 @@ from haystack.nodes import (
     reader,
     retriever,
     summarizer,
-    translator
+    translator,
 )
 
 # Note that we ignore the ImportError here because if the user did not install
-# the correct dependency group for a document store, we don't need to setup 
+# the correct dependency group for a document store, we don't need to setup
 # import warnings for that, so the import here is useless and should fail silently.
 
 document_stores: Union[ModuleType, None] = None
@@ -100,7 +107,7 @@ import haystack.utils.preprocessing as preprocessing
 import haystack.modeling.utils as modeling_utils
 import haystack.utils.cleaning as cleaning
 
-# For the alias to work as an importable module (like `from haystack import reader`), 
+# For the alias to work as an importable module (like `from haystack import reader`),
 # modules need to be set as attributes of their parent model.
 # To make chain imports work (`from haystack.reader import FARMReader`) the module
 # needs to be also present in sys.modules with its complete import path.
@@ -121,7 +128,19 @@ setattr(haystack, "extractor", DeprecatedModule(extractor))
 setattr(haystack, "eval", DeprecatedModule(eval))
 setattr(haystack, "file_converter", DeprecatedModule(file_converter, deprecated_attributes=["FileTypeClassifier"]))
 setattr(haystack, "knowledge_graph", DeprecatedModule(knowledge_graph, deprecated_attributes=["graphdb"]))
-setattr(haystack, "pipeline", DeprecatedModule(pipelines, deprecated_attributes=["JoinDocuments", "Docs2Answers", "SklearnQueryClassifier", "TransformersQueryClassifier"]))
+setattr(
+    haystack,
+    "pipeline",
+    DeprecatedModule(
+        pipelines,
+        deprecated_attributes=[
+            "JoinDocuments",
+            "Docs2Answers",
+            "SklearnQueryClassifier",
+            "TransformersQueryClassifier",
+        ],
+    ),
+)
 setattr(haystack, "preprocessor", DeprecatedModule(preprocessor, deprecated_attributes=["utils", "cleaning"]))
 setattr(haystack, "question_generator", DeprecatedModule(question_generator))
 setattr(haystack, "ranker", DeprecatedModule(ranker))
@@ -149,9 +168,9 @@ if graph_retriever:
     setattr(haystack, "graph_retriever", DeprecatedModule(graph_retriever))
     sys.modules["haystack.graph_retriever"] = DeprecatedModule(graph_retriever)
 
-# To be imported from modules, classes need only to be set as attributes, 
+# To be imported from modules, classes need only to be set as attributes,
 # they don't need to be present in sys.modules too.
-# Adding them to sys.modules would enable `import haystack.pipelines.JoinDocuments`, 
+# Adding them to sys.modules would enable `import haystack.pipelines.JoinDocuments`,
 # which I believe it's a very rare import style.
 setattr(file_converter, "FileTypeClassifier", FileTypeClassifier)
 setattr(modeling_utils, "MLFlowLogger", MLFlowLogger)
@@ -163,8 +182,8 @@ setattr(pipelines, "SklearnQueryClassifier", SklearnQueryClassifier)
 setattr(pipelines, "TransformersQueryClassifier", TransformersQueryClassifier)
 
 # This last line is used to throw the deprecation error for imports like `from haystack import connector`
-deprecated_attributes=[
-    "document_store", 
+deprecated_attributes = [
+    "document_store",
     "connector",
     "generator",
     "document_classifier",
@@ -179,8 +198,10 @@ deprecated_attributes=[
     "reader",
     "retriever",
     "summarizer",
-    "translator"
+    "translator",
 ]
 if graph_retriever:
     deprecated_attributes.append("graph_retriever")
-sys.modules["haystack"] = DeprecatedModule(haystack, is_module_deprecated=False, deprecated_attributes=deprecated_attributes)
+sys.modules["haystack"] = DeprecatedModule(
+    haystack, is_module_deprecated=False, deprecated_attributes=deprecated_attributes
+)
