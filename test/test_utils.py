@@ -40,26 +40,29 @@ def test_squad_augmentation():
     augmented_squad = SquadData.from_file(output)
     assert original_squad.count(unit="paragraph") == augmented_squad.count(unit="paragraph") * multiplication_factor
 
+
 def test_squad_to_df():
     df = pd.DataFrame(
-        [['title', 'context', 'question', 'id', 'id', 1, False]],
-        columns=["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"]
+        [["title", "context", "question", "id", "id", 1, False]],
+        columns=["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"],
     )
 
     expected_result = [
         {
-            'title': 'title',
-            'paragraphs': [
+            "title": "title",
+            "paragraphs": [
                 {
-                    'context': 'context',
-                    'qas': [{
-                        'question': 'question',
-                        'id': 'id',
-                        'answers': [{'text': 'answer', 'answer_start': 1}],
-                        'is_impossible': False
-                    }]
+                    "context": "context",
+                    "qas": [
+                        {
+                            "question": "question",
+                            "id": "id",
+                            "answers": [{"text": "answer", "answer_start": 1}],
+                            "is_impossible": False,
+                        }
+                    ],
                 }
-            ]
+            ],
         }
     ]
 
