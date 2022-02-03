@@ -667,8 +667,8 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if index and not self.client.indices.exists(index=index, headers=headers):
             self._create_label_index(index, headers=headers)
 
-        labels = [Label.from_dict(label) if isinstance(label, dict) else label for label in labels]
-        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(labels, index=index)]
+        label_list: List[Label] = [Label.from_dict(label) if isinstance(label, dict) else label for label in labels]
+        duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_list, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
                 f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
@@ -677,7 +677,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 f" Problematic ids: {','.join(duplicate_ids)}"
             )
         labels_to_index = []
-        for label in labels:
+        for label in label_list:
             # create timestamps if not available yet
             if not label.created_at:  # type: ignore
                 label.created_at = time.strftime("%Y-%m-%d %H:%M:%S")  # type: ignore
