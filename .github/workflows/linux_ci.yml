@@ -3,9 +3,9 @@ name: Linux CI
 on:
   workflow_dispatch:
   push:
-    branches: [ master ]
   pull_request:
-    branches: [ master ]
+    branches: 
+      - master
 
 jobs:
 
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
+          #fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
 
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
