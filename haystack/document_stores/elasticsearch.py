@@ -504,29 +504,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param index: Elasticsearch index where the meta values should be searched. If not supplied,
                       self.index will be used.
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -792,29 +819,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -853,29 +907,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -959,29 +1040,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param top_k: How many documents to return per query.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
@@ -1135,29 +1243,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
@@ -1356,29 +1491,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -1459,29 +1621,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
@@ -1519,29 +1708,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
 
                         If filters are provided along with a list of IDs, this method deletes the
                         intersection of the two query results (documents that match the filters and
@@ -1592,29 +1808,56 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
@@ -1631,134 +1874,6 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
         self.client.indices.delete(index=index, ignore=[400, 404])
         logger.debug(f"deleted elasticsearch index {index}")
-
-    def convert_haystack_filter_to_es_query(self, haystack_filter: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Converts a filter from the format used in haystack to the format used in Elasticsearch.
-
-        :param haystack_filter: Filter dictionary in haystack format.
-                                Filters are defined as nested dictionaries. The keys of the dictionaries can be a
-                                logical operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`,
-                                `"$gt"`, `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                                Logical operator keys take a dictionary of metadata field names and/or logical operators
-                                as value. Metadata field names take a dictionary of comparison operators as value.
-                                Comparison operator keys take a single value or (in case of `"$in"`) a list of values as
-                                value.
-                                If no logical operator is provided, `"$and"` is used as default operation. If no
-                                comparison operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list)
-                                is used as default operation.
-
-                                Example:
-                                ```python
-                                filters = {
-                                    "$and": {
-                                        "type": {"$eq": "article"},
-                                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                        "rating": {"$gte": 3},
-                                        "$or": {
-                                            "genre": {"$in": ["economy", "politics"]},
-                                            "publisher": {"$eq": "nytimes"}
-                                        }
-                                    }
-                                }
-                                # or simpler using default operators
-                                filters = {
-                                    "type": "article",
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": ["economy", "politics"],
-                                        "publisher": "nytimes"
-                                    }
-                                }
-                                ```
-        """
-        # If no logical operation is provided, we use "$and" as the default one
-        if len(haystack_filter.keys()) > 1 or list(haystack_filter.keys())[0] not in ["$and", "$or", "$not"]:
-            haystack_filter = {"$and": haystack_filter}
-
-        es_filter_term = self._convert_filter_recursively(haystack_filter)
-        return es_filter_term
-
-    def _convert_filter_recursively(
-        self, haystack_filter: Dict[str, Any], es_filter_term: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        if es_filter_term is None:
-            es_filter_term = nested_defaultdict()
-
-        for key, value in haystack_filter.items():
-            if key == "$and":
-                self._convert_filter_recursively(value, es_filter_term["bool"]["must"])
-                es_filter_term["bool"]["must"] = [
-                    {es_query_type: {field_name: value}}
-                    for es_query_type, field_names in es_filter_term["bool"]["must"].items()
-                    for field_name, value in field_names.items()
-                ]
-            elif key == "$or":
-                self._convert_filter_recursively(value, es_filter_term["bool"]["should"])
-                es_filter_term["bool"]["should"] = [
-                    {es_query_type: {field_name: value}}
-                    for es_query_type, field_names in es_filter_term["bool"]["should"].items()
-                    for field_name, value in field_names.items()
-                ]
-            elif key == "$not":
-                self._convert_filter_recursively(value, es_filter_term["bool"]["must_not"])
-                es_filter_term["bool"]["must_not"] = [
-                    {es_query_type: {field_name: value}}
-                    for es_query_type, field_names in es_filter_term["bool"]["must_not"].items()
-                    for field_name, value in field_names.items()
-                ]
-
-            # Key needs to be a metadata field name
-            else:
-                if key in ["$eq", "$in", "$gt", "$gte", "$lt", "$lte"]:
-                    raise KeyError(
-                        f"Unexpected comparison operator {key} in filter_term {haystack_filter}. "
-                        f"A metadata field name is expected instead."
-                    )
-                else:
-                    # If no comparison operator is given, we use "$in" as default operation if the comparison value
-                    # is a list and "$eq" in every other case.
-                    if isinstance(haystack_filter[key], list):
-                        es_filter_term = self._convert_comp_operation(key, "$in", haystack_filter[key], es_filter_term)
-                    elif not isinstance(haystack_filter[key], dict):
-                        es_filter_term = self._convert_comp_operation(key, "$eq", haystack_filter[key], es_filter_term)
-                    else:
-                        # Iterate over all filters that shall be applied to current metadata field
-                        for comp_op, comp_value in haystack_filter[key].items():
-                            es_filter_term = self._convert_comp_operation(key, comp_op, comp_value, es_filter_term)
-
-        return es_filter_term
-
-    def _convert_comp_operation(
-        self, field_name: str, comp_op: str, comp_value: Union[str, float, int, List], es_filter_term: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        # "equal" operation corresponds to ES "term" query
-        if comp_op == "$eq":
-            es_filter_term["term"][field_name] = comp_value
-
-        # "in" operation corresponds to ES "terms" query
-        elif comp_op == "$in":
-            es_filter_term["terms"][field_name] = comp_value
-
-        # "greater than (or equal)" / "less than (or equal)" correspond to ES range queries
-        elif comp_op == "$gt":
-            es_filter_term["range"][field_name]["gt"] = comp_value
-        elif comp_op == "$gte":
-            es_filter_term["range"][field_name]["gte"] = comp_value
-        elif comp_op == "$lt":
-            es_filter_term["range"][field_name]["lt"] = comp_value
-        elif comp_op == "$lte":
-            es_filter_term["range"][field_name]["lte"] = comp_value
-
-        # Unsupported comparison operation
-        else:
-            raise KeyError(
-                f"Unsupported comparison operation '{comp_op}'. "
-                f"Supported operations are: ['$eq', '$in', '$gt', '$gte', '$lt', '$lte']"
-            )
-
-        return es_filter_term
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
@@ -1804,29 +1919,56 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         operation.
 
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
