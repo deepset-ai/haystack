@@ -6,11 +6,11 @@ from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 
 
-
 class BaseSummarizer(BaseComponent):
     """
     Abstract class for Summarizer
     """
+
     outgoing_edges = 1
 
     @abstractmethod
@@ -28,7 +28,7 @@ class BaseSummarizer(BaseComponent):
         """
         pass
 
-    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None): # type: ignore
+    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None):  # type: ignore
 
         results: Dict = {"documents": []}
 

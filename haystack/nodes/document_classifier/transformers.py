@@ -24,7 +24,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     set the `classification_field` to one of document's meta fields.
 
     With this document_classifier, you can directly get predictions via predict()
-    
+
      **Usage example at query time:**
      ```python
     |    ...
@@ -37,7 +37,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     |        query="Who is the father of Arya Stark?",
     |        params={"Retriever": {"top_k": 10}}
     |    )
-    |    
+    |
     |    # print the classification results
     |    print_documents(res, max_text_len=100, print_meta=True)
     |    # or access the predicted class label directly
@@ -60,6 +60,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     |    p.run(file_paths=file_paths)
      ```
     """
+
     def __init__(
         self,
         model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion",
@@ -67,10 +68,10 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         tokenizer: Optional[str] = None,
         use_gpu: bool = True,
         return_all_scores: bool = False,
-        task: str = 'text-classification',
+        task: str = "text-classification",
         labels: Optional[List[str]] = None,
         batch_size: int = -1,
-        classification_field: str = None
+        classification_field: str = None,
     ):
         """
         Load a text classification model from Transformers.
@@ -102,23 +103,40 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
-            use_gpu=use_gpu, return_all_scores=return_all_scores, labels=labels, task=task, batch_size=batch_size,
-            classification_field=classification_field
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            tokenizer=tokenizer,
+            use_gpu=use_gpu,
+            return_all_scores=return_all_scores,
+            labels=labels,
+            task=task,
+            batch_size=batch_size,
+            classification_field=classification_field,
         )
-        if labels and task == 'text-classification':
-            logger.warning(f'Provided labels {labels} will be ignored for task text-classification. Set task to '
-                           f'zero-shot-classification to use labels.')
+        if labels and task == "text-classification":
+            logger.warning(
+                f"Provided labels {labels} will be ignored for task text-classification. Set task to "
+                f"zero-shot-classification to use labels."
+            )
 
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         device = 0 if devices[0].type == "cuda" else -1
 
         if tokenizer is None:
             tokenizer = model_name_or_path
-        if task == 'zero-shot-classification':
-            self.model = pipeline(task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version)
-        elif task == 'text-classification':
-            self.model = pipeline(task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version, return_all_scores=return_all_scores)
+        if task == "zero-shot-classification":
+            self.model = pipeline(
+                task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+            )
+        elif task == "text-classification":
+            self.model = pipeline(
+                task=task,
+                model=model_name_or_path,
+                tokenizer=tokenizer,
+                device=device,
+                revision=model_version,
+                return_all_scores=return_all_scores,
+            )
         self.return_all_scores = return_all_scores
         self.labels = labels
         self.task = task
@@ -133,16 +151,23 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param documents: List of Document to classify
         :return: List of Document enriched with meta information
         """
-        texts = [doc.content if self.classification_field is None else doc.meta[self.classification_field] for doc in documents]
+        texts = [
+            doc.content if self.classification_field is None else doc.meta[self.classification_field]
+            for doc in documents
+        ]
         batches = self.get_batches(texts, batch_size=self.batch_size)
-        if self.task == 'zero-shot-classification':
-            batched_predictions = [self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches]
-        elif self.task == 'text-classification':
-            batched_predictions = [self.model(batch, return_all_scores=self.return_all_scores, truncation=True) for batch in batches]
+        if self.task == "zero-shot-classification":
+            batched_predictions = [
+                self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches
+            ]
+        elif self.task == "text-classification":
+            batched_predictions = [
+                self.model(batch, return_all_scores=self.return_all_scores, truncation=True) for batch in batches
+            ]
         predictions = [pred for batched_prediction in batched_predictions for pred in batched_prediction]
 
         for prediction, doc in zip(predictions, documents):
-            if self.task == 'zero-shot-classification':
+            if self.task == "zero-shot-classification":
                 prediction["label"] = prediction["labels"][0]
             doc.meta["classification"] = prediction
 
@@ -152,5 +177,5 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         if batch_size == -1:
             yield items
             return
-        for index in range(0, len(items), batch_size): 
-            yield items[index:index + batch_size]
+        for index in range(0, len(items), batch_size):
+            yield items[index : index + batch_size]

@@ -16,11 +16,9 @@ def tutorial15_tableqa():
 
     ## Connect to Elasticsearch
     # We want to use a small model producing 512-dimensional embeddings, so we need to set embedding_dim to 512
-    document_store = ElasticsearchDocumentStore(host="localhost",
-                                                username="",
-                                                password="",
-                                                index="document",
-                                                embedding_dim=512)
+    document_store = ElasticsearchDocumentStore(
+        host="localhost", username="", password="", index="document", embedding_dim=512
+    )
 
     ## Add Tables to DocumentStore
 
@@ -46,16 +44,14 @@ def tutorial15_tableqa():
                     content=current_df,
                     content_type="table",
                     meta={"title": current_doc_title, "section_title": current_section_title},
-                    id=key
+                    id=key,
                 )
                 processed_tables.append(document)
 
         return processed_tables
 
-
     tables = read_ottqa_tables("data/ottqa_tables_sample.json")
     document_store.write_documents(tables, index="document")
-
 
     ### Retriever
 
@@ -70,15 +66,15 @@ def tutorial15_tableqa():
         query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
         passage_embedding_model="deepset/bert-small-mm_retrieval-passage_encoder",
         table_embedding_model="deepset/bert-small-mm_retrieval-table_encoder",
-        embed_meta_fields=["title", "section_title"]
+        embed_meta_fields=["title", "section_title"],
     )
 
     # Add table embeddings to the tables in DocumentStore
     document_store.update_embeddings(retriever=retriever)
 
     ## Alternative: ElasticsearchRetriever
-    #from haystack.nodes.retriever import ElasticsearchRetriever
-    #retriever = ElasticsearchRetriever(document_store=document_store)
+    # from haystack.nodes.retriever import ElasticsearchRetriever
+    # retriever = ElasticsearchRetriever(document_store=document_store)
 
     # Try the Retriever
     from haystack.utils import print_documents
@@ -94,7 +90,6 @@ def tutorial15_tableqa():
     #
     # **Notice**: The TableReader will return an answer for each table, even if the query cannot be answered by the table.
     # Furthermore, the confidence scores are not useful as of now, given that they will *always* be very high (i.e. 1 or close to 1).
-
 
     reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq", max_seq_len=512)
 
@@ -112,7 +107,6 @@ def tutorial15_tableqa():
     #
     # **Notice**: Given that the `TableReader` does not provide useful confidence scores and returns an answer
     # for each of the tables, the sorting of the answers might be not helpful.
-
 
     table_qa_pipeline = Pipeline()
     table_qa_pipeline.add_node(component=retriever, name="TableTextRetriever", inputs=["Query"])

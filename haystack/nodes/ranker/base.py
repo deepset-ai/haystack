@@ -41,7 +41,8 @@ class BaseRanker(BaseComponent):
         return output, "output_1"
 
     def timing(self, fn, attr_name):
-        """Wrapper method used to time functions. """
+        """Wrapper method used to time functions."""
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if attr_name not in self.__dict__:
@@ -51,6 +52,7 @@ class BaseRanker(BaseComponent):
             toc = perf_counter()
             self.__dict__[attr_name] += toc - tic
             return ret
+
         return wrapper
 
     def print_time(self):

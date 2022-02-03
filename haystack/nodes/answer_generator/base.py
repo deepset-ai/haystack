@@ -24,7 +24,7 @@ class BaseGenerator(BaseComponent):
         """
         pass
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None): # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
 
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k)
@@ -43,16 +43,19 @@ class BaseGenerator(BaseComponent):
         return flat_docs_dict
 
     def _create_answers(self, generated_answers: List[str], documents: List[Document]) -> List[Answer]:
-        flat_docs_dict = self._flatten_docs(documents)        
+        flat_docs_dict = self._flatten_docs(documents)
         answers: List[Any] = []
         for generated_answer in generated_answers:
-            answers.append(Answer(
-                answer=generated_answer,
-                type="generative",
-                meta={
-                    "doc_ids": flat_docs_dict["id"],
-                    "doc_scores": flat_docs_dict["score"],
-                    "content": flat_docs_dict["content"],
-                    "titles": [d.get("name", "") for d in flat_docs_dict["meta"]],
-                }))
+            answers.append(
+                Answer(
+                    answer=generated_answer,
+                    type="generative",
+                    meta={
+                        "doc_ids": flat_docs_dict["id"],
+                        "doc_scores": flat_docs_dict["score"],
+                        "content": flat_docs_dict["content"],
+                        "titles": [d.get("name", "") for d in flat_docs_dict["meta"]],
+                    },
+                )
+            )
         return answers

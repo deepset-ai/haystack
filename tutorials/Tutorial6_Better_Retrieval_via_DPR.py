@@ -1,6 +1,13 @@
 from haystack.document_stores import FAISSDocumentStore, MilvusDocumentStore
-from haystack.utils import clean_wiki_text, print_answers, launch_milvus, convert_files_to_dicts, fetch_archive_from_http
+from haystack.utils import (
+    clean_wiki_text,
+    print_answers,
+    launch_milvus,
+    convert_files_to_dicts,
+    fetch_archive_from_http,
+)
 from haystack.nodes import FARMReader, DensePassageRetriever
+
 
 def tutorial6_better_retrieval_via_dpr():
     # OPTION 1: FAISS is a library for efficient similarity search on a cluster of dense vectors.
@@ -36,16 +43,17 @@ def tutorial6_better_retrieval_via_dpr():
     document_store.write_documents(dicts)
 
     ### Retriever
-    retriever = DensePassageRetriever(document_store=document_store,
-                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-                                      max_seq_len_query=64,
-                                      max_seq_len_passage=256,
-                                      batch_size=2,
-                                      use_gpu=True,
-                                      embed_title=True,
-                                      use_fast_tokenizers=True
-                                      )
+    retriever = DensePassageRetriever(
+        document_store=document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        max_seq_len_query=64,
+        max_seq_len_passage=256,
+        batch_size=2,
+        use_gpu=True,
+        embed_title=True,
+        use_fast_tokenizers=True,
+    )
 
     # Important:
     # Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all
@@ -61,6 +69,7 @@ def tutorial6_better_retrieval_via_dpr():
 
     ### Pipeline
     from haystack.pipelines import ExtractiveQAPipeline
+
     pipe = ExtractiveQAPipeline(reader, retriever)
 
     ## Voilà! Ask a question!

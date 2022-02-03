@@ -17,23 +17,46 @@ from conftest import ensure_ids_are_correct_uuids
 
 
 DOCUMENTS = [
-    {"meta": {"name": "name_1", "year": "2020", "month": "01"}, "content": "text_1", "embedding": np.random.rand(768).astype(np.float32)},
-    {"meta": {"name": "name_2", "year": "2020", "month": "02"}, "content": "text_2", "embedding": np.random.rand(768).astype(np.float32)},
-    {"meta": {"name": "name_3", "year": "2020", "month": "03"}, "content": "text_3", "embedding": np.random.rand(768).astype(np.float64)},
-    {"meta": {"name": "name_4", "year": "2021", "month": "01"}, "content": "text_4", "embedding": np.random.rand(768).astype(np.float32)},
-    {"meta": {"name": "name_5", "year": "2021", "month": "02"}, "content": "text_5", "embedding": np.random.rand(768).astype(np.float32)},
-    {"meta": {"name": "name_6", "year": "2021", "month": "03"}, "content": "text_6", "embedding": np.random.rand(768).astype(np.float64)},
+    {
+        "meta": {"name": "name_1", "year": "2020", "month": "01"},
+        "content": "text_1",
+        "embedding": np.random.rand(768).astype(np.float32),
+    },
+    {
+        "meta": {"name": "name_2", "year": "2020", "month": "02"},
+        "content": "text_2",
+        "embedding": np.random.rand(768).astype(np.float32),
+    },
+    {
+        "meta": {"name": "name_3", "year": "2020", "month": "03"},
+        "content": "text_3",
+        "embedding": np.random.rand(768).astype(np.float64),
+    },
+    {
+        "meta": {"name": "name_4", "year": "2021", "month": "01"},
+        "content": "text_4",
+        "embedding": np.random.rand(768).astype(np.float32),
+    },
+    {
+        "meta": {"name": "name_5", "year": "2021", "month": "02"},
+        "content": "text_5",
+        "embedding": np.random.rand(768).astype(np.float32),
+    },
+    {
+        "meta": {"name": "name_6", "year": "2021", "month": "03"},
+        "content": "text_6",
+        "embedding": np.random.rand(768).astype(np.float64),
+    },
 ]
 
 
-
-@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_save_and_load(tmp_path, sql_url):
     document_store = FAISSDocumentStore(
         sql_url=sql_url,
         index="haystack_test",
         progress_bar=False,  # Just to check if the init parameters are kept
-        isolation_level="AUTOCOMMIT"
+        isolation_level="AUTOCOMMIT",
     )
     document_store.write_documents(DOCUMENTS)
 
@@ -78,13 +101,13 @@ def test_faiss_index_save_and_load(tmp_path, sql_url):
     assert not new_document_store.progress_bar
 
 
-@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_save_and_load_custom_path(tmp_path, sql_url):
     document_store = FAISSDocumentStore(
         sql_url=sql_url,
         index="haystack_test",
         progress_bar=False,  # Just to check if the init parameters are kept
-        isolation_level="AUTOCOMMIT"
+        isolation_level="AUTOCOMMIT",
     )
     document_store.write_documents(DOCUMENTS)
 
@@ -98,7 +121,9 @@ def test_faiss_index_save_and_load_custom_path(tmp_path, sql_url):
     assert document_store.faiss_indexes[document_store.index].ntotal == 0
 
     # test loading the index
-    new_document_store = FAISSDocumentStore.load(index_path=tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
+    new_document_store = FAISSDocumentStore.load(
+        index_path=tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json"
+    )
 
     # check faiss index is restored
     assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
@@ -109,7 +134,9 @@ def test_faiss_index_save_and_load_custom_path(tmp_path, sql_url):
 
     # test saving and loading the loaded faiss index
     new_document_store.save(tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
-    reloaded_document_store = FAISSDocumentStore.load(tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
+    reloaded_document_store = FAISSDocumentStore.load(
+        tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json"
+    )
 
     # check faiss index is restored
     assert reloaded_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
@@ -119,7 +146,9 @@ def test_faiss_index_save_and_load_custom_path(tmp_path, sql_url):
     assert not reloaded_document_store.progress_bar
 
     # test loading the index via init
-    new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss", faiss_config_path=tmp_path / "custom_path.json")
+    new_document_store = FAISSDocumentStore(
+        faiss_index_path=tmp_path / "haystack_test_faiss", faiss_config_path=tmp_path / "custom_path.json"
+    )
 
     # check faiss index is restored
     assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
@@ -129,20 +158,20 @@ def test_faiss_index_save_and_load_custom_path(tmp_path, sql_url):
     assert not new_document_store.progress_bar
 
 
-@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test with tmp_path not working on windows runner")
 def test_faiss_index_mutual_exclusive_args(tmp_path):
     with pytest.raises(ValueError):
         FAISSDocumentStore(
             sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
             faiss_index_path=f"{tmp_path/'haystack_test'}",
-            isolation_level="AUTOCOMMIT"
+            isolation_level="AUTOCOMMIT",
         )
 
     with pytest.raises(ValueError):
         FAISSDocumentStore(
             f"sqlite:////{tmp_path/'haystack_test.db'}",
             faiss_index_path=f"{tmp_path/'haystack_test'}",
-            isolation_level="AUTOCOMMIT"
+            isolation_level="AUTOCOMMIT",
         )
 
 
@@ -154,7 +183,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
 
     # Write in small batches
     for i in range(0, len(DOCUMENTS), batch_size):
-        document_store.write_documents(DOCUMENTS[i: i + batch_size])
+        document_store.write_documents(DOCUMENTS[i : i + batch_size])
 
     documents_indexed = document_store.get_all_documents()
     assert len(documents_indexed) == len(DOCUMENTS)
@@ -167,7 +196,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         # original input vec is normalized as faiss only stores normalized vectors
         assert np.allclose(original_doc["embedding"] / np.linalg.norm(original_doc["embedding"]), stored_emb, rtol=0.01)
-        
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
@@ -231,13 +260,13 @@ def test_update_with_empty_store(document_store, retriever):
     assert len(documents_indexed) == len(DOCUMENTS)
 
 
-@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test with tmp_path not working on windows runner")
 @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
 def test_faiss_retrieving(index_factory, tmp_path):
     document_store = FAISSDocumentStore(
-        sql_url=f"sqlite:////{tmp_path/'test_faiss_retrieving.db'}", 
+        sql_url=f"sqlite:////{tmp_path/'test_faiss_retrieving.db'}",
         faiss_index_factory_str=index_factory,
-        isolation_level="AUTOCOMMIT"
+        isolation_level="AUTOCOMMIT",
     )
 
     document_store.delete_all_documents(index="document")
@@ -246,9 +275,7 @@ def test_faiss_retrieving(index_factory, tmp_path):
     document_store.write_documents(DOCUMENTS)
 
     retriever = EmbeddingRetriever(
-        document_store=document_store,
-        embedding_model="deepset/sentence_bert",
-        use_gpu=False
+        document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False
     )
     result = retriever.retrieve(query="How to test this?")
 
@@ -267,7 +294,7 @@ def test_finding(document_store, retriever):
 
     prediction = pipe.run(query="How to test this?", params={"Retriever": {"top_k": 1}})
 
-    assert len(prediction.get('documents', [])) == 1
+    assert len(prediction.get("documents", [])) == 1
 
 
 @pytest.mark.slow
@@ -347,7 +374,9 @@ def test_delete_docs_by_id_with_filters(document_store, retriever):
     assert document_store.get_embedding_count() == 6
 
     ids_to_delete = [doc.id for doc in document_store.get_all_documents(filters={"name": ["name_1", "name_2"]})]
-    ids_not_to_delete = [doc.id for doc in document_store.get_all_documents(filters={"name": ["name_3", "name_4", "name_5", "name_6"]})]
+    ids_not_to_delete = [
+        doc.id for doc in document_store.get_all_documents(filters={"name": ["name_3", "name_4", "name_5", "name_6"]})
+    ]
 
     document_store.delete_documents(ids=ids_to_delete, filters={"name": ["name_1", "name_2", "name_3", "name_4"]})
 
@@ -370,7 +399,7 @@ def test_get_docs_with_filters_one_value(document_store, retriever):
     document_store.update_embeddings(retriever=retriever, batch_size=4)
     assert document_store.get_embedding_count() == 6
 
-    documents =  document_store.get_all_documents(filters={"year": ["2020"]})
+    documents = document_store.get_all_documents(filters={"year": ["2020"]})
 
     assert len(documents) == 3
     assert all("2020" == doc.meta["year"] for doc in documents)
@@ -422,7 +451,7 @@ def test_pipeline(document_store, retriever):
     assert len(output["documents"]) == 3
 
 
-@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Test with tmp_path not working on windows runner")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test with tmp_path not working on windows runner")
 def test_faiss_passing_index_from_outside(tmp_path):
     d = 768
     nlist = 2
@@ -432,9 +461,10 @@ def test_faiss_passing_index_from_outside(tmp_path):
     faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
     faiss_index.nprobe = 2
     document_store = FAISSDocumentStore(
-        sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}", 
-        faiss_index=faiss_index, index=index,
-        isolation_level="AUTOCOMMIT"
+        sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}",
+        faiss_index=faiss_index,
+        index=index,
+        isolation_level="AUTOCOMMIT",
     )
 
     document_store.delete_documents()
@@ -453,7 +483,7 @@ def test_faiss_passing_index_from_outside(tmp_path):
 def test_cosine_similarity(document_store):
     # below we will write documents to the store and then query it to see if vectors were normalized
 
-    ensure_ids_are_correct_uuids(docs=DOCUMENTS,document_store=document_store)
+    ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store)
     document_store.write_documents(documents=DOCUMENTS)
 
     # note that the same query will be used later when querying after updating the embeddings
@@ -474,12 +504,12 @@ def test_cosine_similarity(document_store):
 
         # check if the stored embedding was normalized
         assert np.allclose(original_emb[0], result_emb, rtol=0.01)
-        
+
         # check if the score is plausible for cosine similarity
         assert 0 <= doc.score <= 1.0
 
     # now check if vectors are normalized when updating embeddings
-    class MockRetriever():
+    class MockRetriever:
         def embed_documents(self, docs):
             return [np.random.rand(768).astype(np.float32) for doc in docs]
 
@@ -496,26 +526,26 @@ def test_cosine_similarity(document_store):
 
 @pytest.mark.parametrize("document_store_dot_product_small", ["faiss", "milvus"], indirect=True)
 def test_normalize_embeddings_diff_shapes(document_store_dot_product_small):
-    VEC_1 = np.array([.1, .2, .3], dtype="float32")
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
     document_store_dot_product_small.normalize_embedding(VEC_1)
     assert np.linalg.norm(VEC_1) - 1 < 0.01
 
-    VEC_1 = np.array([.1, .2, .3], dtype="float32").reshape(1, -1)
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32").reshape(1, -1)
     document_store_dot_product_small.normalize_embedding(VEC_1)
     assert np.linalg.norm(VEC_1) - 1 < 0.01
 
 
 @pytest.mark.parametrize("document_store_small", ["faiss", "milvus", "weaviate"], indirect=True)
 def test_cosine_sanity_check(document_store_small):
-    VEC_1 = np.array([.1, .2, .3], dtype="float32")
-    VEC_2 = np.array([.4, .5, .6], dtype="float32")
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
+    VEC_2 = np.array([0.4, 0.5, 0.6], dtype="float32")
 
     # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
     # The score is normalized to yield a value between 0 and 1.
     KNOWN_COSINE = (0.9746317 + 1) / 2
 
     docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
-    ensure_ids_are_correct_uuids(docs=docs,document_store=document_store_small)
+    ensure_ids_are_correct_uuids(docs=docs, document_store=document_store_small)
     document_store_small.write_documents(documents=docs)
 
     query_results = document_store_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)

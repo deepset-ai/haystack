@@ -22,7 +22,7 @@ class RequestLimiter:
             self.semaphore.release()
 
 
-StringId = NewType('StringId', str)
+StringId = NewType("StringId", str)
 
 
 def as_form(cls: Type[BaseModel]):

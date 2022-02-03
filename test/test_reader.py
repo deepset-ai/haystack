@@ -17,7 +17,7 @@ def test_output(prediction):
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"
     assert prediction["answers"][0].offsets_in_context[0].start == 11
-    assert prediction["answers"][0].offsets_in_context[0].end== 16
+    assert prediction["answers"][0].offsets_in_context[0].end == 16
     assert prediction["answers"][0].score <= 1
     assert prediction["answers"][0].score >= 0
     assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"
@@ -52,19 +52,21 @@ def test_prediction_attributes(prediction):
     for ag in attributes_gold:
         assert ag in prediction
 
+
 @pytest.mark.slow
 def test_model_download_options():
     # download disabled and model is not cached locally
     with pytest.raises(OSError):
         impossible_reader = FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
 
+
 def test_answer_attributes(prediction):
     # TODO Transformers answer also has meta key
     answer = prediction["answers"][0]
     assert type(answer) == Answer
-    attributes_gold = ['answer', 'score', 'context', 'offsets_in_context', 'offsets_in_document','type']
+    attributes_gold = ["answer", "score", "context", "offsets_in_context", "offsets_in_document", "type"]
     for ag in attributes_gold:
-        assert getattr(answer,ag,None) is not None
+        assert getattr(answer, ag, None) is not None
 
 
 @pytest.mark.slow
@@ -124,10 +126,7 @@ def test_top_k(reader, test_docs_xs, top_k):
 
 def test_farm_reader_update_params(test_docs_xs):
     reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2",
-        use_gpu=False,
-        no_ans_boost=0,
-        num_processes=0
+        model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
     )
 
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
