@@ -1,24 +1,33 @@
-from haystack.utils import clean_wiki_text, print_answers, print_documents, fetch_archive_from_http, convert_files_to_dicts, launch_es
+from haystack.utils import (
+    clean_wiki_text,
+    print_answers,
+    print_documents,
+    fetch_archive_from_http,
+    convert_files_to_dicts,
+    launch_es,
+)
 from pprint import pprint
 from haystack import Pipeline
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes import ElasticsearchRetriever, DensePassageRetriever, FARMReader, RAGenerator, BaseComponent, JoinDocuments
+from haystack.nodes import (
+    ElasticsearchRetriever,
+    DensePassageRetriever,
+    FARMReader,
+    RAGenerator,
+    BaseComponent,
+    JoinDocuments,
+)
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, GenerativeQAPipeline
 
 
 def tutorial11_pipelines():
-    #Download and prepare data - 517 Wikipedia articles for Game of Thrones
+    # Download and prepare data - 517 Wikipedia articles for Game of Thrones
     doc_dir = "data/article_txt_got"
     s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
-
     # convert files to dicts containing documents that can be indexed to our datastore
-    got_dicts = convert_files_to_dicts(
-        dir_path=doc_dir,
-        clean_func=clean_wiki_text,
-        split_paragraphs=True
-    )
+    got_dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
 
     # Initialize DocumentStore and index documents
     launch_es()
@@ -44,7 +53,7 @@ def tutorial11_pipelines():
     print("# Extractive QA Pipeline")
     print("########################")
 
-    query="Who is the father of Arya Stark?"
+    query = "Who is the father of Arya Stark?"
     p_extractive_premade = ExtractiveQAPipeline(reader=reader, retriever=es_retriever)
     res = p_extractive_premade.run(
         query=query,
@@ -54,21 +63,18 @@ def tutorial11_pipelines():
     print("Answers:")
     print_answers(res, details="minimum")
 
-
     print()
     print("# Document Search Pipeline")
     print("##########################")
 
-    query="Who is the father of Arya Stark?"
+    query = "Who is the father of Arya Stark?"
     p_retrieval = DocumentSearchPipeline(es_retriever)
     res = p_retrieval.run(
         query=query,
         params={"Retriever": {"top_k": 10}},
-
     )
     print()
     print_documents(res, max_text_len=200)
-
 
     print()
     print("# Generator Pipeline")
@@ -82,12 +88,11 @@ def tutorial11_pipelines():
     rag_generator = RAGenerator()
 
     # Generative QA
-    query="Who is the father of Arya Stark?"
+    query = "Who is the father of Arya Stark?"
     p_generator = GenerativeQAPipeline(generator=rag_generator, retriever=dpr_retriever)
     res = p_generator.run(
         query=query,
         params={"Retriever": {"top_k": 10}},
-
     )
     print()
     print_answers(res, details="minimum")
@@ -119,7 +124,7 @@ def tutorial11_pipelines():
     p_extractive.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
     # Now we can run it
-    query="Who is the father of Arya Stark?"
+    query = "Who is the father of Arya Stark?"
     res = p_extractive.run(
         query=query,
         params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
@@ -129,30 +134,29 @@ def tutorial11_pipelines():
     print_answers(res, details="minimum")
     p_extractive.draw("pipeline_extractive.png")
 
-
     print()
     print("# Ensembled Retriever Pipeline")
     print("##############################")
-    
+
     # Create ensembled pipeline
     p_ensemble = Pipeline()
     p_ensemble.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
     p_ensemble.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["Query"])
-    p_ensemble.add_node(component=JoinDocuments(join_mode="concatenate"), name="JoinResults", inputs=["ESRetriever", "DPRRetriever"])
+    p_ensemble.add_node(
+        component=JoinDocuments(join_mode="concatenate"), name="JoinResults", inputs=["ESRetriever", "DPRRetriever"]
+    )
     p_ensemble.add_node(component=reader, name="Reader", inputs=["JoinResults"])
     p_ensemble.draw("pipeline_ensemble.png")
 
     # Run pipeline
-    query="Who is the father of Arya Stark?"
+    query = "Who is the father of Arya Stark?"
     res = p_ensemble.run(
         query="Who is the father of Arya Stark?",
         params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}},
-
     )
     print("\nQuery: ", query)
     print("Answers:")
     print_answers(res, details="minimum")
-
 
     print()
     print("# Query Classification Pipeline")
@@ -181,7 +185,7 @@ def tutorial11_pipelines():
     p_classifier.draw("pipeline_classifier.png")
 
     # Run only the dense retriever on the full sentence query
-    query="Who is the father of Arya Stark?"
+    query = "Who is the father of Arya Stark?"
     res_1 = p_classifier.run(
         query=query,
     )
@@ -190,9 +194,8 @@ def tutorial11_pipelines():
     print(" * DPR Answers:")
     print_answers(res_1, details="minimum")
 
-
     # Run only the sparse retriever on a keyword based query
-    query="Arya Stark father"
+    query = "Arya Stark father"
     res_2 = p_classifier.run(
         query=query,
     )
@@ -200,7 +203,6 @@ def tutorial11_pipelines():
     print("\nQuery: ", query)
     print(" * ES Answers:")
     print_answers(res_2, details="minimum")
-
 
     print("#######################")
     print("# Debugging Pipelines #")
@@ -211,22 +213,10 @@ def tutorial11_pipelines():
     es_retriever.debug = True
 
     # 2) You can provide `debug` as a parameter when running your pipeline
-    result = p_classifier.run(
-        query="Who is the father of Arya Stark?",
-        params={
-            "ESRetriever": {
-                "debug": True
-            }
-        }
-    )
+    result = p_classifier.run(query="Who is the father of Arya Stark?", params={"ESRetriever": {"debug": True}})
 
     # 3) You can provide the `debug` paramter to all nodes in your pipeline
-    result = p_classifier.run(
-        query="Who is the father of Arya Stark?",
-        params={
-            "debug": True
-        }
-    )
+    result = p_classifier.run(query="Who is the father of Arya Stark?", params={"debug": True})
 
     pprint(result["_debug"])
 

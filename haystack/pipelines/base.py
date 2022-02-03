@@ -13,7 +13,11 @@ from pandas.core.frame import DataFrame
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-from haystack.nodes.evaluator.evaluator import calculate_em_str_multi, calculate_f1_str_multi, semantic_answer_similarity
+from haystack.nodes.evaluator.evaluator import (
+    calculate_em_str_multi,
+    calculate_f1_str_multi,
+    semantic_answer_similarity,
+)
 from haystack.utils import DeepsetCloud
 
 try:
@@ -35,6 +39,7 @@ class RootNode(BaseComponent):
     """
     RootNode feeds inputs together with corresponding params to a Pipeline.
     """
+
     outgoing_edges = 1
 
     def run(self, root_node: str):  # type: ignore
@@ -43,9 +48,10 @@ class RootNode(BaseComponent):
 
 class BasePipeline:
     """
-    Base class for pipelines, providing the most basic methods to load and save them in different ways. 
+    Base class for pipelines, providing the most basic methods to load and save them in different ways.
     See also the `Pipeline` class for the actual pipeline logic.
     """
+
     def run(self, **kwargs):
         raise NotImplementedError
 
@@ -94,19 +100,25 @@ class BasePipeline:
                                              `_` sign must be used to specify nested hierarchical properties.
         """
 
-        pipeline_config = cls._read_pipeline_config_from_yaml(path)        
+        pipeline_config = cls._read_pipeline_config_from_yaml(path)
         pipeline_definition = cls._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         if pipeline_definition["type"] == "Pipeline":
             return Pipeline._load_from_config(
-                pipeline_config=pipeline_config, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+                pipeline_config=pipeline_config,
+                pipeline_name=pipeline_name,
+                overwrite_with_env_variables=overwrite_with_env_variables,
             )
         elif pipeline_definition["type"] == "RayPipeline":
             return RayPipeline._load_from_config(
-                pipeline_config=pipeline_config, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
+                pipeline_config=pipeline_config,
+                pipeline_name=pipeline_name,
+                overwrite_with_env_variables=overwrite_with_env_variables,
             )
         else:
-            raise KeyError(f"Pipeline Type '{pipeline_definition['type']}' is not a valid. The available types are"
-                           f"'Pipeline' and 'RayPipeline'.")
+            raise KeyError(
+                f"Pipeline Type '{pipeline_definition['type']}' is not a valid. The available types are"
+                f"'Pipeline' and 'RayPipeline'."
+            )
 
     @classmethod
     def load_from_deepset_cloud(
@@ -127,9 +139,9 @@ class BasePipeline:
         :param pipeline_name: specifies which pipeline to load from config.
                               Deepset Cloud typically provides a 'query' and a 'index' pipeline per config.
         :param workspace: workspace in Deepset Cloud
-        :param api_key: Secret value of the API key. 
+        :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param api_endpoint: The URL of the Deepset Cloud API. 
+        :param api_endpoint: The URL of the Deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param overwrite_with_env_variables: Overwrite the config with environment variables. For example,
                                              to change return_no_answer param for a FARMReader, an env
@@ -137,26 +149,29 @@ class BasePipeline:
                                              `_` sign must be used to specify nested hierarchical properties.
         """
         client = DeepsetCloud.get_pipeline_client(
-            api_key=api_key, 
-            api_endpoint=api_endpoint, 
-            workspace=workspace, 
-            pipeline_config_name=pipeline_config_name)
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, pipeline_config_name=pipeline_config_name
+        )
         pipeline_config = client.get_pipeline_config()
 
         # update document store params in order to connect to correct index
         for component_config in pipeline_config["components"]:
             if component_config["type"] == "DeepsetCloudDocumentStore":
                 params = component_config.get("params", {})
-                params.update({
-                        "api_key": api_key, 
-                        "api_endpoint": api_endpoint, 
-                        "workspace": workspace, 
-                        "index": pipeline_config_name
-                    })
+                params.update(
+                    {
+                        "api_key": api_key,
+                        "api_endpoint": api_endpoint,
+                        "workspace": workspace,
+                        "index": pipeline_config_name,
+                    }
+                )
                 component_config["params"] = params
-        
-        pipeline = Pipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=pipeline_name, 
-                                                overwrite_with_env_variables=overwrite_with_env_variables)
+
+        pipeline = Pipeline._load_from_config(
+            pipeline_config=pipeline_config,
+            pipeline_name=pipeline_name,
+            overwrite_with_env_variables=overwrite_with_env_variables,
+        )
         return pipeline
 
     @classmethod
@@ -264,9 +279,10 @@ class Pipeline(BasePipeline):
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node, \
-                f"The '{name}' node can only input from {self.root_node}. " \
+            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node, (
+                f"The '{name}' node can only input from {self.root_node}. "
                 f"Set the 'inputs' parameter to ['{self.root_node}']"
+            )
             self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
@@ -316,24 +332,24 @@ class Pipeline(BasePipeline):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         params: Optional[dict] = None,
-        debug: Optional[bool] = None
+        debug: Optional[bool] = None,
     ):
         """
-            Runs the pipeline, one node at a time.
+        Runs the pipeline, one node at a time.
 
-            :param query: The search query (for query pipelines only)
-            :param file_paths: The files to index (for indexing pipelines only)
-            :param labels: 
-            :param documents:
-            :param meta:
-            :param params: Dictionary of parameters to be dispatched to the nodes. 
-                           If you want to pass a param to all nodes, you can just use: {"top_k":10}
-                           If you want to pass it to targeted nodes, you can do:
-                           {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-            :param debug: Whether the pipeline should instruct nodes to collect debug information
-                          about their execution. By default these include the input parameters
-                          they received and the output they generated. All debug information can 
-                          then be found in the dict returned by this method under the key "_debug"
+        :param query: The search query (for query pipelines only)
+        :param file_paths: The files to index (for indexing pipelines only)
+        :param labels:
+        :param documents:
+        :param meta:
+        :param params: Dictionary of parameters to be dispatched to the nodes.
+                       If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                       If you want to pass it to targeted nodes, you can do:
+                       {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+                      about their execution. By default these include the input parameters
+                      they received and the output they generated. All debug information can
+                      then be found in the dict returned by this method under the key "_debug"
         """
         # validate the node names
         if params:
@@ -348,7 +364,9 @@ class Pipeline(BasePipeline):
                 invalid_keys = [key for key in not_a_node if key not in valid_global_params]
 
                 if invalid_keys:
-                    raise ValueError(f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline.")
+                    raise ValueError(
+                        f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
+                    )
 
         node_output = None
         queue = {
@@ -386,7 +404,9 @@ class Pipeline(BasePipeline):
                     node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
                 except Exception as e:
                     tb = traceback.format_exc()
-                    raise Exception(f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}")
+                    raise Exception(
+                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}"
+                    )
                 queue.pop(node_id)
                 next_nodes = self.get_next_nodes(node_id, stream_id)
                 for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
@@ -420,37 +440,37 @@ class Pipeline(BasePipeline):
         labels: List[MultiLabel],
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
-        add_isolated_node_eval: bool = False
+        add_isolated_node_eval: bool = False,
     ) -> EvaluationResult:
         """
-            Evaluates the pipeline by running the pipeline once per query in debug mode 
-            and putting together all data that is needed for evaluation, e.g. calculating metrics.
+        Evaluates the pipeline by running the pipeline once per query in debug mode
+        and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
-            :param labels: The labels to evaluate on
-            :param params: Dictionary of parameters to be dispatched to the nodes. 
-                        If you want to pass a param to all nodes, you can just use: {"top_k":10}
-                        If you want to pass it to targeted nodes, you can do:
-                        {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-            :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
-                        The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
-                        Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
-                        More info in the paper: https://arxiv.org/abs/2108.06130
-                        Models:
-                        - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
-                        Not all cross encoders can be used because of different return types.
-                        If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
-                        - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-                        - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
-                        - Large model for German only: "deepset/gbert-large-sts"
-            :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
-                        This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
-                        If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
-                        If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
-                        The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
-                        To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
-                        The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
-                        values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
-        """    
+        :param labels: The labels to evaluate on
+        :param params: Dictionary of parameters to be dispatched to the nodes.
+                    If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                    If you want to pass it to targeted nodes, you can do:
+                    {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+        :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+                    The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                    More info in the paper: https://arxiv.org/abs/2108.06130
+                    Models:
+                    - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+                    Not all cross encoders can be used because of different return types.
+                    If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+                    - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+                    - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+                    - Large model for German only: "deepset/gbert-large-sts"
+        :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+                    This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+                    If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+                    If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+                    The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+                    To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+                    The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+                    values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+        """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
             if params is None:
@@ -459,13 +479,12 @@ class Pipeline(BasePipeline):
         queries = [label.query for label in labels]
         for query, label in zip(queries, labels):
             predictions = self.run(query=query, labels=label, params=params, debug=True)
-            
+
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
-                df = self._build_eval_dataframe(
-                    query, label, node_name, node_output)
+                df = self._build_eval_dataframe(query, label, node_name, node_output)
                 eval_result.append(node_name, df)
-        
+
         # add sas values in batch mode for whole Dataframe
         # this is way faster than if we calculate it for each query separately
         if sas_model_name_or_path is not None:
@@ -473,18 +492,35 @@ class Pipeline(BasePipeline):
                 if len(df[df["type"] == "answer"]) > 0:
                     gold_labels = df["gold_answers"].values
                     predictions = [[a] for a in df["answer"].values]
-                    sas, _ = semantic_answer_similarity(predictions=predictions, gold_labels=gold_labels, 
-                                                sas_model_name_or_path=sas_model_name_or_path)
+                    sas, _ = semantic_answer_similarity(
+                        predictions=predictions, gold_labels=gold_labels, sas_model_name_or_path=sas_model_name_or_path
+                    )
                     df["sas"] = sas
 
         # reorder columns for better qualitative evaluation
         for key, df in eval_result.node_results.items():
-            desired_col_order = ["query", # generic
-                                "gold_answers", "answer", "context", "exact_match", "f1", "sas", # answer-specific
-                                "gold_document_contents", "content", "gold_id_match", "answer_match", "gold_id_or_answer_match", # doc-specific
-                                "rank", "document_id", "gold_document_ids", # generic
-                                "offsets_in_document", "gold_offsets_in_documents", # answer-specific
-                                "type", "node", "eval_mode"] # generic
+            desired_col_order = [
+                "query",  # generic
+                "gold_answers",
+                "answer",
+                "context",
+                "exact_match",
+                "f1",
+                "sas",  # answer-specific
+                "gold_document_contents",
+                "content",
+                "gold_id_match",
+                "answer_match",
+                "gold_id_or_answer_match",  # doc-specific
+                "rank",
+                "document_id",
+                "gold_document_ids",  # generic
+                "offsets_in_document",
+                "gold_offsets_in_documents",  # answer-specific
+                "type",
+                "node",
+                "eval_mode",
+            ]  # generic
             eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
 
         return eval_result
@@ -496,19 +532,16 @@ class Pipeline(BasePipeline):
         assert len(reordered_columns) == len(df.columns)
         return df.reindex(columns=reordered_columns)
 
-    def _build_eval_dataframe(self, 
-        query: str, 
-        query_labels: MultiLabel, 
-        node_name: str, 
-        node_output: dict
+    def _build_eval_dataframe(
+        self, query: str, query_labels: MultiLabel, node_name: str, node_output: dict
     ) -> DataFrame:
         """
         Builds a Dataframe for each query from which evaluation metrics can be calculated.
         Currently only answer or document returning nodes are supported, returns None otherwise.
-        
+
         Each row contains either an answer or a document that has been retrieved during evaluation.
         Rows are being enriched with basic infos like rank, query, type or node.
-        Additional answer or document specific evaluation infos like gold labels 
+        Additional answer or document specific evaluation infos like gold labels
         and metrics depicting whether the row matches the gold labels are included, too.
         """
 
@@ -550,10 +583,12 @@ class Pipeline(BasePipeline):
                     df_answers["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
                     df_answers["exact_match"] = df_answers.apply(
-                        lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1)
+                        lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1
+                    )
                     df_answers["f1"] = df_answers.apply(
-                        lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1)
-                    df_answers["rank"] = np.arange(1, len(df_answers)+1)
+                        lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1
+                    )
+                    df_answers["rank"] = np.arange(1, len(df_answers) + 1)
                     df = pd.concat([df, df_answers])
 
             # add general info
@@ -582,16 +617,19 @@ class Pipeline(BasePipeline):
                     df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
                     df_docs["gold_document_contents"] = [gold_document_contents] * len(df_docs)
                     df_docs["gold_id_match"] = df_docs.apply(
-                        lambda row: 1.0 if row["document_id"] in gold_document_ids else 0.0, axis=1)
+                        lambda row: 1.0 if row["document_id"] in gold_document_ids else 0.0, axis=1
+                    )
                     df_docs["answer_match"] = df_docs.apply(
-                        lambda row:
-                            1.0 if not query_labels.no_answer
-                                and any(gold_answer in row["content"] for gold_answer in gold_answers)
-                            else 0.0,
-                        axis=1)
+                        lambda row: 1.0
+                        if not query_labels.no_answer
+                        and any(gold_answer in row["content"] for gold_answer in gold_answers)
+                        else 0.0,
+                        axis=1,
+                    )
                     df_docs["gold_id_or_answer_match"] = df_docs.apply(
-                        lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1)
-                    df_docs["rank"] = np.arange(1, len(df_docs)+1)
+                        lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1
+                    )
+                    df_docs["rank"] = np.arange(1, len(df_docs) + 1)
                     df = pd.concat([df, df_docs])
 
             # add general info
@@ -623,9 +661,11 @@ class Pipeline(BasePipeline):
         :return: List of components that are an instance the requested class
         """
 
-        matches = [self.graph.nodes.get(node)["component"]
-                   for node in self.graph.nodes
-                   if isinstance(self.graph.nodes.get(node)["component"], class_type)]
+        matches = [
+            self.graph.nodes.get(node)["component"]
+            for node in self.graph.nodes
+            if isinstance(self.graph.nodes.get(node)["component"], class_type)
+        ]
         return matches
 
     def get_document_store(self) -> Optional[BaseDocumentStore]:
@@ -651,9 +691,11 @@ class Pipeline(BasePipeline):
         try:
             import pygraphviz
         except ImportError:
-            raise ImportError(f"Could not import `pygraphviz`. Please install via: \n"
-                              f"pip install pygraphviz\n"
-                              f"(You might need to run this first: apt install libgraphviz-dev graphviz )")
+            raise ImportError(
+                f"Could not import `pygraphviz`. Please install via: \n"
+                f"pip install pygraphviz\n"
+                f"(You might need to run this first: apt install libgraphviz-dev graphviz )"
+            )
 
         graphviz = to_agraph(self.graph)
         graphviz.layout("dot")
@@ -704,12 +746,16 @@ class Pipeline(BasePipeline):
                                              `_` sign must be used to specify nested hierarchical properties.
         """
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
-        return Pipeline._load_from_config(pipeline_config=pipeline_config, 
-                                            pipeline_name=pipeline_name, 
-                                            overwrite_with_env_variables=overwrite_with_env_variables)
+        return Pipeline._load_from_config(
+            pipeline_config=pipeline_config,
+            pipeline_name=pipeline_name,
+            overwrite_with_env_variables=overwrite_with_env_variables,
+        )
 
     @classmethod
-    def _load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+    def _load_from_config(
+        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+    ):
         pipeline_definition = cls._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = cls._get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
@@ -745,10 +791,14 @@ class Pipeline(BasePipeline):
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
                 # DocumentStore defined in the YAML. All references should be recursively resolved.
-                if isinstance(value, str) and value in definitions.keys():  # check if the param value is a reference to another component.
+                if (
+                    isinstance(value, str) and value in definitions.keys()
+                ):  # check if the param value is a reference to another component.
                     if value not in components.keys():  # check if the referenced component is already loaded.
                         cls._load_or_get_component(name=value, definitions=definitions, components=components)
-                    component_params[key] = components[value]  # substitute reference (string) with the component object.
+                    component_params[key] = components[
+                        value
+                    ]  # substitute reference (string) with the component object.
 
             instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
             components[name] = instance
@@ -776,12 +826,12 @@ class Pipeline(BasePipeline):
             component_type = component_instance.pipeline_config["type"]
             component_params = component_instance.pipeline_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
-            
+
             component_parent_classes = inspect.getmro(type(component_instance))
             component_signature: dict = {}
             for component_parent in component_parent_classes:
                 component_signature = {**component_signature, **inspect.signature(component_parent).parameters}
-                
+
             for key, value in component_params.items():
                 # A parameter for a Component could be another Component. For instance, a Retriever has
                 # the DocumentStore as a parameter.
@@ -793,7 +843,8 @@ class Pipeline(BasePipeline):
                     components[node]["params"][key] = value["type"]
                     sub_component_signature = inspect.signature(BaseComponent.subclasses[value["type"]]).parameters
                     params = {
-                        k: v for k, v in value["params"].items()
+                        k: v
+                        for k, v in value["params"].items()
                         if sub_component_signature[k].default != v or return_defaults is True
                     }
                     components[value["type"]] = {"name": value["type"], "type": value["type"], "params": params}
@@ -806,21 +857,20 @@ class Pipeline(BasePipeline):
 
         config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
 
-        with open(path, 'w') as outfile:
+        with open(path, "w") as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
 
-    
     def _format_document_answer(self, document_or_answer: dict):
-        return "\n \t".join([f'{name}: {value}' for name, value in document_or_answer.items()])
+        return "\n \t".join([f"{name}: {value}" for name, value in document_or_answer.items()])
 
     def _format_wrong_sample(self, query: dict):
-        metrics = "\n \t".join([f'{name}: {value}' for name, value in query['metrics'].items()])
-        documents = "\n\n \t".join([self._format_document_answer(doc) for doc in query.get('documents', [])])
+        metrics = "\n \t".join([f"{name}: {value}" for name, value in query["metrics"].items()])
+        documents = "\n\n \t".join([self._format_document_answer(doc) for doc in query.get("documents", [])])
         documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
-        answers = "\n\n \t".join([self._format_document_answer(answer) for answer in query.get('answers', [])])
+        answers = "\n\n \t".join([self._format_document_answer(answer) for answer in query.get("answers", [])])
         answers = f"Answers: \n \t{answers}\n" if len(answers) > 0 else ""
-        gold_document_ids = "\n \t".join(query['gold_document_ids'])
-        gold_answers = "\n \t".join(query.get('gold_answers', []))
+        gold_document_ids = "\n \t".join(query["gold_document_ids"])
+        gold_answers = "\n \t".join(query.get("gold_answers", []))
         gold_answers = f"Gold Answers: \n \t{gold_answers}\n" if len(gold_answers) > 0 else ""
         s = (
             f"Query: \n \t{query['query']}\n"
@@ -845,14 +895,16 @@ class Pipeline(BasePipeline):
     def _format_wrong_samples_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
         examples = {
             node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
-                for node in eval_result.node_results.keys()
+            for node in eval_result.node_results.keys()
         }
         examples_formatted = {
             node: "\n".join([self._format_wrong_sample(example) for example in examples])
-                for node, examples in examples.items()
+            for node, examples in examples.items()
         }
 
-        return "\n".join([self._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()])
+        return "\n".join(
+            [self._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()]
+        )
 
     def _format_pipeline_node(self, node: str, calculated_metrics: dict):
         node_metrics: dict = {}
@@ -860,7 +912,9 @@ class Pipeline(BasePipeline):
             for metric, value in calculated_metrics[metric_mode].get(node, {}).items():
                 node_metrics[f"{metric}{metric_mode}"] = value
 
-        node_metrics_formatted = "\n".join(sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()]))
+        node_metrics_formatted = "\n".join(
+            sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()])
+        )
         node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""
         s = (
             f"                      {node}\n"
@@ -871,7 +925,9 @@ class Pipeline(BasePipeline):
         return s
 
     def _format_pipeline_overview(self, calculated_metrics: dict):
-        pipeline_overview = "\n".join([self._format_pipeline_node(node, calculated_metrics) for node in self.graph.nodes])
+        pipeline_overview = "\n".join(
+            [self._format_pipeline_node(node, calculated_metrics) for node in self.graph.nodes]
+        )
         s = (
             f"================== Evaluation Report ==================\n"
             f"=======================================================\n"
@@ -884,13 +940,14 @@ class Pipeline(BasePipeline):
         return s
 
     def print_eval_report(
-        self, 
-        eval_result: EvaluationResult, 
-        n_wrong_examples: int = 3, 
-        metrics_filter: Optional[Dict[str, List[str]]] = None):
+        self,
+        eval_result: EvaluationResult,
+        n_wrong_examples: int = 3,
+        metrics_filter: Optional[Dict[str, List[str]]] = None,
+    ):
         """
         Prints evaluation report containing a metrics funnel and worst queries for further analysis.
-        
+
         :param eval_result: The evaluation result, can be obtained by running eval().
         :param n_wrong_examples: The number of worst queries to show.
         :param metrics_filter: The metrics to show per node. If None all metrics will be shown.
@@ -899,22 +956,31 @@ class Pipeline(BasePipeline):
             logger.warning("Pipelines with junctions are currently not supported.")
             return
 
-        calculated_metrics = {"": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match"),
-                              "_top_1": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1),
-                              " upper bound": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", eval_mode="isolated")}
+        calculated_metrics = {
+            "": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match"),
+            "_top_1": eval_result.calculate_metrics(
+                doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1
+            ),
+            " upper bound": eval_result.calculate_metrics(
+                doc_relevance_col="gold_id_or_answer_match", eval_mode="isolated"
+            ),
+        }
 
         if metrics_filter is not None:
             for metric_mode in calculated_metrics:
-                calculated_metrics[metric_mode] = {node: metrics if node not in metrics_filter
-                                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]}
-                                    for node, metrics in calculated_metrics[metric_mode].items()}
+                calculated_metrics[metric_mode] = {
+                    node: metrics
+                    if node not in metrics_filter
+                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]}
+                    for node, metrics in calculated_metrics[metric_mode].items()
+                }
 
         pipeline_overview = self._format_pipeline_overview(calculated_metrics)
-        wrong_samples_report = self._format_wrong_samples_report(eval_result=eval_result, n_wrong_examples=n_wrong_examples)
+        wrong_samples_report = self._format_wrong_samples_report(
+            eval_result=eval_result, n_wrong_examples=n_wrong_examples
+        )
 
-        print(
-            f"{pipeline_overview}\n"
-            f"{wrong_samples_report}")
+        print(f"{pipeline_overview}\n" f"{wrong_samples_report}")
 
 
 class RayPipeline(Pipeline):
@@ -949,6 +1015,7 @@ class RayPipeline(Pipeline):
     By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
     set the `address` parameter when creating the RayPipeline instance.
     """
+
     def __init__(self, address: str = None, **kwargs):
         """
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
@@ -960,12 +1027,12 @@ class RayPipeline(Pipeline):
 
     @classmethod
     def _load_from_config(
-            cls,
-            pipeline_config: Dict, 
-            pipeline_name: Optional[str] = None,
-            overwrite_with_env_variables: bool = True,
-            address: Optional[str] = None,
-            **kwargs,
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        address: Optional[str] = None,
+        **kwargs,
     ):
         pipeline_definition = cls._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = cls._get_component_definitions(
@@ -979,7 +1046,7 @@ class RayPipeline(Pipeline):
                 if root_node in ["Query", "File"]:
                     pipeline.root_node = root_node
                     handle = cls._create_ray_deployment(component_name=root_node, pipeline_config=pipeline_config)
-                    pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1,  inputs=[])
+                    pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1, inputs=[])
                 else:
                     raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
 
@@ -999,11 +1066,12 @@ class RayPipeline(Pipeline):
 
     @classmethod
     def load_from_yaml(
-            cls,
-            path: Path, pipeline_name: Optional[str] = None,
-            overwrite_with_env_variables: bool = True,
-            address: Optional[str] = None,
-            **kwargs,
+        cls,
+        path: Path,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        address: Optional[str] = None,
+        **kwargs,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -1051,9 +1119,13 @@ class RayPipeline(Pipeline):
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         """
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
-        return RayPipeline._load_from_config(pipeline_config=pipeline_config, pipeline_name=pipeline_name, 
-                overwrite_with_env_variables=overwrite_with_env_variables, address=address,**kwargs)
-        
+        return RayPipeline._load_from_config(
+            pipeline_config=pipeline_config,
+            pipeline_name=pipeline_name,
+            overwrite_with_env_variables=overwrite_with_env_variables,
+            address=address,
+            **kwargs,
+        )
 
     @classmethod
     def _create_ray_deployment(cls, component_name: str, pipeline_config: dict, replicas: int = 1):
@@ -1174,6 +1246,7 @@ class _RayDeploymentWrapper:
     This wrapper class encapsulates the initialization of Components. Given a Component Class
     name, it creates an instance using the YAML Pipeline config.
     """
+
     node: BaseComponent
 
     def __init__(self, pipeline_config: dict, component_name: str):

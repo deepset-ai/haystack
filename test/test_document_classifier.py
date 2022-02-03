@@ -10,7 +10,7 @@ def test_document_classifier(document_classifier):
 
     docs = [
         Document(
-            content="""That's good. I like it."""*700,  # extra long text to check truncation
+            content="""That's good. I like it.""" * 700,  # extra long text to check truncation
             meta={"name": "0"},
             id="1",
         ),
@@ -32,7 +32,7 @@ def test_zero_shot_document_classifier(zero_shot_document_classifier):
 
     docs = [
         Document(
-            content="""That's good. I like it."""*700,  # extra long text to check truncation
+            content="""That's good. I like it.""" * 700,  # extra long text to check truncation
             meta={"name": "0"},
             id="1",
         ),
@@ -54,7 +54,7 @@ def test_document_classifier_batch_size(batched_document_classifier):
 
     docs = [
         Document(
-            content="""That's good. I like it."""*700,  # extra long text to check truncation
+            content="""That's good. I like it.""" * 700,  # extra long text to check truncation
             meta={"name": "0"},
             id="1",
         ),
@@ -75,16 +75,13 @@ def test_document_classifier_as_index_node(indexing_document_classifier):
     assert isinstance(indexing_document_classifier, BaseDocumentClassifier)
 
     docs = [
-        {"content":"""That's good. I like it."""*700,  # extra long text to check truncation
-         "meta":{"name": "0"},
-         "id":"1",
-         "class_field": "That's bad."
+        {
+            "content": """That's good. I like it.""" * 700,  # extra long text to check truncation
+            "meta": {"name": "0"},
+            "id": "1",
+            "class_field": "That's bad.",
         },
-        {"content":"""That's bad. I like it.""",
-         "meta":{"name": "1"},
-         "id":"2",
-         "class_field": "That's good."
-        },
+        {"content": """That's bad. I like it.""", "meta": {"name": "1"}, "id": "2", "class_field": "That's good."},
     ]
     output, output_name = indexing_document_classifier.run(documents=docs, root_node="File")
     expected_labels = ["sadness", "joy"]
@@ -98,7 +95,7 @@ def test_document_classifier_as_query_node(document_classifier):
 
     docs = [
         Document(
-            content="""That's good. I like it."""*700,  # extra long text to check truncation
+            content="""That's good. I like it.""" * 700,  # extra long text to check truncation
             meta={"name": "0"},
             id="1",
         ),

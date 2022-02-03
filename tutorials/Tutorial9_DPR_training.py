@@ -54,7 +54,7 @@ def tutorial9_dpr_training():
         query_embedding_model=query_model,
         passage_embedding_model=passage_model,
         max_seq_len_query=64,
-        max_seq_len_passage=256
+        max_seq_len_passage=256,
     )
 
     # Start training our model and save it when it is finished
@@ -71,12 +71,13 @@ def tutorial9_dpr_training():
         evaluate_every=3000,
         embed_title=True,
         num_positives=1,
-        num_hard_negatives=1
+        num_hard_negatives=1,
     )
 
     ## Loading
 
     reloaded_retriever = DensePassageRetriever.load(load_dir=save_dir, document_store=None)
+
 
 if __name__ == "__main__":
     tutorial9_dpr_training()

@@ -9,7 +9,7 @@ from haystack.nodes.extractor import EntityExtractor, simplify_ner_for_qa
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_extractor(document_store_with_docs):
-    
+
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
@@ -20,11 +20,11 @@ def test_extractor(document_store_with_docs):
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run(
-        query="Who lives in Berlin?", 
+        query="Who lives in Berlin?",
         params={
-            "ESRetriever": {"top_k": 1}, 
+            "ESRetriever": {"top_k": 1},
             "Reader": {"top_k": 1},
-        }
+        },
     )
     entities = [entity["word"] for entity in prediction["answers"][0].meta["entities"]]
     assert "Carla" in entities
@@ -33,7 +33,7 @@ def test_extractor(document_store_with_docs):
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_extractor_output_simplifier(document_store_with_docs):
-    
+
     es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
@@ -44,14 +44,11 @@ def test_extractor_output_simplifier(document_store_with_docs):
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run(
-        query="Who lives in Berlin?", 
+        query="Who lives in Berlin?",
         params={
-            "ESRetriever": {"top_k": 1}, 
+            "ESRetriever": {"top_k": 1},
             "Reader": {"top_k": 1},
-        }
+        },
     )
     simplified = simplify_ner_for_qa(prediction)
-    assert simplified[0] == {
-        "answer": "Carla",
-        "entities": ["Carla"]
-    }
+    assert simplified[0] == {"answer": "Carla", "entities": ["Carla"]}

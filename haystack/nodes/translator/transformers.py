@@ -31,6 +31,7 @@ class TransformersTranslator(BaseTranslator):
         |    res = translator.translate(documents=DOCS, query=None)
         ```
     """
+
     def __init__(
         self,
         model_name_or_path: str,
@@ -39,7 +40,7 @@ class TransformersTranslator(BaseTranslator):
         clean_up_tokenization_spaces: Optional[bool] = True,
         use_gpu: bool = True,
     ):
-        """ Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
+        """Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
         of different models, usually one model per language pair and translation direction.
         They have a pretty standardized naming that should help you find the right model:
@@ -62,7 +63,9 @@ class TransformersTranslator(BaseTranslator):
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            model_name_or_path=model_name_or_path, tokenizer_name=tokenizer_name, max_seq_len=max_seq_len,
+            model_name_or_path=model_name_or_path,
+            tokenizer_name=tokenizer_name,
+            max_seq_len=max_seq_len,
             clean_up_tokenization_spaces=clean_up_tokenization_spaces,
         )
 
@@ -70,9 +73,7 @@ class TransformersTranslator(BaseTranslator):
         self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         tokenizer_name = tokenizer_name or model_name_or_path
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_name
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         self.model.to(str(self.devices[0]))
 
@@ -112,28 +113,24 @@ class TransformersTranslator(BaseTranslator):
 
         elif isinstance(documents, list):
             if isinstance(documents[0], Document):
-                text_for_translator = [doc.content for doc in documents]   # type: ignore
+                text_for_translator = [doc.content for doc in documents]  # type: ignore
             elif isinstance(documents[0], Answer):
-                text_for_translator = [answer.answer for answer in documents] # type: ignore
+                text_for_translator = [answer.answer for answer in documents]  # type: ignore
             elif isinstance(documents[0], str):
-                text_for_translator = documents   # type: ignore
+                text_for_translator = documents  # type: ignore
             else:
-                if not isinstance(documents[0].get(dict_key, None), str):    # type: ignore
+                if not isinstance(documents[0].get(dict_key, None), str):  # type: ignore
                     raise AttributeError(f"Dictionary should have {dict_key} key and it's value should be `str` type")
-                text_for_translator = [doc[dict_key] for doc in documents]    # type: ignore
+                text_for_translator = [doc[dict_key] for doc in documents]  # type: ignore
         else:
-            text_for_translator: List[str] = [query]     # type: ignore
+            text_for_translator: List[str] = [query]  # type: ignore
 
         batch = self.tokenizer.prepare_seq2seq_batch(
-            src_texts=text_for_translator,
-            return_tensors="pt",
-            max_length=self.max_seq_len
+            src_texts=text_for_translator, return_tensors="pt", max_length=self.max_seq_len
         ).to(self.devices[0])
         generated_output = self.model.generate(**batch)
         translated_texts = self.tokenizer.batch_decode(
-            generated_output,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=self.clean_up_tokenization_spaces
+            generated_output, skip_special_tokens=True, clean_up_tokenization_spaces=self.clean_up_tokenization_spaces
         )
 
         if queries_for_translator is not None and answers_for_translator is not None:
