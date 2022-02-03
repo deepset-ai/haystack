@@ -189,9 +189,9 @@ class BasePipeline:
         Lists all pipeline configs available on Deepset Cloud.
 
         :param workspace: workspace in Deepset Cloud
-        :param api_key: Secret value of the API key. 
+        :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param api_endpoint: The URL of the Deepset Cloud API. 
+        :param api_endpoint: The URL of the Deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 
         Returns:
@@ -210,11 +210,8 @@ class BasePipeline:
                         'indexing': {'status': 'IN_PROGRESS',
                         'pending_file_count': 3,
                         'total_file_count': 31}}]
-            """
-        client = DeepsetCloud.get_pipeline_client(
-            api_key=api_key, 
-            api_endpoint=api_endpoint, 
-            workspace=workspace)
+        """
+        client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         pipeline_config_infos = client.list_pipeline_configs()
         return pipeline_config_infos
 

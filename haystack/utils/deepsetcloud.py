@@ -43,18 +43,27 @@ class DeepsetCloudClient:
             )
         return response
 
-    def get_paginated(self, url: str, headers: dict = None, query_params: dict = {}, raise_on_error: bool = True, items_per_page: int = 100):
+    def get_paginated(
+        self,
+        url: str,
+        headers: dict = None,
+        query_params: dict = {},
+        raise_on_error: bool = True,
+        items_per_page: int = 100,
+    ):
         query_params["limit"] = items_per_page
         page_number = 1
         has_more = True
         data = []
         while has_more:
             query_params["page_number"] = page_number
-            payload = self.get(url=url, headers=headers, query_params=query_params, raise_on_error=raise_on_error).json()
+            payload = self.get(
+                url=url, headers=headers, query_params=query_params, raise_on_error=raise_on_error
+            ).json()
             data += payload["data"]
             has_more = payload["has_more"]
             page_number += 1
-        
+
         return data
 
     def post(self, url: str, json: dict = {}, stream: bool = False, headers: dict = None, raise_on_error: bool = True):
