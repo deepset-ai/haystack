@@ -43,7 +43,7 @@ simplify_ner_for_qa(output)
 Returns a simplified version of the output dictionary
 with the following structure:
 [
-    { 
+    {
         answer: { ... }
         entities: [ { ... }, {} ]
     }
