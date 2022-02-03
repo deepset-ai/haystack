@@ -113,7 +113,7 @@ Print the evaluation results
 #### semantic\_answer\_similarity
 
 ```python
-semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2") -> Tuple[List[float],List[float]]
+semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2") -> Tuple[List[float], List[float]]
 ```
 
 Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
