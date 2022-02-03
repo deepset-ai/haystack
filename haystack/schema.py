@@ -886,7 +886,9 @@ class EvaluationResult:
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
             for multilabel_id in answers["multilabel_id"].unique():
-                top_k_document_ids = top_k_documents[top_k_documents["multilabel_id"] == multilabel_id]["document_id"].unique()
+                top_k_document_ids = top_k_documents[top_k_documents["multilabel_id"] == multilabel_id][
+                    "document_id"
+                ].unique()
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 # consider only the answers within simulated_top_k_retriever documents
                 simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
