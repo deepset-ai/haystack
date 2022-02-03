@@ -1,11 +1,5 @@
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes import (
-    ElasticsearchRetriever,
-    DensePassageRetriever,
-    EmbeddingRetriever,
-    FARMReader,
-    PreProcessor
-)
+from haystack.nodes import ElasticsearchRetriever, DensePassageRetriever, EmbeddingRetriever, FARMReader, PreProcessor
 from haystack.utils import fetch_archive_from_http, launch_es
 from haystack.modeling.utils import initialize_device_settings
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline
@@ -35,9 +29,14 @@ def tutorial5_evaluation():
 
     # Connect to Elasticsearch
     document_store = ElasticsearchDocumentStore(
-        host="localhost", username="", password="", index=doc_index,
-        label_index=label_index, embedding_field="emb",
-        embedding_dim=768, excluded_meta_data=["emb"]
+        host="localhost",
+        username="",
+        password="",
+        index=doc_index,
+        label_index=label_index,
+        embedding_field="emb",
+        embedding_dim=768,
+        excluded_meta_data=["emb"],
     )
 
     # Add evaluation data to Elasticsearch document store
@@ -49,7 +48,7 @@ def tutorial5_evaluation():
         split_overlap=0,
         split_respect_sentence_boundary=False,
         clean_empty_lines=False,
-        clean_whitespace=False
+        clean_whitespace=False,
     )
     document_store.delete_documents(index=doc_index)
     document_store.delete_documents(index=label_index)
@@ -61,9 +60,8 @@ def tutorial5_evaluation():
         filename="../data/nq/nq_dev_subset_v2.json",
         doc_index=doc_index,
         label_index=label_index,
-        preprocessor=preprocessor
+        preprocessor=preprocessor,
     )
-
 
     # Initialize Retriever
     retriever = ElasticsearchRetriever(document_store=document_store)
@@ -87,11 +85,7 @@ def tutorial5_evaluation():
     # document_store.update_embeddings(retriever, index=doc_index)
 
     # Initialize Reader
-    reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2",
-        top_k=4,
-        return_no_answer=True
-    )
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", top_k=4, return_no_answer=True)
 
     # Define a pipeline consisting of the initialized retriever and reader
     # Here we evaluate retriever and reader in open domain fashion on the full corpus of documents i.e. a document is considered
@@ -123,10 +117,7 @@ def tutorial5_evaluation():
     #    ]
 
     # Similar to pipeline.run() we can execute pipeline.eval()
-    eval_result = pipeline.eval(
-        labels=eval_labels,
-        params={"Retriever": {"top_k": 5}}
-    )
+    eval_result = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 5}})
 
     # The EvaluationResult contains a pandas dataframe for each pipeline node.
     # That's why there are two dataframes in the EvaluationResult of an ExtractiveQAPipeline.
@@ -138,10 +129,10 @@ def tutorial5_evaluation():
     reader_result.head()
 
     # We can filter for all documents retrieved for a given query
-    retriever_book_of_life = retriever_result[retriever_result['query'] == "who is written in the book of life"]
+    retriever_book_of_life = retriever_result[retriever_result["query"] == "who is written in the book of life"]
 
     # We can also filter for all answers predicted for a given query
-    reader_book_of_life = reader_result[reader_result['query'] == "who is written in the book of life"]
+    reader_book_of_life = reader_result[reader_result["query"] == "who is written in the book of life"]
 
     # Save the evaluation result so that we can reload it later and calculate evaluation metrics without running the pipeline again.
     eval_result.save("../")
@@ -171,10 +162,10 @@ def tutorial5_evaluation():
     # More info on this metric can be found in our [paper](https://arxiv.org/abs/2108.06130) or in our [blog post](https://www.deepset.ai/blog/semantic-answer-similarity-to-evaluate-qa).
 
     advanced_eval_result = pipeline.eval(
-            labels=eval_labels,
-            params={"Retriever": {"top_k": 1}},
-            sas_model_name_or_path="cross-encoder/stsb-roberta-large"
-        )
+        labels=eval_labels,
+        params={"Retriever": {"top_k": 1}},
+        sas_model_name_or_path="cross-encoder/stsb-roberta-large",
+    )
 
     metrics = advanced_eval_result.calculate_metrics()
     print(metrics["Reader"]["sas"])
@@ -183,9 +174,7 @@ def tutorial5_evaluation():
     # The isolated node evaluation uses labels as input to the reader node instead of the output of the preceeding retriever node.
     # Thereby, we can additionally calculate the upper bounds of the evaluation metrics of the reader.
     eval_result_with_upper_bounds = pipeline.eval(
-        labels=eval_labels,
-        params={"Retriever": {"top_k": 1}},
-        add_isolated_node_eval=True
+        labels=eval_labels, params={"Retriever": {"top_k": 1}}, add_isolated_node_eval=True
     )
     pipeline.print_eval_report(eval_result_with_upper_bounds)
 
@@ -200,14 +189,15 @@ def tutorial5_evaluation():
     ## Retriever Mean Avg Precision rewards retrievers that give relevant documents a higher rank
     print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
 
-
     # Evaluate Reader on its own
     # Here we evaluate only the reader in a closed domain fashion i.e. the reader is given one query
     # and its corresponding relevant document and metrics are calculated on whether the right position in this text is selected by
     # the model as the answer span (i.e. SQuAD style)
-    reader_eval_results = reader.eval(document_store=document_store, device=devices[0], label_index=label_index, doc_index=doc_index)
+    reader_eval_results = reader.eval(
+        document_store=document_store, device=devices[0], label_index=label_index, doc_index=doc_index
+    )
     # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
-    #reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
+    # reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json", device=device)
 
     ## Reader Top-N-Accuracy is the proportion of predicted answers that match with their corresponding correct answer
     print("Reader Top-N-Accuracy:", reader_eval_results["top_n_accuracy"])

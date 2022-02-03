@@ -28,7 +28,7 @@ class GracefulKiller:
         self.kill_now = True
 
 
-def set_all_seeds(seed: int, deterministic_cudnn: bool=False) -> None:
+def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
     """
     Setting multiple seeds to make runs reproducible.
 
@@ -41,14 +41,16 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool=False) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     torch.cuda.manual_seed_all(seed)
     if deterministic_cudnn:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
 
-def initialize_device_settings(use_cuda: bool, local_rank: int = -1, multi_gpu: bool = True) -> Tuple[List[torch.device], int]:
+def initialize_device_settings(
+    use_cuda: bool, local_rank: int = -1, multi_gpu: bool = True
+) -> Tuple[List[torch.device], int]:
     """
     Returns a list of available devices.
 
@@ -135,14 +137,14 @@ def all_gather_list(data, group=None, max_size=16384):
 
     if enc_size + SIZE_STORAGE_BYTES > max_size:
         raise ValueError(
-            'encoded data exceeds max_size, this can be fixed by increasing buffer size: {}'.format(enc_size))
+            "encoded data exceeds max_size, this can be fixed by increasing buffer size: {}".format(enc_size)
+        )
 
     rank = dist.get_rank()
     world_size = dist.get_world_size()
     buffer_size = max_size * world_size
 
-    if not hasattr(all_gather_list, '_buffer') or \
-            all_gather_list._buffer.numel() < buffer_size:
+    if not hasattr(all_gather_list, "_buffer") or all_gather_list._buffer.numel() < buffer_size:
         all_gather_list._buffer = torch.cuda.ByteTensor(buffer_size)
         all_gather_list._cpu_buffer = torch.ByteTensor(max_size).pin_memory()
 
@@ -150,36 +152,37 @@ def all_gather_list(data, group=None, max_size=16384):
     buffer.zero_()
     cpu_buffer = all_gather_list._cpu_buffer
 
-    assert enc_size < 256 ** SIZE_STORAGE_BYTES, 'Encoded object size should be less than {} bytes'.format(
-        256 ** SIZE_STORAGE_BYTES)
+    assert enc_size < 256**SIZE_STORAGE_BYTES, "Encoded object size should be less than {} bytes".format(
+        256**SIZE_STORAGE_BYTES
+    )
 
-    size_bytes = enc_size.to_bytes(SIZE_STORAGE_BYTES, byteorder='big')
+    size_bytes = enc_size.to_bytes(SIZE_STORAGE_BYTES, byteorder="big")
 
     cpu_buffer[0:SIZE_STORAGE_BYTES] = torch.ByteTensor(list(size_bytes))
-    cpu_buffer[SIZE_STORAGE_BYTES: enc_size + SIZE_STORAGE_BYTES] = torch.ByteTensor(list(enc))
+    cpu_buffer[SIZE_STORAGE_BYTES : enc_size + SIZE_STORAGE_BYTES] = torch.ByteTensor(list(enc))
 
     start = rank * max_size
     size = enc_size + SIZE_STORAGE_BYTES
-    buffer[start: start + size].copy_(cpu_buffer[:size])
+    buffer[start : start + size].copy_(cpu_buffer[:size])
 
     all_reduce(buffer, group=group)
 
     try:
         result = []
         for i in range(world_size):
-            out_buffer = buffer[i * max_size: (i + 1) * max_size]
-            size = int.from_bytes(out_buffer[0:SIZE_STORAGE_BYTES], byteorder='big')
+            out_buffer = buffer[i * max_size : (i + 1) * max_size]
+            size = int.from_bytes(out_buffer[0:SIZE_STORAGE_BYTES], byteorder="big")
             if size > 0:
-                result.append(pickle.loads(bytes(out_buffer[SIZE_STORAGE_BYTES: size + SIZE_STORAGE_BYTES].tolist())))
+                result.append(pickle.loads(bytes(out_buffer[SIZE_STORAGE_BYTES : size + SIZE_STORAGE_BYTES].tolist())))
         return result
     except pickle.UnpicklingError:
         raise Exception(
-            'Unable to unpickle data from other workers. all_gather_list requires all '
-            'workers to enter the function together, so this error usually indicates '
-            'that the workers have fallen out of sync somehow. Workers can fall out of '
-            'sync if one of them runs out of memory, or if there are other conditions '
-            'in your training script that can cause one worker to finish an epoch '
-            'while other workers are still iterating over their portions of the data.'
+            "Unable to unpickle data from other workers. all_gather_list requires all "
+            "workers to enter the function together, so this error usually indicates "
+            "that the workers have fallen out of sync somehow. Workers can fall out of "
+            "sync if one of them runs out of memory, or if there are other conditions "
+            "in your training script that can cause one worker to finish an epoch "
+            "while other workers are still iterating over their portions of the data."
         )
 
 
@@ -250,7 +253,7 @@ def calc_chunksize(num_dicts, min_chunksize=4, max_chunksize=2000, max_processes
     if mp.cpu_count() > 3:
         num_cpus = min(mp.cpu_count() - 1 or 1, max_processes)  # -1 to keep a CPU core free for xxx
     else:
-        num_cpus = min(mp.cpu_count(), max_processes) # when there are few cores, we use all of them
+        num_cpus = min(mp.cpu_count(), max_processes)  # when there are few cores, we use all of them
 
     dicts_per_cpu = np.ceil(num_dicts / num_cpus)
     # automatic adjustment of multiprocessing chunksize
@@ -276,10 +279,10 @@ def log_ascii_workers(n, logger):
     x_worker_lines = WORKER_X.split("\n")
     all_worker_lines = []
     for i in range(n):
-        rand = np.random.randint(low=0,high=3)
-        if(rand % 3 == 0):
+        rand = np.random.randint(low=0, high=3)
+        if rand % 3 == 0:
             all_worker_lines.append(f_worker_lines)
-        elif(rand % 3 == 1):
+        elif rand % 3 == 1:
             all_worker_lines.append(m_worker_lines)
         else:
             all_worker_lines.append(x_worker_lines)

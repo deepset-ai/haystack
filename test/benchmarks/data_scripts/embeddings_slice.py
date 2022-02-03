@@ -21,7 +21,7 @@ print()
 
 # Extract neg passage ids
 with open(neg_passages_filename) as f:
-    f.readline()    # Ignore column headers
+    f.readline()  # Ignore column headers
     for _ in range(n_passages - len(passage_ids)):
         l = f.readline()
         passage_ids.append(str(l.split()[0]))
@@ -47,6 +47,3 @@ print()
 # Write vectors to file
 with open(f"wikipedia_passages_{n_passages}.pkl", "wb") as f:
     pickle.dump(ret, f)
-
-
-

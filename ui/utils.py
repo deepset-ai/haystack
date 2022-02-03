@@ -10,6 +10,7 @@ try:
     import streamlit as st
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
+
     _optional_component_not_installed(__name__, "ui", ie)
 
 
@@ -75,7 +76,7 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
                     "relevance": round(answer["score"] * 100, 2),
                     "document": [doc for doc in response["documents"] if doc["id"] == answer["document_id"]][0],
                     "offset_start_in_doc": answer["offsets_in_document"][0]["start"],
-                    "_raw": answer
+                    "_raw": answer,
                 }
             )
         else:
@@ -103,8 +104,8 @@ def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, doc
         "is_correct_answer": is_correct_answer,
         "is_correct_document": is_correct_document,
         "origin": "user-feedback",
-        "answer": answer_obj
-        }
+        "answer": answer_obj,
+    }
     response_raw = requests.post(url, json=req)
     if response_raw.status_code >= 400:
         raise ValueError(f"An error was returned [code {response_raw.status_code}]: {response_raw.json()}")

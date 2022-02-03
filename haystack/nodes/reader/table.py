@@ -6,8 +6,15 @@ import torch
 import numpy as np
 import pandas as pd
 from quantulum3 import parser
-from transformers import TapasTokenizer, TapasForQuestionAnswering, AutoTokenizer, AutoModelForSequenceClassification, \
-    BatchEncoding, TapasModel, TapasConfig
+from transformers import (
+    TapasTokenizer,
+    TapasForQuestionAnswering,
+    AutoTokenizer,
+    AutoModelForSequenceClassification,
+    BatchEncoding,
+    TapasModel,
+    TapasConfig,
+)
 from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
 
 from haystack.schema import Document, Answer, Span
@@ -44,16 +51,17 @@ class TableReader(BaseReader):
     answer = prediction["answers"][0].answer  # "10 june 1996"
     ```
     """
+
     def __init__(
-            self,
-            model_name_or_path: str = "google/tapas-base-finetuned-wtq",
-            model_version: Optional[str] = None,
-            tokenizer: Optional[str] = None,
-            use_gpu: bool = True,
-            top_k: int = 10,
-            top_k_per_candidate: int = 3,
-            return_no_answer: bool = False,
-            max_seq_len: int = 256,
+        self,
+        model_name_or_path: str = "google/tapas-base-finetuned-wtq",
+        model_version: Optional[str] = None,
+        tokenizer: Optional[str] = None,
+        use_gpu: bool = True,
+        top_k: int = 10,
+        top_k_per_candidate: int = 3,
+        return_no_answer: bool = False,
+        max_seq_len: int = 256,
     ):
         """
         Load a TableQA model from Transformers.
@@ -88,9 +96,16 @@ class TableReader(BaseReader):
                             input size fits the model.
         """
         # Save init parameters to enable export of component config as YAML
-        self.set_config(model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
-                        use_gpu=use_gpu, top_k=top_k, top_k_per_candidate=top_k_per_candidate,
-                        return_no_answer=return_no_answer, max_seq_len=max_seq_len)
+        self.set_config(
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            tokenizer=tokenizer,
+            use_gpu=use_gpu,
+            top_k=top_k,
+            top_k_per_candidate=top_k_per_candidate,
+            return_no_answer=return_no_answer,
+            max_seq_len=max_seq_len,
+        )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         config = TapasConfig.from_pretrained(model_name_or_path)
@@ -137,11 +152,9 @@ class TableReader(BaseReader):
 
             table: pd.DataFrame = document.content
             # Tokenize query and current table
-            inputs = self.tokenizer(table=table,
-                                    queries=query,
-                                    max_length=self.max_seq_len,
-                                    return_tensors="pt",
-                                    truncation=True)
+            inputs = self.tokenizer(
+                table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
+            )
             inputs.to(self.devices[0])
 
             if isinstance(self.model, TapasForQuestionAnswering):
@@ -154,21 +167,22 @@ class TableReader(BaseReader):
                     no_answer_score = current_no_answer_score
 
         if self.return_no_answer and isinstance(self.model, self.TapasForScoredQA):
-            answers.append(Answer(
-                answer="",
-                type="extractive",
-                score=no_answer_score,
-                context=None,
-                offsets_in_context=[Span(start=0, end=0)],
-                offsets_in_document=[Span(start=0, end=0)],
-                document_id=None,
-                meta=None
-            ))
+            answers.append(
+                Answer(
+                    answer="",
+                    type="extractive",
+                    score=no_answer_score,
+                    context=None,
+                    offsets_in_context=[Span(start=0, end=0)],
+                    offsets_in_document=[Span(start=0, end=0)],
+                    document_id=None,
+                    meta=None,
+                )
+            )
         answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
-        results = {"query": query,
-                   "answers": answers}
+        results = {"query": query, "answers": answers}
 
         return results
 
@@ -184,9 +198,7 @@ class TableReader(BaseReader):
             aggregation_logits = None
 
         predicted_output = self.tokenizer.convert_logits_to_predictions(
-            inputs,
-            outputs.logits.cpu().detach(),
-            aggregation_logits
+            inputs, outputs.logits.cpu().detach(), aggregation_logits
         )
         if len(predicted_output) == 1:
             predicted_answer_coordinates = predicted_output[0]
@@ -223,8 +235,7 @@ class TableReader(BaseReader):
             offsets_in_document=answer_offsets,
             offsets_in_context=answer_offsets,
             document_id=document.id,
-            meta={"aggregation_operator": current_aggregation_operator,
-                  "answer_cells": current_answer_cells}
+            meta={"aggregation_operator": current_aggregation_operator, "answer_cells": current_answer_cells},
         )
 
         return answer
@@ -253,7 +264,9 @@ class TableReader(BaseReader):
         row_ids: List[int] = inputs.token_type_ids[:, :, token_types.index("row_ids")].tolist()[0]
         column_ids: List[int] = inputs.token_type_ids[:, :, token_types.index("column_ids")].tolist()[0]
 
-        possible_answer_spans: List[Tuple[int, int, int, int]] = []  # List of tuples: (row_idx, col_idx, start_token, end_token)
+        possible_answer_spans: List[
+            Tuple[int, int, int, int]
+        ] = []  # List of tuples: (row_idx, col_idx, start_token, end_token)
         current_start_idx = -1
         current_column_id = -1
         for idx, (row_id, column_id) in enumerate(zip(row_ids, column_ids)):
@@ -263,12 +276,12 @@ class TableReader(BaseReader):
             if column_id != current_column_id:
                 if current_start_idx != -1:
                     possible_answer_spans.append(
-                        (row_ids[current_start_idx]-1, column_ids[current_start_idx]-1, current_start_idx, idx-1)
+                        (row_ids[current_start_idx] - 1, column_ids[current_start_idx] - 1, current_start_idx, idx - 1)
                     )
                 current_start_idx = idx
                 current_column_id = column_id
         possible_answer_spans.append(
-            (row_ids[current_start_idx]-1, column_ids[current_start_idx]-1, current_start_idx, len(row_ids)-1)
+            (row_ids[current_start_idx] - 1, column_ids[current_start_idx] - 1, current_start_idx, len(row_ids) - 1)
         )
 
         # Concat logits of start token and end token of possible answer spans
@@ -281,8 +294,10 @@ class TableReader(BaseReader):
         concatenated_logit_tensors = torch.unsqueeze(torch.stack(concatenated_logits), dim=0)
 
         # Calculate score for each possible span
-        span_logits = torch.einsum("bsj,j->bs", concatenated_logit_tensors, self.model.span_output_weights) \
-                      + self.model.span_output_bias
+        span_logits = (
+            torch.einsum("bsj,j->bs", concatenated_logit_tensors, self.model.span_output_weights)
+            + self.model.span_output_bias
+        )
         span_logits_softmax = torch.nn.functional.softmax(span_logits, dim=1)
 
         top_k_answer_spans = torch.topk(span_logits[0], min(self.top_k_per_candidate, len(possible_answer_spans)))
@@ -304,17 +319,17 @@ class TableReader(BaseReader):
                     offsets_in_document=answer_offsets,
                     offsets_in_context=answer_offsets,
                     document_id=document.id,
-                    meta={"aggregation_operator": "NONE",
-                          "answer_cells": table.iat[current_answer_span[:2]]}
+                    meta={"aggregation_operator": "NONE", "answer_cells": table.iat[current_answer_span[:2]]},
                 )
             )
 
         no_answer_score = 1 - table_relevancy_prob
 
         return answers, no_answer_score
-    
-    def _calculate_answer_score(self, logits: torch.Tensor, inputs: BatchEncoding,
-                                answer_coordinates: List[Tuple[int, int]]) -> float:
+
+    def _calculate_answer_score(
+        self, logits: torch.Tensor, inputs: BatchEncoding, answer_coordinates: List[Tuple[int, int]]
+    ) -> float:
         """
         Calculates the answer score by computing each cell's probability of being part of the answer
         and taking the mean probability of the answer cells.
@@ -327,12 +342,13 @@ class TableReader(BaseReader):
         segment_ids = inputs.token_type_ids[0, :, 0].tolist()
         column_ids = inputs.token_type_ids[0, :, 1].tolist()
         row_ids = inputs.token_type_ids[0, :, 2].tolist()
-        all_cell_probabilities = self.tokenizer._get_mean_cell_probs(token_probabilities[0].tolist(), segment_ids,
-                                                                     row_ids, column_ids)
+        all_cell_probabilities = self.tokenizer._get_mean_cell_probs(
+            token_probabilities[0].tolist(), segment_ids, row_ids, column_ids
+        )
         # _get_mean_cell_probs seems to index cells by (col, row). DataFrames are, however, indexed by (row, col).
         all_cell_probabilities = {(row, col): prob for (col, row), prob in all_cell_probabilities.items()}
         answer_cell_probabilities = [all_cell_probabilities[coord] for coord in answer_coordinates]
-        
+
         return np.mean(answer_cell_probabilities)
 
     @staticmethod
@@ -350,8 +366,9 @@ class TableReader(BaseReader):
         # Parse answer cells in order to aggregate numerical values
         parsed_answer_cells = [parser.parse(cell) for cell in answer_cells]
         # Check if all cells contain at least one numerical value and that all values share the same unit
-        if all(parsed_answer_cells) and all(cell[0].unit.name == parsed_answer_cells[0][0].unit.name
-                                            for cell in parsed_answer_cells):
+        if all(parsed_answer_cells) and all(
+            cell[0].unit.name == parsed_answer_cells[0][0].unit.name for cell in parsed_answer_cells
+        ):
             numerical_values = [cell[0].value for cell in parsed_answer_cells]
             unit = parsed_answer_cells[0][0].unit.symbols[0] if parsed_answer_cells[0][0].unit.symbols else ""
 
@@ -382,14 +399,13 @@ class TableReader(BaseReader):
         for coord in answer_coordinates:
             answer_cell_offset = (coord[0] * n_columns) + coord[1]
             answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
-            
+
         return answer_offsets
 
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         raise NotImplementedError("Batch prediction not yet available in TableReader.")
 
     class TapasForScoredQA(TapasPreTrainedModel):
-
         def __init__(self, config):
             super().__init__(config)
 
@@ -428,16 +444,17 @@ class RCIReader(BaseReader):
     - Slower
     """
 
-    def __init__(self,
-                 row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row",
-                 column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col",
-                 row_model_version: Optional[str] = None,
-                 column_model_version: Optional[str] = None,
-                 row_tokenizer: Optional[str] = None,
-                 column_tokenizer: Optional[str] = None,
-                 use_gpu: bool = True,
-                 top_k: int = 10,
-                 max_seq_len: int = 256,
+    def __init__(
+        self,
+        row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row",
+        column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col",
+        row_model_version: Optional[str] = None,
+        column_model_version: Optional[str] = None,
+        row_tokenizer: Optional[str] = None,
+        column_tokenizer: Optional[str] = None,
+        use_gpu: bool = True,
+        top_k: int = 10,
+        max_seq_len: int = 256,
     ):
         """
         Load an RCI model from Transformers.
@@ -463,16 +480,25 @@ class RCIReader(BaseReader):
                             input size fits the model.
         """
         # Save init parameters to enable export of component config as YAML
-        self.set_config(row_model_name_or_path=row_model_name_or_path,
-                        column_model_name_or_path=column_model_name_or_path, row_model_version=row_model_version,
-                        column_model_version=column_model_version, row_tokenizer=row_tokenizer,
-                        column_tokenizer=column_tokenizer, use_gpu=use_gpu, top_k=top_k, max_seq_len=max_seq_len)
+        self.set_config(
+            row_model_name_or_path=row_model_name_or_path,
+            column_model_name_or_path=column_model_name_or_path,
+            row_model_version=row_model_version,
+            column_model_version=column_model_version,
+            row_tokenizer=row_tokenizer,
+            column_tokenizer=column_tokenizer,
+            use_gpu=use_gpu,
+            top_k=top_k,
+            max_seq_len=max_seq_len,
+        )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        self.row_model = AutoModelForSequenceClassification.from_pretrained(row_model_name_or_path,
-                                                                            revision=row_model_version)
-        self.column_model = AutoModelForSequenceClassification.from_pretrained(row_model_name_or_path,
-                                                                               revision=column_model_version)
+        self.row_model = AutoModelForSequenceClassification.from_pretrained(
+            row_model_name_or_path, revision=row_model_version
+        )
+        self.column_model = AutoModelForSequenceClassification.from_pretrained(
+            row_model_name_or_path, revision=column_model_version
+        )
         self.row_model.to(str(self.devices[0]))
         self.column_model.to(str(self.devices[0]))
 
@@ -534,7 +560,7 @@ class RCIReader(BaseReader):
                 return_tensors="pt",
                 add_special_tokens=True,
                 truncation=True,
-                padding=True
+                padding=True,
             )
             row_inputs.to(self.devices[0])
             row_logits = self.row_model(**row_inputs)[0].detach().cpu().numpy()[:, 1]
@@ -546,7 +572,7 @@ class RCIReader(BaseReader):
                 return_tensors="pt",
                 add_special_tokens=True,
                 truncation=True,
-                padding=True
+                padding=True,
             )
             column_inputs.to(self.devices[0])
             column_logits = self.column_model(**column_inputs)[0].detach().cpu().numpy()[:, 1]
@@ -583,8 +609,7 @@ class RCIReader(BaseReader):
         answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
-        results = {"query": query,
-                   "answers": answers}
+        results = {"query": query, "answers": answers}
 
         return results
 
