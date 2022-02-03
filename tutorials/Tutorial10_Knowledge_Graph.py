@@ -29,17 +29,18 @@ def tutorial10_knowledge_graph():
     if LAUNCH_GRAPHDB:
         print("Starting GraphDB ...")
         status = subprocess.run(
-            ['docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11'], shell=True
+            [
+                "docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11"
+            ],
+            shell=True,
         )
         if status.returncode:
-            status = subprocess.run(
-                [
-                    'docker start graphdb-instance-tutorial'],
-                shell=True
-            )
+            status = subprocess.run(["docker start graphdb-instance-tutorial"], shell=True)
             if status.returncode:
-                raise Exception("Failed to launch GraphDB. If you want to connect to an already running GraphDB instance"
-                            "then set LAUNCH_GRAPHDB in the script to False.")
+                raise Exception(
+                    "Failed to launch GraphDB. If you want to connect to an already running GraphDB instance"
+                    "then set LAUNCH_GRAPHDB in the script to False."
+                )
         time.sleep(5)
 
     # Initialize a knowledge graph connected to GraphDB and use "tutorial_10_index" as the name of the index
@@ -49,10 +50,10 @@ def tutorial10_knowledge_graph():
     kg.delete_index()
 
     # Create the index based on a configuration file
-    kg.create_index(config_path=Path(graph_dir+"repo-config.ttl"))
+    kg.create_index(config_path=Path(graph_dir + "repo-config.ttl"))
 
     # Import triples of subject, predicate, and object statements from a ttl file
-    kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir+"triples.ttl"))
+    kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir + "triples.ttl"))
     print(f"The last triple stored in the knowledge graph is: {kg.get_all_triples()[-1]}")
     print(f"There are {len(kg.get_all_triples())} triples stored in the knowledge graph.")
 
@@ -64,7 +65,7 @@ def tutorial10_knowledge_graph():
     kg.prefixes = prefixes
 
     # Load a pre-trained model that translates text queries to SPARQL queries
-    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path=model_dir+"hp_v3.4")
+    kgqa_retriever = Text2SparqlRetriever(knowledge_graph=kg, model_name_or_path=model_dir + "hp_v3.4")
 
     # We can now ask questions that will be answered by our knowledge graph!
     # One limitation though: our pre-trained model can only generate questions about resources it has seen during training.
@@ -72,20 +73,24 @@ def tutorial10_knowledge_graph():
     # E.g. "Harry" -> "hp:Harry_potter"
 
     query = "In which house is Harry Potter?"
-    print(f"Translating the text query \"{query}\" to a SPARQL query and executing it on the knowledge graph...")
+    print(f'Translating the text query "{query}" to a SPARQL query and executing it on the knowledge graph...')
     result = kgqa_retriever.retrieve(query=query)
     print(result)
     # Correct SPARQL query: select ?a { hp:Harry_potter hp:house ?a . }
     # Correct answer: Gryffindor
 
     print("Executing a SPARQL query with prefixed names of resources...")
-    result = kgqa_retriever._query_kg(sparql_query="select distinct ?sbj where { ?sbj hp:job hp:Keeper_of_keys_and_grounds . }")
+    result = kgqa_retriever._query_kg(
+        sparql_query="select distinct ?sbj where { ?sbj hp:job hp:Keeper_of_keys_and_grounds . }"
+    )
     print(result)
     # Paraphrased question: Who is the keeper of keys and grounds?
     # Correct answer: Rubeus Hagrid
 
     print("Executing a SPARQL query with full names of resources...")
-    result = kgqa_retriever._query_kg(sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }")
+    result = kgqa_retriever._query_kg(
+        sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }"
+    )
     print(result)
     # Paraphrased question: What is the patronus of Hermione?
     # Correct answer: Otter

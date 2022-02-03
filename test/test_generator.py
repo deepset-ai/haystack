@@ -21,19 +21,13 @@ from conftest import DOCS_WITH_EMBEDDINGS
     indirect=True,
 )
 def test_generator_pipeline_with_translator(
-    document_store,
-    retriever,
-    rag_generator,
-    en_to_de_translator,
-    de_to_en_translator
+    document_store, retriever, rag_generator, en_to_de_translator, de_to_en_translator
 ):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     query = "Was ist die Hauptstadt der Bundesrepublik Deutschland?"
     base_pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
     pipeline = TranslationWrapperPipeline(
-        input_translator=de_to_en_translator,
-        output_translator=en_to_de_translator,
-        pipeline=base_pipeline
+        input_translator=de_to_en_translator, output_translator=en_to_de_translator, pipeline=base_pipeline
     )
     output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
     answers = output["answers"]
@@ -65,7 +59,7 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
     assert "berlin" in answers[0].answer
 
 
-@pytest.mark.skipif(sys.platform in ['win32', 'cygwin'], reason="Gives memory allocation error on windows runner")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Gives memory allocation error on windows runner")
 @pytest.mark.slow
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
@@ -105,7 +99,7 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever):
     # raises exception as we don't have converter for "patrickvonplaten/t5-tiny-random" in Seq2SeqGenerator
     with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
-    assert ("doesn\'t have input converter registered for patrickvonplaten/t5-tiny-random" in str(exception_info.value))
+    assert "doesn't have input converter registered for patrickvonplaten/t5-tiny-random" in str(exception_info.value)
 
 
 @pytest.mark.slow
@@ -122,15 +116,16 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever):
     document_store.update_embeddings(retriever)
 
     class _InvalidConverter:
-
         def __call__(self, some_invalid_para: str, another_invalid_param: str) -> None:
             pass
 
-    seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random", input_converter=_InvalidConverter())
+    seq2seq = Seq2SeqGenerator(
+        model_name_or_path="patrickvonplaten/t5-tiny-random", input_converter=_InvalidConverter()
+    )
     query = "This query will fail due to InvalidConverter used"
     pipeline = GenerativeQAPipeline(retriever=retriever, generator=seq2seq)
 
     # raises exception as we are using invalid method signature in _InvalidConverter
     with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
-    assert ("does not have a valid __call__ method signature" in str(exception_info.value))
+    assert "does not have a valid __call__ method signature" in str(exception_info.value)

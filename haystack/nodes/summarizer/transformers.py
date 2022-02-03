@@ -48,17 +48,18 @@ class TransformersSummarizer(BaseSummarizer):
     |      },
     ```
     """
+
     def __init__(
-            self,
-            model_name_or_path: str = "google/pegasus-xsum",
-            model_version: Optional[str] = None,
-            tokenizer: Optional[str] = None,
-            max_length: int = 200,
-            min_length: int = 5,
-            use_gpu: bool = True,
-            clean_up_tokenization_spaces: bool = True,
-            separator_for_single_summary: str = " ",
-            generate_single_summary: bool = False,
+        self,
+        model_name_or_path: str = "google/pegasus-xsum",
+        model_version: Optional[str] = None,
+        tokenizer: Optional[str] = None,
+        max_length: int = 200,
+        min_length: int = 5,
+        use_gpu: bool = True,
+        clean_up_tokenization_spaces: bool = True,
+        separator_for_single_summary: str = " ",
+        generate_single_summary: bool = False,
     ):
         """
         Load a Summarization model from Transformers.
@@ -83,10 +84,15 @@ class TransformersSummarizer(BaseSummarizer):
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
-            max_length=max_length, min_length=min_length, use_gpu=use_gpu,
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            tokenizer=tokenizer,
+            max_length=max_length,
+            min_length=min_length,
+            use_gpu=use_gpu,
             clean_up_tokenization_spaces=clean_up_tokenization_spaces,
-            separator_for_single_summary=separator_for_single_summary, generate_single_summary=generate_single_summary,
+            separator_for_single_summary=separator_for_single_summary,
+            generate_single_summary=generate_single_summary,
         )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
@@ -94,7 +100,9 @@ class TransformersSummarizer(BaseSummarizer):
         # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
         if tokenizer is None:
             tokenizer = model_name_or_path
-        model = AutoModelForSeq2SeqLM.from_pretrained(pretrained_model_name_or_path=model_name_or_path, revision=model_version)
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version
+        )
         self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=device)
         self.max_length = max_length
         self.min_length = min_length
@@ -103,8 +111,9 @@ class TransformersSummarizer(BaseSummarizer):
         self.generate_single_summary = generate_single_summary
         self.print_log: Set[str] = set()
 
-    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None,
-                truncation: bool = True) -> List[Document]:
+    def predict(
+        self, documents: List[Document], generate_single_summary: Optional[bool] = None, truncation: bool = True
+    ) -> List[Document]:
         """
         Produce the summarization from the supplied documents.
         These document can for example be retrieved via the Retriever.
@@ -135,13 +144,15 @@ class TransformersSummarizer(BaseSummarizer):
             contexts = [self.separator_for_single_summary.join(contexts)]
 
         encoded_input = self.summarizer.tokenizer(contexts, verbose=False)
-        for input_id in encoded_input['input_ids']:
+        for input_id in encoded_input["input_ids"]:
             tokens_count: int = len(input_id)
             if tokens_count > self.summarizer.tokenizer.model_max_length:
-                truncation_warning = "One or more of your input document texts is longer than the specified " \
-                                     f"maximum sequence length for this summarizer model. "\
-                                     f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"\
-                                     f" tokens."
+                truncation_warning = (
+                    "One or more of your input document texts is longer than the specified "
+                    f"maximum sequence length for this summarizer model. "
+                    f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"
+                    f" tokens."
+                )
                 if truncation_warning not in self.print_log:
                     logger.warning(truncation_warning)
                     self.print_log.add(truncation_warning)
@@ -158,7 +169,7 @@ class TransformersSummarizer(BaseSummarizer):
         result: List[Document] = []
 
         for context, summarized_answer in zip(contexts, summaries):
-            cur_doc = Document(content=summarized_answer['summary_text'], meta={"context": context})
+            cur_doc = Document(content=summarized_answer["summary_text"], meta={"context": context})
             result.append(cur_doc)
 
         return result

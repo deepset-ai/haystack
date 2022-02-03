@@ -10,6 +10,7 @@ try:
     from pdf2image import convert_from_path
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
+
     _optional_component_not_installed(__name__, "ocr", ie)
 
 from haystack.nodes.file_converter import BaseConverter, ImageToTextConverter
@@ -37,9 +38,7 @@ class PDFToTextConverter(BaseConverter):
                                 in garbled text.
         """
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
-        )
+        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         verify_installation = subprocess.run(["pdftotext -v"], shell=True)
         if verify_installation.returncode == 127:
@@ -57,9 +56,7 @@ class PDFToTextConverter(BaseConverter):
                 """
             )
 
-        super().__init__(
-            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
-        )
+        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(
         self,
@@ -119,11 +116,7 @@ class PDFToTextConverter(BaseConverter):
 
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
-                    if (
-                        words
-                        and len(digits) / len(words) > 0.4
-                        and not line.strip().endswith(".")
-                    ):
+                    if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
                         logger.debug(f"Removing line '{line}' from {file_path}")
                         continue
                 cleaned_lines.append(line)
@@ -143,9 +136,7 @@ class PDFToTextConverter(BaseConverter):
         document = {"content": text, "content_type": "text", "meta": meta}
         return [document]
 
-    def _read_pdf(
-        self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1"
-    ) -> List[str]:
+    def _read_pdf(self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1") -> List[str]:
         """
         Extract pages from the pdf file at file_path.
 
@@ -188,12 +179,8 @@ class PDFToTextOCRConverter(BaseConverter):
         self.image_2_text = ImageToTextConverter(remove_numeric_tables, valid_languages)
 
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
-        )
-        super().__init__(
-            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
-        )
+        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(
         self,
@@ -227,9 +214,7 @@ class PDFToTextOCRConverter(BaseConverter):
         try:
             images = convert_from_path(file_path)
             for image in images:
-                temp_img = tempfile.NamedTemporaryFile(
-                    dir=os.path.dirname(os.path.realpath(__file__)), suffix=".jpeg"
-                )
+                temp_img = tempfile.NamedTemporaryFile(dir=os.path.dirname(os.path.realpath(__file__)), suffix=".jpeg")
                 image.save(temp_img.name)
                 pages.append(self.image_2_text.convert(temp_img.name)[0]["content"])
         except Exception as exception:

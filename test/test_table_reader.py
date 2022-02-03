@@ -40,11 +40,12 @@ def test_table_reader_in_pipeline(table_reader):
     assert prediction["answers"][0].offsets_in_context[0].start == 7
     assert prediction["answers"][0].offsets_in_context[0].end == 8
 
+
 @pytest.mark.parametrize("table_reader", ["tapas"], indirect=True)
 def test_table_reader_aggregation(table_reader):
     data = {
         "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
-        "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
+        "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"],
     }
     table = pd.DataFrame(data)
 
@@ -52,10 +53,10 @@ def test_table_reader_aggregation(table_reader):
     prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
     assert prediction["answers"][0].answer == "8609.2 m"
     assert prediction["answers"][0].meta["aggregation_operator"] == "AVERAGE"
-    assert prediction["answers"][0].meta["answer_cells"] == ['8848m', '8,611 m', '8 586m', '8 516 m', '8,485m']
+    assert prediction["answers"][0].meta["answer_cells"] == ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
 
     query = "How tall are all mountains together?"
     prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
     assert prediction["answers"][0].answer == "43046.0 m"
     assert prediction["answers"][0].meta["aggregation_operator"] == "SUM"
-    assert prediction["answers"][0].meta["answer_cells"] == ['8848m', '8,611 m', '8 586m', '8 516 m', '8,485m']
+    assert prediction["answers"][0].meta["answer_cells"] == ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]

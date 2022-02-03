@@ -19,7 +19,9 @@ def flatten_rename(encoded_batch: BatchEncoding, keys: List[str] = None, renamed
         keys = list(encoded_batch.keys())
     if not renamed_keys:
         renamed_keys = keys
-    assert len(keys) == len(renamed_keys), f"keys and renamed_keys have different size {len(keys)} != {len(renamed_keys)}"
+    assert len(keys) == len(
+        renamed_keys
+    ), f"keys and renamed_keys have different size {len(keys)} != {len(renamed_keys)}"
     assert any([key in encoded_batch for key in keys]), f"one of the keys {keys} is not in batch {encoded_batch.keys()}"
     features_flat = []
     for item in range(len(encoded_batch[keys[0]])):
@@ -54,12 +56,15 @@ def convert_features_to_dataset(features):
             else:
                 base = check.ravel()[0]
             if not np.issubdtype(type(base), np.integer):
-                logger.warning(f"Problem during conversion to torch tensors:\n"
-                               f"A non-integer value for feature '{t_name}' with a value of: "
-                               f"'{base}' will be converted to a torch tensor of dtype long.")
+                logger.warning(
+                    f"Problem during conversion to torch tensors:\n"
+                    f"A non-integer value for feature '{t_name}' with a value of: "
+                    f"'{base}' will be converted to a torch tensor of dtype long."
+                )
         except:
-            logger.debug(f"Could not determine type for feature '{t_name}'. "
-                           "Converting now to a tensor of default type long.")
+            logger.debug(
+                f"Could not determine type for feature '{t_name}'. " "Converting now to a tensor of default type long."
+            )
 
         # Convert all remaining python objects to torch long tensors
         cur_tensor = torch.as_tensor(np.array([sample[t_name] for sample in features]), dtype=torch.long)
@@ -82,6 +87,7 @@ class ConcatTensorDataset(ConcatDataset):
     Args:
         datasets (sequence): List of datasets to be concatenated
     """
+
     def __init__(self, datasets: Iterable[Dataset]) -> None:
         super(ConcatTensorDataset, self).__init__(datasets)
 

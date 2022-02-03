@@ -6,21 +6,21 @@ from pathlib import Path
 VERSION = None
 try:
     # After git clone, VERSION.txt is in the root folder
-    VERSION = open(Path(__file__).parent.parent/'VERSION.txt', "r").read()
+    VERSION = open(Path(__file__).parent.parent / "VERSION.txt", "r").read()
 except Exception:
     try:
         # In Docker, VERSION.txt is in the same folder
-        VERSION = open(Path(__file__).parent/'VERSION.txt', "r").read()
+        VERSION = open(Path(__file__).parent / "VERSION.txt", "r").read()
     except Exception as e:
         logging.exception("No VERSION.txt found!", e)
 
 setup(
     name="farm-haystack-ui",
     version=VERSION,
-    description='Demo UI for Haystack (https://github.com/deepset-ai/haystack)',
-    author='deepset.ai',
-    author_email='malte.pietsch@deepset.ai',
-    url=' https://github.com/deepset-ai/haystack/tree/master/ui',
+    description="Demo UI for Haystack (https://github.com/deepset-ai/haystack)",
+    author="deepset.ai",
+    author_email="malte.pietsch@deepset.ai",
+    url=" https://github.com/deepset-ai/haystack/tree/master/ui",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Science/Research",
@@ -34,10 +34,6 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     packages=find_packages(),
-    python_requires='>=3.7, <4',
-    install_requires=[
-        'streamlit>=1.2.0, <2', 
-        'st-annotated-text>=2.0.0, <3', 
-        'markdown>=3.3.4, <4'
-    ]
+    python_requires=">=3.7, <4",
+    install_requires=["streamlit>=1.2.0, <2", "st-annotated-text>=2.0.0, <3", "markdown>=3.3.4, <4"],
 )

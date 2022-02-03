@@ -5,18 +5,14 @@ from pprint import pprint
 
 def reader(reader_csv="reader_results.csv"):
     model_rename_map = {
-        'deepset/roberta-base-squad2': "RoBERTa",
-        'deepset/minilm-uncased-squad2': "MiniLM",
-        'deepset/bert-base-cased-squad2': "BERT base",
-        'deepset/bert-large-uncased-whole-word-masking-squad2': "BERT large",
-        'deepset/xlm-roberta-large-squad2': "XLM-RoBERTa",
+        "deepset/roberta-base-squad2": "RoBERTa",
+        "deepset/minilm-uncased-squad2": "MiniLM",
+        "deepset/bert-base-cased-squad2": "BERT base",
+        "deepset/bert-large-uncased-whole-word-masking-squad2": "BERT large",
+        "deepset/xlm-roberta-large-squad2": "XLM-RoBERTa",
     }
 
-    column_name_map = {
-        "f1": "F1",
-        "passages_per_second": "Speed",
-        "reader": "Model"
-    }
+    column_name_map = {"f1": "F1", "passages_per_second": "Speed", "reader": "Model"}
 
     df = pd.read_csv(reader_csv)
     df = df[["f1", "passages_per_second", "reader"]]
@@ -35,7 +31,7 @@ def retriever(index_csv="retriever_index_results.csv", query_csv="retriever_quer
         "n_docs": "n_docs",
         "docs_per_second": "index_speed",
         "queries_per_second": "query_speed",
-        "map": "map"
+        "map": "map",
     }
 
     name_cleaning = {
@@ -49,15 +45,18 @@ def retriever(index_csv="retriever_index_results.csv", query_csv="retriever_quer
         "milvus_hnsw": "Milvus (HNSW)",
         "sentence_transformers": "Sentence Transformers",
         "opensearch_flat": "OpenSearch (flat)",
-        "opensearch_hnsw": "OpenSearch (HNSW)"
+        "opensearch_hnsw": "OpenSearch (HNSW)",
     }
 
     index = pd.read_csv(index_csv)
     query = pd.read_csv(query_csv)
-    df = pd.merge(index, query,
-                  how="right",
-                  left_on=["retriever", "doc_store", "n_docs"],
-                  right_on=["retriever", "doc_store", "n_docs"])
+    df = pd.merge(
+        index,
+        query,
+        how="right",
+        left_on=["retriever", "doc_store", "n_docs"],
+        right_on=["retriever", "doc_store", "n_docs"],
+    )
 
     df["retriever"] = df["retriever"].map(name_cleaning)
     df["doc_store"] = df["doc_store"].map(name_cleaning)
