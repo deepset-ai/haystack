@@ -1,7 +1,5 @@
-name: Update Docstrings and Tutorials
+name: Documentation
 
-# Controls when the action will run. Triggers the workflow on push 
-# events but only for the master branch
 on:
   push:
     branches-ignore:
@@ -9,21 +7,19 @@ on:
       - benchmarks
 
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
         with:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+          fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
 
-      - name: Set up Python 3.8.10
+      - name: Set up Python 3.7
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8.10
+          python-version: 3.7
 
       - name: Install dependencies
         run: |
@@ -53,7 +49,8 @@ jobs:
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
-          git commit -m "Add latest docstring and tutorial changes" -a || echo "No changes to commit"
+          git commit -m "Update documentation" -a || echo "No changes to commit"
+      
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:

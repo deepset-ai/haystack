@@ -23,7 +23,7 @@ from haystack.modeling.model.tokenization import (
     Tokenizer,
     tokenize_batch_question_answering,
     tokenize_with_metadata,
-    truncate_sequences
+    truncate_sequences,
 )
 
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset
@@ -48,6 +48,7 @@ class Processor(ABC):
     """
     Base class for low level data processors to convert input text to PyTorch Datasets.
     """
+
     subclasses: dict = {}
 
     def __init__(
@@ -59,7 +60,7 @@ class Processor(ABC):
         test_filename: Optional[Union[Path, str]],
         dev_split: float,
         data_dir: Optional[Union[Path, str]],
-        tasks : Dict = {},
+        tasks: Dict = {},
         proxies: Optional[Dict] = None,
         multithreading_rust: Optional[bool] = True,
     ):
@@ -98,14 +99,14 @@ class Processor(ABC):
         if data_dir:
             self.data_dir = Path(data_dir)
         else:
-            self.data_dir = None #type: ignore
+            self.data_dir = None  # type: ignore
         self.baskets: List = []
 
         self._log_params()
         self.problematic_sample_ids: set = set()
 
     def __init_subclass__(cls, **kwargs):
-        """ This automatically keeps track of all available subclasses.
+        """This automatically keeps track of all available subclasses.
         Enables generic load() and load_from_dir() for all specific Processor implementation.
         """
         super().__init_subclass__(**kwargs)
@@ -115,8 +116,8 @@ class Processor(ABC):
     def load(
         cls,
         processor_name: str,
-        data_dir: str, # TODO revert ignore
-        tokenizer, # type: ignore
+        data_dir: str,  # TODO revert ignore
+        tokenizer,  # type: ignore
         max_seq_len: int,
         train_filename: str,
         dev_filename: Optional[str],
@@ -145,8 +146,7 @@ class Processor(ABC):
         sig = signature(cls.subclasses[processor_name])
         unused_args = {k: v for k, v in kwargs.items() if k not in sig.parameters}
         logger.debug(
-            f"Got more parameters than needed for loading {processor_name}: {unused_args}. "
-            f"Those won't be used!"
+            f"Got more parameters than needed for loading {processor_name}: {unused_args}. " f"Those won't be used!"
         )
         processor = cls.subclasses[processor_name](
             data_dir=data_dir,
@@ -175,9 +175,13 @@ class Processor(ABC):
         config["inference"] = True
         # init tokenizer
         if "lower_case" in config.keys():
-            logger.warning("Loading tokenizer from deprecated config. "
-                           "If you used `custom_vocab` or `never_split_chars`, this won't work anymore.")
-            tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"])
+            logger.warning(
+                "Loading tokenizer from deprecated config. "
+                "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
+            )
+            tokenizer = Tokenizer.load(
+                load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"]
+            )
         else:
             tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["tokenizer"])
 
@@ -187,12 +191,14 @@ class Processor(ABC):
         processor = cls.load(tokenizer=tokenizer, processor_name=config["processor"], **config)
 
         for task_name, task in config["tasks"].items():
-            processor.add_task(name=task_name,
-                               metric=task["metric"],
-                               label_list=task["label_list"],
-                               label_column_name=task["label_column_name"],
-                               text_column_name=task.get("text_column_name", None),
-                               task_type=task["task_type"])
+            processor.add_task(
+                name=task_name,
+                metric=task["metric"],
+                label_list=task["label_list"],
+                label_column_name=task["label_column_name"],
+                text_column_name=task.get("text_column_name", None),
+                task_type=task["task_type"],
+            )
 
         if processor is None:
             raise Exception
@@ -200,16 +206,27 @@ class Processor(ABC):
         return processor
 
     @classmethod
-    def convert_from_transformers(cls, tokenizer_name_or_path, task_type, max_seq_len, doc_stride,
-                                  revision=None, tokenizer_class=None, tokenizer_args=None, use_fast=True, **kwargs):
+    def convert_from_transformers(
+        cls,
+        tokenizer_name_or_path,
+        task_type,
+        max_seq_len,
+        doc_stride,
+        revision=None,
+        tokenizer_class=None,
+        tokenizer_args=None,
+        use_fast=True,
+        **kwargs,
+    ):
         tokenizer_args = tokenizer_args or {}
-        tokenizer = Tokenizer.load(tokenizer_name_or_path,
-                                   tokenizer_class=tokenizer_class,
-                                   use_fast=use_fast,
-                                   revision=revision,
-                                   **tokenizer_args,
-                                   **kwargs
-                                   )
+        tokenizer = Tokenizer.load(
+            tokenizer_name_or_path,
+            tokenizer_class=tokenizer_class,
+            use_fast=use_fast,
+            revision=revision,
+            **tokenizer_args,
+            **kwargs,
+        )
 
         # TODO infer task_type automatically from config (if possible)
         if task_type == "question_answering":
@@ -219,15 +236,17 @@ class Processor(ABC):
                 label_list=["start_token", "end_token"],
                 metric="squad",
                 data_dir="data",
-                doc_stride=doc_stride
+                doc_stride=doc_stride,
             )
         elif task_type == "embeddings":
             processor = InferenceProcessor(tokenizer=tokenizer, max_seq_len=max_seq_len)
 
         else:
-            raise ValueError(f"`task_type` {task_type} is not supported yet. "
-                             f"Valid options for arg `task_type`: 'question_answering', "
-                             f"'embeddings', ")
+            raise ValueError(
+                f"`task_type` {task_type} is not supported yet. "
+                f"Valid options for arg `task_type`: 'question_answering', "
+                f"'embeddings', "
+            )
 
         return processor
 
@@ -268,8 +287,9 @@ class Processor(ABC):
         return config
 
     # TODO potentially remove tasks from code - multitask learning is not supported anyways
-    def add_task(self, name,  metric, label_list, label_column_name=None,
-                 label_name=None, task_type=None, text_column_name=None):
+    def add_task(
+        self, name, metric, label_list, label_column_name=None, label_name=None, task_type=None, text_column_name=None
+    ):
         if type(label_list) is not list:
             raise ValueError(f"Argument `label_list` must be of type list. Got: f{type(label_list)}")
 
@@ -283,7 +303,7 @@ class Processor(ABC):
             "label_name": label_name,
             "label_column_name": label_column_name,
             "text_column_name": text_column_name,
-            "task_type": task_type
+            "task_type": task_type,
         }
 
     @abstractmethod
@@ -291,14 +311,11 @@ class Processor(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def dataset_from_dicts(self,
-                           dicts:List[dict],
-                           indices:Optional[List[int]]=None,
-                           return_baskets:bool = False):
+    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
         raise NotImplementedError()
 
     @abstractmethod
-    def _create_dataset(self, baskets:List[SampleBasket]):
+    def _create_dataset(self, baskets: List[SampleBasket]):
         raise NotImplementedError
 
     @staticmethod
@@ -306,8 +323,7 @@ class Processor(ABC):
         if problematic_sample_ids:
             n_problematic = len(problematic_sample_ids)
             problematic_id_str = ", ".join([str(i) for i in problematic_sample_ids])
-            logger.error(
-                f"Unable to convert {n_problematic} samples to features. Their ids are : {problematic_id_str}")
+            logger.error(f"Unable to convert {n_problematic} samples to features. Their ids are : {problematic_id_str}")
 
     @staticmethod
     def _check_sample_features(basket: SampleBasket):
@@ -330,14 +346,14 @@ class Processor(ABC):
                     return False
         return True
 
-    def _log_samples(self, n_samples:int, baskets:List[SampleBasket]):
+    def _log_samples(self, n_samples: int, baskets: List[SampleBasket]):
         logger.debug("*** Show {} random examples ***".format(n_samples))
         if len(baskets) == 0:
             logger.debug("*** No samples to show because there are no baskets ***")
             return
         for i in range(n_samples):
             random_basket = random.choice(baskets)
-            random_sample = random.choice(random_basket.samples) # type: ignore
+            random_sample = random.choice(random_basket.samples)  # type: ignore
             logger.debug(random_sample)
 
     def _log_params(self):
@@ -356,13 +372,14 @@ class SquadProcessor(Processor):
     """
     Convert QA data (in SQuAD Format)
     """
+
     def __init__(
         self,
-        tokenizer, #type: ignore
+        tokenizer,  # type: ignore
         max_seq_len: int,
         data_dir: Optional[Union[Path, str]],
         label_list: Optional[List[str]] = None,
-        metric = "squad", #type: ignore
+        metric="squad",  # type: ignore
         train_filename: Optional[Union[Path, str]] = Path("train-v2.0.json"),
         dev_filename: Optional[Union[Path, str]] = Path("dev-v2.0.json"),
         test_filename: Optional[Union[Path, str]] = None,
@@ -371,7 +388,7 @@ class SquadProcessor(Processor):
         max_query_length: int = 64,
         proxies: Optional[dict] = None,
         max_answers: int = 6,
-        **kwargs
+        **kwargs,
     ):
         """
         :param tokenizer: Used to split a sentence (str) into tokens.
@@ -397,11 +414,12 @@ class SquadProcessor(Processor):
         """
         self.ph_output_type = "per_token_squad"
 
-        assert doc_stride < (max_seq_len - max_query_length), \
-            "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps " \
-            "as the passage windows slide, causing the model to skip over parts of the document.\n" \
-            "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384)\n " \
+        assert doc_stride < (max_seq_len - max_query_length), (
+            "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps "
+            "as the passage windows slide, causing the model to skip over parts of the document.\n"
+            "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384)\n "
             "Or decrease max_query_length".format(doc_stride, max_seq_len, max_query_length)
+        )
 
         self.doc_stride = doc_stride
         self.max_query_length = max_query_length
@@ -415,19 +433,18 @@ class SquadProcessor(Processor):
             dev_split=dev_split,
             data_dir=data_dir,
             tasks={},
-            proxies=proxies
+            proxies=proxies,
         )
         self._initialize_special_tokens_count()
         if metric and label_list:
             self.add_task("question_answering", metric, label_list)
         else:
-            logger.info("Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
-                        "using the default task or add a custom task later via processor.add_task()")
+            logger.info(
+                "Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
+                "using the default task or add a custom task later via processor.add_task()"
+            )
 
-    def dataset_from_dicts(self,
-                           dicts: List[dict],
-                           indices: Optional[List[int]] = None,
-                           return_baskets:bool = False):
+    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
         """
         Convert input dictionaries into a pytorch dataset for Question Answering.
         For this we have an internal representation called "baskets".
@@ -439,7 +456,7 @@ class SquadProcessor(Processor):
         :param return_baskets: boolean, whether to return the baskets or not (baskets are needed during inference)
         """
         # Convert to standard format
-        pre_baskets = [self.convert_qa_input_dict(x) for x in dicts] # TODO move to input object conversion
+        pre_baskets = [self.convert_qa_input_dict(x) for x in dicts]  # TODO move to input object conversion
 
         # Tokenize documents and questions
         baskets = tokenize_batch_question_answering(pre_baskets, self.tokenizer, indices)
@@ -468,7 +485,6 @@ class SquadProcessor(Processor):
         else:
             return dataset, tensor_names, self.problematic_sample_ids
 
-
     def file_to_dicts(self, file: str) -> List[dict]:
         nested_dicts = _read_squad_file(filename=file)
         dicts = [y for x in nested_dicts for y in x["paragraphs"]]
@@ -476,16 +492,17 @@ class SquadProcessor(Processor):
 
     # TODO use Input Objects instead of this function, remove Natural Questions (NQ) related code
     def convert_qa_input_dict(self, infer_dict: dict):
-        """ Input dictionaries in QA can either have ["context", "qas"] (internal format) as keys or
+        """Input dictionaries in QA can either have ["context", "qas"] (internal format) as keys or
         ["text", "questions"] (api format). This function converts the latter into the former. It also converts the
         is_impossible field to answer_type so that NQ and SQuAD dicts have the same format.
         """
         # check again for doc stride vs max_seq_len when. Parameters can be changed for already initialized models (e.g. in haystack)
-        assert self.doc_stride < (self.max_seq_len - self.max_query_length), \
-            "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps " \
-            "as the passage windows slide, causing the model to skip over parts of the document.\n" \
-            "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384)\n " \
+        assert self.doc_stride < (self.max_seq_len - self.max_query_length), (
+            "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps "
+            "as the passage windows slide, causing the model to skip over parts of the document.\n"
+            "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384)\n "
             "Or decrease max_query_length".format(self.doc_stride, self.max_seq_len, self.max_query_length)
+        )
 
         try:
             # Check if infer_dict is already in internal json format
@@ -495,24 +512,19 @@ class SquadProcessor(Processor):
             questions = infer_dict["questions"]
             text = infer_dict["text"]
             uid = infer_dict.get("id", None)
-            qas = [{"question": q,
-                    "id": uid,
-                    "answers": [],
-                    "answer_type": None} for i, q in enumerate(questions)]
-            converted = {"qas": qas,
-                         "context": text}
+            qas = [{"question": q, "id": uid, "answers": [], "answer_type": None} for i, q in enumerate(questions)]
+            converted = {"qas": qas, "context": text}
             return converted
         except KeyError:
             raise Exception("Input does not have the expected format")
 
     def _initialize_special_tokens_count(self):
-        vec = self.tokenizer.build_inputs_with_special_tokens(token_ids_0=["a"],
-                                                              token_ids_1=["b"])
+        vec = self.tokenizer.build_inputs_with_special_tokens(token_ids_0=["a"], token_ids_1=["b"])
         self.sp_toks_start = vec.index("a")
         self.sp_toks_mid = vec.index("b") - self.sp_toks_start - 1
         self.sp_toks_end = len(vec) - vec.index("b") - 1
 
-    def _split_docs_into_passages(self, baskets:List[SampleBasket]):
+    def _split_docs_into_passages(self, baskets: List[SampleBasket]):
         """
         Because of the sequence length limitation of Language Models, the documents need to be divided into smaller
         parts that we call passages.
@@ -528,23 +540,24 @@ class SquadProcessor(Processor):
                 continue
             ########## end checking
 
-
             # Calculate the number of tokens that can be reserved for the passage. This is calculated by considering
             # the max_seq_len, the number of tokens in the question and the number of special tokens that will be added
             # when the question and passage are joined (e.g. [CLS] and [SEP])
-            passage_len_t = self.max_seq_len - len(basket.raw["question_tokens"][:self.max_query_length]) - n_special_tokens
-
+            passage_len_t = (
+                self.max_seq_len - len(basket.raw["question_tokens"][: self.max_query_length]) - n_special_tokens
+            )
 
             # passage_spans is a list of dictionaries where each defines the start and end of each passage
             # on both token and character level
             try:
-                passage_spans = get_passage_offsets(basket.raw["document_offsets"],
-                                                    self.doc_stride,
-                                                    passage_len_t,
-                                                    basket.raw["document_text"])
+                passage_spans = get_passage_offsets(
+                    basket.raw["document_offsets"], self.doc_stride, passage_len_t, basket.raw["document_text"]
+                )
             except Exception as e:
-                logger.warning(f"Could not devide document into passages. Document: {basket.raw['document_text'][:200]}\n"
-                               f"With error: {e}")
+                logger.warning(
+                    f"Could not devide document into passages. Document: {basket.raw['document_text'][:200]}\n"
+                    f"With error: {e}"
+                )
                 passage_spans = []
 
             for passage_span in passage_spans:
@@ -555,41 +568,40 @@ class SquadProcessor(Processor):
                 passage_start_c = passage_span["passage_start_c"]
                 passage_end_c = passage_span["passage_end_c"]
 
-                passage_start_of_word = basket.raw["document_start_of_word"][passage_start_t: passage_end_t]
-                passage_tokens = basket.raw["document_tokens"][passage_start_t: passage_end_t]
-                passage_text = basket.raw["document_text"][passage_start_c: passage_end_c]
+                passage_start_of_word = basket.raw["document_start_of_word"][passage_start_t:passage_end_t]
+                passage_tokens = basket.raw["document_tokens"][passage_start_t:passage_end_t]
+                passage_text = basket.raw["document_text"][passage_start_c:passage_end_c]
 
-                clear_text = {"passage_text": passage_text,
-                              "question_text": basket.raw["question_text"],
-                              "passage_id": passage_span["passage_id"],
-                              }
-                tokenized = {"passage_start_t": passage_start_t,
-                             "passage_start_c": passage_start_c,
-                             "passage_tokens": passage_tokens,
-                             "passage_start_of_word": passage_start_of_word,
-                             "question_tokens": basket.raw["question_tokens"][:self.max_query_length],
-                             "question_offsets": basket.raw["question_offsets"][:self.max_query_length],
-                             "question_start_of_word": basket.raw["question_start_of_word"][:self.max_query_length],
-                             }
+                clear_text = {
+                    "passage_text": passage_text,
+                    "question_text": basket.raw["question_text"],
+                    "passage_id": passage_span["passage_id"],
+                }
+                tokenized = {
+                    "passage_start_t": passage_start_t,
+                    "passage_start_c": passage_start_c,
+                    "passage_tokens": passage_tokens,
+                    "passage_start_of_word": passage_start_of_word,
+                    "question_tokens": basket.raw["question_tokens"][: self.max_query_length],
+                    "question_offsets": basket.raw["question_offsets"][: self.max_query_length],
+                    "question_start_of_word": basket.raw["question_start_of_word"][: self.max_query_length],
+                }
                 # The sample ID consists of internal_id and a passage numbering
                 sample_id = f"{basket.id_internal}-{passage_span['passage_id']}"
-                samples.append(Sample(id=sample_id,
-                                      clear_text=clear_text,
-                                      tokenized=tokenized))
+                samples.append(Sample(id=sample_id, clear_text=clear_text, tokenized=tokenized))
 
-
-            basket.samples=samples
+            basket.samples = samples
 
         return baskets
 
-    def _convert_answers(self, baskets:List[SampleBasket]):
+    def _convert_answers(self, baskets: List[SampleBasket]):
         """
         Converts answers that are pure strings into the token based representation with start and end token offset.
         Can handle multiple answers per question document pair as is common for development/text sets
         """
         for basket in baskets:
             error_in_answer = False
-            for num, sample in enumerate(basket.samples): # type: ignore
+            for num, sample in enumerate(basket.samples):  # type: ignore
                 # Dealing with potentially multiple answers (e.g. Squad dev set)
                 # Initializing a numpy array of shape (max_answers, 2), filled with -1 for missing values
                 label_idxs = np.full((self.max_answers, 2), fill_value=-1)
@@ -610,12 +622,12 @@ class SquadProcessor(Processor):
                         answer_end_t = offset_to_token_idx_vecorized(basket.raw["document_offsets"], answer_end_c)
 
                         # Adjust token offsets to be relative to the passage
-                        answer_start_t -= sample.tokenized["passage_start_t"] # type: ignore
-                        answer_end_t -= sample.tokenized["passage_start_t"] # type: ignore
+                        answer_start_t -= sample.tokenized["passage_start_t"]  # type: ignore
+                        answer_end_t -= sample.tokenized["passage_start_t"]  # type: ignore
 
                         # Initialize some basic variables
-                        question_len_t = len(sample.tokenized["question_tokens"]) # type: ignore
-                        passage_len_t = len(sample.tokenized["passage_tokens"]) # type: ignore
+                        question_len_t = len(sample.tokenized["question_tokens"])  # type: ignore
+                        passage_len_t = len(sample.tokenized["passage_tokens"])  # type: ignore
 
                         # Check that start and end are contained within this passage
                         # answer_end_t is 0 if the first token is the answer
@@ -636,30 +648,34 @@ class SquadProcessor(Processor):
                             pass
                         else:
                             doc_text = basket.raw["document_text"]
-                            answer_indices = doc_text[answer_start_c: answer_end_c + 1]
+                            answer_indices = doc_text[answer_start_c : answer_end_c + 1]
                             answer_text = answer["text"]
                             # check if answer string can be found in context
                             if answer_text not in doc_text:
-                                logger.warning(f"Answer '{answer['text']}' not contained in context.\n"
-                                               f"Example will not be converted for training/evaluation.")
+                                logger.warning(
+                                    f"Answer '{answer['text']}' not contained in context.\n"
+                                    f"Example will not be converted for training/evaluation."
+                                )
                                 error_in_answer = True
                                 label_idxs[i][0] = -100  # TODO remove this hack also from featurization
                                 label_idxs[i][1] = -100
                                 break  # Break loop around answers, so the error message is not shown multiple times
                             elif answer_indices.strip() != answer_text.strip():
-                                logger.warning(f"Answer using start/end indices is '{answer_indices}' while gold label text is '{answer_text}'.\n"
-                                               f"Example will not be converted for training/evaluation.")
+                                logger.warning(
+                                    f"Answer using start/end indices is '{answer_indices}' while gold label text is '{answer_text}'.\n"
+                                    f"Example will not be converted for training/evaluation."
+                                )
                                 error_in_answer = True
-                                label_idxs[i][0] = -100 # TODO remove this hack also from featurization
+                                label_idxs[i][0] = -100  # TODO remove this hack also from featurization
                                 label_idxs[i][1] = -100
-                                break # Break loop around answers, so the error message is not shown multiple times
+                                break  # Break loop around answers, so the error message is not shown multiple times
                         ########## end of checking ####################
 
-                sample.tokenized["labels"] = label_idxs # type: ignore
+                sample.tokenized["labels"] = label_idxs  # type: ignore
 
         return baskets
 
-    def _passages_to_pytorch_features(self, baskets:List[SampleBasket], return_baskets:bool):
+    def _passages_to_pytorch_features(self, baskets: List[SampleBasket], return_baskets: bool):
         """
         Convert internal representation (nested baskets + samples with mixed types) to python features (arrays of numbers).
         We first join question and passages into one large vector.
@@ -671,7 +687,7 @@ class SquadProcessor(Processor):
         """
         for basket in baskets:
             # Add features to samples
-            for num, sample in enumerate(basket.samples): # type: ignore
+            for num, sample in enumerate(basket.samples):  # type: ignore
                 # Initialize some basic variables
                 if sample.tokenized is not None:
                     question_tokens = sample.tokenized["question_tokens"]
@@ -690,19 +706,23 @@ class SquadProcessor(Processor):
                     question_input_ids = sample.tokenized["question_tokens"]
                     passage_input_ids = sample.tokenized["passage_tokens"]
 
-                input_ids = self.tokenizer.build_inputs_with_special_tokens(token_ids_0=question_input_ids,
-                                                                       token_ids_1=passage_input_ids)
+                input_ids = self.tokenizer.build_inputs_with_special_tokens(
+                    token_ids_0=question_input_ids, token_ids_1=passage_input_ids
+                )
 
-                segment_ids = self.tokenizer.create_token_type_ids_from_sequences(token_ids_0=question_input_ids,
-                                                                             token_ids_1=passage_input_ids)
+                segment_ids = self.tokenizer.create_token_type_ids_from_sequences(
+                    token_ids_0=question_input_ids, token_ids_1=passage_input_ids
+                )
                 # To make the start index of passage tokens the start manually
                 seq_2_start_t = self.sp_toks_start + question_len_t + self.sp_toks_mid
 
-                start_of_word = [0] * self.sp_toks_start + \
-                                    question_start_of_word + \
-                                    [0] * self.sp_toks_mid + \
-                                    passage_start_of_word + \
-                                    [0] * self.sp_toks_end
+                start_of_word = (
+                    [0] * self.sp_toks_start
+                    + question_start_of_word
+                    + [0] * self.sp_toks_mid
+                    + passage_start_of_word
+                    + [0] * self.sp_toks_end
+                )
 
                 # The mask has 1 for real tokens and 0 for padding tokens. Only real
                 # tokens are attended to.
@@ -729,33 +749,37 @@ class SquadProcessor(Processor):
                 span_mask += zero_padding
 
                 # TODO possibly remove these checks after input validation is in place
-                len_check = len(input_ids) == len(padding_mask) == len(segment_ids) == len(start_of_word) == len(span_mask)
+                len_check = (
+                    len(input_ids) == len(padding_mask) == len(segment_ids) == len(start_of_word) == len(span_mask)
+                )
                 id_check = len(sample_id) == 3
-                label_check = return_baskets or len(sample.tokenized.get("labels",[])) == self.max_answers # type: ignore
+                label_check = return_baskets or len(sample.tokenized.get("labels", [])) == self.max_answers  # type: ignore
                 # labels are set to -100 when answer cannot be found
-                label_check2 = return_baskets or np.all(sample.tokenized["labels"] > -99) # type: ignore
+                label_check2 = return_baskets or np.all(sample.tokenized["labels"] > -99)  # type: ignore
                 if len_check and id_check and label_check and label_check2:
                     # - The first of the labels will be used in train, and the full array will be used in eval.
                     # - start_of_word and spec_tok_mask are not actually needed by model.forward() but are needed for
                     #   model.formatted_preds() during inference for creating answer strings
                     # - passage_start_t is index of passage's first token relative to document
-                    feature_dict = {"input_ids": input_ids,
-                                    "padding_mask": padding_mask,
-                                    "segment_ids": segment_ids,
-                                    "passage_start_t": passage_start_t,
-                                    "start_of_word": start_of_word,
-                                    "labels": sample.tokenized.get("labels",[]), # type: ignore
-                                    "id": sample_id,
-                                    "seq_2_start_t": seq_2_start_t,
-                                    "span_mask": span_mask}
+                    feature_dict = {
+                        "input_ids": input_ids,
+                        "padding_mask": padding_mask,
+                        "segment_ids": segment_ids,
+                        "passage_start_t": passage_start_t,
+                        "start_of_word": start_of_word,
+                        "labels": sample.tokenized.get("labels", []),  # type: ignore
+                        "id": sample_id,
+                        "seq_2_start_t": seq_2_start_t,
+                        "span_mask": span_mask,
+                    }
                     # other processor's features can be lists
-                    sample.features = [feature_dict] # type: ignore
+                    sample.features = [feature_dict]  # type: ignore
                 else:
                     self.problematic_sample_ids.add(sample.id)
                     sample.features = None
         return baskets
 
-    def _create_dataset(self, baskets:List[SampleBasket]):
+    def _create_dataset(self, baskets: List[SampleBasket]):
         """
         Convert python features into pytorch dataset.
         Also removes potential errors during preprocessing.
@@ -765,8 +789,8 @@ class SquadProcessor(Processor):
         basket_to_remove = []
         for basket in baskets:
             if self._check_sample_features(basket):
-                for sample in basket.samples: # type: ignore
-                    features_flat.extend(sample.features) # type: ignore
+                for sample in basket.samples:  # type: ignore
+                    features_flat.extend(sample.features)  # type: ignore
             else:
                 # remove the entire basket
                 basket_to_remove.append(basket)
@@ -795,18 +819,19 @@ class TextSimilarityProcessor(Processor):
     }
 
     """
+
     def __init__(
         self,
-        query_tokenizer, #type: ignore
-        passage_tokenizer, #type: ignore
+        query_tokenizer,  # type: ignore
+        passage_tokenizer,  # type: ignore
         max_seq_len_query: int,
         max_seq_len_passage: int,
         data_dir: str = "",
-        metric = None, #type: ignore
+        metric=None,  # type: ignore
         train_filename: str = "train.json",
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = "test.json",
-        dev_split:float = 0.1,
+        dev_split: float = 0.1,
         proxies: Optional[dict] = None,
         max_samples: Optional[int] = None,
         embed_title: bool = True,
@@ -814,8 +839,8 @@ class TextSimilarityProcessor(Processor):
         num_hard_negatives: int = 1,
         shuffle_negatives: bool = True,
         shuffle_positives: bool = False,
-        label_list:Optional[List[str]] = None,
-        **kwargs
+        label_list: Optional[List[str]] = None,
+        **kwargs,
     ):
         """
         :param query_tokenizer: Used to split a question (str) into tokens
@@ -846,7 +871,7 @@ class TextSimilarityProcessor(Processor):
         :param label_list: list of labels to predict. Usually ["hard_negative", "positive"]
         :param kwargs: placeholder for passing generic parameters
         """
-        #TODO If an arg is misspelt, e.g. metrics, it will be swallowed silently by kwargs
+        # TODO If an arg is misspelt, e.g. metrics, it will be swallowed silently by kwargs
 
         # Custom processor attributes
         self.max_samples = max_samples
@@ -861,8 +886,8 @@ class TextSimilarityProcessor(Processor):
         self.max_seq_len_passage = max_seq_len_passage
 
         super(TextSimilarityProcessor, self).__init__(
-            tokenizer = None,  # type: ignore
-            max_seq_len = 0,
+            tokenizer=None,  # type: ignore
+            max_seq_len=0,
             train_filename=train_filename,
             dev_filename=dev_filename,
             test_filename=test_filename,
@@ -872,14 +897,18 @@ class TextSimilarityProcessor(Processor):
             proxies=proxies,
         )
         if metric:
-            self.add_task(name="text_similarity",
-                          metric=metric,
-                          label_list=label_list,
-                          label_name="label",
-                          task_type="text_similarity")
+            self.add_task(
+                name="text_similarity",
+                metric=metric,
+                label_list=label_list,
+                label_name="label",
+                task_type="text_similarity",
+            )
         else:
-            logger.info("Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
-                        "using the default task or add a custom task later via processor.add_task()")
+            logger.info(
+                "Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
+                "using the default task or add a custom task later via processor.add_task()"
+            )
 
     @classmethod
     def load_from_dir(cls, load_dir: str):
@@ -894,13 +923,18 @@ class TextSimilarityProcessor(Processor):
         config = json.load(open(processor_config_file))
         # init tokenizer
         query_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder = "passage")
+        passage_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
         del config["passage_tokenizer"]
 
-        processor = cls.load(query_tokenizer=query_tokenizer, passage_tokenizer=passage_tokenizer, processor_name="TextSimilarityProcessor", **config)
+        processor = cls.load(
+            query_tokenizer=query_tokenizer,
+            passage_tokenizer=passage_tokenizer,
+            processor_name="TextSimilarityProcessor",
+            **config,
+        )
         for task_name, task in config["tasks"].items():
             processor.add_task(name=task_name, metric=task["metric"], label_list=task["label_list"])
 
@@ -909,7 +943,7 @@ class TextSimilarityProcessor(Processor):
 
         return processor
 
-    def save(self, save_dir: Union[str,Path]):
+    def save(self, save_dir: Union[str, Path]):
         """
         Saves the vocabulary to file and also creates a json file containing all the
         information needed to load the same processor.
@@ -917,7 +951,7 @@ class TextSimilarityProcessor(Processor):
         :param save_dir: Directory where the files are to be saved
         :return: None
         """
-        if isinstance(save_dir,str):
+        if isinstance(save_dir, str):
             save_dir = Path(save_dir)
         os.makedirs(save_dir, exist_ok=True)
         config = self.generate_config()
@@ -936,10 +970,7 @@ class TextSimilarityProcessor(Processor):
         with open(output_config_file, "w") as file:
             json.dump(config, file)
 
-    def dataset_from_dicts(self,
-                           dicts:List[dict],
-                           indices:Optional[List[int]] = None,
-                           return_baskets: bool = False):
+    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity (e.g. DPR).
         For conversion we have an internal representation called "baskets".
@@ -974,7 +1005,9 @@ class TextSimilarityProcessor(Processor):
         dataset, tensor_names, problematic_ids, baskets = self._create_dataset(baskets)
 
         if problematic_ids:
-            logger.error(f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}")
+            logger.error(
+                f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}"
+            )
 
         if return_baskets:
             return dataset, tensor_names, problematic_ids, baskets
@@ -1004,7 +1037,14 @@ class TextSimilarityProcessor(Processor):
             {"text": document_text, "title": xxx, "label": "hard_negative", "external_id": abb134},
             ...]}
         """
-        dicts = _read_dpr_json(file, max_samples=self.max_samples, num_hard_negatives=self.num_hard_negatives, num_positives=self.num_positives, shuffle_negatives=self.shuffle_negatives, shuffle_positives=self.shuffle_positives)
+        dicts = _read_dpr_json(
+            file,
+            max_samples=self.max_samples,
+            num_hard_negatives=self.num_hard_negatives,
+            num_positives=self.num_positives,
+            shuffle_negatives=self.shuffle_negatives,
+            shuffle_positives=self.shuffle_positives,
+        )
 
         # shuffle dicts to make sure that similar positive passages do not end up in one batch
         dicts = random.sample(dicts, len(dicts))
@@ -1015,9 +1055,7 @@ class TextSimilarityProcessor(Processor):
         if not indices:
             indices = list(range(len(dicts)))
         for d, id_internal in zip(dicts, indices):
-            basket = SampleBasket(id_external=None,
-                                  id_internal=id_internal,
-                                  raw=d)
+            basket = SampleBasket(id_external=None, id_internal=id_internal, raw=d)
             baskets.append(basket)
         return baskets
 
@@ -1025,7 +1063,7 @@ class TextSimilarityProcessor(Processor):
         for basket in baskets:
             clear_text = {}
             tokenized = {}
-            features = [{}] #type: ignore
+            features = [{}]  # type: ignore
             # extract query, positive context passages and titles, hard-negative passages and titles
             if "query" in basket.raw:
                 try:
@@ -1037,7 +1075,7 @@ class TextSimilarityProcessor(Processor):
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
-                        truncation_strategy='longest_first',
+                        truncation_strategy="longest_first",
                         padding="max_length",
                         return_token_type_ids=True,
                     )
@@ -1047,7 +1085,8 @@ class TextSimilarityProcessor(Processor):
 
                     if len(tokenized_query) == 0:
                         logger.warning(
-                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize")
+                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
+                        )
                         return None
 
                     clear_text["query_text"] = query
@@ -1058,10 +1097,7 @@ class TextSimilarityProcessor(Processor):
                 except Exception as e:
                     features = None  # type: ignore
 
-            sample = Sample(id="",
-                            clear_text=clear_text,
-                            tokenized=tokenized,
-                            features=features)  # type: ignore
+            sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  # type: ignore
             basket.samples = [sample]
         return baskets
 
@@ -1072,11 +1108,13 @@ class TextSimilarityProcessor(Processor):
                     positive_context = list(filter(lambda x: x["label"] == "positive", basket.raw["passages"]))
                     if self.shuffle_positives:
                         random.shuffle(positive_context)
-                    positive_context = positive_context[:self.num_positives]
-                    hard_negative_context = list(filter(lambda x: x["label"] == "hard_negative", basket.raw["passages"]))
+                    positive_context = positive_context[: self.num_positives]
+                    hard_negative_context = list(
+                        filter(lambda x: x["label"] == "hard_negative", basket.raw["passages"])
+                    )
                     if self.shuffle_negatives:
                         random.shuffle(hard_negative_context)
-                    hard_negative_context = hard_negative_context[:self.num_hard_negatives]
+                    hard_negative_context = hard_negative_context[: self.num_hard_negatives]
 
                     positive_ctx_titles = [passage.get("title", None) for passage in positive_context]
                     positive_ctx_texts = [passage["text"] for passage in positive_context]
@@ -1088,13 +1126,14 @@ class TextSimilarityProcessor(Processor):
                     # featurize context passages
                     if self.embed_title:
                         # concatenate title with positive context passages + negative context passages
-                        all_ctx = self._combine_title_context(positive_ctx_titles, positive_ctx_texts) + \
-                                  self._combine_title_context(hard_negative_ctx_titles, hard_negative_ctx_texts)
+                        all_ctx = self._combine_title_context(
+                            positive_ctx_titles, positive_ctx_texts
+                        ) + self._combine_title_context(hard_negative_ctx_titles, hard_negative_ctx_texts)
                     else:
                         all_ctx = positive_ctx_texts + hard_negative_ctx_texts
 
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
-                    all_ctx += [('', '')] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
+                    all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
                     ctx_inputs = self.passage_tokenizer.batch_encode_plus(
                         all_ctx,
@@ -1102,13 +1141,15 @@ class TextSimilarityProcessor(Processor):
                         truncation=True,
                         padding="max_length",
                         max_length=self.max_seq_len_passage,
-                        return_token_type_ids=True
+                        return_token_type_ids=True,
                     )
 
                     ctx_segment_ids = [[0] * len(ctx_inputs["token_type_ids"][0])] * len(ctx_inputs["token_type_ids"])
 
                     # get tokens in string format
-                    tokenized_passage = [self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in ctx_inputs["input_ids"]]
+                    tokenized_passage = [
+                        self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in ctx_inputs["input_ids"]
+                    ]
 
                     # for DPR we only have one sample containing query and corresponding (multiple) context features
                     sample = basket.samples[0]  # type: ignore
@@ -1151,7 +1192,7 @@ class TextSimilarityProcessor(Processor):
     @staticmethod
     def _normalize_question(question: str) -> str:
         """Removes '?' from queries/questions"""
-        if question[-1] == '?':
+        if question[-1] == "?":
             question = question[:-1]
         return question
 
@@ -1162,7 +1203,8 @@ class TextSimilarityProcessor(Processor):
             if title is None:
                 title = ""
                 logger.warning(
-                    f"Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '{ctx}' ")
+                    f"Couldn't find title although `embed_title` is set to True for DPR. Using title='' now. Related passage text: '{ctx}' "
+                )
             res.append(tuple((title, ctx)))
         return res
 
@@ -1173,6 +1215,7 @@ class TableTextSimilarityProcessor(Processor):
     that come in json format.
 
     """
+
     def __init__(
         self,
         query_tokenizer,  # type: ignore
@@ -1195,7 +1238,7 @@ class TableTextSimilarityProcessor(Processor):
         shuffle_negatives: bool = True,
         shuffle_positives: bool = False,
         label_list: Optional[List[str]] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         :param query_tokenizer: Used to split a question (str) into tokens
@@ -1229,7 +1272,7 @@ class TableTextSimilarityProcessor(Processor):
         :param label_list: List of labels to predict. Usually ["hard_negative", "positive"].
         :param kwargs: Placeholder for passing generic parameters
         """
-        #TODO If an arg is misspelt, e.g. metrics, it will be swallowed silently by kwargs
+        # TODO If an arg is misspelt, e.g. metrics, it will be swallowed silently by kwargs
 
         # Custom processor attributes
         self.max_samples = max_samples
@@ -1257,14 +1300,18 @@ class TableTextSimilarityProcessor(Processor):
             proxies=proxies,
         )
         if metric:
-            self.add_task(name="text_similarity",
-                          metric=metric,
-                          label_list=label_list,
-                          label_name="label",
-                          task_type="text_similarity")
+            self.add_task(
+                name="text_similarity",
+                metric=metric,
+                label_list=label_list,
+                label_name="label",
+                task_type="text_similarity",
+            )
         else:
-            logger.info("Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
-                        "using the default task or add a custom task later via processor.add_task()")
+            logger.info(
+                "Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
+                "using the default task or add a custom task later via processor.add_task()"
+            )
 
     @classmethod
     def load_from_dir(cls, load_dir: str):
@@ -1280,7 +1327,7 @@ class TableTextSimilarityProcessor(Processor):
         config = json.load(open(processor_config_file))
         # init tokenizer
         query_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder = "passage")
+        passage_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
         table_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
 
         # we have to delete the tokenizer string from config, because we pass it as Object
@@ -1288,8 +1335,13 @@ class TableTextSimilarityProcessor(Processor):
         del config["passage_tokenizer"]
         del config["table_tokenizer"]
 
-        processor = cls.load(query_tokenizer=query_tokenizer, passage_tokenizer=passage_tokenizer,
-                             table_tokenizer=table_tokenizer, processor_name="TableTextSimilarityProcessor", **config)
+        processor = cls.load(
+            query_tokenizer=query_tokenizer,
+            passage_tokenizer=passage_tokenizer,
+            table_tokenizer=table_tokenizer,
+            processor_name="TableTextSimilarityProcessor",
+            **config,
+        )
         for task_name, task in config["tasks"].items():
             processor.add_task(name=task_name, metric=task["metric"], label_list=task["label_list"])
 
@@ -1378,15 +1430,19 @@ class TableTextSimilarityProcessor(Processor):
                                      "rows": list of lists of str, "label": "positive" / "hard_negative", "type": "table", "external_id": id}
                                     ...]
                         }
-            """
+        """
         dicts = json.load(open(file))
         if max_samples:
             dicts = random.sample(dicts, min(max_samples, len(dicts)))
         # convert DPR dictionary to standard dictionary
         query_json_keys = ["question", "questions", "query"]
         positive_context_json_keys = ["positive_contexts", "positive_ctxs", "positive_context", "positive_ctx"]
-        hard_negative_json_keys = ["hard_negative_contexts", "hard_negative_ctxs", "hard_negative_context",
-                                   "hard_negative_ctx"]
+        hard_negative_json_keys = [
+            "hard_negative_contexts",
+            "hard_negative_ctxs",
+            "hard_negative_context",
+            "hard_negative_ctx",
+        ]
         standard_dicts = []
         for dict in dicts:
             sample = {}
@@ -1397,20 +1453,28 @@ class TableTextSimilarityProcessor(Processor):
                 elif key in positive_context_json_keys + hard_negative_json_keys:
                     for doc in val:
                         if doc["type"] == "table":
-                            docs.append({
-                                "meta": [doc[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc],
-                                "columns": doc.get("columns"),
-                                "rows": doc.get("rows"),
-                                "label": "positive" if key in positive_context_json_keys else "hard_negative",
-                                "type": "table",
-                            })
+                            docs.append(
+                                {
+                                    "meta": [
+                                        doc[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc
+                                    ],
+                                    "columns": doc.get("columns"),
+                                    "rows": doc.get("rows"),
+                                    "label": "positive" if key in positive_context_json_keys else "hard_negative",
+                                    "type": "table",
+                                }
+                            )
                         elif doc["type"] == "text":
-                            docs.append({
-                                "meta": [doc[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc],
-                                "text": doc["text"],
-                                "label": "positive" if key in positive_context_json_keys else "hard_negative",
-                                "type": "text",
-                            })
+                            docs.append(
+                                {
+                                    "meta": [
+                                        doc[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc
+                                    ],
+                                    "text": doc["text"],
+                                    "label": "positive" if key in positive_context_json_keys else "hard_negative",
+                                    "type": "text",
+                                }
+                            )
 
                 sample["passages"] = docs
             standard_dicts.append(sample)
@@ -1451,7 +1515,9 @@ class TableTextSimilarityProcessor(Processor):
         dataset, tensor_names, problematic_ids, baskets = self._create_dataset(baskets)
 
         if problematic_ids:
-            logger.error(f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}")
+            logger.error(
+                f"There were {len(problematic_ids)} errors during preprocessing at positions: {problematic_ids}"
+            )
 
         if return_baskets:
             return dataset, tensor_names, problematic_ids, baskets
@@ -1463,9 +1529,7 @@ class TableTextSimilarityProcessor(Processor):
         if not indices:
             indices = range(len(dicts))
         for d, id_internal in zip(dicts, indices):
-            basket = SampleBasket(id_external=None,
-                                  id_internal=id_internal,
-                                  raw=d)
+            basket = SampleBasket(id_external=None, id_internal=id_internal, raw=d)
             baskets.append(basket)
         return baskets
 
@@ -1485,7 +1549,7 @@ class TableTextSimilarityProcessor(Processor):
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
-                        truncation_strategy='longest_first',
+                        truncation_strategy="longest_first",
                         padding="max_length",
                         return_token_type_ids=True,
                     )
@@ -1495,7 +1559,8 @@ class TableTextSimilarityProcessor(Processor):
 
                     if len(tokenized_query) == 0:
                         logger.warning(
-                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize")
+                            f"The query could not be tokenized, likely because it contains a character that the query tokenizer does not recognize"
+                        )
                         return None
 
                     clear_text["query_text"] = query
@@ -1506,10 +1571,7 @@ class TableTextSimilarityProcessor(Processor):
                 except Exception as e:
                     features = None  # type: ignore
 
-            sample = Sample(id="",
-                            clear_text=clear_text,
-                            tokenized=tokenized,
-                            features=features)  # type: ignore
+            sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  # type: ignore
             basket.samples = [sample]
         return baskets
 
@@ -1522,12 +1584,13 @@ class TableTextSimilarityProcessor(Processor):
                     positive_context = list(filter(lambda x: x["label"] == "positive", basket.raw["passages"]))
                     if self.shuffle_positives:
                         random.shuffle(positive_context)
-                    positive_context = positive_context[:self.num_positives]
+                    positive_context = positive_context[: self.num_positives]
                     hard_negative_context = list(
-                        filter(lambda x: x["label"] == "hard_negative", basket.raw["passages"]))
+                        filter(lambda x: x["label"] == "hard_negative", basket.raw["passages"])
+                    )
                     if self.shuffle_negatives:
                         random.shuffle(hard_negative_context)
-                    hard_negative_context = hard_negative_context[:self.num_hard_negatives]
+                    hard_negative_context = hard_negative_context[: self.num_hard_negatives]
 
                     positive_ctx_meta = []
                     positive_ctx_texts = []
@@ -1564,14 +1627,14 @@ class TableTextSimilarityProcessor(Processor):
                     # featurize context passages
                     if self.embed_meta_fields:
                         # concatenate title with positive context passages + negative context passages
-                        all_ctx = self._combine_meta_context(positive_ctx_meta, positive_ctx_texts) + \
-                                  self._combine_meta_context(hard_negative_ctx_meta, hard_negative_ctx_texts)
+                        all_ctx = self._combine_meta_context(
+                            positive_ctx_meta, positive_ctx_texts
+                        ) + self._combine_meta_context(hard_negative_ctx_meta, hard_negative_ctx_texts)
                     else:
                         all_ctx = positive_ctx_texts + hard_negative_ctx_texts
 
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
-                    all_ctx += [('', '')] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
-
+                    all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
                     inputs = self.passage_tokenizer.batch_encode_plus(
                         all_ctx,
@@ -1579,7 +1642,7 @@ class TableTextSimilarityProcessor(Processor):
                         truncation=True,
                         padding="max_length",
                         max_length=self.max_seq_len_passage,
-                        return_token_type_ids=True
+                        return_token_type_ids=True,
                     )
 
                     input_ids = inputs["input_ids"]
@@ -1632,7 +1695,7 @@ class TableTextSimilarityProcessor(Processor):
     @staticmethod
     def _normalize_question(question: str) -> str:
         """Removes '?' from queries/questions"""
-        if question[-1] == '?':
+        if question[-1] == "?":
             question = question[:-1]
         return question
 
@@ -1650,6 +1713,7 @@ class TextClassificationProcessor(Processor):
     """
     Used to handle the text classification datasets that come in tabular format (CSV, TSV, etc.)
     """
+
     def __init__(
         self,
         tokenizer,
@@ -1671,7 +1735,7 @@ class TextClassificationProcessor(Processor):
         proxies=None,
         max_samples=None,
         text_column_name="text",
-        **kwargs
+        **kwargs,
     ):
         """
         :param tokenizer: Used to split a sentence (str) into tokens.
@@ -1720,7 +1784,7 @@ class TextClassificationProcessor(Processor):
         :param kwargs: placeholder for passing generic parameters
         :type kwargs: object
         """
-        #TODO If an arg is misspelt, e.g. metrics, it will be swallowed silently by kwargs
+        # TODO If an arg is misspelt, e.g. metrics, it will be swallowed silently by kwargs
 
         # Custom processor attributes
         self.delimiter = delimiter
@@ -1741,26 +1805,28 @@ class TextClassificationProcessor(Processor):
             data_dir=data_dir,
             tasks={},
             proxies=proxies,
-
         )
         if metric and label_list:
             if multilabel:
                 task_type = "multilabel_classification"
             else:
                 task_type = "classification"
-            self.add_task(name="text_classification",
-                          metric=metric,
-                          label_list=label_list,
-                          label_column_name=label_column_name,
-                          text_column_name=text_column_name,
-                          task_type=task_type)
+            self.add_task(
+                name="text_classification",
+                metric=metric,
+                label_list=label_list,
+                label_column_name=label_column_name,
+                text_column_name=text_column_name,
+                task_type=task_type,
+            )
         else:
-            logger.info("Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
-                        "using the default task or add a custom task later via processor.add_task()")
+            logger.info(
+                "Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
+                "using the default task or add a custom task later via processor.add_task()"
+            )
 
     def file_to_dicts(self, file: str) -> List[Dict]:
         raise NotImplementedError
-
 
     def dataset_from_dicts(self, dicts, indices=None, return_baskets=False, debug=False):
         self.baskets = []
@@ -1774,7 +1840,7 @@ class TextClassificationProcessor(Processor):
             return_attention_mask=True,
             truncation=True,
             max_length=self.max_seq_len,
-            padding="max_length"
+            padding="max_length",
         )
         input_ids_batch = tokenized_batch["input_ids"]
         segment_ids_batch = tokenized_batch["token_type_ids"]
@@ -1783,16 +1849,14 @@ class TextClassificationProcessor(Processor):
 
         # From here we operate on a per sample basis
         for dictionary, input_ids, segment_ids, padding_mask, tokens in zip(
-                dicts, input_ids_batch, segment_ids_batch, padding_masks_batch, tokens_batch
+            dicts, input_ids_batch, segment_ids_batch, padding_masks_batch, tokens_batch
         ):
 
             tokenized = {}
             if debug:
                 tokenized["tokens"] = tokens
 
-            feat_dict = {"input_ids": input_ids,
-                         "padding_mask": padding_mask,
-                         "segment_ids": segment_ids}
+            feat_dict = {"input_ids": input_ids, "padding_mask": padding_mask, "segment_ids": segment_ids}
 
             # Create labels
             # i.e. not inference
@@ -1801,14 +1865,8 @@ class TextClassificationProcessor(Processor):
                 feat_dict.update(label_dict)
 
             # Add Basket to self.baskets
-            curr_sample = Sample(id="",
-                                 clear_text=dictionary,
-                                 tokenized=tokenized,
-                                 features=[feat_dict])
-            curr_basket = SampleBasket(id_internal=None,
-                                       raw=dictionary,
-                                       id_external=None,
-                                       samples=[curr_sample])
+            curr_sample = Sample(id="", clear_text=dictionary, tokenized=tokenized, features=[feat_dict])
+            curr_basket = SampleBasket(id_internal=None, raw=dictionary, id_external=None, samples=[curr_sample])
             self.baskets.append(curr_basket)
 
         if indices and 0 not in indices:
@@ -1823,7 +1881,6 @@ class TextClassificationProcessor(Processor):
             return dataset, tensornames, problematic_ids, self.baskets
         else:
             return dataset, tensornames, problematic_ids
-
 
     def convert_labels(self, dictionary: Dict):
         ret: Dict = {}
@@ -1886,7 +1943,6 @@ class InferenceProcessor(TextClassificationProcessor):
             tasks={},
         )
 
-
     @classmethod
     def load_from_dir(cls, load_dir: str):
         """
@@ -1933,10 +1989,7 @@ class InferenceProcessor(TextClassificationProcessor):
                 sample = self._dict_to_samples(dictionary=d)
                 features = self._sample_to_features(sample)
                 sample.features = features
-                basket = SampleBasket(id_internal=None,
-                                      raw=d,
-                                      id_external=None,
-                                      samples=[sample])
+                basket = SampleBasket(id_internal=None, raw=d, id_external=None, samples=[sample])
                 self.baskets.append(basket)
             if indices and 0 not in indices:
                 pass
@@ -1950,10 +2003,7 @@ class InferenceProcessor(TextClassificationProcessor):
                 ret.append(self.baskets)
             return ret
         else:
-            return super().dataset_from_dicts(dicts=dicts,
-                                              indices=indices,
-                                              return_baskets=return_baskets,
-                                              debug=debug)
+            return super().dataset_from_dicts(dicts=dicts, indices=indices, return_baskets=return_baskets, debug=debug)
 
     # Private method to keep s3e pooling and embedding extraction working
     def _dict_to_samples(self, dictionary: Dict, **kwargs) -> Sample:
@@ -1961,9 +2011,9 @@ class InferenceProcessor(TextClassificationProcessor):
         tokenized = tokenize_with_metadata(dictionary["text"], self.tokenizer)
         # truncate tokens, offsets and start_of_word to max_seq_len that can be handled by the model
         for seq_name in tokenized.keys():
-            tokenized[seq_name], _, _ = truncate_sequences(seq_a=tokenized[seq_name], seq_b=None,
-                                                           tokenizer=self.tokenizer,
-                                                           max_seq_len=self.max_seq_len)
+            tokenized[seq_name], _, _ = truncate_sequences(
+                seq_a=tokenized[seq_name], seq_b=None, tokenizer=self.tokenizer, max_seq_len=self.max_seq_len
+            )
         return Sample(id="", clear_text=dictionary, tokenized=tokenized)
 
     # Private method to keep s3e pooling and embedding extraction working
@@ -1976,25 +2026,58 @@ class InferenceProcessor(TextClassificationProcessor):
         )
         return features
 
+
 class UnlabeledTextProcessor(Processor):
     """
     Processor to be used for distilling a teacher model into a student model from scratch. Can only be used with distil_intermediate_layers_from.
     """
-    def __init__(self, tokenizer, max_seq_len: int, train_filename: Optional[Union[Path, str]] = None, dev_filename: Optional[Union[Path, str]] = None, test_filename: Optional[Union[Path, str]] = None, dev_split: float = 0, data_dir: Optional[Union[Path, str]] = None, tasks: Dict = {}, proxies: Optional[Dict] = None, multithreading_rust: Optional[bool] = True):
-        super().__init__(tokenizer, max_seq_len, train_filename, dev_filename, test_filename, dev_split, data_dir, tasks, proxies, multithreading_rust)
+
+    def __init__(
+        self,
+        tokenizer,
+        max_seq_len: int,
+        train_filename: Optional[Union[Path, str]] = None,
+        dev_filename: Optional[Union[Path, str]] = None,
+        test_filename: Optional[Union[Path, str]] = None,
+        dev_split: float = 0,
+        data_dir: Optional[Union[Path, str]] = None,
+        tasks: Dict = {},
+        proxies: Optional[Dict] = None,
+        multithreading_rust: Optional[bool] = True,
+    ):
+        super().__init__(
+            tokenizer,
+            max_seq_len,
+            train_filename,
+            dev_filename,
+            test_filename,
+            dev_split,
+            data_dir,
+            tasks,
+            proxies,
+            multithreading_rust,
+        )
         self.add_task("question_answering", "squad", ["start_token", "end_token"])
+
     def file_to_dicts(self, file: str) -> List[dict]:
         dicts = []
         with open(file, "r") as f:
             for line in f:
                 dicts.append({"text": line})
         return dicts
-    
+
     def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]
-        tokens = self.tokenizer.batch_encode_plus(texts, add_special_tokens=True, return_tensors="pt", padding="max_length", truncation=True, max_length=self.max_seq_len)
+        tokens = self.tokenizer.batch_encode_plus(
+            texts,
+            add_special_tokens=True,
+            return_tensors="pt",
+            padding="max_length",
+            truncation=True,
+            max_length=self.max_seq_len,
+        )
         names = [key for key in tokens]
         inputs = [tokens[key] for key in tokens]
         if not "padding_mask" in names:
@@ -2006,8 +2089,10 @@ class UnlabeledTextProcessor(Processor):
 
         dataset = TensorDataset(*inputs)
         return dataset, names, []
-    def _create_dataset(self, baskets:List[SampleBasket]):
+
+    def _create_dataset(self, baskets: List[SampleBasket]):
         raise NotImplementedError("_create_dataset is not supported by UnlabeledTextProcessor")
+
 
 # helper fcts
 def write_squad_predictions(predictions, out_filename, predictions_filename=None):
@@ -2017,7 +2102,9 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
             if p["answers"][0]["answer"] is not None:
                 predictions_json[p["question_id"]] = p["answers"][0]["answer"]
             else:
-                predictions_json[p["question_id"]] = "" #convert No answer = None to format understood by the SQuAD eval script
+                predictions_json[
+                    p["question_id"]
+                ] = ""  # convert No answer = None to format understood by the SQuAD eval script
 
     if predictions_filename:
         dev_labels = {}
@@ -2025,7 +2112,7 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
         for d in temp["data"]:
             for p in d["paragraphs"]:
                 for q in p["qas"]:
-                    if q.get("is_impossible",False):
+                    if q.get("is_impossible", False):
                         dev_labels[q["id"]] = "is_impossible"
                     else:
                         dev_labels[q["id"]] = q["answers"][0]["text"]
@@ -2041,7 +2128,15 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
     logger.info(f"Written Squad predictions to: {out_filename}")
 
 
-def _read_dpr_json(file: str, max_samples: Optional[int] = None, proxies: Any = None, num_hard_negatives: int = 1, num_positives: int = 1, shuffle_negatives: bool = True, shuffle_positives: bool = False):
+def _read_dpr_json(
+    file: str,
+    max_samples: Optional[int] = None,
+    proxies: Any = None,
+    num_hard_negatives: int = 1,
+    num_positives: int = 1,
+    shuffle_negatives: bool = True,
+    shuffle_positives: bool = False,
+):
     """
     Reads a Dense Passage Retrieval (DPR) data file in json format and returns a list of dictionaries.
 
@@ -2075,11 +2170,11 @@ def _read_dpr_json(file: str, max_samples: Optional[int] = None, proxies: Any = 
 
     if Path(file).suffix.lower() == ".jsonl":
         dicts = []
-        with open(file, encoding='utf-8') as f:
+        with open(file, encoding="utf-8") as f:
             for line in f:
                 dicts.append(json.loads(line))
     else:
-        dicts = json.load(open(file, encoding='utf-8'))
+        dicts = json.load(open(file, encoding="utf-8"))
 
     if max_samples:
         dicts = random.sample(dicts, min(max_samples, len(dicts)))
@@ -2087,7 +2182,12 @@ def _read_dpr_json(file: str, max_samples: Optional[int] = None, proxies: Any = 
     # convert DPR dictionary to standard dictionary
     query_json_keys = ["question", "questions", "query"]
     positive_context_json_keys = ["positive_contexts", "positive_ctxs", "positive_context", "positive_ctx"]
-    hard_negative_json_keys = ["hard_negative_contexts", "hard_negative_ctxs", "hard_negative_context", "hard_negative_ctx"]
+    hard_negative_json_keys = [
+        "hard_negative_contexts",
+        "hard_negative_ctxs",
+        "hard_negative_context",
+        "hard_negative_ctx",
+    ]
     standard_dicts = []
     for dict in dicts:
         sample = {}
@@ -2099,22 +2199,26 @@ def _read_dpr_json(file: str, max_samples: Optional[int] = None, proxies: Any = 
                 if shuffle_positives:
                     random.shuffle(val)
                 for passage in val[:num_positives]:
-                    passages.append({
-                        "title": passage["title"],
-                        "text": passage["text"],
-                        "label": "positive",
-                        "external_id": passage.get("passage_id", uuid.uuid4().hex.upper()[0:8])
-                        })
+                    passages.append(
+                        {
+                            "title": passage["title"],
+                            "text": passage["text"],
+                            "label": "positive",
+                            "external_id": passage.get("passage_id", uuid.uuid4().hex.upper()[0:8]),
+                        }
+                    )
             elif key in hard_negative_json_keys:
                 if shuffle_negatives:
                     random.shuffle(val)
                 for passage in val[:num_hard_negatives]:
-                    passages.append({
-                        "title": passage["title"],
-                        "text": passage["text"],
-                        "label": "hard_negative",
-                        "external_id": passage.get("passage_id", uuid.uuid4().hex.upper()[0:8])
-                        })
+                    passages.append(
+                        {
+                            "title": passage["title"],
+                            "text": passage["text"],
+                            "label": "hard_negative",
+                            "external_id": passage.get("passage_id", uuid.uuid4().hex.upper()[0:8]),
+                        }
+                    )
         sample["passages"] = passages
         standard_dicts.append(sample)
     return standard_dicts
@@ -2148,9 +2252,7 @@ def _download_extract_downstream_data(input_file: str, proxies=None):
     directory = full_path.parent
     taskname = directory.stem
     datadir = directory.parent
-    logger.info(
-        "downloading and extracting file {} to dir {}".format(taskname, datadir)
-    )
+    logger.info("downloading and extracting file {} to dir {}".format(taskname, datadir))
     if taskname not in DOWNSTREAM_TASK_MAP:
         logger.error("Cannot download {}. Unknown data source.".format(taskname))
     else:

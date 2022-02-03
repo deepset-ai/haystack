@@ -10,7 +10,7 @@ from haystack.modeling.utils import initialize_device_settings
 
 
 class QuestionGenerator(BaseComponent):
-    """ 
+    """
     The Question Generator takes only a document as input and outputs questions that it thinks can be
     answered by this document. In our current implementation, input texts are split into chunks of 50 words
     with a 10 word overlap. This is because the default model `valhalla/t5-base-e2e-qg` seems to generate only
@@ -19,20 +19,22 @@ class QuestionGenerator(BaseComponent):
     generally come in an order dictated by the order of their answers i.e. early questions in the list generally
     come from earlier in the document.
     """
+
     outgoing_edges = 1
 
-    def __init__(self,
-                 model_name_or_path="valhalla/t5-base-e2e-qg",
-                 model_version=None,
-                 num_beams=4,
-                 max_length=256,
-                 no_repeat_ngram_size=3,
-                 length_penalty=1.5,
-                 early_stopping=True,
-                 split_length=50,
-                 split_overlap=10,
-                 use_gpu=True,
-                 prompt="generate questions:",
+    def __init__(
+        self,
+        model_name_or_path="valhalla/t5-base-e2e-qg",
+        model_version=None,
+        num_beams=4,
+        max_length=256,
+        no_repeat_ngram_size=3,
+        length_penalty=1.5,
+        early_stopping=True,
+        split_length=50,
+        split_overlap=10,
+        use_gpu=True,
+        prompt="generate questions:",
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -50,10 +52,15 @@ class QuestionGenerator(BaseComponent):
         self.model.to(str(self.devices[0]))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.set_config(
-            model_name_or_path=model_name_or_path, model_version=model_version,
-            max_length=max_length, num_beams=num_beams, no_repeat_ngram_size=no_repeat_ngram_size,
-            length_penalty=length_penalty, early_stopping=early_stopping, split_length=split_length,
-            split_overlap=split_overlap
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            max_length=max_length,
+            num_beams=num_beams,
+            no_repeat_ngram_size=no_repeat_ngram_size,
+            length_penalty=length_penalty,
+            early_stopping=early_stopping,
+            split_length=split_length,
+            split_overlap=split_overlap,
         )
         self.num_beams = num_beams
         self.max_length = max_length
@@ -69,9 +76,7 @@ class QuestionGenerator(BaseComponent):
         generated_questions = []
         for d in documents:
             questions = self.generate(d.content)
-            curr_dict = {"document_id": d.id,
-                         "document_sample": d.content[:200],
-                         "questions": questions}
+            curr_dict = {"document_id": d.id, "document_sample": d.content[:200], "questions": questions}
             generated_questions.append(curr_dict)
         output = {"generated_questions": generated_questions, "documents": documents}
         return output, "output_1"
@@ -84,7 +89,7 @@ class QuestionGenerator(BaseComponent):
             split_by="word",
             split_respect_sentence_boundary=False,
             split_overlap=self.split_overlap,
-            split_length=self.split_length
+            split_length=self.split_length,
         )
         split_texts = [x["content"] for x in split_texts_dict]
         ret = []
@@ -93,7 +98,9 @@ class QuestionGenerator(BaseComponent):
                 split_text = self.prompt + " " + split_text
             tokenized = self.tokenizer([split_text], return_tensors="pt")
             input_ids = tokenized["input_ids"].to(self.devices[0])
-            attention_mask = tokenized["attention_mask"].to(self.devices[0])   # necessary if padding is enabled so the model won't attend pad tokens
+            attention_mask = tokenized["attention_mask"].to(
+                self.devices[0]
+            )  # necessary if padding is enabled so the model won't attend pad tokens
             tokens_output = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,

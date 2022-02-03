@@ -10,6 +10,7 @@ class BaseTranslator(BaseComponent):
     """
     Abstract class for a Translator component that translates either a query or a doc from language A to language B.
     """
+
     outgoing_edges = 1
 
     @abstractmethod
@@ -35,13 +36,13 @@ class BaseTranslator(BaseComponent):
     ):
         """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
         translation_results = {}
-        
+
         if results is not None:
-            translation_results = {"results":deepcopy(results)}
+            translation_results = {"results": deepcopy(results)}
             translated_queries_answers = self.translate(results=translation_results["results"])
             for i, result in enumerate(translation_results["results"]):
                 result["query"] = translated_queries_answers[i]
-                result["answers"][0].answer = translated_queries_answers[len(translation_results["results"])+i]
+                result["answers"][0].answer = translated_queries_answers[len(translation_results["results"]) + i]
             return translation_results, "output_1"
 
         # This will cover input query stage

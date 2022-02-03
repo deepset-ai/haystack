@@ -10,12 +10,12 @@ DOCS = [
     ),
     Document(
         content="""The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world, a title it held for 41 years until the Chrysler Building in New York City was finished in 1930. It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."""
-    )
+    ),
 ]
 
 EXPECTED_SUMMARIES = [
     "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
-    "The Eiffel Tower is a landmark in Paris, France."
+    "The Eiffel Tower is a landmark in Paris, France.",
 ]
 
 SPLIT_DOCS = [
@@ -24,14 +24,14 @@ SPLIT_DOCS = [
     ),
     Document(
         content="""It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."""
-    )
+    ),
 ]
 
 # Documents order is very important to produce summary.
 # Different order of same documents produce different summary.
 EXPECTED_ONE_SUMMARIES = [
     "The Eiffel Tower is a landmark in Paris, France.",
-    "The Eiffel Tower, built in 1889 in Paris, France, is the world's tallest free-standing structure."
+    "The Eiffel Tower, built in 1889 in Paris, France, is the world's tallest free-standing structure.",
 ]
 
 
@@ -88,7 +88,9 @@ def test_summarization_pipeline_one_summary(document_store, retriever, summarize
 
     query = "Where is Eiffel Tower?"
     pipeline = SearchSummarizationPipeline(retriever=retriever, summarizer=summarizer, return_in_answer_format=True)
-    output = pipeline.run(query=query, params={"Retriever": {"top_k": 2}, "Summarizer": {"generate_single_summary": True}})
+    output = pipeline.run(
+        query=query, params={"Retriever": {"top_k": 2}, "Summarizer": {"generate_single_summary": True}}
+    )
     answers = output["answers"]
     assert len(answers) == 1
     assert answers[0]["answer"] in EXPECTED_ONE_SUMMARIES

@@ -12,7 +12,13 @@ from haystack.pipelines import (
     RootNode,
     MostSimilarDocumentsPipeline,
 )
-from haystack.nodes import DensePassageRetriever,  ElasticsearchRetriever, SklearnQueryClassifier, TransformersQueryClassifier, JoinDocuments
+from haystack.nodes import (
+    DensePassageRetriever,
+    ElasticsearchRetriever,
+    SklearnQueryClassifier,
+    TransformersQueryClassifier,
+    JoinDocuments,
+)
 from haystack.schema import Document
 
 from conftest import SAMPLES_PATH
@@ -63,7 +69,9 @@ def test_faq_pipeline(retriever, document_store):
     assert output["answers"][0].answer.startswith("Using tests")
 
     if isinstance(document_store, ElasticsearchDocumentStore):
-        output = pipeline.run(query="How to test this?", params={"Retriever": {"filters": {"source": ["wiki2"]}, "top_k": 5}})
+        output = pipeline.run(
+            query="How to test this?", params={"Retriever": {"filters": {"source": ["wiki2"]}, "top_k": 5}}
+        )
         assert len(output["answers"]) == 1
 
 
@@ -90,13 +98,13 @@ def test_document_search_pipeline(retriever, document_store):
 
 
 @pytest.mark.parametrize(
-        "retriever,document_store",
-        [
-            ("embedding", "faiss"),
-            ("embedding", "milvus"),
-            ("embedding", "elasticsearch"),
-        ],
-        indirect=True,
+    "retriever,document_store",
+    [
+        ("embedding", "faiss"),
+        ("embedding", "milvus"),
+        ("embedding", "elasticsearch"),
+    ],
+    indirect=True,
 )
 def test_most_similar_documents_pipeline(retriever, document_store):
     documents = [
@@ -175,8 +183,8 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=es, name="R1", inputs=["Query"])
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
-    one_result = p.run(query=query, params={ 'Join': { 'top_k_join': 1 } })
-    two_results = p.run(query=query, params={ 'Join': { 'top_k_join': 2 } })
+    one_result = p.run(query=query, params={"Join": {"top_k_join": 1}})
+    two_results = p.run(query=query, params={"Join": {"top_k_join": 2}})
     assert len(one_result["documents"]) == 1
     assert len(two_results["documents"]) == 2
 
@@ -188,7 +196,7 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     p.add_node(component=reader, name="Reader", inputs=["Join"])
     results = p.run(query=query)
-    #check whether correct answer is within top 2 predictions
+    # check whether correct answer is within top 2 predictions
     assert results["answers"][0].answer == "Berlin" or results["answers"][1].answer == "Berlin"
 
 
@@ -257,15 +265,11 @@ def test_query_keyword_statement_classifier():
 def test_indexing_pipeline_with_classifier(document_store):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline_with_classifier"
+        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline_with_classifier"
     )
-    pipeline.run(
-        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
-    )
+    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
-    )
+    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline")
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
@@ -280,14 +284,12 @@ def test_indexing_pipeline_with_classifier(document_store):
 def test_query_pipeline_with_document_classifier(document_store):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
-    pipeline.run(
-        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
-    )
+    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline_with_document_classifier"
+        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline_with_document_classifier"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
@@ -302,28 +304,24 @@ def test_existing_faiss_document_store():
     clean_faiss_document_store()
 
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH/"pipeline"/"test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
     )
-    pipeline.run(
-        file_paths=SAMPLES_PATH/"pdf"/"sample_pdf_1.pdf"
-    )
+    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
 
     new_document_store = pipeline.get_document_store()
-    new_document_store.save('existing_faiss_document_store')
+    new_document_store.save("existing_faiss_document_store")
 
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH/"pipeline"/"test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
     )
 
     retriever = pipeline.get_node("DPRRetriever")
     existing_document_store = retriever.document_store
-    faiss_index = existing_document_store.faiss_indexes['document']
+    faiss_index = existing_document_store.faiss_indexes["document"]
     assert faiss_index.ntotal == 2
 
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"DPRRetriever": {"top_k": 10}}
-    )
+    prediction = pipeline.run(query="Who made the PDF specification?", params={"DPRRetriever": {"top_k": 10}})
 
     assert prediction["query"] == "Who made the PDF specification?"
     assert len(prediction["documents"]) == 2
@@ -331,9 +329,9 @@ def test_existing_faiss_document_store():
 
 
 def clean_faiss_document_store():
-    if Path('existing_faiss_document_store').exists():
-        os.remove('existing_faiss_document_store')
-    if Path('existing_faiss_document_store.json').exists():
-        os.remove('existing_faiss_document_store.json')
-    if Path('faiss_document_store.db').exists():
-        os.remove('faiss_document_store.db')
+    if Path("existing_faiss_document_store").exists():
+        os.remove("existing_faiss_document_store")
+    if Path("existing_faiss_document_store.json").exists():
+        os.remove("existing_faiss_document_store.json")
+    if Path("faiss_document_store.db").exists():
+        os.remove("faiss_document_store.db")

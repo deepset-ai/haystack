@@ -22,8 +22,9 @@ def test_prediction_head_load_save(tmp_path, caplog=None):
         prediction_heads=[prediction_head],
         embeds_dropout_prob=0.1,
         lm_output_types=["per_sequence"],
-        device=devices[0])
+        device=devices[0],
+    )
 
     model.save(tmp_path)
-    model_loaded = AdaptiveModel.load(tmp_path, device='cpu')
+    model_loaded = AdaptiveModel.load(tmp_path, device="cpu")
     assert model_loaded is not None

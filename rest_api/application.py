@@ -18,8 +18,8 @@ try:
 
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
-    _optional_component_not_installed("rest_api", "rest", ie)
 
+    _optional_component_not_installed("rest_api", "rest", ie)
 
 
 def get_application() -> FastAPI:
@@ -28,7 +28,11 @@ def get_application() -> FastAPI:
     # This middleware enables allow all cross-domain requests to the API from a browser. For production
     # deployments, it could be made more restrictive.
     application.add_middleware(
-        CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     application.add_exception_handler(HTTPException, http_error_handler)
     application.include_router(api_router)
@@ -39,7 +43,7 @@ def get_application() -> FastAPI:
 def get_openapi_specs() -> dict:
     """
     Used to autogenerate OpenAPI specs file to use in the documentation.
-    
+
     See `docs/_src/api/openapi/generate_openapi_specs.py`
     """
     app = get_application()
@@ -62,6 +66,7 @@ def use_route_names_as_operation_ids(app: FastAPI) -> None:
     for route in app.routes:
         if isinstance(route, APIRoute):
             route.operation_id = route.name
+
 
 app = get_application()
 use_route_names_as_operation_ids(app)
