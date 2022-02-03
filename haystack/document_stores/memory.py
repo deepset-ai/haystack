@@ -407,8 +407,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
         documents = deepcopy(list(self.indexes[index].values()))
         documents = [d for d in documents if isinstance(d, Document)]
 
-        filtered_documents = []
-
         if return_embedding is None:
             return_embedding = self.return_embedding
         if return_embedding is False:
@@ -419,7 +417,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             documents = [doc for doc in documents if doc.embedding is None]
         if filters:
             parsed_filter = LogicalFilterClause.parse(filters)
-            filtered_documents = filter(lambda doc: parsed_filter.evaluate(doc.meta), documents)
+            filtered_documents = list(filter(lambda doc: parsed_filter.evaluate(doc.meta), documents))
         else:
             filtered_documents = documents
 

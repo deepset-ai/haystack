@@ -239,7 +239,8 @@ class InOperation(ComparisonOperation):
     Handles conversion of the '$in' comparison operation.
     """
     def evaluate(self, fields) -> bool:
-        return fields[self.field_name] in self.comparison_value
+        return fields[self.field_name] in self.comparison_value # type: ignore
+        # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
     def convert_to_elasticsearch(self):
         return {"terms": {self.field_name: self.comparison_value}}
@@ -261,7 +262,8 @@ class NinOperation(ComparisonOperation):
     Handles conversion of the '$nin' comparison operation.
     """
     def evaluate(self, fields) -> bool:
-        return fields[self.field_name] not in self.comparison_value
+        return fields[self.field_name] not in self.comparison_value # type: ignore
+        # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
     def convert_to_elasticsearch(self):
         return {"bool": {"must_not": {"terms": {self.field_name: self.comparison_value}}}}
