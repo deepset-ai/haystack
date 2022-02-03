@@ -217,6 +217,36 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_extended_filter(document_store_with_docs):
+    # Test comparison operators individually
+    documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})
+    assert len(documents) == 1
+    documents = document_store_with_docs.get_all_documents(filters={"meta_field": "test1"})
+    assert len(documents) == 1
+
+    documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$in": ["test1", "test2", "n.a."]}})
+    assert len(documents) == 2
+    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test2", "n.a."]})
+    assert len(documents) == 2
+
+    documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$ne": "test1"}})
+    assert len(documents) == 4
+
+    documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$nin": ["test1", "test2", "n.a."]}})
+    assert len(documents) == 3
+
+    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$gt": 3}})
+    assert len(documents) == 3
+
+    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$gte": 3}})
+    assert len(documents) == 4
+
+    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$lt": 3}})
+    assert len(documents) == 1
+
+    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$lte": 3}})
+    assert len(documents) == 2
+
+    # Test compound filters
     filters = {"date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"}}
     documents = document_store_with_docs.get_all_documents(filters=filters)
     assert len(documents) == 3
@@ -271,6 +301,25 @@ def test_extended_filter(document_store_with_docs):
     }
     documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
     assert documents == documents_simplified_filter
+
+    # Test same logical operator twice on same level
+    filters = {
+        "$or": [
+            {"$and": {
+                "meta_field": {"$in": ["test1", "test2"]},
+                "date_field": {"$gte": "2020-01-01"}
+            }},
+            {"$and": {
+                "meta_field": {"$in": ["test3", "test4"]},
+                "date_field": {"$lt": "2020-01-01"}
+            }},
+        ]
+    }
+    documents = document_store_with_docs.get_all_documents(filters=filters)
+    docs_meta = [doc.meta["meta_field"] for doc in documents]
+    assert len(documents) == 2
+    assert "test1" in docs_meta
+    assert "test3" in docs_meta
 
 
 def test_get_document_by_id(document_store_with_docs):
