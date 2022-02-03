@@ -305,14 +305,8 @@ def test_extended_filter(document_store_with_docs):
     # Test same logical operator twice on same level
     filters = {
         "$or": [
-            {"$and": {
-                "meta_field": {"$in": ["test1", "test2"]},
-                "date_field": {"$gte": "2020-01-01"}
-            }},
-            {"$and": {
-                "meta_field": {"$in": ["test3", "test4"]},
-                "date_field": {"$lt": "2020-01-01"}
-            }},
+            {"$and": {"meta_field": {"$in": ["test1", "test2"]}, "date_field": {"$gte": "2020-01-01"}}},
+            {"$and": {"meta_field": {"$in": ["test3", "test4"]}, "date_field": {"$lt": "2020-01-01"}}},
         ]
     }
     documents = document_store_with_docs.get_all_documents(filters=filters)
