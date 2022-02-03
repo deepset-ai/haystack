@@ -17,7 +17,7 @@ def tutorial12_lfqa():
 
     from haystack.document_stores.faiss import FAISSDocumentStore
 
-    document_store = FAISSDocumentStore(vector_dim=128, faiss_index_factory_str="Flat")
+    document_store = FAISSDocumentStore(embedding_dim=128, faiss_index_factory_str="Flat")
 
     """
     Cleaning & indexing documents:
@@ -42,9 +42,9 @@ def tutorial12_lfqa():
 
     from haystack.nodes import EmbeddingRetriever
 
-    retriever = EmbeddingRetriever(document_store=document_store,
-                                   embedding_model="yjernite/retribert-base-uncased",
-                                   model_format="retribert")
+    retriever = EmbeddingRetriever(
+        document_store=document_store, embedding_model="yjernite/retribert-base-uncased", model_format="retribert"
+    )
 
     document_store.update_embeddings(retriever)
 
@@ -54,10 +54,7 @@ def tutorial12_lfqa():
     from haystack.pipelines import DocumentSearchPipeline
 
     p_retrieval = DocumentSearchPipeline(retriever)
-    res = p_retrieval.run(
-        query="Tell me something about Arya Stark?",
-        params={"Retriever": {"top_k": 1}}
-    )
+    res = p_retrieval.run(query="Tell me something about Arya Stark?", params={"Retriever": {"top_k": 1}})
     print_documents(res, max_text_len=512)
 
     """
@@ -76,6 +73,7 @@ def tutorial12_lfqa():
     """
 
     from haystack.pipelines import GenerativeQAPipeline
+
     pipe = GenerativeQAPipeline(generator, retriever)
 
     """Voilà! Ask a question!"""

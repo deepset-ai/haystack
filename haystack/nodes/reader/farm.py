@@ -8,7 +8,7 @@ from time import perf_counter
 import torch
 
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
-from haystack.modeling.data_handler.processor import SquadProcessor
+from haystack.modeling.data_handler.processor import SquadProcessor, Processor
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.inputs import QAInput, Question
 from haystack.modeling.infer import QAInferencer
@@ -56,11 +56,11 @@ class FARMReader(BaseReader):
         progress_bar: bool = True,
         duplicate_filtering: int = 0,
         use_confidence_scores: bool = True,
-        proxies=None,
+        proxies: Optional[Dict[str, str]] = None,
         local_files_only=False,
         force_download=False,
-        use_auth_token: Optional[Union[str,bool]] = None,
-        **kwargs
+        use_auth_token: Optional[Union[str, bool]] = None,
+        **kwargs,
     ):
 
         """
@@ -109,39 +109,60 @@ class FARMReader(BaseReader):
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
         :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`, 
-                                the local token will be used, which must be previously created via `transformer-cli login`. 
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
+                                the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            model_name_or_path=model_name_or_path, model_version=model_version, context_window_size=context_window_size,
-            batch_size=batch_size, use_gpu=use_gpu, no_ans_boost=no_ans_boost, return_no_answer=return_no_answer,
-            top_k=top_k, top_k_per_candidate=top_k_per_candidate, top_k_per_sample=top_k_per_sample,
-            num_processes=num_processes, max_seq_len=max_seq_len, doc_stride=doc_stride, progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering, proxies=proxies, local_files_only=local_files_only,
-            force_download=force_download, use_confidence_scores=use_confidence_scores, **kwargs
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            context_window_size=context_window_size,
+            batch_size=batch_size,
+            use_gpu=use_gpu,
+            no_ans_boost=no_ans_boost,
+            return_no_answer=return_no_answer,
+            top_k=top_k,
+            top_k_per_candidate=top_k_per_candidate,
+            top_k_per_sample=top_k_per_sample,
+            num_processes=num_processes,
+            max_seq_len=max_seq_len,
+            doc_stride=doc_stride,
+            progress_bar=progress_bar,
+            duplicate_filtering=duplicate_filtering,
+            proxies=proxies,
+            local_files_only=local_files_only,
+            force_download=force_download,
+            use_confidence_scores=use_confidence_scores,
+            **kwargs,
         )
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         self.return_no_answers = return_no_answer
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
-        self.inferencer = QAInferencer.load(model_name_or_path, batch_size=batch_size, gpu=use_gpu,
-                                            task_type="question_answering", max_seq_len=max_seq_len,
-                                            doc_stride=doc_stride, num_processes=num_processes, revision=model_version,
-                                            disable_tqdm=not progress_bar,
-                                            strict=False,
-                                            proxies=proxies,
-                                            local_files_only=local_files_only,
-                                            force_download=force_download,
-                                            devices=self.devices,
-                                            use_auth_token=use_auth_token,
-                                            **kwargs)
+        self.inferencer = QAInferencer.load(
+            model_name_or_path,
+            batch_size=batch_size,
+            gpu=use_gpu,
+            task_type="question_answering",
+            max_seq_len=max_seq_len,
+            doc_stride=doc_stride,
+            num_processes=num_processes,
+            revision=model_version,
+            disable_tqdm=not progress_bar,
+            strict=False,
+            proxies=proxies,
+            local_files_only=local_files_only,
+            force_download=force_download,
+            devices=self.devices,
+            use_auth_token=use_auth_token,
+            **kwargs,
+        )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
-        self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1 # including possible no_answer
+        self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1  # including possible no_answer
         try:
             self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
         except:
@@ -183,6 +204,7 @@ class FARMReader(BaseReader):
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
         tinybert: bool = False,
+        processor: Optional[Processor] = None,
     ):
         if dev_filename:
             dev_split = 0
@@ -203,30 +225,51 @@ class FARMReader(BaseReader):
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
+            if tinybert:
+                save_dir += "_tinybert_stage_1"
 
         # 1. Create a DataProcessor that handles all the conversion from raw text into a pytorch Dataset
         label_list = ["start_token", "end_token"]
         metric = "squad"
-        processor = SquadProcessor(
-            tokenizer=self.inferencer.processor.tokenizer,
-            max_seq_len=max_seq_len,
-            label_list=label_list,
-            metric=metric,
-            train_filename=train_filename,
-            dev_filename=dev_filename,
-            dev_split=dev_split,
-            test_filename=test_filename,
-            data_dir=Path(data_dir),
-        )
+        if processor is None:
+            processor = SquadProcessor(
+                tokenizer=self.inferencer.processor.tokenizer,
+                max_seq_len=max_seq_len,
+                label_list=label_list,
+                metric=metric,
+                train_filename=train_filename,
+                dev_filename=dev_filename,
+                dev_split=dev_split,
+                test_filename=test_filename,
+                data_dir=Path(data_dir),
+            )
         data_silo: DataSilo
 
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
-        if teacher_model and not tinybert: # checks if teacher model is passed as parameter, in that case assume model distillation is used
-            data_silo = DistillationDataSilo(teacher_model, teacher_batch_size or batch_size, device=devices[0], processor=processor, batch_size=batch_size, distributed=False,
-            max_processes=num_processes, caching=caching, cache_path=cache_path)
-        else: # caching would need too much memory for tinybert distillation so in that case we use the default data silo
-            data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False, max_processes=num_processes, caching=caching, cache_path=cache_path)
+        if (
+            teacher_model and not tinybert
+        ):  # checks if teacher model is passed as parameter, in that case assume model distillation is used
+            data_silo = DistillationDataSilo(
+                teacher_model,
+                teacher_batch_size or batch_size,
+                device=devices[0],
+                processor=processor,
+                batch_size=batch_size,
+                distributed=False,
+                max_processes=num_processes,
+                caching=caching,
+                cache_path=cache_path,
+            )
+        else:  # caching would need too much memory for tinybert distillation so in that case we use the default data silo
+            data_silo = DataSilo(
+                processor=processor,
+                batch_size=batch_size,
+                distributed=False,
+                max_processes=num_processes,
+                caching=caching,
+                cache_path=cache_path,
+            )
 
         # 3. Create an optimizer and pass the already initialized model
         model, optimizer, lr_schedule = initialize_optimizer(
@@ -245,7 +288,7 @@ class FARMReader(BaseReader):
                 raise ValueError("TinyBERT distillation requires a teacher model.")
             trainer = TinyBERTDistillationTrainer.create_or_load_checkpoint(
                 model=model,
-                teacher_model=teacher_model.inferencer.model, # teacher needs to be passed as teacher outputs aren't cached
+                teacher_model=teacher_model.inferencer.model,  # teacher needs to be passed as teacher outputs aren't cached
                 optimizer=optimizer,
                 data_silo=data_silo,
                 epochs=n_epochs,
@@ -260,7 +303,9 @@ class FARMReader(BaseReader):
                 checkpoints_to_keep=checkpoints_to_keep,
             )
 
-        elif teacher_model: # checks again if teacher model is passed as parameter, in that case assume model distillation is used
+        elif (
+            teacher_model
+        ):  # checks again if teacher model is passed as parameter, in that case assume model distillation is used
             trainer = DistillationTrainer.create_or_load_checkpoint(
                 model=model,
                 optimizer=optimizer,
@@ -277,7 +322,7 @@ class FARMReader(BaseReader):
                 checkpoints_to_keep=checkpoints_to_keep,
                 distillation_loss=distillation_loss,
                 distillation_loss_weight=distillation_loss_weight,
-                temperature=temperature
+                temperature=temperature,
             )
         else:
             trainer = Trainer.create_or_load_checkpoint(
@@ -321,17 +366,16 @@ class FARMReader(BaseReader):
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
         caching: bool = False,
-        cache_path: Path = Path("cache/data_silo")
+        cache_path: Path = Path("cache/data_silo"),
     ):
         """
         Fine-tune a model on a QA dataset. Options:
-
         - Take a plain language model (e.g. `bert-base-cased`) and train it for QA (e.g. on SQuAD data)
         - Take a QA model (e.g. `deepset/bert-base-cased-squad2`) and fine-tune it for your domain (e.g. using your labels collected via the haystack annotation tool)
-         
-        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
+
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
-         
+
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
@@ -365,20 +409,33 @@ class FARMReader(BaseReader):
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
         :param caching whether or not to use caching for preprocessed dataset
         :param cache_path: Path to cache the preprocessed dataset
+        :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :return: None
         """
-        return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
-        dev_filename=dev_filename, test_filename=test_filename,
-        use_gpu=use_gpu, batch_size=batch_size,
-        n_epochs=n_epochs, learning_rate=learning_rate,
-        max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
-        dev_split=dev_split, evaluate_every=evaluate_every,
-        save_dir=save_dir, num_processes=num_processes,
-        use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
-        checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
-        caching=caching, cache_path=cache_path)
-    
-    def distil_from(
+        return self._training_procedure(
+            data_dir=data_dir,
+            train_filename=train_filename,
+            dev_filename=dev_filename,
+            test_filename=test_filename,
+            use_gpu=use_gpu,
+            batch_size=batch_size,
+            n_epochs=n_epochs,
+            learning_rate=learning_rate,
+            max_seq_len=max_seq_len,
+            warmup_proportion=warmup_proportion,
+            dev_split=dev_split,
+            evaluate_every=evaluate_every,
+            save_dir=save_dir,
+            num_processes=num_processes,
+            use_amp=use_amp,
+            checkpoint_root_dir=checkpoint_root_dir,
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
+            caching=caching,
+            cache_path=cache_path,
+        )
+
+    def distil_prediction_layer_from(
         self,
         teacher_model: "FARMReader",
         data_dir: str,
@@ -389,7 +446,7 @@ class FARMReader(BaseReader):
         student_batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
-        learning_rate: float = 1e-5,
+        learning_rate: float = 3e-5,
         max_seq_len: Optional[int] = None,
         warmup_proportion: float = 0.2,
         dev_split: float = 0,
@@ -405,26 +462,25 @@ class FARMReader(BaseReader):
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
-        tinybert_loss: bool = False,
-        tinybert_epochs: int = 1,
     ):
         """
-        Fine-tune a model on a QA dataset using distillation. You need to provide a teacher model that is already finetuned on the dataset
-        and a student model that will be trained using the teacher's logits. The idea of this is to increase the accuracy of a lightweight student model
+        Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
+        and a student model that will be trained using the teacher's logits. The idea of this is to increase the accuracy of a lightweight student model.
         using a more complex teacher.
-
+        Originally proposed in: https://arxiv.org/pdf/1503.02531.pdf
+        This can also be considered as the second stage of distillation finetuning as described in the TinyBERT paper:
+        https://arxiv.org/pdf/1909.10351.pdf
         **Example**
         ```python
         student = FARMReader(model_name_or_path="prajjwal1/bert-medium")
         teacher = FARMReader(model_name_or_path="deepset/bert-large-uncased-whole-word-masking-squad2")
-
-        student.distil_from(teacher, data_dir="squad2", train_filename="train.json", test_filename="dev.json",
+        student.distil_prediction_layer_from(teacher, data_dir="squad2", train_filename="train.json", test_filename="dev.json",
                             learning_rate=3e-5, distillation_loss_weight=1.0, temperature=5)
         ```
-         
-        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
+
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
-         
+
         :param teacher_model: Model whose logits will be used to improve accuracy
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
@@ -465,32 +521,149 @@ class FARMReader(BaseReader):
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         :param tinybert_loss: Whether to use the TinyBERT loss function for distillation. This requires the student to be a TinyBERT model and the teacher to be a finetuned version of bert-base-uncased.
         :param tinybert_epochs: Number of epochs to train the student model with the TinyBERT loss function. After this many epochs, the student model is trained with the regular distillation loss function.
+        :param tinybert_learning_rate: Learning rate to use when training the student model with the TinyBERT loss function.
+        :param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
+        :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :return: None
         """
-        if tinybert_loss: # do hidden state and attention distillation as additional stage
-            self._training_procedure(data_dir=data_dir, train_filename=train_filename,
-            dev_filename=dev_filename, test_filename=test_filename,
-            use_gpu=use_gpu, batch_size=student_batch_size,
-            n_epochs=tinybert_epochs, learning_rate=learning_rate,
-            max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
-            dev_split=dev_split, evaluate_every=evaluate_every,
-            save_dir=save_dir, num_processes=num_processes,
-            use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
-            checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
-            teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
-            caching=caching, cache_path=cache_path, tinybert=True)
-        return self._training_procedure(data_dir=data_dir, train_filename=train_filename,
-        dev_filename=dev_filename, test_filename=test_filename,
-        use_gpu=use_gpu, batch_size=student_batch_size,
-        n_epochs=n_epochs, learning_rate=learning_rate,
-        max_seq_len=max_seq_len, warmup_proportion=warmup_proportion,
-        dev_split=dev_split, evaluate_every=evaluate_every,
-        save_dir=save_dir, num_processes=num_processes,
-        use_amp=use_amp, checkpoint_root_dir=checkpoint_root_dir,
-        checkpoint_every=checkpoint_every, checkpoints_to_keep=checkpoints_to_keep,
-        teacher_model=teacher_model, teacher_batch_size=teacher_batch_size,
-        caching=caching, cache_path=cache_path, distillation_loss_weight=distillation_loss_weight,
-        distillation_loss=distillation_loss, temperature=temperature)
+        return self._training_procedure(
+            data_dir=data_dir,
+            train_filename=train_filename,
+            dev_filename=dev_filename,
+            test_filename=test_filename,
+            use_gpu=use_gpu,
+            batch_size=student_batch_size,
+            n_epochs=n_epochs,
+            learning_rate=learning_rate,
+            max_seq_len=max_seq_len,
+            warmup_proportion=warmup_proportion,
+            dev_split=dev_split,
+            evaluate_every=evaluate_every,
+            save_dir=save_dir,
+            num_processes=num_processes,
+            use_amp=use_amp,
+            checkpoint_root_dir=checkpoint_root_dir,
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
+            teacher_model=teacher_model,
+            teacher_batch_size=teacher_batch_size,
+            caching=caching,
+            cache_path=cache_path,
+            distillation_loss_weight=distillation_loss_weight,
+            distillation_loss=distillation_loss,
+            temperature=temperature,
+        )
+
+    def distil_intermediate_layers_from(
+        self,
+        teacher_model: "FARMReader",
+        data_dir: str,
+        train_filename: str,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        use_gpu: Optional[bool] = None,
+        batch_size: int = 10,
+        n_epochs: int = 5,
+        learning_rate: float = 5e-5,
+        max_seq_len: Optional[int] = None,
+        warmup_proportion: float = 0.2,
+        dev_split: float = 0,
+        evaluate_every: int = 300,
+        save_dir: Optional[str] = None,
+        num_processes: Optional[int] = None,
+        use_amp: str = None,
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
+        caching: bool = False,
+        cache_path: Path = Path("cache/data_silo"),
+        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse",
+        temperature: float = 1.0,
+        processor: Optional[Processor] = None,
+    ):
+        """
+        The first stage of distillation finetuning as described in the TinyBERT paper:
+        https://arxiv.org/pdf/1909.10351.pdf
+        **Example**
+        ```python
+        student = FARMReader(model_name_or_path="prajjwal1/bert-medium")
+        teacher = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D")
+        student.distil_intermediate_layers_from(teacher, data_dir="squad2", train_filename="train.json", test_filename="dev.json",
+                            learning_rate=3e-5, distillation_loss_weight=1.0, temperature=5)
+        ```
+
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
+        If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
+
+        :param teacher_model: Model whose logits will be used to improve accuracy
+        :param data_dir: Path to directory containing your training data in SQuAD style
+        :param train_filename: Filename of training data. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script
+        :param dev_filename: Filename of dev / eval data
+        :param test_filename: Filename of test data
+        :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
+                          that gets split off from training data for eval.
+        :param use_gpu: Whether to use GPU (if available)
+        :param student_batch_size: Number of samples the student model receives in one batch for training
+        :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
+        :param n_epochs: Number of iterations on the whole training data set
+        :param learning_rate: Learning rate of the optimizer
+        :param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.
+        :param warmup_proportion: Proportion of training steps until maximum learning rate is reached.
+                                  Until that point LR is increasing linearly. After that it's decreasing again linearly.
+                                  Options for different schedules are available in FARM.
+        :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
+        :param save_dir: Path to store the final model
+        :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
+                              Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
+                              Set to None to use all CPU cores minus one.
+        :param use_amp: Optimization level of NVIDIA's automatic mixed precision (AMP). The higher the level, the faster the model.
+                        Available options:
+                        None (Don't use AMP)
+                        "O0" (Normal FP32 training)
+                        "O1" (Mixed Precision => Recommended)
+                        "O2" (Almost FP16)
+                        "O3" (Pure FP16).
+                        See details on: https://nvidia.github.io/apex/amp.html
+        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+               checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: maximum number of train checkpoints to save.
+        :param caching whether or not to use caching for preprocessed dataset and teacher logits
+        :param cache_path: Path to cache the preprocessed dataset and teacher logits
+        :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
+        :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
+        :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
+        :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+        :return: None
+        """
+        return self._training_procedure(
+            data_dir=data_dir,
+            train_filename=train_filename,
+            dev_filename=dev_filename,
+            test_filename=test_filename,
+            use_gpu=use_gpu,
+            batch_size=batch_size,
+            n_epochs=n_epochs,
+            learning_rate=learning_rate,
+            max_seq_len=max_seq_len,
+            warmup_proportion=warmup_proportion,
+            dev_split=dev_split,
+            evaluate_every=evaluate_every,
+            save_dir=save_dir,
+            num_processes=num_processes,
+            use_amp=use_amp,
+            checkpoint_root_dir=checkpoint_root_dir,
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
+            teacher_model=teacher_model,
+            teacher_batch_size=batch_size,
+            caching=caching,
+            cache_path=cache_path,
+            distillation_loss=distillation_loss,
+            temperature=temperature,
+            tinybert=True,
+            processor=processor,
+        )
 
     def update_parameters(
         self,
@@ -552,9 +725,7 @@ class FARMReader(BaseReader):
             number_of_docs.append(len(documents))
 
             for doc in documents:
-                cur = QAInput(doc_text=doc.content,
-                              questions=Question(text=query.query,
-                                                 uid=doc.id))
+                cur = QAInput(doc_text=doc.content, questions=Question(text=query.query, uid=doc.id))
                 inputs.append(cur)
 
         self.inferencer.batch_size = batch_size
@@ -577,12 +748,7 @@ class FARMReader(BaseReader):
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k)
             query = group[0].query
             cur_label = labels[idx]
-            result.append({
-                "query": query,
-                "no_ans_gap": max_no_ans_gap,
-                "answers": answers,
-                "label": cur_label
-            })
+            result.append({"query": query, "no_ans_gap": max_no_ans_gap, "answers": answers, "label": cur_label})
 
         return result
 
@@ -617,9 +783,7 @@ class FARMReader(BaseReader):
         # convert input to FARM format
         inputs = []
         for doc in documents:
-            cur = QAInput(doc_text=doc.content,
-                          questions=Question(text=query,
-                                             uid=doc.id))
+            cur = QAInput(doc_text=doc.content, questions=Question(text=query, uid=doc.id))
             inputs.append(cur)
 
         # get answers from QA model
@@ -630,9 +794,7 @@ class FARMReader(BaseReader):
         # assemble answers from all the different documents & format them.
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
         # TODO: potentially simplify return here to List[Answer] and handle no_ans_gap differently
-        result = {"query": query,
-                  "no_ans_gap": max_no_ans_gap,
-                  "answers": answers}
+        result = {"query": query, "no_ans_gap": max_no_ans_gap, "answers": answers}
 
         return result
 
@@ -671,7 +833,7 @@ class FARMReader(BaseReader):
         results = {
             "EM": eval_results[0]["EM"],
             "f1": eval_results[0]["f1"],
-            "top_n_accuracy": eval_results[0]["top_n_accuracy"]
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"],
         }
         return results
 
@@ -701,9 +863,11 @@ class FARMReader(BaseReader):
         if device is None:
             device = self.devices[0]
         if self.top_k_per_candidate != 4:
-            logger.info(f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
-                        f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
-                        f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5")
+            logger.info(
+                f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
+                f"and consequently, QuestionAnsweringPredictionHead.n_best = {self.top_k_per_candidate + 1}. \n"
+                f"This deviates from FARM's default where QuestionAnsweringPredictionHead.n_best = 5"
+            )
 
         # extract all questions for evaluation
         filters = {"origin": [label_origin]}
@@ -726,11 +890,9 @@ class FARMReader(BaseReader):
             if not doc:
                 logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
                 continue
-            d[str(doc_id)] = {
-                "context": doc.content
-            }
+            d[str(doc_id)] = {"context": doc.content}
             # get all questions / answers
-            #TODO check if we can simplify this by using MultiLabel
+            # TODO check if we can simplify this by using MultiLabel
             aggregated_per_question: Dict[tuple, Any] = defaultdict(list)
 
             if doc_id in aggregated_per_doc:
@@ -740,22 +902,29 @@ class FARMReader(BaseReader):
                         logger.error(f"Label.answer was None, but Answer object was expected: {label} ")
                         continue
                     if label.answer.offsets_in_document is None:
-                        logger.error(f"Label.answer.offsets_in_document was None, but Span object was expected: {label} ")
+                        logger.error(
+                            f"Label.answer.offsets_in_document was None, but Span object was expected: {label} "
+                        )
                         continue
                     else:
                         # add to existing answers
-                        #TODO offsets (whole block)
+                        # TODO offsets (whole block)
                         if aggregation_key in aggregated_per_question.keys():
                             if label.no_answer:
                                 continue
                             else:
                                 # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
                                 if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
-                                    logger.warning(f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})")
+                                    logger.warning(
+                                        f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})"
+                                    )
                                     continue
-                                aggregated_per_question[aggregation_key]["answers"].append({
-                                            "text": label.answer.answer,
-                                            "answer_start": label.answer.offsets_in_document[0].start})
+                                aggregated_per_question[aggregation_key]["answers"].append(
+                                    {
+                                        "text": label.answer.answer,
+                                        "answer_start": label.answer.offsets_in_document[0].start,
+                                    }
+                                )
                                 aggregated_per_question[aggregation_key]["is_impossible"] = False
                         # create new one
                         else:
@@ -765,16 +934,19 @@ class FARMReader(BaseReader):
                                     "id": str(hash(str(doc_id) + label.query)),
                                     "question": label.query,
                                     "answers": [],
-                                    "is_impossible": True
+                                    "is_impossible": True,
                                 }
                             else:
                                 aggregated_per_question[aggregation_key] = {
                                     "id": str(hash(str(doc_id) + label.query)),
                                     "question": label.query,
-                                    "answers": [{
+                                    "answers": [
+                                        {
                                             "text": label.answer.answer,
-                                            "answer_start": label.answer.offsets_in_document[0].start}],
-                                    "is_impossible": False
+                                            "answer_start": label.answer.offsets_in_document[0].start,
+                                        }
+                                    ],
+                                    "is_impossible": False,
                                 }
 
             # Get rid of the question key again (after we aggregated we don't need it anymore)
@@ -787,7 +959,9 @@ class FARMReader(BaseReader):
         # Create DataLoader that can be passed to the Evaluator
         tic = perf_counter()
         indices = range(len(farm_input))
-        dataset, tensor_names, problematic_ids = self.inferencer.processor.dataset_from_dicts(farm_input, indices=indices)
+        dataset, tensor_names, problematic_ids = self.inferencer.processor.dataset_from_dicts(
+            farm_input, indices=indices
+        )
         data_loader = NamedDataLoader(dataset=dataset, batch_size=self.inferencer.batch_size, tensor_names=tensor_names)
 
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
@@ -801,7 +975,7 @@ class FARMReader(BaseReader):
             "top_n_accuracy": eval_results[0]["top_n_accuracy"] * 100,
             "top_n": self.inferencer.model.prediction_heads[0].n_best,
             "reader_time": reader_time,
-            "seconds_per_query": reader_time / n_queries
+            "seconds_per_query": reader_time / n_queries,
         }
         return results
 
@@ -821,15 +995,20 @@ class FARMReader(BaseReader):
                 if self._check_no_answer(ans):
                     pass
                 else:
-                    cur = Answer(answer=ans.answer,
-                                 type="extractive",
-                                 score=ans.confidence if self.use_confidence_scores else ans.score,
-                                 context=ans.context_window,
-                                 document_id=pred.id,
-                                 offsets_in_context=[Span(start=ans.offset_answer_start - ans.offset_context_window_start,
-                                                         end=ans.offset_answer_end - ans.offset_context_window_start)],
-                                 offsets_in_document=[Span(start=ans.offset_answer_start, end=ans.offset_answer_end)]
-                                 )
+                    cur = Answer(
+                        answer=ans.answer,
+                        type="extractive",
+                        score=ans.confidence if self.use_confidence_scores else ans.score,
+                        context=ans.context_window,
+                        document_id=pred.id,
+                        offsets_in_context=[
+                            Span(
+                                start=ans.offset_answer_start - ans.offset_context_window_start,
+                                end=ans.offset_answer_end - ans.offset_context_window_start,
+                            )
+                        ],
+                        offsets_in_document=[Span(start=ans.offset_answer_start, end=ans.offset_answer_end)],
+                    )
 
                     answers_per_document.append(cur)
 
@@ -837,10 +1016,12 @@ class FARMReader(BaseReader):
                         best_score_answer = ans.score
 
             # Only take n best candidates. Answers coming back from FARM are sorted with decreasing relevance
-            answers += answers_per_document[:self.top_k_per_candidate]
+            answers += answers_per_document[: self.top_k_per_candidate]
 
         # calculate the score for predicting 'no answer', relative to our best positive answer score
-        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_score_answer, self.use_confidence_scores)
+        no_ans_prediction, max_no_ans_gap = self._calc_no_answer(
+            no_ans_gaps, best_score_answer, self.use_confidence_scores
+        )
         if self.return_no_answers:
             answers.append(no_ans_prediction)
 
@@ -869,19 +1050,23 @@ class FARMReader(BaseReader):
         """
         if device is None:
             device = self.devices[0]
-        self.eval(document_store=document_store,
-                  device=device,
-                  label_index=label_index,
-                  doc_index=doc_index,
-                  label_origin=label_origin,
-                  calibrate_conf_scores=True)
+        self.eval(
+            document_store=document_store,
+            device=device,
+            label_index=label_index,
+            doc_index=doc_index,
+            label_origin=label_origin,
+            calibrate_conf_scores=True,
+        )
 
     @staticmethod
     def _check_no_answer(c: QACandidate):
         # check for correct value in "answer"
         if c.offset_answer_start == 0 and c.offset_answer_end == 0:
             if c.answer != "no_answer":
-                logger.error("Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'")
+                logger.error(
+                    "Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'"
+                )
         if c.answer == "no_answer":
             return True
         else:
@@ -914,23 +1099,19 @@ class FARMReader(BaseReader):
         """
         documents = []
         for text in texts:
-            documents.append(
-                Document(
-                    content=text
-                )
-            )
+            documents.append(Document(content=text))
         predictions = self.predict(question, documents, top_k)
         return predictions
 
     @classmethod
     def convert_to_onnx(
-            cls,
-            model_name: str,
-            output_path: Path,
-            convert_to_float16: bool = False,
-            quantize: bool = False,
-            task_type: str = "question_answering",
-            opset_version: int = 11
+        cls,
+        model_name: str,
+        output_path: Path,
+        convert_to_float16: bool = False,
+        quantize: bool = False,
+        task_type: str = "question_answering",
+        opset_version: int = 11,
     ):
         """
         Convert a PyTorch BERT model to ONNX format and write to ./onnx-export dir. The converted ONNX model
@@ -959,5 +1140,5 @@ class FARMReader(BaseReader):
             task_type=task_type,
             convert_to_float16=convert_to_float16,
             quantize=quantize,
-            opset_version=opset_version
+            opset_version=opset_version,
         )

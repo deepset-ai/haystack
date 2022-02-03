@@ -1,6 +1,13 @@
 from haystack.document_stores import FAISSDocumentStore, MilvusDocumentStore
-from haystack.utils import clean_wiki_text, print_answers, launch_milvus, convert_files_to_dicts, fetch_archive_from_http
+from haystack.utils import (
+    clean_wiki_text,
+    print_answers,
+    launch_milvus,
+    convert_files_to_dicts,
+    fetch_archive_from_http,
+)
 from haystack.nodes import FARMReader, DensePassageRetriever
+
 
 def tutorial6_better_retrieval_via_dpr():
     # OPTION 1: FAISS is a library for efficient similarity search on a cluster of dense vectors.
@@ -10,12 +17,16 @@ def tutorial6_better_retrieval_via_dpr():
     # The default flavour of FAISSDocumentStore is "Flat" but can also be set to "HNSW" for
     # faster search at the expense of some accuracy. Just set the faiss_index_factor_str argument in the constructor.
     # For more info on which suits your use case: https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+
+    # Do not forget to install its dependencies with `pip install farm-haystack[faiss]`
     document_store = FAISSDocumentStore(faiss_index_factory_str="Flat")
 
     # OPTION2: Milvus is an open source database library that is also optimized for vector similarity searches like FAISS.
     # Like FAISS it has both a "Flat" and "HNSW" mode but it outperforms FAISS when it comes to dynamic data management.
     # It does require a little more setup, however, as it is run through Docker and requires the setup of some config files.
     # See https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md
+
+    # Do not forget to install its dependencies with `pip install farm-haystack[milvus1]`
     # launch_milvus()
     # document_store = MilvusDocumentStore()
 
@@ -32,16 +43,17 @@ def tutorial6_better_retrieval_via_dpr():
     document_store.write_documents(dicts)
 
     ### Retriever
-    retriever = DensePassageRetriever(document_store=document_store,
-                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-                                      max_seq_len_query=64,
-                                      max_seq_len_passage=256,
-                                      batch_size=2,
-                                      use_gpu=True,
-                                      embed_title=True,
-                                      use_fast_tokenizers=True
-                                      )
+    retriever = DensePassageRetriever(
+        document_store=document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        max_seq_len_query=64,
+        max_seq_len_passage=256,
+        batch_size=2,
+        use_gpu=True,
+        embed_title=True,
+        use_fast_tokenizers=True,
+    )
 
     # Important:
     # Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all
@@ -57,6 +69,7 @@ def tutorial6_better_retrieval_via_dpr():
 
     ### Pipeline
     from haystack.pipelines import ExtractiveQAPipeline
+
     pipe = ExtractiveQAPipeline(reader, retriever)
 
     ## Voilà! Ask a question!

@@ -1,0 +1,19 @@
+version: '0.7'
+
+components:
+  - name: DPRRetriever
+    type: DensePassageRetriever
+    params:
+      document_store: ExistingFAISSDocumentStore
+  - name: ExistingFAISSDocumentStore
+    type: FAISSDocumentStore
+    params:
+      faiss_index_path: 'existing_faiss_document_store'
+
+
+pipelines:
+  - name: query_pipeline
+    type: Pipeline
+    nodes:
+      - name: DPRRetriever
+        inputs: [Query]

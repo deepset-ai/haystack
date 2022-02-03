@@ -64,7 +64,6 @@ def tutorial8_preprocessing():
     and [Optimization](https://haystack.deepset.ai/docs/latest/optimizationmd) pages on our website for more details.
     """
 
-
     # This is a default usage of the PreProcessor.
     # Here, it performs cleaning of consecutive whitespaces
     # and splits a single large document into smaller documents.
@@ -77,7 +76,7 @@ def tutorial8_preprocessing():
         clean_header_footer=False,
         split_by="word",
         split_length=1000,
-        split_respect_sentence_boundary=True
+        split_respect_sentence_boundary=True,
     )
     docs_default = preprocessor.process(doc_txt)
     print(f"\nn_docs_input: 1\nn_docs_output: {len(docs_default)}")
@@ -103,11 +102,11 @@ def tutorial8_preprocessing():
 
     print("\nRESPECTING SENTENCE BOUNDARY:")
     end_text = docs_default[0]["content"][-50:]
-    print("End of document: \"..." + end_text + "\"")
+    print('End of document: "...' + end_text + '"')
 
     print("\nNOT RESPECTING SENTENCE BOUNDARY:")
     end_text_nrsb = docs_nrsb[0]["content"][-50:]
-    print("End of document: \"..." + end_text_nrsb + "\"")
+    print('End of document: "...' + end_text_nrsb + '"')
     print()
 
     """
@@ -124,20 +123,16 @@ def tutorial8_preprocessing():
 
     # Sliding window approach
 
-    preprocessor_sliding_window = PreProcessor(
-        split_overlap=3,
-        split_length=10,
-        split_respect_sentence_boundary=False
-    )
+    preprocessor_sliding_window = PreProcessor(split_overlap=3, split_length=10, split_respect_sentence_boundary=False)
     docs_sliding_window = preprocessor_sliding_window.process(doc_txt)
 
     doc1 = docs_sliding_window[0]["content"][:200]
     doc2 = docs_sliding_window[1]["content"][:100]
     doc3 = docs_sliding_window[2]["content"][:100]
 
-    print("Document 1: \"" + doc1 + "...\"")
-    print("Document 2: \"" + doc2 + "...\"")
-    print("Document 3: \"" + doc3 + "...\"")
+    print('Document 1: "' + doc1 + '..."')
+    print('Document 2: "' + doc2 + '..."')
+    print('Document 3: "' + doc3 + '..."')
 
 
 if __name__ == "__main__":

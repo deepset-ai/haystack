@@ -1,22 +1,25 @@
 import logging
 
-from pathlib import Path
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.routing import APIRoute
-from starlette.middleware.cors import CORSMiddleware
-
-from rest_api.controller.errors.http_error import http_error_handler
-from rest_api.config import ROOT_PATH
-
-
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 logger = logging.getLogger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
 
+try:
+    import uvicorn
+    from fastapi import FastAPI, HTTPException
+    from fastapi.routing import APIRoute
+    from fastapi.openapi.utils import get_openapi
+    from starlette.middleware.cors import CORSMiddleware
 
-from rest_api.controller.router import router as api_router
+    from rest_api.controller.errors.http_error import http_error_handler
+    from rest_api.config import ROOT_PATH
+    from rest_api.controller.router import router as api_router
+
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed("rest_api", "rest", ie)
 
 
 def get_application() -> FastAPI:
@@ -25,13 +28,33 @@ def get_application() -> FastAPI:
     # This middleware enables allow all cross-domain requests to the API from a browser. For production
     # deployments, it could be made more restrictive.
     application.add_middleware(
-        CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
-
     application.add_exception_handler(HTTPException, http_error_handler)
     application.include_router(api_router)
 
     return application
+
+
+def get_openapi_specs() -> dict:
+    """
+    Used to autogenerate OpenAPI specs file to use in the documentation.
+
+    See `docs/_src/api/openapi/generate_openapi_specs.py`
+    """
+    app = get_application()
+    return get_openapi(
+        title=app.title if app.title else None,
+        version=app.version if app.version else None,
+        openapi_version=app.openapi_version if app.openapi_version else None,
+        description=app.description if app.description else None,
+        routes=app.routes if app.routes else None,
+    )
+
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:
     """
@@ -43,6 +66,7 @@ def use_route_names_as_operation_ids(app: FastAPI) -> None:
     for route in app.routes:
         if isinstance(route, APIRoute):
             route.operation_id = route.name
+
 
 app = get_application()
 use_route_names_as_operation_ids(app)

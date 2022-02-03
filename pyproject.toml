@@ -1,0 +1,30 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+
+[tool.black]
+line-length = 120
+
+
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length=120
+disable = [
+  "missing-docstring",
+  "unused-argument",
+  "no-member",
+  "line-too-long",
+  "fixme",
+  "protected-access",
+  "too-few-public-methods",
+  "raise-missing-from"
+]
+
+[tool.pylint.'DESIGN']
+max-args=7
+
+[tool.pylint.'SIMILARITIES']
+min-similarity-lines=6
