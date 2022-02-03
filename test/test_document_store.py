@@ -622,7 +622,7 @@ def test_delete_documents_by_id(document_store_with_docs):
 
     document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete])
     all_docs_left = document_store_with_docs.get_all_documents()
-    assert len(all_docs_left) == 3
+    assert len(all_docs_left) == 1
     assert all_docs_left[0].meta["meta_field"] == "test3"
 
     all_ids_left = [doc.id for doc in all_docs_left]
