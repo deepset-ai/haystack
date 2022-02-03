@@ -51,7 +51,7 @@ With this document_classifier, you can directly get predictions via predict()
 |        query="Who is the father of Arya Stark?",
 |        params={"Retriever": {"top_k": 10}}
 |    )
-|    
+|
 |    # print the classification results
 |    print_documents(res, max_text_len=100, print_meta=True)
 |    # or access the predicted class label directly
@@ -78,7 +78,7 @@ With this document_classifier, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = 'text-classification', labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
+ | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
 ```
 
 Load a text classification model from Transformers.

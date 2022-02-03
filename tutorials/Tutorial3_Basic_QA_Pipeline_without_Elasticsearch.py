@@ -18,7 +18,6 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     # or, alternatively, SQLite Document Store
     # document_store = SQLDocumentStore(url="sqlite:///qa.db")
 
-
     # ## Preprocessing of documents
     #
     # Haystack provides a customizable pipeline for:
@@ -42,7 +41,6 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
 
     # Now, let's write the docs to our DB.
     document_store.write_documents(dicts)
-
 
     # ## Initalize Retriever, Reader & Pipeline
     #
@@ -79,7 +77,6 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     # Hugging Face's model hub (https://huggingface.co/models)
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
 
-
     # #### TransformersReader
     # Alternative:
     # reader = TransformersReader(model_name_or_path="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
@@ -91,6 +88,7 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     # To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `ExtractiveQAPipeline` that combines a retriever and a reader to answer our questions.
     # You can learn more about `Pipelines` in the [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd).
     from haystack.pipelines import ExtractiveQAPipeline
+
     pipe = ExtractiveQAPipeline(reader, retriever)
 
     ## Voilà! Ask a question!
@@ -104,9 +102,10 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     # Now you can either print the object directly
     print("\n\nRaw object:\n")
     from pprint import pprint
+
     pprint(prediction)
 
-    # Sample output:    
+    # Sample output:
     # {
     #     'answers': [ <Answer: answer='Eddard', type='extractive', score=0.9919578731060028, offsets_in_document=[{'start': 608, 'end': 615}], offsets_in_context=[{'start': 72, 'end': 79}], document_id='cc75f739897ecbf8c14657b13dda890e', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
     #                  <Answer: answer='Ned', type='extractive', score=0.9767240881919861, offsets_in_document=[{'start': 3687, 'end': 3801}], offsets_in_context=[{'start': 18, 'end': 132}], document_id='9acf17ec9083c4022f69eb4a37187080', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,

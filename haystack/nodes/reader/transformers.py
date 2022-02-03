@@ -17,6 +17,7 @@ class TransformersReader(BaseReader):
     While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
     With this reader, you can directly get predictions via predict()
     """
+
     def __init__(
         self,
         model_name_or_path: str = "distilbert-base-uncased-distilled-squad",
@@ -28,7 +29,7 @@ class TransformersReader(BaseReader):
         top_k_per_candidate: int = 4,
         return_no_answers: bool = True,
         max_seq_len: int = 256,
-        doc_stride: int = 128
+        doc_stride: int = 128,
     ):
         """
         Load a QA model from Transformers.
@@ -61,15 +62,23 @@ class TransformersReader(BaseReader):
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
-            context_window_size=context_window_size, use_gpu=use_gpu, top_k=top_k, doc_stride=doc_stride,
-            top_k_per_candidate=top_k_per_candidate, return_no_answers=return_no_answers, max_seq_len=max_seq_len,
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            tokenizer=tokenizer,
+            context_window_size=context_window_size,
+            use_gpu=use_gpu,
+            top_k=top_k,
+            doc_stride=doc_stride,
+            top_k_per_candidate=top_k_per_candidate,
+            return_no_answers=return_no_answers,
+            max_seq_len=max_seq_len,
         )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         device = 0 if self.devices[0].type == "cuda" else -1
-        self.model = pipeline('question-answering', model=model_name_or_path, tokenizer=tokenizer, device=device,
-                              revision=model_version)
+        self.model = pipeline(
+            "question-answering", model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+        )
         self.context_window_size = context_window_size
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
@@ -114,11 +123,13 @@ class TransformersReader(BaseReader):
         best_overall_score = 0
         for doc in documents:
             transformers_query = {"context": doc.content, "question": query}
-            predictions = self.model(transformers_query,
-                                     topk=self.top_k_per_candidate,
-                                     handle_impossible_answer=self.return_no_answers,
-                                     max_seq_len=self.max_seq_len,
-                                     doc_stride=self.doc_stride)
+            predictions = self.model(
+                transformers_query,
+                topk=self.top_k_per_candidate,
+                handle_impossible_answer=self.return_no_answers,
+                max_seq_len=self.max_seq_len,
+                doc_stride=self.doc_stride,
+            )
             # for single preds (e.g. via top_k=1) transformers returns a dict instead of a list
             if type(predictions) == dict:
                 predictions = [predictions]
@@ -134,15 +145,20 @@ class TransformersReader(BaseReader):
                         best_doc_score = pred["score"]
                     context_start = max(0, pred["start"] - self.context_window_size)
                     context_end = min(len(doc.content), pred["end"] + self.context_window_size)
-                    answers.append(Answer(answer=pred["answer"],
-                                          type="extractive",
-                                          score=pred["score"],
-                                          context=doc.content[context_start:context_end],
-                                          offsets_in_document=[Span(start=pred["start"],end=pred["end"])],
-                                          offsets_in_context=[Span(start=pred["start"]-context_start, end=pred["end"]-context_start)],
-                                          document_id=doc.id,
-                                          meta=doc.meta
-                                          ))
+                    answers.append(
+                        Answer(
+                            answer=pred["answer"],
+                            type="extractive",
+                            score=pred["score"],
+                            context=doc.content[context_start:context_end],
+                            offsets_in_document=[Span(start=pred["start"], end=pred["end"])],
+                            offsets_in_context=[
+                                Span(start=pred["start"] - context_start, end=pred["end"] - context_start)
+                            ],
+                            document_id=doc.id,
+                            meta=doc.meta,
+                        )
+                    )
                 else:
                     no_ans_doc_score = pred["score"]
 
@@ -160,8 +176,7 @@ class TransformersReader(BaseReader):
         answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
-        results = {"query": query,
-                   "answers": answers}
+        results = {"query": query, "answers": answers}
 
         return results
 

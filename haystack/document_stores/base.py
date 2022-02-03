@@ -10,7 +10,7 @@ from pathlib import Path
 try:
     from typing import Literal
 except ImportError:
-    from typing_extensions import Literal #type: ignore
+    from typing_extensions import Literal  # type: ignore
 
 from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
@@ -22,13 +22,15 @@ from haystack.document_stores.utils import eval_data_from_json, eval_data_from_j
 try:
     from numba import njit
 except:
-    def njit(f): return f
+
+    def njit(f):
+        return f
 
 
 logger = logging.getLogger(__name__)
 
 
-@njit#(fastmath=True)
+@njit  # (fastmath=True)
 def expit(x: float) -> float:
     return 1 / (1 + np.exp(-x))
 
@@ -37,6 +39,7 @@ class BaseKnowledgeGraph(BaseComponent):
     """
     Base class for implementing Knowledge Graphs.
     """
+
     outgoing_edges = 1
 
     def run(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):  # type: ignore
@@ -52,16 +55,22 @@ class BaseDocumentStore(BaseComponent):
     """
     Base class for implementing Document Stores.
     """
+
     index: Optional[str]
     label_index: Optional[str]
     similarity: Optional[str]
-    duplicate_documents_options: tuple = ('skip', 'overwrite', 'fail')
+    duplicate_documents_options: tuple = ("skip", "overwrite", "fail")
     ids_iterator = None
 
     @abstractmethod
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None, 
-                        headers: Optional[Dict[str, str]] = None):
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Indexes documents for later queries.
 
@@ -87,12 +96,12 @@ class BaseDocumentStore(BaseComponent):
 
     @abstractmethod
     def get_all_documents(
-            self,
-            index: Optional[str] = None,
-            filters: Optional[Dict[str, List[str]]] = None,
-            return_embedding: Optional[bool] = None, 
-            batch_size: int = 10_000, 
-            headers: Optional[Dict[str, str]] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        return_embedding: Optional[bool] = None,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
         Get documents from the document store.
@@ -113,8 +122,8 @@ class BaseDocumentStore(BaseComponent):
         index: Optional[str] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000, 
-        headers: Optional[Dict[str, str]] = None
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
     ) -> Generator[Document, None, None]:
         """
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -146,19 +155,26 @@ class BaseDocumentStore(BaseComponent):
             return ret
 
     @abstractmethod
-    def get_all_labels(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]:
+    def get_all_labels(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Label]:
         pass
 
-    def get_all_labels_aggregated(self,
-                                  index: Optional[str] = None,
-                                  filters: Optional[Dict[str, List[str]]] = None,
-                                  open_domain: bool=True,
-                                  drop_negative_labels: bool=False,
-                                  drop_no_answers: bool=False,
-                                  aggregate_by_meta: Optional[Union[str, list]]=None,
-                                  headers: Optional[Dict[str, str]] = None) -> List[MultiLabel]:
+    def get_all_labels_aggregated(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        open_domain: bool = True,
+        drop_negative_labels: bool = False,
+        drop_no_answers: bool = False,
+        aggregate_by_meta: Optional[Union[str, list]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[MultiLabel]:
         """
-        Return all labels in the DocumentStore, aggregated into MultiLabel objects. 
+        Return all labels in the DocumentStore, aggregated into MultiLabel objects.
         This aggregation step helps, for example, if you collected multiple possible answers for one question and you
         want now all answers bundled together in one place for evaluation.
         How they are aggregated is defined by the open_domain and aggregate_by_meta parameters.
@@ -216,24 +232,30 @@ class BaseDocumentStore(BaseComponent):
         # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
         # aggregated attributes like `no_answer`
         for q, ls in question_ans_dict.items():
-            agg_label = MultiLabel(labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers)
+            agg_label = MultiLabel(
+                labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers
+            )
             aggregated_labels.append(agg_label)
         return aggregated_labels
 
     @abstractmethod
-    def get_document_by_id(self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]:
+    def get_document_by_id(
+        self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+    ) -> Optional[Document]:
         pass
 
     @abstractmethod
-    def get_document_count(self, 
-        filters: Optional[Dict[str, List[str]]] = None, 
+    def get_document_count(
+        self,
+        filters: Optional[Dict[str, List[str]]] = None,
         index: Optional[str] = None,
-        only_documents_without_embedding: bool = False, 
-        headers: Optional[Dict[str, str]] = None) -> int:
+        only_documents_without_embedding: bool = False,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> int:
         pass
 
     @staticmethod
-    @njit#(fastmath=True)
+    @njit  # (fastmath=True)
     def normalize_embedding(emb: np.ndarray) -> None:
         """
         Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix
@@ -261,13 +283,15 @@ class BaseDocumentStore(BaseComponent):
             return float(expit(raw_score / 100))
 
     @abstractmethod
-    def query_by_embedding(self,
-                           query_emb: np.ndarray,
-                           filters: Optional[Optional[Dict[str, List[str]]]] = None,
-                           top_k: int = 10,
-                           index: Optional[str] = None,
-                           return_embedding: Optional[bool] = None,
-                           headers: Optional[Dict[str, str]] = None) -> List[Document]:
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Optional[Dict[str, List[str]]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
         pass
 
     @abstractmethod
@@ -275,13 +299,25 @@ class BaseDocumentStore(BaseComponent):
         pass
 
     @abstractmethod
-    def write_labels(self, labels: Union[List[Label], List[dict]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
+    def write_labels(
+        self,
+        labels: Union[List[Label], List[dict]],
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         pass
 
-    def add_eval_data(self, filename: str, doc_index: str = "eval_document", label_index: str = "label",
-                      batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None,
-                      max_docs: Union[int, bool] = None, open_domain: bool = False, 
-                      headers: Optional[Dict[str, str]] = None):
+    def add_eval_data(
+        self,
+        filename: str,
+        doc_index: str = "eval_document",
+        label_index: str = "label",
+        batch_size: Optional[int] = None,
+        preprocessor: Optional[PreProcessor] = None,
+        max_docs: Union[int, bool] = None,
+        open_domain: bool = False,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
         If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
@@ -305,35 +341,54 @@ class BaseDocumentStore(BaseComponent):
         """
         # TODO improve support for PreProcessor when adding eval data
         if preprocessor is not None:
-            assert preprocessor.split_by != "sentence", f"Split by sentence not supported.\n" \
-                                                    f"Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
-            assert preprocessor.split_respect_sentence_boundary == False, \
-                f"split_respect_sentence_boundary not supported yet.\n" \
+            assert preprocessor.split_by != "sentence", (
+                f"Split by sentence not supported.\n"
+                f"Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
+            )
+            assert preprocessor.split_respect_sentence_boundary == False, (
+                f"split_respect_sentence_boundary not supported yet.\n"
                 f"Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
-            assert preprocessor.split_overlap == 0, f"Overlapping documents are currently not supported when adding eval data.\n" \
-                                                    f"Please set 'split_overlap=0' in the supplied PreProcessor."
-            assert preprocessor.clean_empty_lines == False, f"clean_empty_lines currently not supported when adding eval data.\n" \
-                                                    f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
-            assert preprocessor.clean_whitespace == False, f"clean_whitespace is currently not supported when adding eval data.\n" \
-                                                    f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
-            assert preprocessor.clean_header_footer == False, f"clean_header_footer is currently not supported when adding eval data.\n" \
-                                                    f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
+            )
+            assert preprocessor.split_overlap == 0, (
+                f"Overlapping documents are currently not supported when adding eval data.\n"
+                f"Please set 'split_overlap=0' in the supplied PreProcessor."
+            )
+            assert preprocessor.clean_empty_lines == False, (
+                f"clean_empty_lines currently not supported when adding eval data.\n"
+                f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
+            )
+            assert preprocessor.clean_whitespace == False, (
+                f"clean_whitespace is currently not supported when adding eval data.\n"
+                f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
+            )
+            assert preprocessor.clean_header_footer == False, (
+                f"clean_header_footer is currently not supported when adding eval data.\n"
+                f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
+            )
 
         file_path = Path(filename)
         if file_path.suffix == ".json":
             if batch_size is None:
-                docs, labels = eval_data_from_json(filename, max_docs=max_docs, preprocessor=preprocessor, open_domain=open_domain)
+                docs, labels = eval_data_from_json(
+                    filename, max_docs=max_docs, preprocessor=preprocessor, open_domain=open_domain
+                )
                 self.write_documents(docs, index=doc_index, headers=headers)
                 self.write_labels(labels, index=label_index, headers=headers)
             else:
-                jsonl_filename = (file_path.parent / (file_path.stem + '.jsonl')).as_posix()
-                logger.info(f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
-                            f"Converting json to jsonl to: {jsonl_filename}")
+                jsonl_filename = (file_path.parent / (file_path.stem + ".jsonl")).as_posix()
+                logger.info(
+                    f"Adding evaluation data batch-wise is not compatible with json-formatted SQuAD files. "
+                    f"Converting json to jsonl to: {jsonl_filename}"
+                )
                 squad_json_to_jsonl(filename, jsonl_filename)
-                self.add_eval_data(jsonl_filename, doc_index, label_index, batch_size, open_domain=open_domain, headers=headers)
+                self.add_eval_data(
+                    jsonl_filename, doc_index, label_index, batch_size, open_domain=open_domain, headers=headers
+                )
 
         elif file_path.suffix == ".jsonl":
-            for docs, labels in eval_data_from_jsonl(filename, batch_size, max_docs=max_docs, preprocessor=preprocessor, open_domain=open_domain):
+            for docs, labels in eval_data_from_jsonl(
+                filename, batch_size, max_docs=max_docs, preprocessor=preprocessor, open_domain=open_domain
+            ):
                 if docs:
                     self.write_documents(docs, index=doc_index, headers=headers)
                 if labels:
@@ -342,28 +397,45 @@ class BaseDocumentStore(BaseComponent):
         else:
             logger.error("File needs to be in json or jsonl format.")
 
-    def delete_all_documents(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_all_documents(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         pass
 
     @abstractmethod
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_documents(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         pass
 
     @abstractmethod
-    def delete_labels(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, List[str]]] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_labels(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, List[str]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         pass
-    
+
     @abstractmethod
     def _create_document_field_map(self) -> Dict:
         pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None  ):  # type: ignore
+    def run(self, documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None):  # type: ignore
         """
-        Run requests of document stores 
+        Run requests of document stores
 
-        Comment: We will gradually introduce the primitives. The doument stores also accept dicts and parse them to documents. 
-        In the future, however, only documents themselves will be accepted. Parsing the dictionaries in the run function 
-        is therefore only an interim solution until the run function also accepts documents. 
+        Comment: We will gradually introduce the primitives. The doument stores also accept dicts and parse them to documents.
+        In the future, however, only documents themselves will be accepted. Parsing the dictionaries in the run function
+        is therefore only an interim solution until the run function also accepts documents.
 
         :param documents: A list of dicts that are documents.
         :param headers: A list of headers.
@@ -371,42 +443,50 @@ class BaseDocumentStore(BaseComponent):
                       If None, the DocumentStore's default index (self.index) will be used.
         :param id_hash_keys: List of the fields that the hashes of the ids are generated from.
         """
-        
+
         field_map = self._create_document_field_map()
         doc_objects = [Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) for d in documents]
         self.write_documents(documents=doc_objects, index=index, headers=headers)
         return {}, "output_1"
 
     @abstractmethod
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None,
-                            batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]:
+    def get_documents_by_id(
+        self,
+        ids: List[str],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Document]:
         pass
 
     def _drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
         """
-         Drop duplicates documents based on same hash ID
+        Drop duplicates documents based on same hash ID
 
-         :param documents: A list of Haystack Document objects.
-         :return: A list of Haystack Document objects.
+        :param documents: A list of Haystack Document objects.
+        :return: A list of Haystack Document objects.
         """
         _hash_ids: list = []
         _documents: List[Document] = []
 
         for document in documents:
             if document.id in _hash_ids:
-                logger.info(f"Duplicate Documents: Document with id '{document.id}' already exists in index "
-                               f"'{self.index}'")
+                logger.info(
+                    f"Duplicate Documents: Document with id '{document.id}' already exists in index " f"'{self.index}'"
+                )
                 continue
             _documents.append(document)
             _hash_ids.append(document.id)
 
         return _documents
 
-    def _handle_duplicate_documents(self,
-                                    documents: List[Document],
-                                    index: Optional[str] = None,
-                                    duplicate_documents: Optional[str] = None,
-                                    headers: Optional[Dict[str, str]] = None):
+    def _handle_duplicate_documents(
+        self,
+        documents: List[Document],
+        index: Optional[str] = None,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Checks whether any of the passed documents is already existing in the chosen index and returns a list of
         documents that are not in the index yet.
@@ -420,23 +500,26 @@ class BaseDocumentStore(BaseComponent):
                                     exists.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :return: A list of Haystack Document objects.
-       """
+        """
 
         index = index or self.index
-        if duplicate_documents in ('skip', 'fail'):
+        if duplicate_documents in ("skip", "fail"):
             documents = self._drop_duplicate_documents(documents)
             documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=index, headers=headers)
             ids_exist_in_db: List[str] = [doc.id for doc in documents_found]
 
-            if len(ids_exist_in_db) > 0 and duplicate_documents == 'fail':
-                raise DuplicateDocumentError(f"Document with ids '{', '.join(ids_exist_in_db)} already exists"
-                                             f" in index = '{index}'.")
+            if len(ids_exist_in_db) > 0 and duplicate_documents == "fail":
+                raise DuplicateDocumentError(
+                    f"Document with ids '{', '.join(ids_exist_in_db)} already exists" f" in index = '{index}'."
+                )
 
             documents = list(filter(lambda doc: doc.id not in ids_exist_in_db, documents))
 
         return documents
 
-    def _get_duplicate_labels(self, labels: list, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Label]:
+    def _get_duplicate_labels(
+        self, labels: list, index: str = None, headers: Optional[Dict[str, str]] = None
+    ) -> List[Label]:
         """
         Return all duplicate labels
         :param labels: List of Label objects
@@ -463,6 +546,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     """
     Base class for implementing Document Stores that support keyword searches.
     """
+
     @abstractmethod
     def query(
         self,
@@ -471,7 +555,7 @@ class KeywordDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents

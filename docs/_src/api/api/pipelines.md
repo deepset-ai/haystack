@@ -17,7 +17,7 @@ RootNode feeds inputs together with corresponding params to a Pipeline.
 class BasePipeline()
 ```
 
-Base class for pipelines, providing the most basic methods to load and save them in different ways. 
+Base class for pipelines, providing the most basic methods to load and save them in different ways.
 See also the `Pipeline` class for the actual pipeline logic.
 
 <a name="base.BasePipeline.load_from_yaml"></a>
@@ -182,7 +182,7 @@ Runs the pipeline, one node at a time.
                {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received and the output they generated. All debug information can 
+              they received and the output they generated. All debug information can
               then be found in the dict returned by this method under the key "_debug"
 
 <a name="base.Pipeline.eval"></a>
@@ -714,7 +714,7 @@ Pipeline for Extractive Question Answering.
                params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
 - `debug`: Whether the pipeline should instruct nodes to collect debug information
               about their execution. By default these include the input parameters
-              they received and the output they generated. 
+              they received and the output they generated.
               All debug information can then be found in the dict returned
               by this method under the key "_debug"
 

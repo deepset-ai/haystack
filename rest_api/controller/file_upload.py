@@ -19,20 +19,27 @@ router = APIRouter()
 
 try:
     pipeline_config = Pipeline._read_pipeline_config_from_yaml(Path(PIPELINE_YAML_PATH))
-    pipeline_definition = Pipeline._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=INDEXING_PIPELINE_NAME)
+    pipeline_definition = Pipeline._get_pipeline_definition(
+        pipeline_config=pipeline_config, pipeline_name=INDEXING_PIPELINE_NAME
+    )
     definitions = Pipeline._get_component_definitions(
         pipeline_config=pipeline_config, overwrite_with_env_variables=True
     )
     # Since each instance of FAISSDocumentStore creates an in-memory FAISS index, the Indexing & Query Pipelines would
-    # end up with different indices. The same applies for InMemoryDocumentStore. The check below prevents creation of 
-    # Indexing Pipelines with FAISSDocumentStore or InMemoryDocumentStore.   
+    # end up with different indices. The same applies for InMemoryDocumentStore. The check below prevents creation of
+    # Indexing Pipelines with FAISSDocumentStore or InMemoryDocumentStore.
     is_faiss_or_inmemory_present = False
     for node in pipeline_definition["nodes"]:
-        if definitions[node["name"]]["type"] == "FAISSDocumentStore" or definitions[node["name"]]["type"] == "InMemoryDocumentStore":
+        if (
+            definitions[node["name"]]["type"] == "FAISSDocumentStore"
+            or definitions[node["name"]]["type"] == "InMemoryDocumentStore"
+        ):
             is_faiss_or_inmemory_present = True
             break
     if is_faiss_or_inmemory_present:
-        logger.warning("Indexing Pipeline with FAISSDocumentStore or InMemoryDocumentStore is not supported with the REST APIs.")
+        logger.warning(
+            "Indexing Pipeline with FAISSDocumentStore or InMemoryDocumentStore is not supported with the REST APIs."
+        )
         INDEXING_PIPELINE = None
     else:
         INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
@@ -45,7 +52,7 @@ os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)  # create directory for uploading f
 
 
 @as_form
-class FileConverterParams(BaseModel):    
+class FileConverterParams(BaseModel):
     remove_numeric_tables: Optional[bool] = None
     valid_languages: Optional[List[str]] = None
 
@@ -70,10 +77,10 @@ def upload_file(
     files: List[UploadFile] = File(...),
     meta: Optional[str] = Form("null"),  # JSON serialized string
     fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),
-    preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form)
+    preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),
 ):
     """
-    You can use this endpoint to upload a file for indexing 
+    You can use this endpoint to upload a file for indexing
     (see [http://localhost:3000/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store]).
     """
     if not INDEXING_PIPELINE:
@@ -96,11 +103,11 @@ def upload_file(
             file.file.close()
 
     INDEXING_PIPELINE.run(
-            file_paths=file_paths,
-            meta=file_metas,
-            params={
-                "TextFileConverter": fileconverter_params.dict(), 
-                "PDFFileConverter": fileconverter_params.dict(),
-                "Preprocessor": preprocessor_params.dict()
-            },
+        file_paths=file_paths,
+        meta=file_metas,
+        params={
+            "TextFileConverter": fileconverter_params.dict(),
+            "PDFFileConverter": fileconverter_params.dict(),
+            "Preprocessor": preprocessor_params.dict(),
+        },
     )
