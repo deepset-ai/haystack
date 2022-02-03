@@ -155,10 +155,7 @@ class DensePassageRetriever(BaseRetriever):
             )
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
-        tokenizers_default_classes = {
-            "query": "AutoTokenizer",
-            "passage": "AutoTokenizer"
-        }
+        tokenizers_default_classes = {"query": "AutoTokenizer", "passage": "AutoTokenizer"}
         if self.infer_tokenizer_classes:
             tokenizers_default_classes["query"] = None  # type: ignore
             tokenizers_default_classes["passage"] = None  # type: ignore
