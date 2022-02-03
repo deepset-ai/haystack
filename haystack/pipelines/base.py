@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Any
 
 import copy
+import json
 import inspect
 import logging
 import os
@@ -603,7 +604,7 @@ class Pipeline(BasePipeline):
             df["node"] = node_name
             df["multilabel_id"] = query_labels.id
             df["query"] = query
-            df["filters"] = str(query_labels.filters)
+            df["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
@@ -646,7 +647,7 @@ class Pipeline(BasePipeline):
             df["node"] = node_name
             df["multilabel_id"] = query_labels.id
             df["query"] = query
-            df["filters"] = str(query_labels.filters)
+            df["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
