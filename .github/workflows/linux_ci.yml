@@ -1,10 +1,6 @@
 name: Linux CI
 
 on:
-  workflow_run:
-    workflows: ["Code Style"]
-    types: 
-      - completed
   workflow_dispatch:
   push:
     branches: [ master ]
