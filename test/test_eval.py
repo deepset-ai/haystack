@@ -400,7 +400,7 @@ def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
     assert metrics["Retriever"]["map"] == 0.75
     assert metrics["Retriever"]["recall_multi_hit"] == 0.75
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
-    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["precision"] == 0.2
     assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
 
 

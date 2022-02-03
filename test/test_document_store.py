@@ -137,8 +137,8 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
     assert len(documents) == 5
-    assert {d.meta["name"] for d in documents} == {"filename1", "filename2", "filename3"}
-    assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3"}
+    assert {d.meta["name"] for d in documents} == {"filename1", "filename2", "filename3", "filename4", "filename5"}
+    assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3", "test4", "test5"}
 
 
 def test_get_all_document_filter_duplicate_text_value(document_store):
@@ -610,9 +610,9 @@ def test_delete_documents(document_store_with_docs):
 
 
 def test_delete_documents_with_filters(document_store_with_docs):
-    document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2"]})
+    document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2", "test4", "test5"]})
     documents = document_store_with_docs.get_all_documents()
-    assert len(documents) == 3
+    assert len(documents) == 1
     assert documents[0].meta["meta_field"] == "test3"
 
 

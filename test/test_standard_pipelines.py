@@ -157,7 +157,7 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert math.isclose(results["documents"][0].score, 0.5350644373470798, rel_tol=0.0001)
+    assert math.isclose(results["documents"][0].score, 0.5481393431183286, rel_tol=0.0001)
     assert len(results["documents"]) == 2
 
     # test concatenate
