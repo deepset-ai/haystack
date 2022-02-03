@@ -33,14 +33,12 @@ jobs:
           pip install jupytercontrib
           pip install watchdog==1.0.2
 
-      # Generates the docstrings and tutorials so that we have the latest for the deployment
       - name: Generate Tutorials
         run: |
           cd docs/_src/tutorials/tutorials/
           python3 convert_ipynb.py
 
-      # Generates the docstrings and tutorials so that we have the latest for the deployment
-      - name: Generate Docstrings and Tutorials
+      - name: Generate Docstrings
         run: |
           set -e   # Fails on any error in the following loop
           cd docs/_src/api/api/
