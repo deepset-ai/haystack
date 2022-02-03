@@ -1,6 +1,7 @@
 from haystack.utils.import_utils import safe_import
 
 from haystack.nodes.base import BaseComponent
+
 Crawler = safe_import("haystack.nodes.connector.crawler", "Crawler", "crawler")  # Has optional dependencies
 from haystack.nodes.answer_generator import BaseGenerator, RAGenerator, Seq2SeqGenerator
 from haystack.nodes.document_classifier import BaseDocumentClassifier, TransformersDocumentClassifier

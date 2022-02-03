@@ -1,10 +1,10 @@
 # # Fine-tuning a model on your own data
-# 
+#
 # For many use cases it is sufficient to just use one of the existing public models that were trained on SQuAD or
 # other public QA datasets (e.g. Natural Questions).
 # However, if you have domain-specific questions, fine-tuning your model on custom examples will very likely boost
 # your performance. While this varies by domain, we saw that ~ 2000 examples can easily increase performance by +5-20%.
-# 
+#
 # This tutorial shows you how to fine-tune a pretrained model on your own dataset.
 
 from haystack.nodes import FARMReader
@@ -13,6 +13,7 @@ from haystack.utils import augment_squad
 from pathlib import Path
 
 import os
+
 
 def tutorial2_finetune_a_model_on_your_data():
     # ## Create Training Data
@@ -37,7 +38,7 @@ def tutorial2_finetune_a_model_on_your_data():
     # We recommend using a base model that was trained on SQuAD or a similar QA dataset before to benefit from Transfer
     # Learning effects.
 
-    #**Recommendation: Run training on a GPU. To do so change the `use_gpu` arguments below to `True`
+    # **Recommendation: Run training on a GPU. To do so change the `use_gpu` arguments below to `True`
 
     reader = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=True)
     data_dir = "data/squad20"
@@ -66,20 +67,24 @@ def distil():
     # ### Augmenting your training data
     # To get the most out of model distillation, we recommend increasing the size of your training data by using data augmentation.
     # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/master/haystack/utils/augment_squad.py):
-    
+
     # Downloading smaller glove vector file (only for demonstration purposes)
     os.system("wget https://nlp.stanford.edu/data/glove.6B.zip")
     os.system("unzip glove.6B.zip")
-    
+
     # Downloading very small dataset to make tutorial faster (please use a bigger dataset in real use cases)
     os.system("wget https://raw.githubusercontent.com/deepset-ai/haystack/master/test/samples/squad/small.json")
-    
+
     # Just replace dataset.json with the name of your dataset and adjust the output path
-    augment_squad.main(squad_path=Path("dataset.json"), output_path=Path("augmented_dataset.json"), multiplication_factor=2, glove_path=Path("glove.6B.300d.txt"))
+    augment_squad.main(
+        squad_path=Path("dataset.json"),
+        output_path=Path("augmented_dataset.json"),
+        multiplication_factor=2,
+        glove_path=Path("glove.6B.300d.txt"),
+    )
     # In this case, we use a multiplication factor of 2 to keep this example lightweight.
     # Usually you would use a factor like 20 depending on the size of your training data.
     # Augmenting this small dataset with a multiplication factor of 2, should take about 5 to 10 minutes to run on one V100 GPU.
-
 
     # ### Running distillation
     # Distillation in haystack is done in two steps:
@@ -89,14 +94,16 @@ def distil():
     # If you want, you can leave out the intermediate layer distillation step and only run the prediction layer distillation.
     # This way you also do not need to perform data augmentation. However, this will make the model significantly less accurate.
 
-    # Loading a fine-tuned model as teacher e.g. "deepset/​bert-​base-​uncased-​squad2"    
+    # Loading a fine-tuned model as teacher e.g. "deepset/​bert-​base-​uncased-​squad2"
     teacher = FARMReader(model_name_or_path="huawei-noah/TinyBERT_General_6L_768D", use_gpu=True)
 
     # You can use any pre-trained language model as teacher that uses the same tokenizer as the teacher model.
     # The number of the layers in the teacher model also needs to be a multiple of the number of the layers in the student.
     student = FARMReader(model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=True)
 
-    student.distil_intermediate_layers_from(teacher, data_dir="data/squad20", train_filename="augmented_dataset.json", use_gpu=True)
+    student.distil_intermediate_layers_from(
+        teacher, data_dir="data/squad20", train_filename="augmented_dataset.json", use_gpu=True
+    )
     student.distil_prediction_layer_from(teacher, data_dir="data/squad20", train_filename="dev-v2.0.json", use_gpu=True)
 
     student.save(directory="my_distilled_model")

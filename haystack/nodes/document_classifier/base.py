@@ -21,10 +21,10 @@ class BaseDocumentClassifier(BaseComponent):
     def predict(self, documents: List[Document]):
         pass
 
-    def run(self, documents: Union[List[dict], List[Document]], root_node: str): # type: ignore
+    def run(self, documents: Union[List[dict], List[Document]], root_node: str):  # type: ignore
         self.query_count += 1
         if documents:
-            predict = self.timing(self.predict, "query_time")            
+            predict = self.timing(self.predict, "query_time")
             documents = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
             results = predict(documents=documents)
         else:
@@ -42,7 +42,8 @@ class BaseDocumentClassifier(BaseComponent):
         return output, "output_1"
 
     def timing(self, fn, attr_name):
-        """Wrapper method used to time functions. """
+        """Wrapper method used to time functions."""
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if attr_name not in self.__dict__:
@@ -52,6 +53,7 @@ class BaseDocumentClassifier(BaseComponent):
             toc = perf_counter()
             self.__dict__[attr_name] += toc - tic
             return ret
+
         return wrapper
 
     def print_time(self):

@@ -290,7 +290,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -332,7 +332,7 @@ The checkpoint format matches huggingface transformers' model format
                     {"text": "my text", "meta": {"name": "my title"}}.
 - `use_fast_tokenizers`: Whether to use fast Rust tokenizers
 - `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
-                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`. 
+                                If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
 - `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
                             Options: `dot_product` (Default) or `cosine`
 - `global_loss_buffer_size`: Buffer size for all_gather() in DDP.
@@ -342,7 +342,7 @@ The checkpoint format matches huggingface transformers' model format
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.DensePassageRetriever.retrieve"></a>
@@ -488,7 +488,7 @@ Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
+ | __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -526,7 +526,7 @@ The checkpoint format matches huggingface transformers' model format
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
                 As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.TableTextRetriever.embed_queries"></a>
@@ -654,7 +654,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
- | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str,bool]] = None)
+ | __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -682,9 +682,9 @@ class EmbeddingRetriever(BaseRetriever)
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list. 
+                As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-                        the local token will be used, which must be previously created via `transformer-cli login`. 
+                        the local token will be used, which must be previously created via `transformer-cli login`.
                         Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a name="dense.EmbeddingRetriever.retrieve"></a>
@@ -748,7 +748,7 @@ Embeddings, one per input document
 class Text2SparqlRetriever(BaseGraphRetriever)
 ```
 
-Graph retriever that uses a pre-trained Bart model to translate natural language questions 
+Graph retriever that uses a pre-trained Bart model to translate natural language questions
 given in text form to queries in SPARQL format.
 The generated SPARQL query is executed on a knowledge graph.
 

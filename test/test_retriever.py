@@ -48,7 +48,8 @@ def docs():
     ]
     return documents
 
-#TODO check if we this works with only "memory" arg
+
+# TODO check if we this works with only "memory" arg
 @pytest.mark.parametrize(
     "retriever_with_docs,document_store_with_docs",
     [
@@ -184,9 +185,7 @@ def test_retribert_embedding(document_store, retriever, docs):
         # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
         # We need 128 here and therefore initialize a new WeaviateDocumentStore.
         document_store = WeaviateDocumentStore(
-            weaviate_url="http://localhost:8080",
-            index="haystack_test",
-            embedding_dim=128
+            weaviate_url="http://localhost:8080", index="haystack_test", embedding_dim=128
         )
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()
@@ -213,7 +212,7 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
     document_store.write_documents(docs)
     table_data = {
         "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
-        "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
+        "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"],
     }
     table = pd.DataFrame(table_data)
     table_doc = Document(content=table, content_type="table", id="6")
@@ -341,15 +340,15 @@ def test_table_text_retriever_training(document_store):
         query_embedding_model="prajjwal1/bert-tiny",
         passage_embedding_model="prajjwal1/bert-tiny",
         table_embedding_model="prajjwal1/bert-tiny",
-        use_gpu=False
+        use_gpu=False,
     )
 
     retriever.train(
-        data_dir=SAMPLES_PATH/"mmr",
+        data_dir=SAMPLES_PATH / "mmr",
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
-        save_dir="test_table_text_retriever_train"
+        save_dir="test_table_text_retriever_train",
     )
 
     # Load trained model
@@ -359,35 +358,44 @@ def test_table_text_retriever_training(document_store):
 @pytest.mark.elasticsearch
 def test_elasticsearch_highlight():
     client = Elasticsearch()
-    client.indices.delete(index="haystack_hl_test",  ignore=[404])
+    client.indices.delete(index="haystack_hl_test", ignore=[404])
 
     # Mapping the content and title field as "text" perform search on these both fields.
-    document_store = ElasticsearchDocumentStore(index="haystack_hl_test", content_field= "title",
-        custom_mapping={
-            "mappings": {
-                "properties": {
-                    "content": {
-                        "type": "text"
-                    },
-                    "title": {
-                        "type": "text"
-                    }
-                }
-            }
-        }
+    document_store = ElasticsearchDocumentStore(
+        index="haystack_hl_test",
+        content_field="title",
+        custom_mapping={"mappings": {"properties": {"content": {"type": "text"}, "title": {"type": "text"}}}},
     )
     documents = [
-        {"title": "Green tea components", "meta":{"content": "The green tea plant contains a range of healthy compounds that make it into the final drink"}, "id":"1"},
-        {"title": "Green tea catechin", "meta":{"content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG)."}, "id":"2"},
-        {"title": "Minerals in Green tea", "meta":{"content": "Green tea also has small amounts of minerals that can benefit your health."}, "id":"3"},
-        {"title": "Green tea Benefits", "meta":{"content": "Green tea does more than just keep you alert, it may also help boost brain function."}, "id":"4"}
+        {
+            "title": "Green tea components",
+            "meta": {
+                "content": "The green tea plant contains a range of healthy compounds that make it into the final drink"
+            },
+            "id": "1",
+        },
+        {
+            "title": "Green tea catechin",
+            "meta": {"content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG)."},
+            "id": "2",
+        },
+        {
+            "title": "Minerals in Green tea",
+            "meta": {"content": "Green tea also has small amounts of minerals that can benefit your health."},
+            "id": "3",
+        },
+        {
+            "title": "Green tea Benefits",
+            "meta": {"content": "Green tea does more than just keep you alert, it may also help boost brain function."},
+            "id": "4",
+        },
     ]
     document_store.write_documents(documents)
 
     # Enabled highlighting on "title"&"content" field only using custom query
-    retriever_1 = ElasticsearchRetriever(document_store=document_store,
-        custom_query=
-        """{
+    retriever_1 = ElasticsearchRetriever(
+        document_store=document_store,
+        custom_query="""{
             "size": 20,
             "query": {
                 "bool": {
@@ -422,14 +430,14 @@ def test_elasticsearch_highlight():
     )
     results = retriever_1.retrieve(query="is green tea healthy")
 
-    assert len(results[0].meta['highlighted']) == 2
-    assert results[0].meta['highlighted']['title'] == ['**Green**', '**tea** components']
-    assert results[0].meta['highlighted']['content'] == ['The **green**', '**tea** plant', 'range of **healthy**']
+    assert len(results[0].meta["highlighted"]) == 2
+    assert results[0].meta["highlighted"]["title"] == ["**Green**", "**tea** components"]
+    assert results[0].meta["highlighted"]["content"] == ["The **green**", "**tea** plant", "range of **healthy**"]
 
-    #Enabled highlighting on "title" field only using custom query
-    retriever_2 = ElasticsearchRetriever(document_store=document_store,
-        custom_query=
-        """{
+    # Enabled highlighting on "title" field only using custom query
+    retriever_2 = ElasticsearchRetriever(
+        document_store=document_store,
+        custom_query="""{
             "size": 20,
             "query": {
                 "bool": {
@@ -463,5 +471,5 @@ def test_elasticsearch_highlight():
     )
     results = retriever_2.retrieve(query="is green tea healthy")
 
-    assert len(results[0].meta['highlighted']) == 1
-    assert results[0].meta['highlighted']['title'] == ['**Green**', '**tea** components']
+    assert len(results[0].meta["highlighted"]) == 1
+    assert results[0].meta["highlighted"]["title"] == ["**Green**", "**tea** components"]

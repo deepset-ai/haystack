@@ -20,24 +20,24 @@ from conftest import SAMPLES_PATH
 def test_node_names_validation(document_store_with_docs, tmp_path):
     pipeline = Pipeline()
     pipeline.add_node(
-        component=ElasticsearchRetriever(document_store=document_store_with_docs), 
-        name="Retriever", 
-        inputs=["Query"])
+        component=ElasticsearchRetriever(document_store=document_store_with_docs), name="Retriever", inputs=["Query"]
+    )
     pipeline.add_node(
-        component=FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0), 
-        name="Reader", 
-        inputs=["Retriever"])
+        component=FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0),
+        name="Reader",
+        inputs=["Retriever"],
+    )
 
     with pytest.raises(ValueError) as exc_info:
         pipeline.run(
             query="Who lives in Berlin?",
             params={
-                "Reader": {"top_k": 3}, 
-                "non-existing-node": {"top_k": 10}, 
+                "Reader": {"top_k": 3},
+                "non-existing-node": {"top_k": 10},
                 "top_k": 5,
                 "non-existing-global_param": "wrong",
             },
-            debug=True
+            debug=True,
         )
     exception_raised = str(exc_info.value)
     assert "non-existing-node" in exception_raised
@@ -58,9 +58,7 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
     pipeline.add_node(component=reader, name="Reader", inputs=["ESRetriever"])
 
     prediction = pipeline.run(
-        query="Who lives in Berlin?",
-        params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-        debug=True
+        query="Who lives in Berlin?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}, debug=True
     )
     assert "_debug" in prediction.keys()
     assert "ESRetriever" in prediction["_debug"].keys()
@@ -77,6 +75,7 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
     # Avoid circular reference: easiest way to detect those is to use json.dumps
     json.dumps(prediction, default=str)
 
+
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
@@ -90,10 +89,7 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 
     prediction = pipeline.run(
         query="Who lives in Berlin?",
-        params={
-            "ESRetriever": {"top_k": 10, "debug": True},
-            "Reader": {"top_k": 3}
-        },
+        params={"ESRetriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3}},
     )
     assert "_debug" in prediction.keys()
     assert "ESRetriever" in prediction["_debug"].keys()
@@ -120,21 +116,15 @@ def test_global_debug_attributes_override_node_ones(document_store_with_docs, tm
 
     prediction = pipeline.run(
         query="Who lives in Berlin?",
-        params={
-            "ESRetriever": {"top_k": 10, "debug": True},
-            "Reader": {"top_k": 3, "debug": True}
-        },
-        debug=False
+        params={"ESRetriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3, "debug": True}},
+        debug=False,
     )
     assert "_debug" not in prediction.keys()
 
     prediction = pipeline.run(
         query="Who lives in Berlin?",
-        params={
-            "ESRetriever": {"top_k": 10, "debug": False},
-            "Reader": {"top_k": 3, "debug": False}
-        },
-        debug=True
+        params={"ESRetriever": {"top_k": 10, "debug": False}, "Reader": {"top_k": 3, "debug": False}},
+        debug=True,
     )
     assert "_debug" in prediction.keys()
     assert "ESRetriever" in prediction["_debug"].keys()
@@ -150,9 +140,7 @@ def test_global_debug_attributes_override_node_ones(document_store_with_docs, tm
 
 
 def test_invalid_run_args():
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH/"pipeline"/"test_pipeline.yaml", pipeline_name="query_pipeline"
-    )
+    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline")
     with pytest.raises(Exception) as exc:
         pipeline.run(params={"ESRetriever": {"top_k": 10}})
     assert "run() missing 1 required positional argument: 'query'" in str(exc.value)

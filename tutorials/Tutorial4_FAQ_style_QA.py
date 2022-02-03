@@ -32,23 +32,29 @@ def tutorial4_faq_style_qa():
     # * specify the name of our `embedding_field` in Elasticsearch where we'll store the embedding of our question and that is used later for calculating our similarity to the incoming user question
     # * set `excluded_meta_data=["question_emb"]` so that we don't return the huge embedding vectors in our search results
 
-    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="",
-                                                index="document",
-                                                embedding_field="question_emb",
-                                                embedding_dim=384,
-                                                excluded_meta_data=["question_emb"],
-                                                similarity="cosine")
+    document_store = ElasticsearchDocumentStore(
+        host="localhost",
+        username="",
+        password="",
+        index="document",
+        embedding_field="question_emb",
+        embedding_dim=384,
+        excluded_meta_data=["question_emb"],
+        similarity="cosine",
+    )
 
     ### Create a Retriever using embeddings
     # Instead of retrieving via Elasticsearch's plain BM25, we want to use vector similarity of the questions (user question vs. FAQ ones).
     # We can use the `EmbeddingRetriever` for this purpose and specify a model that we use for the embeddings.
     #
-    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2", use_gpu=True)
+    retriever = EmbeddingRetriever(
+        document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2", use_gpu=True
+    )
 
     # Download a csv containing some FAQ data
     # Here: Some question-answer pairs related to COVID-19
     temp = requests.get("https://raw.githubusercontent.com/deepset-ai/COVID-QA/master/data/faqs/faq_covidbert.csv")
-    open('small_faq_covid.csv', 'wb').write(temp.content)
+    open("small_faq_covid.csv", "wb").write(temp.content)
 
     # Get dataframe with columns "question", "answer" and some custom metadata
     df = pd.read_csv("small_faq_covid.csv")
@@ -69,6 +75,7 @@ def tutorial4_faq_style_qa():
     # Initialize a Pipeline (this time without a reader) and ask questions
 
     from haystack.pipelines import FAQPipeline
+
     pipe = FAQPipeline(retriever=retriever)
 
     prediction = pipe.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})

@@ -9,8 +9,9 @@ class BaseQueryClassifier(BaseComponent):
     """
     Abstract class for Query Classifiers
     """
+
     outgoing_edges = 2
 
     @abstractmethod
-    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None): # type: ignore
+    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None):  # type: ignore
         raise NotImplementedError()
