@@ -1,4 +1,4 @@
-from typing import Generator, Optional, Dict, List, Union
+from typing import Generator, Optional, Dict, List, Set, Union
 
 import logging
 import collections
@@ -466,7 +466,7 @@ class BaseDocumentStore(BaseComponent):
         :param documents: A list of Haystack Document objects.
         :return: A list of Haystack Document objects.
         """
-        _hash_ids: list = []
+        _hash_ids: Set = set([])
         _documents: List[Document] = []
 
         for document in documents:
@@ -476,7 +476,7 @@ class BaseDocumentStore(BaseComponent):
                 )
                 continue
             _documents.append(document)
-            _hash_ids.append(document.id)
+            _hash_ids.add(document.id)
 
         return _documents
 
