@@ -12,6 +12,7 @@ from pprint import pprint
 from milvus import IndexType
 from utils import get_document_store
 
+
 def benchmark_querying(index_type, n_docs=100_000, similarity="dot_product"):
 
     doc_index = "document"
@@ -25,13 +26,10 @@ def benchmark_querying(index_type, n_docs=100_000, similarity="dot_product"):
         embeddings_filenames=["wikipedia_passages_100k.pkl"],
         embeddings_dir="embeddings/",
         n_docs=n_docs,
-        add_precomputed=True
+        add_precomputed=True,
     )
 
-    doc_store = get_document_store(
-        document_store_type=index_type,
-        similarity=similarity
-    )
+    doc_store = get_document_store(document_store_type=index_type, similarity=similarity)
 
     # if index_type == "milvus_flat":
     #     doc_store = MilvusDocumentStore(index=doc_index, similarity=similarity)
@@ -54,7 +52,7 @@ def benchmark_querying(index_type, n_docs=100_000, similarity="dot_product"):
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
         passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
         use_gpu=True,
-        use_fast_tokenizers=True
+        use_fast_tokenizers=True,
     )
 
     raw_results = retriever.eval(label_index=label_index, doc_index=doc_index)
@@ -67,13 +65,14 @@ def benchmark_querying(index_type, n_docs=100_000, similarity="dot_product"):
         "map": raw_results["map"] * 100,
         "top_k": raw_results["top_k"],
         "date_time": datetime.datetime.now(),
-        "error": None
+        "error": None,
     }
 
     pprint(results)
 
     doc_store.delete_all_documents(index=doc_index)
     doc_store.delete_all_documents(index=label_index)
+
 
 if __name__ == "__main__":
     similarity = "l2"

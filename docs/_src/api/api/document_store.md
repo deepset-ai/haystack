@@ -187,6 +187,35 @@ is therefore only an interim solution until the run function also accepts docume
               If None, the DocumentStore's default index (self.index) will be used.
 - `id_hash_keys`: List of the fields that the hashes of the ids are generated from.
 
+<a name="base.KeywordDocumentStore"></a>
+## KeywordDocumentStore
+
+```python
+class KeywordDocumentStore(BaseDocumentStore)
+```
+
+Base class for implementing Document Stores that support keyword searches.
+
+<a name="base.KeywordDocumentStore.query"></a>
+#### query
+
+```python
+ | @abstractmethod
+ | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query as defined by keyword matching algorithms like BM25.
+
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `custom_query`: Custom query to be executed.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
 <a name="base.get_batches_from_generator"></a>
 #### get\_batches\_from\_generator
 
@@ -203,14 +232,14 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 ## ElasticsearchDocumentStore
 
 ```python
-class ElasticsearchDocumentStore(BaseDocumentStore)
+class ElasticsearchDocumentStore(KeywordDocumentStore)
 ```
 
 <a name="elasticsearch.ElasticsearchDocumentStore.__init__"></a>
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = 'overwrite', index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym")
+ | __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym")
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -245,7 +274,16 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 - `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
 - `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
 - `verify_certs`: Whether to be strict about ca certificates
-- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
+- `recreate_index`: If set to True, an existing elasticsearch index will be deleted and a new one will be
+    created using the config you are using for initialization. Be aware that all data in the old index will be
+    lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+    be recreated.
+- `create_index`: 
+    Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+    ..deprecated:: 2.0
+        This param is deprecated. In the next major version we will always try to create an index if there is no
+        existing index (the current behaviour when create_index=True). If you are looking to recreate an
+        existing index by deleting it first if it already exist use param recreate_index.
 - `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
                      If set to 'wait_for', continue only after changes are visible (slow, but safe).
                      If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
@@ -293,7 +331,8 @@ Fetch a document by specifying its text id string
  | get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings
+Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
+to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
 
 <a name="elasticsearch.ElasticsearchDocumentStore.get_metadata_values_by_key"></a>
 #### get\_metadata\_values\_by\_key
@@ -380,7 +419,7 @@ Write annotation labels into document store.
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None)
+ | update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -478,6 +517,72 @@ that are most relevant to the query as defined by the BM25 algorithm.
 - `query`: The query
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
+- `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
+
+                     Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+                     that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
+                     names must match with the filters dict supplied in self.retrieve().
+                     ::
+
+                         **An example custom_query:**
+                         ```python
+                        |    {
+                        |        "size": 10,
+                        |        "query": {
+                        |            "bool": {
+                        |                "should": [{"multi_match": {
+                        |                    "query": ${query},                 // mandatory query placeholder
+                        |                    "type": "most_fields",
+                        |                    "fields": ["content", "title"]}}],
+                        |                "filter": [                                 // optional custom filters
+                        |                    {"terms": {"year": ${years}}},
+                        |                    {"terms": {"quarter": ${quarters}}},
+                        |                    {"range": {"date": {"gte": ${date}}}}
+                        |                    ],
+                        |            }
+                        |        },
+                        |    }
+                         ```
+
+                        **For this custom_query, a sample retrieve() could be:**
+                        ```python
+                        |    self.retrieve(query="Why did the revenue increase?",
+                        |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                        ```
+
+                     Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+                     See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
+                     You will find the highlighted output in the returned Document's meta field by key "highlighted".
+                     ::
+
+                         **Example custom_query with highlighting:**
+                         ```python
+                        |    {
+                        |        "size": 10,
+                        |        "query": {
+                        |            "bool": {
+                        |                "should": [{"multi_match": {
+                        |                    "query": ${query},                 // mandatory query placeholder
+                        |                    "type": "most_fields",
+                        |                    "fields": ["content", "title"]}}],
+                        |            }
+                        |        },
+                        |        "highlight": {             // enable highlighting
+                        |            "fields": {            // for fields content and title
+                        |                "content": {},
+                        |                "title": {}
+                        |            }
+                        |        },
+                        |    }
+                         ```
+
+                         **For this custom_query, highlighting info can be accessed by:**
+                        ```python
+                        |    docs = self.retrieve(query="Why did the revenue increase?")
+                        |    highlighted_content = docs[0].meta["highlighted"]["content"]
+                        |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                        ```
+
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
         Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -612,6 +717,23 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 
 None
 
+<a name="elasticsearch.ElasticsearchDocumentStore.delete_index"></a>
+#### delete\_index
+
+```python
+ | delete_index(index: str)
+```
+
+Delete an existing elasticsearch index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a name="elasticsearch.OpenSearchDocumentStore"></a>
 ## OpenSearchDocumentStore
 
@@ -673,7 +795,7 @@ In-memory document store
 #### \_\_init\_\_
 
 ```python
- | __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True, duplicate_documents: str = 'overwrite')
+ | __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True, duplicate_documents: str = "overwrite")
 ```
 
 **Arguments**:
@@ -782,7 +904,7 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
+ | update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -952,7 +1074,7 @@ class SQLDocumentStore(BaseDocumentStore)
 #### \_\_init\_\_
 
 ```python
- | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", duplicate_documents: str = "overwrite", check_same_thread: bool = False)
+ | __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", duplicate_documents: str = "overwrite", check_same_thread: bool = False, isolation_level: str = None)
 ```
 
 An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -970,6 +1092,7 @@ An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL bac
                             fail: an error is raised if the document ID of the document being added already
                             exists.
 - `check_same_thread`: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="sql.SQLDocumentStore.get_document_by_id"></a>
 #### get\_document\_by\_id
@@ -1094,7 +1217,7 @@ Set vector IDs for all documents as None
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str])
+ | update_document_meta(id: str, meta: Dict[str, str], index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -1202,7 +1325,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: "Optional[faiss.swigfaiss.Index]" = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1248,6 +1371,7 @@ the vector embeddings are indexed in a FAISS Index.
     If specified no other params besides faiss_config_path must be specified.
 - `faiss_config_path`: Stored FAISS initial configuration parameters.
     Can be created via calling `save()`
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="faiss.FAISSDocumentStore.write_documents"></a>
 #### write\_documents
@@ -1283,7 +1407,7 @@ None
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000)
+ | update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1479,7 +1603,7 @@ Usage:
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1525,6 +1649,7 @@ Note that an overly large index_file_size value may cause failure to load a segm
                             overwrite: Update any existing documents with the same ID when adding documents.
                             fail: an error is raised if the document ID of the document being added already
                             exists.
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a name="milvus.MilvusDocumentStore.write_documents"></a>
 #### write\_documents
@@ -1560,7 +1685,7 @@ None
 #### update\_embeddings
 
 ```python
- | update_embeddings(retriever: 'BaseRetriever', index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None)
+ | update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, List[str]]] = None)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1758,7 +1883,7 @@ Weaviate is a cloud-native, modular, real-time vector search engine built to sca
 
 Some of the key differences in contrast to FAISS & Milvus:
 1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
-2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset 
+2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
 5. Only support cosine similarity.
@@ -1777,7 +1902,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", **kwargs, ,)
 ```
 
 **Arguments**:
@@ -1863,7 +1988,7 @@ None
 #### update\_document\_meta
 
 ```python
- | update_document_meta(id: str, meta: Dict[str, str])
+ | update_document_meta(id: str, meta: Dict[str, str], index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id.
@@ -2226,4 +2351,158 @@ Execute a SPARQL query on the given index in the GraphDB instance
 **Returns**:
 
 query result
+
+<a name="deepsetcloud"></a>
+# Module deepsetcloud
+
+<a name="deepsetcloud.DeepsetCloudDocumentStore"></a>
+## DeepsetCloudDocumentStore
+
+```python
+class DeepsetCloudDocumentStore(KeywordDocumentStore)
+```
+
+<a name="deepsetcloud.DeepsetCloudDocumentStore.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False)
+```
+
+A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
+Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
+
+DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
+See https://haystack.deepset.ai/components/document-store for more information.
+
+**Arguments**:
+
+- `api_key`: Secret value of the API key.
+                If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+- `workspace`: workspace in Deepset Cloud
+- `index`: index to access within the Deepset Cloud workspace
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+- `api_endpoint`: The URL of the Deepset Cloud API.
+                     If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `return_embedding`: To return document embedding.
+
+<a name="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
+#### get\_all\_documents
+
+```python
+ | get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Get documents from the document store.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+              DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: Number of documents that are passed to bulk function at a time.
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
+<a name="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents_generator"></a>
+#### get\_all\_documents\_generator
+
+```python
+ | get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
+```
+
+Get documents from the document store. Under-the-hood, documents are fetched in batches from the
+document store and yielded as individual documents. This method can be used to iteratively process
+a large number of documents without having to load all documents in memory.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+              DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
+<a name="deepsetcloud.DeepsetCloudDocumentStore.query_by_embedding"></a>
+#### query\_by\_embedding
+
+```python
+ | query_by_embedding(query_emb: np.ndarray, filters: Optional[Optional[Dict[str, List[str]]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `filters`: Optional filters to narrow down the search space.
+                Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `top_k`: How many documents to return
+- `index`: Index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
+- `headers`: Custom HTTP headers to pass to requests
+
+**Returns**:
+
+
+
+<a name="deepsetcloud.DeepsetCloudDocumentStore.query"></a>
+#### query
+
+```python
+ | query(query: Optional[str], filters: Optional[Dict[str, List[str]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+that are most relevant to the query as defined by the BM25 algorithm.
+
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `custom_query`: Custom query to be executed.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to requests
+
+<a name="deepsetcloud.DeepsetCloudDocumentStore.write_documents"></a>
+#### write\_documents
+
+```python
+ | write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
+```
+
+Indexes documents for later queries.
+
+**Arguments**:
+
+- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+                  For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
+                  Optionally: Include meta data via {"text": "<the-actual-text>",
+                  "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                  It can be used for filtering and is accessible in the responses of the Finder.
+- `index`: Optional name of index where the documents shall be written to.
+              If None, the DocumentStore's default index (self.index) will be used.
+- `batch_size`: Number of documents that are passed to bulk function at a time.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+                            Parameter options : ( 'skip','overwrite','fail')
+                            skip: Ignore the duplicates documents
+                            overwrite: Update any existing documents with the same ID when adding documents.
+                            fail: an error is raised if the document ID of the document being added already
+                            exists.
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
+**Returns**:
+
+None
 

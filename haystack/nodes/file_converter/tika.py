@@ -22,9 +22,7 @@ class TikaXHTMLParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         # find page div
-        pagediv = [
-            value for attr, value in attrs if attr == "class" and value == "page"
-        ]
+        pagediv = [value for attr, value in attrs if attr == "class" and value == "page"]
         if tag == "div" and pagediv:
             self.ingest = True
 
@@ -76,9 +74,7 @@ class TikaConverter(BaseConverter):
                 f"with Docker, execute: 'docker run -p 9998:9998 apache/tika:1.24.1'"
             )
         self.tika_url = tika_url
-        super().__init__(
-            remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages
-        )
+        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(
         self,
@@ -110,9 +106,7 @@ class TikaConverter(BaseConverter):
         if valid_languages is None:
             valid_languages = self.valid_languages
 
-        parsed = tikaparser.from_file(
-            file_path.as_posix(), self.tika_url, xmlContent=True
-        )
+        parsed = tikaparser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
         parser = TikaXHTMLParser()
         parser.feed(parsed["content"])
 
@@ -127,11 +121,7 @@ class TikaConverter(BaseConverter):
 
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
-                    if (
-                        words
-                        and len(digits) / len(words) > 0.4
-                        and not line.strip().endswith(".")
-                    ):
+                    if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
                         logger.debug(f"Removing line '{line}' from {file_path}")
                         continue
 

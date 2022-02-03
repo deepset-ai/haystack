@@ -73,15 +73,19 @@ class PreProcessor(BasePreProcessor):
 
         # save init parameters to enable export of component config as YAML
         self.set_config(
-            clean_whitespace=clean_whitespace, clean_header_footer=clean_header_footer,
-            clean_empty_lines=clean_empty_lines, split_by=split_by, split_length=split_length,
-            split_overlap=split_overlap, split_respect_sentence_boundary=split_respect_sentence_boundary,
+            clean_whitespace=clean_whitespace,
+            clean_header_footer=clean_header_footer,
+            clean_empty_lines=clean_empty_lines,
+            split_by=split_by,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            split_respect_sentence_boundary=split_respect_sentence_boundary,
         )
 
         try:
-            nltk.data.find('tokenizers/punkt')
+            nltk.data.find("tokenizers/punkt")
         except LookupError:
-            nltk.download('punkt')
+            nltk.download("punkt")
 
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
@@ -116,21 +120,15 @@ class PreProcessor(BasePreProcessor):
             "split_by": split_by,
             "split_length": split_length,
             "split_overlap": split_overlap,
-            "split_respect_sentence_boundary": split_respect_sentence_boundary
+            "split_respect_sentence_boundary": split_respect_sentence_boundary,
         }
 
         ret = []
 
         if type(documents) == dict:
-            ret = self._process_single(
-                document=documents,
-                **kwargs                #type: ignore
-        )
+            ret = self._process_single(document=documents, **kwargs)  # type: ignore
         elif type(documents) == list:
-            ret = self._process_batch(
-                documents=list(documents),
-                **kwargs
-            )
+            ret = self._process_batch(documents=list(documents), **kwargs)
 
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
@@ -179,11 +177,7 @@ class PreProcessor(BasePreProcessor):
         )
         return split_documents
 
-    def _process_batch(
-        self,
-        documents: List[dict],
-        **kwargs
-    ) -> List[dict]:
+    def _process_batch(self, documents: List[dict], **kwargs) -> List[dict]:
         nested_docs = [self._process_single(d, **kwargs) for d in tqdm(documents, unit="docs")]
         return [d for x in nested_docs for d in x]
 
@@ -229,7 +223,7 @@ class PreProcessor(BasePreProcessor):
     ) -> List[dict]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,
         with different strides. It can also respect sentence boundaries. Its exact functionality is defined by
-        the parameters passed into PreProcessor.__init__(). Takes a single document as input and returns a list of documents. """
+        the parameters passed into PreProcessor.__init__(). Takes a single document as input and returns a list of documents."""
 
         if not split_by:
             return [document]
@@ -280,7 +274,7 @@ class PreProcessor(BasePreProcessor):
 
             text_splits = []
             for sl in list_splits:
-                txt = ' '.join(sl)
+                txt = " ".join(sl)
                 if len(txt) > 0:
                     text_splits.append(txt)
         else:
@@ -292,7 +286,9 @@ class PreProcessor(BasePreProcessor):
             elif split_by == "word":
                 elements = text.split(" ")
             else:
-                raise NotImplementedError("PreProcessor only supports 'passage', 'sentence' or 'word' split_by options.")
+                raise NotImplementedError(
+                    "PreProcessor only supports 'passage', 'sentence' or 'word' split_by options."
+                )
 
             # concatenate individual elements based on split_length & split_stride
             if split_overlap:
