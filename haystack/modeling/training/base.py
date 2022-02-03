@@ -664,7 +664,7 @@ class DistillationTrainer(Trainer):
         epochs: int,
         n_gpu: int,
         device: torch.device,
-        lr_schedule: Optional["_LRScheduler"]=None,
+        lr_schedule: Optional["_LRScheduler"] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
         use_amp: Optional[str] = None,

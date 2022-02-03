@@ -838,13 +838,13 @@ class FARMReader(BaseReader):
         return results
 
     def eval(
-            self,
-            document_store: BaseDocumentStore,
-            device: Optional[torch.device] = None,
-            label_index: str = "label",
-            doc_index: str = "eval_document",
-            label_origin: str = "gold-label",
-            calibrate_conf_scores: bool = False
+        self,
+        document_store: BaseDocumentStore,
+        device: Optional[torch.device] = None,
+        label_index: str = "label",
+        doc_index: str = "eval_document",
+        label_origin: str = "gold-label",
+        calibrate_conf_scores: bool = False,
     ):
         """
         Performs evaluation on evaluation documents in the DocumentStore.
@@ -1032,12 +1032,12 @@ class FARMReader(BaseReader):
         return answers, max_no_ans_gap
 
     def calibrate_confidence_scores(
-            self,
-            document_store: BaseDocumentStore,
-            device: Optional[torch.device] = None,
-            label_index: str = "label",
-            doc_index: str = "eval_document",
-            label_origin: str = "gold_label"
+        self,
+        document_store: BaseDocumentStore,
+        device: Optional[torch.device] = None,
+        label_index: str = "label",
+        doc_index: str = "eval_document",
+        label_origin: str = "gold_label",
     ):
         """
         Calibrates confidence scores on evaluation documents in the DocumentStore.

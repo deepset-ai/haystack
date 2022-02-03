@@ -258,8 +258,14 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # Need to save config and pipeline
 
     @classmethod
-    def load(cls, load_dir: Union[str, Path], device: torch.device, strict: bool = True, lm_name: Optional[str] = None,  #  type: ignore
-             processor: Optional[Processor] = None):
+    def load(
+        cls,
+        load_dir: Union[str, Path],
+        device: torch.device,
+        strict: bool = True,
+        lm_name: Optional[str] = None,  #  type: ignore
+        processor: Optional[Processor] = None,
+    ):
         """
         Loads an AdaptiveModel from a directory. The directory must contain:
 
@@ -480,8 +486,16 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         return conv.Converter.convert_to_transformers(self)
 
     @classmethod
-    def convert_from_transformers(cls, model_name_or_path: Union[str, Path], device: torch.device, revision: Optional[str] = None,
-                                  task_type: Optional[str] = None, processor: Optional[Processor] = None,  use_auth_token: Optional[Union[bool, str]] = None, **kwargs):
+    def convert_from_transformers(
+        cls,
+        model_name_or_path: Union[str, Path],
+        device: torch.device,
+        revision: Optional[str] = None,
+        task_type: Optional[str] = None,
+        processor: Optional[Processor] = None,
+        use_auth_token: Optional[Union[bool, str]] = None,
+        **kwargs,
+    ):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
          - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
@@ -605,7 +619,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         language_model_class: str,
         language: str,
         prediction_heads: List[PredictionHead],
-        device: torch.device
+        device: torch.device,
     ):
         """
         :param onnx_session: ? # TODO
@@ -644,7 +658,9 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         # Use OpenMP optimizations. Only useful for CPU, has little impact for GPUs.
         sess_options.intra_op_num_threads = multiprocessing.cpu_count()
 
-        providers = kwargs.get("providers", ["CPUExecutionProvider"] if device.type == "cpu" else ["CUDAExecutionProvider"])
+        providers = kwargs.get(
+            "providers", ["CPUExecutionProvider"] if device.type == "cpu" else ["CUDAExecutionProvider"]
+        )
         onnx_session = onnxruntime.InferenceSession(str(load_dir / "model.onnx"), sess_options, providers=providers)
 
         # Prediction heads

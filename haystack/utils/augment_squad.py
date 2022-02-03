@@ -41,7 +41,10 @@ from typing import Tuple, List
 
 logger = logging.getLogger(__name__)
 
-def load_glove(glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: torch.device = torch.device("cpu:0")) -> Tuple[dict, dict, torch.Tensor]:
+
+def load_glove(
+    glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: torch.device = torch.device("cpu:0")
+) -> Tuple[dict, dict, torch.Tensor]:
     """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
 
     if not glove_path.exists():  # download and extract glove if necessary
@@ -99,9 +102,18 @@ def tokenize_and_extract_words(text: str, tokenizer: PreTrainedTokenizerBase) ->
 
     return input_ids, words, word_subword_mapping
 
-def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, glove_vectors: np.ndarray,
-    model: PreTrainedModel, tokenizer: PreTrainedTokenizerBase, text: str, word_possibilities: int = 20,
-    batch_size: int = 16, device: torch.device = torch.device("cpu:0")) -> List[List[str]]:
+
+def get_replacements(
+    glove_word_id_mapping: dict,
+    glove_id_word_mapping: dict,
+    glove_vectors: np.ndarray,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizerBase,
+    text: str,
+    word_possibilities: int = 20,
+    batch_size: int = 16,
+    device: torch.device = torch.device("cpu:0"),
+) -> List[List[str]]:
 
     """Returns a list of possible replacements for each word in the text."""
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
@@ -157,9 +169,20 @@ def get_replacements(glove_word_id_mapping: dict, glove_id_word_mapping: dict, g
 
     return possible_words
 
-def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, model: PreTrainedModel,
-    tokenizer: PreTrainedTokenizerBase, text: str, multiplication_factor: int = 20, word_possibilities: int = 20,
-    replace_probability: float = 0.4, batch_size: int = 16, device: torch.device = torch.device("cpu:0")) -> List[str]:
+
+def augment(
+    word_id_mapping: dict,
+    id_word_mapping: dict,
+    vectors: np.ndarray,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizerBase,
+    text: str,
+    multiplication_factor: int = 20,
+    word_possibilities: int = 20,
+    replace_probability: float = 0.4,
+    batch_size: int = 16,
+    device: torch.device = torch.device("cpu:0"),
+) -> List[str]:
     # returns a list of different augmented versions of the text
     replacements = get_replacements(
         glove_word_id_mapping=word_id_mapping,
@@ -186,9 +209,19 @@ def augment(word_id_mapping: dict, id_word_mapping: dict, vectors: np.ndarray, m
         new_texts.append(" ".join(new_text))
     return new_texts
 
-def augment_squad(model: str, tokenizer: str, squad_path: Path, output_path: Path,
-        glove_path: Path = Path("glove.txt"), multiplication_factor: int = 20, word_possibilities: int = 20,
-        replace_probability: float = 0.4, device: torch.device = torch.device("cpu:0"), batch_size: int = 16):
+
+def augment_squad(
+    model: str,
+    tokenizer: str,
+    squad_path: Path,
+    output_path: Path,
+    glove_path: Path = Path("glove.txt"),
+    multiplication_factor: int = 20,
+    word_possibilities: int = 20,
+    replace_probability: float = 0.4,
+    device: torch.device = torch.device("cpu:0"),
+    batch_size: int = 16,
+):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
     # loading model and tokenizer
     transformers_model = AutoModelForMaskedLM.from_pretrained(model)
@@ -255,9 +288,12 @@ if __name__ == "__main__":
     parser.add_argument("--glove_path", type=Path, default="glove.txt", help="Path to the glove file")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for forward pass")
     parser.add_argument("--device", type=torch.device, default="cuda:0", help="Device to use")
-    parser.add_argument("--model", type=str, default="bert-base-uncased", help="Huggingface model identifier for MLM model")
-    parser.add_argument("--tokenizer", type=str, default="bert-base-uncased", help="Huggingface tokenizer identifier for MLM model")
-
+    parser.add_argument(
+        "--model", type=str, default="bert-base-uncased", help="Huggingface model identifier for MLM model"
+    )
+    parser.add_argument(
+        "--tokenizer", type=str, default="bert-base-uncased", help="Huggingface tokenizer identifier for MLM model"
+    )
 
     args = parser.parse_args()
 

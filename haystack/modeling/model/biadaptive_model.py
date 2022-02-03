@@ -105,8 +105,15 @@ class BiAdaptiveModel(nn.Module):
             ph.save(save_dir, i)
 
     @classmethod
-    def load(cls, load_dir: Path, device: torch.device, strict: bool = False, lm1_name: str = "lm1",
-             lm2_name: str = "lm2", processor: Optional[Processor] = None):
+    def load(
+        cls,
+        load_dir: Path,
+        device: torch.device,
+        strict: bool = False,
+        lm1_name: str = "lm1",
+        lm2_name: str = "lm2",
+        processor: Optional[Processor] = None,
+    ):
         """
         Loads a BiAdaptiveModel from a directory. The directory must contain:
 
@@ -421,9 +428,15 @@ class BiAdaptiveModel(nn.Module):
         return transformers_model1, transformers_model2
 
     @classmethod
-    def convert_from_transformers(cls, model_name_or_path1: Union[str, Path], model_name_or_path2: Union[str, Path],
-                                  device: torch.device, task_type: str, processor: Optional[Processor] = None,
-                                  similarity_function: str = "dot_product"):
+    def convert_from_transformers(
+        cls,
+        model_name_or_path1: Union[str, Path],
+        model_name_or_path2: Union[str, Path],
+        device: torch.device,
+        task_type: str,
+        processor: Optional[Processor] = None,
+        similarity_function: str = "dot_product",
+    ):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
          - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)

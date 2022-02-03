@@ -37,17 +37,17 @@ class TriAdaptiveModel(nn.Module):
     """
 
     def __init__(
-            self,
-            language_model1: LanguageModel,
-            language_model2: LanguageModel,
-            language_model3: LanguageModel,
-            prediction_heads: List[PredictionHead],
-            embeds_dropout_prob: float = 0.1,
-            device: torch.device = torch.device("cuda"),
-            lm1_output_types: Union[str, List[str]] = ["per_sequence"],
-            lm2_output_types: Union[str, List[str]] = ["per_sequence"],
-            lm3_output_types: Union[str, List[str]] = ["per_sequence"],
-            loss_aggregation_fn: Optional[Callable] = None,
+        self,
+        language_model1: LanguageModel,
+        language_model2: LanguageModel,
+        language_model3: LanguageModel,
+        prediction_heads: List[PredictionHead],
+        embeds_dropout_prob: float = 0.1,
+        device: torch.device = torch.device("cuda"),
+        lm1_output_types: Union[str, List[str]] = ["per_sequence"],
+        lm2_output_types: Union[str, List[str]] = ["per_sequence"],
+        lm3_output_types: Union[str, List[str]] = ["per_sequence"],
+        loss_aggregation_fn: Optional[Callable] = None,
     ):
         """
         :param language_model1: Any model that turns token ids into vector representations.
@@ -126,8 +126,16 @@ class TriAdaptiveModel(nn.Module):
             ph.save(save_dir, i)
 
     @classmethod
-    def load(cls, load_dir: Path, device: torch.device, strict: bool = False, lm1_name: str = "lm1", lm2_name: str = "lm2",
-             lm3_name: str = "lm3", processor: Optional[Processor] = None):
+    def load(
+        cls,
+        load_dir: Path,
+        device: torch.device,
+        strict: bool = False,
+        lm1_name: str = "lm1",
+        lm2_name: str = "lm2",
+        lm3_name: str = "lm3",
+        processor: Optional[Processor] = None,
+    ):
         """
         Loads a TriAdaptiveModel from a directory. The directory must contain:
 

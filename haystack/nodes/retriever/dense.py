@@ -36,24 +36,26 @@ class DensePassageRetriever(BaseRetriever):
     Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Question Answering."
     (https://arxiv.org/abs/2004.04906).
     """
-    def __init__(self,
-             document_store: BaseDocumentStore,
-             query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
-             passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
-             model_version: Optional[str] = None,
-             max_seq_len_query: int = 64,
-             max_seq_len_passage: int = 256,
-             top_k: int = 10,
-             use_gpu: bool = True,
-             batch_size: int = 16,
-             embed_title: bool = True,
-             use_fast_tokenizers: bool = True,
-             infer_tokenizer_classes: bool = False,
-             similarity_function: str = "dot_product",
-             global_loss_buffer_size: int = 150000,
-             progress_bar: bool = True,
-             devices: Optional[List[torch.device]] = None,
-             use_auth_token: Optional[Union[str,bool]] = None,
+
+    def __init__(
+        self,
+        document_store: BaseDocumentStore,
+        query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
+        model_version: Optional[str] = None,
+        max_seq_len_query: int = 64,
+        max_seq_len_passage: int = 256,
+        top_k: int = 10,
+        use_gpu: bool = True,
+        batch_size: int = 16,
+        embed_title: bool = True,
+        use_fast_tokenizers: bool = True,
+        infer_tokenizer_classes: bool = False,
+        similarity_function: str = "dot_product",
+        global_loss_buffer_size: int = 150000,
+        progress_bar: bool = True,
+        devices: Optional[List[torch.device]] = None,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -545,27 +547,28 @@ class TableTextRetriever(BaseRetriever):
     (https://arxiv.org/abs/2108.04049),
     """
 
-    def __init__(self,
-                 document_store: BaseDocumentStore,
-                 query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder",
-                 passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder",
-                 table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder",
-                 model_version: Optional[str] = None,
-                 max_seq_len_query: int = 64,
-                 max_seq_len_passage: int = 256,
-                 max_seq_len_table: int = 256,
-                 top_k: int = 10,
-                 use_gpu: bool = True,
-                 batch_size: int = 16,
-                 embed_meta_fields: List[str] = ["name", "section_title", "caption"],
-                 use_fast_tokenizers: bool = True,
-                 infer_tokenizer_classes: bool = False,
-                 similarity_function: str = "dot_product",
-                 global_loss_buffer_size: int = 150000,
-                 progress_bar: bool = True,
-                 devices: Optional[List[torch.device]] = None,
-                 use_auth_token: Optional[Union[str,bool]] = None
-                 ):
+    def __init__(
+        self,
+        document_store: BaseDocumentStore,
+        query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder",
+        passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder",
+        table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder",
+        model_version: Optional[str] = None,
+        max_seq_len_query: int = 64,
+        max_seq_len_passage: int = 256,
+        max_seq_len_table: int = 256,
+        top_k: int = 10,
+        use_gpu: bool = True,
+        batch_size: int = 16,
+        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        use_fast_tokenizers: bool = True,
+        infer_tokenizer_classes: bool = False,
+        similarity_function: str = "dot_product",
+        global_loss_buffer_size: int = 150000,
+        progress_bar: bool = True,
+        devices: Optional[List[torch.device]] = None,
+        use_auth_token: Optional[Union[str, bool]] = None,
+    ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
         The checkpoint format matches huggingface transformers' model format
@@ -664,61 +667,78 @@ class TableTextRetriever(BaseRetriever):
             tokenizers_default_classes["table"] = None  # type: ignore
 
         # Init & Load Encoders
-        self.query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=query_embedding_model,
-                                              revision=model_version,
-                                              do_lower_case=True,
-                                              use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["query"], 
-                                              use_auth_token=use_auth_token)
-        self.query_encoder = LanguageModel.load(pretrained_model_name_or_path=query_embedding_model,
-                                                revision=model_version,
-                                                language_model_class="DPRQuestionEncoder", 
-                                                use_auth_token=use_auth_token)
-        self.passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model,
-                                                revision=model_version,
-                                                do_lower_case=True,
-                                                use_fast=use_fast_tokenizers,
-                                                tokenizer_class=tokenizers_default_classes["passage"], 
-                                                use_auth_token=use_auth_token)
-        self.passage_encoder = LanguageModel.load(pretrained_model_name_or_path=passage_embedding_model,
-                                                  revision=model_version,
-                                                  language_model_class="DPRContextEncoder", 
-                                                  use_auth_token=use_auth_token)
-        self.table_tokenizer = Tokenizer.load(pretrained_model_name_or_path=table_embedding_model,
-                                              revision=model_version,
-                                              do_lower_case=True,
-                                              use_fast=use_fast_tokenizers,
-                                              tokenizer_class=tokenizers_default_classes["table"], 
-                                              use_auth_token=use_auth_token)
-        self.table_encoder = LanguageModel.load(pretrained_model_name_or_path=table_embedding_model,
-                                                revision=model_version,
-                                                language_model_class="DPRContextEncoder", 
-                                                use_auth_token=use_auth_token)
+        self.query_tokenizer = Tokenizer.load(
+            pretrained_model_name_or_path=query_embedding_model,
+            revision=model_version,
+            do_lower_case=True,
+            use_fast=use_fast_tokenizers,
+            tokenizer_class=tokenizers_default_classes["query"],
+            use_auth_token=use_auth_token,
+        )
+        self.query_encoder = LanguageModel.load(
+            pretrained_model_name_or_path=query_embedding_model,
+            revision=model_version,
+            language_model_class="DPRQuestionEncoder",
+            use_auth_token=use_auth_token,
+        )
+        self.passage_tokenizer = Tokenizer.load(
+            pretrained_model_name_or_path=passage_embedding_model,
+            revision=model_version,
+            do_lower_case=True,
+            use_fast=use_fast_tokenizers,
+            tokenizer_class=tokenizers_default_classes["passage"],
+            use_auth_token=use_auth_token,
+        )
+        self.passage_encoder = LanguageModel.load(
+            pretrained_model_name_or_path=passage_embedding_model,
+            revision=model_version,
+            language_model_class="DPRContextEncoder",
+            use_auth_token=use_auth_token,
+        )
+        self.table_tokenizer = Tokenizer.load(
+            pretrained_model_name_or_path=table_embedding_model,
+            revision=model_version,
+            do_lower_case=True,
+            use_fast=use_fast_tokenizers,
+            tokenizer_class=tokenizers_default_classes["table"],
+            use_auth_token=use_auth_token,
+        )
+        self.table_encoder = LanguageModel.load(
+            pretrained_model_name_or_path=table_embedding_model,
+            revision=model_version,
+            language_model_class="DPRContextEncoder",
+            use_auth_token=use_auth_token,
+        )
 
-        self.processor = TableTextSimilarityProcessor(query_tokenizer=self.query_tokenizer,
-                                                      passage_tokenizer=self.passage_tokenizer,
-                                                      table_tokenizer=self.table_tokenizer,
-                                                      max_seq_len_query=max_seq_len_query,
-                                                      max_seq_len_passage=max_seq_len_passage,
-                                                      max_seq_len_table=max_seq_len_table,
-                                                      label_list=["hard_negative", "positive"],
-                                                      metric="text_similarity_metric",
-                                                      embed_meta_fields=embed_meta_fields,
-                                                      num_hard_negatives=0,
-                                                      num_positives=1)
+        self.processor = TableTextSimilarityProcessor(
+            query_tokenizer=self.query_tokenizer,
+            passage_tokenizer=self.passage_tokenizer,
+            table_tokenizer=self.table_tokenizer,
+            max_seq_len_query=max_seq_len_query,
+            max_seq_len_passage=max_seq_len_passage,
+            max_seq_len_table=max_seq_len_table,
+            label_list=["hard_negative", "positive"],
+            metric="text_similarity_metric",
+            embed_meta_fields=embed_meta_fields,
+            num_hard_negatives=0,
+            num_positives=1,
+        )
 
-        prediction_head = TextSimilarityHead(similarity_function=similarity_function,
-                                             global_loss_buffer_size=global_loss_buffer_size)
+        prediction_head = TextSimilarityHead(
+            similarity_function=similarity_function, global_loss_buffer_size=global_loss_buffer_size
+        )
 
-        self.model = TriAdaptiveModel(language_model1=self.query_encoder,
-                                      language_model2=self.passage_encoder,
-                                      language_model3=self.table_encoder,
-                                      prediction_heads=[prediction_head],
-                                      embeds_dropout_prob=0.1,
-                                      lm1_output_types=["per_sequence"],
-                                      lm2_output_types=["per_sequence"],
-                                      lm3_output_types=["per_sequence"],
-                                      device=self.devices[0])
+        self.model = TriAdaptiveModel(
+            language_model1=self.query_encoder,
+            language_model2=self.passage_encoder,
+            language_model3=self.table_encoder,
+            prediction_heads=[prediction_head],
+            embeds_dropout_prob=0.1,
+            lm1_output_types=["per_sequence"],
+            lm2_output_types=["per_sequence"],
+            lm3_output_types=["per_sequence"],
+            device=self.devices[0],
+        )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
@@ -1094,7 +1114,7 @@ class EmbeddingRetriever(BaseRetriever):
         top_k: int = 10,
         progress_bar: bool = True,
         devices: Optional[List[torch.device]] = None,
-        use_auth_token: Optional[Union[str,bool]] = None
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
