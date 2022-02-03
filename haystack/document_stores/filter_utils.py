@@ -145,7 +145,7 @@ class ComparisonOperation(ABC):
 
     @classmethod
     def parse(cls, field_name, comparison_clause: Union[Dict, List, str, float]):
-        comparison_operations = []
+        comparison_operations: List[ComparisonOperation] = []
 
         if isinstance(comparison_clause, dict):
             for comparison_operation, comparison_value in comparison_clause.items():
