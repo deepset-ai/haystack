@@ -1,4 +1,4 @@
-from haystack.schema import Document, Label, Answer, Span
+from haystack.schema import Document, Label, Answer, Span, MultiLabel
 import pytest
 import numpy as np
 
@@ -201,3 +201,37 @@ def test_generate_doc_id_using_custom_list():
 
     with pytest.raises(ValueError):
         _ = Document(content=text1, meta={"name": "doc1"}, id_hash_keys=["content", "non_existing_field"])
+
+
+def test_aggregate_labels_with_labels():
+    label1_with_filter1 = Label(
+        query="question",
+        answer=Answer(answer="1"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        document=Document(content="some", id="777"),
+        origin="gold-label",
+        filters={"name": ["filename1"]},
+    )
+    label2_with_filter1 = Label(
+        query="question",
+        answer=Answer(answer="2"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        document=Document(content="some", id="777"),
+        origin="gold-label",
+        filters={"name": ["filename1"]},
+    )
+    label3_with_filter2 = Label(
+        query="question",
+        answer=Answer(answer="2"),
+        is_correct_answer=True,
+        is_correct_document=True,
+        document=Document(content="some", id="777"),
+        origin="gold-label",
+        filters={"name": ["filename2"]},
+    )
+    label = MultiLabel(labels=[label1_with_filter1, label2_with_filter1])
+    assert label.filters == {"name": ["filename1"]}
+    with pytest.raises(ValueError):
+        label = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])
