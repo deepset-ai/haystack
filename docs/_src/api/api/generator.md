@@ -23,10 +23,15 @@ def predict(query: str, documents: List[Document], top_k: Optional[int]) -> Dict
 
 Abstract method to generate answers.
 
-:param query: Query
-:param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-:param top_k: Number of returned answers
-:return: Generated answers plus additional infos in a dict
+**Arguments**:
+
+- `query`: Query
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `top_k`: Number of returned answers
+
+**Returns**:
+
+Generated answers plus additional infos in a dict
 
 <a id="transformers"></a>
 
@@ -89,13 +94,18 @@ def predict(query: str, documents: List[Document], top_k: Optional[int] = None) 
 ```
 
 Generate the answer to the input query. The generation will be conditioned on the supplied documents.
+
 These document can for example be retrieved via the Retriever.
 
-:param query: Query
-:param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-:param top_k: Number of returned answers
-:return: Generated answers plus additional infos in a dict like this:
+**Arguments**:
 
+- `query`: Query
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `top_k`: Number of returned answers
+
+**Returns**:
+
+Generated answers plus additional infos in a dict like this:
 ```python
 |     {'query': 'who got the first nobel prize in physics',
 |      'answers':
@@ -169,10 +179,16 @@ def predict(query: str, documents: List[Document], top_k: Optional[int] = None) 
 ```
 
 Generate the answer to the input query. The generation will be conditioned on the supplied documents.
+
 These document can be retrieved via the Retriever or supplied directly via predict method.
 
-:param query: Query
-:param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-:param top_k: Number of returned answers
-:return: Generated answers
+**Arguments**:
+
+- `query`: Query
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `top_k`: Number of returned answers
+
+**Returns**:
+
+Generated answers
 

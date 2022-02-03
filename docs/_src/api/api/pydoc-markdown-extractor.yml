@@ -9,6 +9,7 @@ processors:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
+  - type: smart
 renderer:
   type: markdown
   descriptive_class_title: false
