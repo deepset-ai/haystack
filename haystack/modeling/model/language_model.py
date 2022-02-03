@@ -30,16 +30,26 @@ import torch
 from torch import nn
 import transformers
 from transformers import (
-    BertModel, BertConfig,
-    RobertaModel, RobertaConfig,
-    XLNetModel, XLNetConfig,
-    AlbertModel, AlbertConfig,
-    XLMRobertaModel, XLMRobertaConfig,
-    DistilBertModel, DistilBertConfig,
-    ElectraModel, ElectraConfig,
-    CamembertModel, CamembertConfig,
-    BigBirdModel, BigBirdConfig,
-    DebertaV2Model, DebertaV2Config,
+    BertModel,
+    BertConfig,
+    RobertaModel,
+    RobertaConfig,
+    XLNetModel,
+    XLNetConfig,
+    AlbertModel,
+    AlbertConfig,
+    XLMRobertaModel,
+    XLMRobertaConfig,
+    DistilBertModel,
+    DistilBertConfig,
+    ElectraModel,
+    ElectraConfig,
+    CamembertModel,
+    CamembertConfig,
+    BigBirdModel,
+    BigBirdConfig,
+    DebertaV2Model,
+    DebertaV2Config,
 )
 from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
@@ -1583,6 +1593,7 @@ class BigBird(LanguageModel):
     def disable_hidden_states_output(self):
         self.model.encoder.config.output_hidden_states = False
 
+
 class DebertaV2(LanguageModel):
     """
     This is a wrapper around the DebertaV2 model from HuggingFace's transformers library.
@@ -1634,8 +1645,8 @@ class DebertaV2(LanguageModel):
         # We don't want a dropout in the end of the pooler, since we do that already in the adaptive model before we
         # feed everything to the prediction head.
         config.summary_last_dropout = 0
-        config.summary_type = 'first'
-        config.summary_activation = 'tanh'
+        config.summary_type = "first"
+        config.summary_activation = "tanh"
         config.summary_use_proj = False
         debertav2.pooler = SequenceSummary(config)
         debertav2.pooler.apply(debertav2.model._init_weights)
@@ -1660,23 +1671,18 @@ class DebertaV2(LanguageModel):
         :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
-        output_tuple = self.model(
-            input_ids,
-            token_type_ids=segment_ids,
-            attention_mask=padding_mask,
-            return_dict=False
-        )
+        output_tuple = self.model(input_ids, token_type_ids=segment_ids, attention_mask=padding_mask, return_dict=False)
 
         if output_hidden_states is None:
             output_hidden_states = self.model.encoder.config.output_hidden_states
         if output_attentions is None:
             output_attentions = self.model.encoder.config.output_attentions
-            
+
         output_tuple = self.model(
             input_ids,
             attention_mask=padding_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions
+            output_attentions=output_attentions,
         )
         # We need to manually aggregate that to get a pooled output (one vec per seq)
         pooled_output = self.pooler(output_tuple[0])

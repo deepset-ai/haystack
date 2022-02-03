@@ -22,18 +22,29 @@ import re
 import logging
 import numpy as np
 from transformers import (
-    AlbertTokenizer, AlbertTokenizerFast,
-    BertTokenizer, BertTokenizerFast,
-    DistilBertTokenizer, DistilBertTokenizerFast,
-    ElectraTokenizer, ElectraTokenizerFast,
-    RobertaTokenizer, RobertaTokenizerFast,
-    XLMRobertaTokenizer, XLMRobertaTokenizerFast,
-    XLNetTokenizer, XLNetTokenizerFast,
-    CamembertTokenizer, CamembertTokenizerFast,
-    DPRContextEncoderTokenizer, DPRContextEncoderTokenizerFast,
-    DPRQuestionEncoderTokenizer, DPRQuestionEncoderTokenizerFast,
-    BigBirdTokenizer, BigBirdTokenizerFast,
-    DebertaV2Tokenizer
+    AlbertTokenizer,
+    AlbertTokenizerFast,
+    BertTokenizer,
+    BertTokenizerFast,
+    DistilBertTokenizer,
+    DistilBertTokenizerFast,
+    ElectraTokenizer,
+    ElectraTokenizerFast,
+    RobertaTokenizer,
+    RobertaTokenizerFast,
+    XLMRobertaTokenizer,
+    XLMRobertaTokenizerFast,
+    XLNetTokenizer,
+    XLNetTokenizerFast,
+    CamembertTokenizer,
+    CamembertTokenizerFast,
+    DPRContextEncoderTokenizer,
+    DPRContextEncoderTokenizerFast,
+    DPRQuestionEncoderTokenizer,
+    DPRQuestionEncoderTokenizerFast,
+    BigBirdTokenizer,
+    BigBirdTokenizerFast,
+    DebertaV2Tokenizer,
 )
 from transformers import AutoConfig
 
@@ -184,11 +195,15 @@ class Tokenizer:
                     pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
                 )
             else:
-                ret = BigBirdTokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+                ret = BigBirdTokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         elif "DebertaV2Tokenizer" in tokenizer_class:
             if use_fast:
                 logger.warning("DebertaV2 does not support fast tokenizers")
-            ret = DebertaV2Tokenizer.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+            ret = DebertaV2Tokenizer.from_pretrained(
+                pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+            )
         if ret is None:
             raise Exception("Unable to load tokenizer")
         else:
@@ -271,7 +286,9 @@ class Tokenizer:
             tokenizer_class = "CamembertTokenizer"
         elif "distilbert" in pretrained_model_name_or_path.lower():
             tokenizer_class = "DistilBertTokenizer"
-        elif "debertav2" in pretrained_model_name_or_path.lower() or "debertav3" in pretrained_model_name_or_path.lower():
+        elif (
+            "debertav2" in pretrained_model_name_or_path.lower() or "debertav3" in pretrained_model_name_or_path.lower()
+        ):
             tokenizer_class = "DebertaV2Tokenizer"
         elif "bert" in pretrained_model_name_or_path.lower():
             tokenizer_class = "BertTokenizer"
