@@ -38,7 +38,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         use_gpu: bool = True,
-        scoring_batch_size: int = 500000,
+        scoring_batch_size: int = 500000
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -61,7 +61,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         Falls back to CPU if no GPU is available.
         :param scoring_batch_size: Batch size of documents to calculate similarity for. Very small batch sizes are inefficent.
                                    Very large batch sizes can overrun GPU memory. In general you want to make sure
-                                   you have at least `embedding_dim`*`scoring_batch_size` bytes available in GPU memory.
+                                   you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
                                    when running on CPU.
         """
