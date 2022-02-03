@@ -330,20 +330,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
     #        if duplicate_documents == 'overwrite':
     #            connection.compact(collection_name=index)
 
-    @staticmethod
-    def _get_field_to_idx(index):
-        resp = connection.describe_collection(index)
-        collection_schema = CollectionSchema.construct_from_dict(resp)
-        field_to_idx: Dict[str, int] = {}
-        field_to_type: Dict[str, DataType] = {}
-        count = 0
-        for idx, field in enumerate(collection_schema.fields):
-            if not field.is_primary:
-                field_to_idx[field.name] = count
-                field_to_type[field.name] = field.dtype
-                count = count + 1
-        return field_to_idx, field_to_type
-
     def update_embeddings(
         self,
         retriever: "BaseRetriever",
