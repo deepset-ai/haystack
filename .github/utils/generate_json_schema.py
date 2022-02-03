@@ -217,7 +217,7 @@ def generate_json_schema():
 
 def main():
     from github import Github
-    
+
     generate_json_schema()
     logging.basicConfig(level=logging.INFO)
     settings = Settings()
