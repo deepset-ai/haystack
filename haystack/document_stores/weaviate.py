@@ -440,7 +440,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
-                #docs_batch = Batch(self.weaviate_client)
+                # docs_batch = Batch(self.weaviate_client)
                 for idx, doc in enumerate(document_batch):
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
@@ -472,7 +472,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             self._update_schema(property, index)
                             current_properties.append(property)
 
-                    self.weaviate_client.batch.add_data_object(_doc, class_name=index, uuid=doc_id, vector=vector)  #docs_batch
+                    self.weaviate_client.batch.add_data_object(
+                        _doc, class_name=index, uuid=doc_id, vector=vector
+                    )  # docs_batch
 
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create_objects()
@@ -530,10 +532,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             result = self.weaviate_client.query.aggregate(index).with_fields("meta { count }").do()
 
         if "data" in result:
-            if "Aggregate" in result.get('data'):
-                if result.get('data').get('Aggregate').get(index):
-                    doc_count = result.get('data').get('Aggregate').get(index)[0]['meta']['count']
-
+            if "Aggregate" in result.get("data"):
+                if result.get("data").get("Aggregate").get(index):
+                    doc_count = result.get("data").get("Aggregate").get(index)[0]["meta"]["count"]
 
         return doc_count
 
@@ -548,18 +549,18 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         Get documents from the document store.
 
-        Note this limitation from the changelog of Weaviate 1.8.0: 
+        Note this limitation from the changelog of Weaviate 1.8.0:
 
         .. quote::
             Due to the increasing cost of each page outlined above, there is a limit to
-            how many objects can be retrieved using pagination. By default setting the sum 
-            of offset and limit to higher than 10,000 objects, will lead to an error. 
-            If you must retrieve more than 10,000 objects, you can increase this limit by 
-            setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`. 
-            
-            Warning: Setting this to arbitrarily high values can make the memory consumption 
+            how many objects can be retrieved using pagination. By default setting the sum
+            of offset and limit to higher than 10,000 objects, will lead to an error.
+            If you must retrieve more than 10,000 objects, you can increase this limit by
+            setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`.
+
+            Warning: Setting this to arbitrarily high values can make the memory consumption
             of a single query explode and single queries can slow down the entire cluster.
-            We recommend setting this value to the lowest possible value that does not 
+            We recommend setting this value to the lowest possible value that does not
             interfere with your users' expectations.
 
         (https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
@@ -638,18 +639,18 @@ class WeaviateDocumentStore(BaseDocumentStore):
         document store and yielded as individual documents. This method can be used to iteratively process
         a large number of documents without having to load all documents in memory.
 
-        Note this limitation from the changelog of Weaviate 1.8.0: 
+        Note this limitation from the changelog of Weaviate 1.8.0:
 
         .. quote::
             Due to the increasing cost of each page outlined above, there is a limit to
-            how many objects can be retrieved using pagination. By default setting the sum 
-            of offset and limit to higher than 10,000 objects, will lead to an error. 
-            If you must retrieve more than 10,000 objects, you can increase this limit by 
-            setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`. 
-            
-            Warning: Setting this to arbitrarily high values can make the memory consumption 
+            how many objects can be retrieved using pagination. By default setting the sum
+            of offset and limit to higher than 10,000 objects, will lead to an error.
+            If you must retrieve more than 10,000 objects, you can increase this limit by
+            setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`.
+
+            Warning: Setting this to arbitrarily high values can make the memory consumption
             of a single query explode and single queries can slow down the entire cluster.
-            We recommend setting this value to the lowest possible value that does not 
+            We recommend setting this value to the lowest possible value that does not
             interfere with your users' expectations.
 
         (https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
