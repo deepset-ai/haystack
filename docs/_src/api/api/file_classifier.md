@@ -22,5 +22,7 @@ def run(file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str
 
 Sends out files on a different output edge depending on their extension.
 
-:param file_paths: paths to route on different edges.
+**Arguments**:
+
+- `file_paths`: paths to route on different edges.
 

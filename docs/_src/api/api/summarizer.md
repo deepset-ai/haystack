@@ -23,13 +23,18 @@ def predict(documents: List[Document], generate_single_summary: Optional[bool] =
 
 Abstract method for creating a summary.
 
-:param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-:param generate_single_summary: Whether to generate a single summary for all documents or one summary per document.
-                                If set to "True", all docs will be joined to a single string that will then
-                                be summarized.
-                                Important: The summary will depend on the order of the supplied documents!
-:return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
-         the original, not summarized text
+**Arguments**:
+
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
+If set to "True", all docs will be joined to a single string that will then
+be summarized.
+Important: The summary will depend on the order of the supplied documents!
+
+**Returns**:
+
+List of Documents, where Document.text contains the summarization and Document.meta["context"]
+the original, not summarized text
 
 <a id="transformers"></a>
 
@@ -86,14 +91,20 @@ def predict(documents: List[Document], generate_single_summary: Optional[bool] =
 ```
 
 Produce the summarization from the supplied documents.
+
 These document can for example be retrieved via the Retriever.
 
-:param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-:param generate_single_summary: Whether to generate a single summary for all documents or one summary per document.
-                                If set to "True", all docs will be joined to a single string that will then
-                                be summarized.
-                                Important: The summary will depend on the order of the supplied documents!
-:param truncation: Truncate to a maximum length accepted by the model
-:return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
-         the original, not summarized text
+**Arguments**:
+
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
+If set to "True", all docs will be joined to a single string that will then
+be summarized.
+Important: The summary will depend on the order of the supplied documents!
+- `truncation`: Truncate to a maximum length accepted by the model
+
+**Returns**:
+
+List of Documents, where Document.text contains the summarization and Document.meta["context"]
+the original, not summarized text
 
