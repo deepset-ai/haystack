@@ -292,19 +292,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             mutation_result: Any = None
 
-            if add_vectors:
-
-                connection = connections.get_connection()
-                field_to_idx, field_to_type = self._get_field_to_idx(connection, index)
-
-                records: List[Dict[str, Any]] = [
-                    {
-                        "name": field_name,
-                        "type": dtype,
-                        "values": [],
-                    }
-                    for field_name, dtype in field_to_type.items()
-                ]
             for document_batch in batched_documents:
                 if add_vectors:
                     doc_ids = []
@@ -320,21 +307,11 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                 f"Format of supplied document embedding {type(doc.embedding)} is not "
                                 f"supported. Please use list or numpy.ndarray"
                             )
-                        records[field_to_idx[self.embedding_field]]["values"] = embeddings
-                        for k, v in field_to_idx.items():
-                            if k == self.embedding_field:
-                                continue
-                            if k in doc.meta:
-                                records[v]["values"].append(doc.meta[k])
-                            else:
-                                # TODO: check whether to throw error or not?
-                                pass
-
                     if duplicate_documents == "overwrite":
                         existing_docs = super().get_documents_by_id(ids=doc_ids, index=index)
                         self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
 
-                    mutation_result = connection.insert(index, records)
+                    mutation_result = self.collection.insert([embeddings])
 
                 docs_to_write_in_sql = []
 
