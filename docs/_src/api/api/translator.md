@@ -54,14 +54,14 @@ We currently recommend using OPUS models (see __init__() for details)
 
 **Example:**
 
-    ```python
-    |    DOCS = [
-    |        Document(text="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
-    |                       and widely attributed as the originator of Second-order cybernetics.")
-    |    ]
-    |    translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
-    |    res = translator.translate(documents=DOCS, query=None)
-    ```
+```python
+|    DOCS = [
+|        Document(text="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
+|                       and widely attributed as the originator of Second-order cybernetics.")
+|    ]
+|    translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
+|    res = translator.translate(documents=DOCS, query=None)
+```
 
 <a id="transformers.TransformersTranslator.translate"></a>
 
@@ -72,8 +72,11 @@ def translate(results: List[Dict[str, Any]] = None, query: Optional[str] = None,
 ```
 
 Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
-:param results: Generated QA pairs to translate
-:param query: The query string to translate
-:param documents: The documents to translate
-:param dict_key: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
+
+**Arguments**:
+
+- `results`: Generated QA pairs to translate
+- `query`: The query string to translate
+- `documents`: The documents to translate
+- `dict_key`: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
 

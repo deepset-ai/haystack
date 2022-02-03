@@ -33,6 +33,7 @@ def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwri
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+
 a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
 be passed.
 
@@ -66,12 +67,14 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-:param path: path of the YAML file.
-:param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-:param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
-                                     to change index name param for an ElasticsearchDocumentStore, an env
-                                     variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                     `_` sign must be used to specify nested hierarchical properties.
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
 
 <a id="base.BasePipeline.load_from_deepset_cloud"></a>
 
@@ -83,21 +86,24 @@ def load_from_deepset_cloud(cls, pipeline_config_name: str, pipeline_name: str =
 ```
 
 Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
+
 a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
 be passed.
 
-:param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
-:param pipeline_name: specifies which pipeline to load from config.
-                      Deepset Cloud typically provides a 'query' and a 'index' pipeline per config.
-:param workspace: workspace in Deepset Cloud
-:param api_key: Secret value of the API key. 
-                If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-:param api_endpoint: The URL of the Deepset Cloud API. 
-                     If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
-:param overwrite_with_env_variables: Overwrite the config with environment variables. For example,
-                                     to change return_no_answer param for a FARMReader, an env
-                                     variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
-                                     `_` sign must be used to specify nested hierarchical properties.
+**Arguments**:
+
+- `pipeline_config_name`: name of the config file inside the Deepset Cloud workspace.
+- `pipeline_name`: specifies which pipeline to load from config.
+Deepset Cloud typically provides a 'query' and a 'index' pipeline per config.
+- `workspace`: workspace in Deepset Cloud
+- `api_key`: Secret value of the API key. 
+If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+- `api_endpoint`: The URL of the Deepset Cloud API. 
+If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+- `overwrite_with_env_variables`: Overwrite the config with environment variables. For example,
+to change return_no_answer param for a FARMReader, an env
+variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
 
 <a id="base.Pipeline"></a>
 
@@ -123,16 +129,18 @@ def add_node(component, name: str, inputs: List[str])
 
 Add a new node to the pipeline.
 
-:param component: The object to be called when the data is passed to the node. It can be a Haystack component
-                  (like Retriever, Reader, or Generator) or a user-defined object that implements a run()
-                  method to process incoming data from predecessor node.
-:param name: The name for the node. It must not contain any dots.
-:param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-               of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-               edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+**Arguments**:
 
-               In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
-               must be specified explicitly as "QueryClassifier.output_2".
+- `component`: The object to be called when the data is passed to the node. It can be a Haystack component
+(like Retriever, Reader, or Generator) or a user-defined object that implements a run()
+method to process incoming data from predecessor node.
+- `name`: The name for the node. It must not contain any dots.
+- `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
+edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+
+In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
+must be specified explicitly as "QueryClassifier.output_2".
 
 <a id="base.Pipeline.get_node"></a>
 
@@ -144,7 +152,9 @@ def get_node(name: str) -> Optional[BaseComponent]
 
 Get a node from the Pipeline.
 
-:param name: The name of the node.
+**Arguments**:
+
+- `name`: The name of the node.
 
 <a id="base.Pipeline.set_node"></a>
 
@@ -156,8 +166,10 @@ def set_node(name: str, component)
 
 Set the component for a node in the Pipeline.
 
-:param name: The name of the node.
-:param component: The component object to be set at the node.
+**Arguments**:
+
+- `name`: The name of the node.
+- `component`: The component object to be set at the node.
 
 <a id="base.Pipeline.run"></a>
 
@@ -169,19 +181,21 @@ def run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, lab
 
 Runs the pipeline, one node at a time.
 
-:param query: The search query (for query pipelines only)
-:param file_paths: The files to index (for indexing pipelines only)
-:param labels: 
-:param documents:
-:param meta:
-:param params: Dictionary of parameters to be dispatched to the nodes. 
-               If you want to pass a param to all nodes, you can just use: {"top_k":10}
-               If you want to pass it to targeted nodes, you can do:
-               {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-:param debug: Whether the pipeline should instruct nodes to collect debug information
-              about their execution. By default these include the input parameters
-              they received and the output they generated. All debug information can 
-              then be found in the dict returned by this method under the key "_debug"
+**Arguments**:
+
+- `query`: The search query (for query pipelines only)
+- `file_paths`: The files to index (for indexing pipelines only)
+- `labels`: 
+- `documents`: 
+- `meta`: 
+- `params`: Dictionary of parameters to be dispatched to the nodes. 
+If you want to pass a param to all nodes, you can just use: {"top_k":10}
+If you want to pass it to targeted nodes, you can do:
+{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated. All debug information can 
+then be found in the dict returned by this method under the key "_debug"
 
 <a id="base.Pipeline.eval"></a>
 
@@ -192,32 +206,35 @@ def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode 
+
 and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
-:param labels: The labels to evaluate on
-:param params: Dictionary of parameters to be dispatched to the nodes. 
-            If you want to pass a param to all nodes, you can just use: {"top_k":10}
-            If you want to pass it to targeted nodes, you can do:
-            {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-:param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
-            The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
-            Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
-            More info in the paper: https://arxiv.org/abs/2108.06130
-            Models:
-            - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
-            Not all cross encoders can be used because of different return types.
-            If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
-            - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-            - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
-            - Large model for German only: "deepset/gbert-large-sts"
-:param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
-            This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
-            If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
-            If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
-            The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
-            To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
-            The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
-            values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+**Arguments**:
+
+- `labels`: The labels to evaluate on
+- `params`: Dictionary of parameters to be dispatched to the nodes. 
+If you want to pass a param to all nodes, you can just use: {"top_k":10}
+If you want to pass it to targeted nodes, you can do:
+{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `sas_model_name_or_path`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+More info in the paper: https://arxiv.org/abs/2108.06130
+Models:
+- You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+Not all cross encoders can be used because of different return types.
+If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+- Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+- Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+- Large model for German only: "deepset/gbert-large-sts"
+- `add_isolated_node_eval`: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
 
 <a id="base.Pipeline.get_nodes_by_class"></a>
 
@@ -228,13 +245,16 @@ def get_nodes_by_class(class_type) -> List[Any]
 ```
 
 Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
+
 This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
 Example:
 | from haystack.document_stores.base import BaseDocumentStore
 | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
 | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
 
-:return: List of components that are an instance the requested class
+**Returns**:
+
+List of components that are an instance the requested class
 
 <a id="base.Pipeline.get_document_store"></a>
 
@@ -246,7 +266,9 @@ def get_document_store() -> Optional[BaseDocumentStore]
 
 Return the document store object used in the current pipeline.
 
-:return: Instance of DocumentStore or None
+**Returns**:
+
+Instance of DocumentStore or None
 
 <a id="base.Pipeline.draw"></a>
 
@@ -258,7 +280,9 @@ def draw(path: Path = Path("pipeline.png"))
 
 Create a Graphviz visualization of the pipeline.
 
-:param path: the path to save the image.
+**Arguments**:
+
+- `path`: the path to save the image.
 
 <a id="base.Pipeline.load_from_yaml"></a>
 
@@ -270,6 +294,7 @@ def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwri
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+
 a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
 be passed.
 
@@ -303,12 +328,14 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-:param path: path of the YAML file.
-:param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-:param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
-                                     to change index name param for an ElasticsearchDocumentStore, an env
-                                     variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                     `_` sign must be used to specify nested hierarchical properties.
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
 
 <a id="base.Pipeline.save_to_yaml"></a>
 
@@ -320,8 +347,10 @@ def save_to_yaml(path: Path, return_defaults: bool = False)
 
 Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
 
-:param path: path of the output YAML file.
-:param return_defaults: whether to output parameters that have the default values.
+**Arguments**:
+
+- `path`: path of the output YAML file.
+- `return_defaults`: whether to output parameters that have the default values.
 
 <a id="base.Pipeline.print_eval_report"></a>
 
@@ -333,9 +362,11 @@ def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, 
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
 
-:param eval_result: The evaluation result, can be obtained by running eval().
-:param n_wrong_examples: The number of worst queries to show.
-:param metrics_filter: The metrics to show per node. If None all metrics will be shown.
+**Arguments**:
+
+- `eval_result`: The evaluation result, can be obtained by running eval().
+- `n_wrong_examples`: The number of worst queries to show.
+- `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
 
 <a id="base.RayPipeline"></a>
 
@@ -385,6 +416,7 @@ def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwri
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+
 a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
 be passed.
 
@@ -420,13 +452,15 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-:param path: path of the YAML file.
-:param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-:param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
-                                     to change index name param for an ElasticsearchDocumentStore, an env
-                                     variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                     `_` sign must be used to specify nested hierarchical properties.
-:param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
+- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 
 <a id="standard_pipelines"></a>
 
@@ -453,16 +487,18 @@ def add_node(component, name: str, inputs: List[str])
 
 Add a new node to the pipeline.
 
-:param component: The object to be called when the data is passed to the node. It can be a Haystack component
-                  (like Retriever, Reader, or Generator) or a user-defined object that implements a run()
-                  method to process incoming data from predecessor node.
-:param name: The name for the node. It must not contain any dots.
-:param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-               of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-               edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+**Arguments**:
 
-               In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
-               must be specified explicitly as "QueryClassifier.output_2".
+- `component`: The object to be called when the data is passed to the node. It can be a Haystack component
+(like Retriever, Reader, or Generator) or a user-defined object that implements a run()
+method to process incoming data from predecessor node.
+- `name`: The name for the node. It must not contain any dots.
+- `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
+of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
+edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+
+In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
+must be specified explicitly as "QueryClassifier.output_2".
 
 <a id="standard_pipelines.BaseStandardPipeline.get_node"></a>
 
@@ -474,7 +510,9 @@ def get_node(name: str)
 
 Get a node from the Pipeline.
 
-:param name: The name of the node.
+**Arguments**:
+
+- `name`: The name of the node.
 
 <a id="standard_pipelines.BaseStandardPipeline.set_node"></a>
 
@@ -486,8 +524,10 @@ def set_node(name: str, component)
 
 Set the component for a node in the Pipeline.
 
-:param name: The name of the node.
-:param component: The component object to be set at the node.
+**Arguments**:
+
+- `name`: The name of the node.
+- `component`: The component object to be set at the node.
 
 <a id="standard_pipelines.BaseStandardPipeline.draw"></a>
 
@@ -499,7 +539,9 @@ def draw(path: Path = Path("pipeline.png"))
 
 Create a Graphviz visualization of the pipeline.
 
-:param path: the path to save the image.
+**Arguments**:
+
+- `path`: the path to save the image.
 
 <a id="standard_pipelines.BaseStandardPipeline.save_to_yaml"></a>
 
@@ -511,8 +553,10 @@ def save_to_yaml(path: Path, return_defaults: bool = False)
 
 Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
 
-:param path: path of the output YAML file.
-:param return_defaults: whether to output parameters that have the default values.
+**Arguments**:
+
+- `path`: path of the output YAML file.
+- `return_defaults`: whether to output parameters that have the default values.
 
 <a id="standard_pipelines.BaseStandardPipeline.load_from_yaml"></a>
 
@@ -524,6 +568,7 @@ def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwri
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+
 a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
 be passed.
 
@@ -557,12 +602,14 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-:param path: path of the YAML file.
-:param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-:param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
-                                     to change index name param for an ElasticsearchDocumentStore, an env
-                                     variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                     `_` sign must be used to specify nested hierarchical properties.
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
 
 <a id="standard_pipelines.BaseStandardPipeline.get_nodes_by_class"></a>
 
@@ -573,6 +620,7 @@ def get_nodes_by_class(class_type) -> List[Any]
 ```
 
 Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
+
 This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
 Example:
 ```python
@@ -580,7 +628,10 @@ Example:
 | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
 | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
 ```
-:return: List of components that are an instance of the requested class
+
+**Returns**:
+
+List of components that are an instance of the requested class
 
 <a id="standard_pipelines.BaseStandardPipeline.get_document_store"></a>
 
@@ -592,7 +643,9 @@ def get_document_store() -> Optional[BaseDocumentStore]
 
 Return the document store object used in the current pipeline.
 
-:return: Instance of DocumentStore or None
+**Returns**:
+
+Instance of DocumentStore or None
 
 <a id="standard_pipelines.BaseStandardPipeline.eval"></a>
 
@@ -603,14 +656,17 @@ def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode 
+
 and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
-:param labels: The labels to evaluate on
-:param params: Params for the `retriever` and `reader`. For instance,
-               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-:param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
-                            should be path or string pointing to downloadable models.
-:param add_isolated_node_eval: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
+**Arguments**:
+
+- `labels`: The labels to evaluate on
+- `params`: Params for the `retriever` and `reader`. For instance,
+params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation, 
+should be path or string pointing to downloadable models.
+- `add_isolated_node_eval`: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
 
 <a id="standard_pipelines.ExtractiveQAPipeline"></a>
 
@@ -630,14 +686,16 @@ Pipeline for Extractive Question Answering.
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-:param query: The search query string.
-:param params: Params for the `retriever` and `reader`. For instance,
-               params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
-:param debug: Whether the pipeline should instruct nodes to collect debug information
-              about their execution. By default these include the input parameters
-              they received and the output they generated. 
-              All debug information can then be found in the dict returned
-              by this method under the key "_debug"
+**Arguments**:
+
+- `query`: The search query string.
+- `params`: Params for the `retriever` and `reader`. For instance,
+params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated. 
+All debug information can then be found in the dict returned
+by this method under the key "_debug"
 
 <a id="standard_pipelines.DocumentSearchPipeline"></a>
 
@@ -657,13 +715,15 @@ Pipeline for semantic document search.
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-:param query: the query string.
-:param params: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
-:param debug: Whether the pipeline should instruct nodes to collect debug information
-      about their execution. By default these include the input parameters
-      they received and the output they generated.
-      All debug information can then be found in the dict returned
-      by this method under the key "_debug"
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `reader`. For instance, params={"Retriever": {"top_k": 10}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated.
+All debug information can then be found in the dict returned
+by this method under the key "_debug"
 
 <a id="standard_pipelines.GenerativeQAPipeline"></a>
 
@@ -683,14 +743,16 @@ Pipeline for Generative Question Answering.
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-:param query: the query string.
-:param params: params for the `retriever` and `generator`. For instance,
-               params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
-:param debug: Whether the pipeline should instruct nodes to collect debug information
-      about their execution. By default these include the input parameters
-      they received and the output they generated.
-      All debug information can then be found in the dict returned
-      by this method under the key "_debug"
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `generator`. For instance,
+params={"Retriever": {"top_k": 10}, "Generator": {"top_k": 5}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated.
+All debug information can then be found in the dict returned
+by this method under the key "_debug"
 
 <a id="standard_pipelines.SearchSummarizationPipeline"></a>
 
@@ -710,14 +772,16 @@ Pipeline that retrieves documents for a query and then summarizes those document
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-:param query: the query string.
-:param params: params for the `retriever` and `summarizer`. For instance,
-               params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}
-:param debug: Whether the pipeline should instruct nodes to collect debug information
-      about their execution. By default these include the input parameters
-      they received and the output they generated.
-      All debug information can then be found in the dict returned
-      by this method under the key "_debug"
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever` and `summarizer`. For instance,
+params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated.
+All debug information can then be found in the dict returned
+by this method under the key "_debug"
 
 <a id="standard_pipelines.FAQPipeline"></a>
 
@@ -737,13 +801,15 @@ Pipeline for finding similar FAQs using semantic document search.
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-:param query: the query string.
-:param params: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
-:param debug: Whether the pipeline should instruct nodes to collect debug information
-      about their execution. By default these include the input parameters
-      they received and the output they generated.
-      All debug information can then be found in the dict returned
-      by this method under the key "_debug"
+**Arguments**:
+
+- `query`: the query string.
+- `params`: params for the `retriever`. For instance, params={"Retriever": {"top_k": 10}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated.
+All debug information can then be found in the dict returned
+by this method under the key "_debug"
 
 <a id="standard_pipelines.TranslationWrapperPipeline"></a>
 
@@ -805,6 +871,8 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline)
 def run(document_ids: List[str], top_k: int = 5)
 ```
 
-:param document_ids: document ids
-:param top_k: How many documents id to return against single document
+**Arguments**:
+
+- `document_ids`: document ids
+- `top_k`: How many documents id to return against single document
 

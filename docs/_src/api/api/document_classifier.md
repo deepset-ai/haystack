@@ -88,8 +88,14 @@ def predict(documents: List[Document]) -> List[Document]
 ```
 
 Returns documents containing classification result in meta field.
+
 Documents are updated in place.
 
-:param documents: List of Document to classify
-:return: List of Document enriched with meta information
+**Arguments**:
+
+- `documents`: List of Document to classify
+
+**Returns**:
+
+List of Document enriched with meta information
 

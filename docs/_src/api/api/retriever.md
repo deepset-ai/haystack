@@ -32,13 +32,16 @@ def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, inde
 ```
 
 Scan through documents in DocumentStore and return a small number documents
+
 that are most relevant to the query.
 
-:param query: The query
-:param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-:param top_k: How many documents to return per query.
-:param index: The name of the index in the DocumentStore from which to retrieve documents
-:param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
 <a id="base.BaseRetriever.timing"></a>
 
@@ -59,6 +62,7 @@ def eval(label_index: str = "label", doc_index: str = "eval_document", label_ori
 ```
 
 Performs evaluation on the Retriever.
+
 Retriever is evaluated based on whether it finds the correct document given the query string and at which
 position in the ranking of documents the correct document is.
 
@@ -73,16 +77,18 @@ position in the ranking of documents the correct document is.
       If ``open_domain=False``, average precision is normalized by the number of all relevant documents
       per query.
 
-:param label_index: Index/Table in DocumentStore where labeled questions are stored
-:param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
-:param top_k: How many documents to return per query
-:param open_domain: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
-                    contained in the retrieved docs (common approach in open-domain QA).
-                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
-                    are within ids explicitly stated in the labels.
-:param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
-                     contains the keys "predictions" and "metrics".
-:param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+**Arguments**:
+
+- `label_index`: Index/Table in DocumentStore where labeled questions are stored
+- `doc_index`: Index/Table in DocumentStore where documents that are used for evaluation are stored
+- `top_k`: How many documents to return per query
+- `open_domain`: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
+contained in the retrieved docs (common approach in open-domain QA).
+If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
+are within ids explicitly stated in the labels.
+- `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
+contains the keys "predictions" and "metrics".
+- `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
 <a id="sparse"></a>
 
@@ -105,14 +111,17 @@ def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, inde
 ```
 
 Scan through documents in DocumentStore and return a small number documents
+
 that are most relevant to the query.
 
-:param query: The query
-:param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-:param top_k: How many documents to return per query.
-:param index: The name of the index in the DocumentStore from which to retrieve documents
-:param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a id="sparse.ElasticsearchFilterOnlyRetriever"></a>
 
@@ -134,14 +143,17 @@ def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, inde
 ```
 
 Scan through documents in DocumentStore and return a small number documents
+
 that are most relevant to the query.
 
-:param query: The query
-:param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-:param top_k: How many documents to return per query.
-:param index: The name of the index in the DocumentStore from which to retrieve documents
-:param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a id="sparse.TfidfRetriever"></a>
 
@@ -167,12 +179,15 @@ def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, inde
 ```
 
 Scan through documents in DocumentStore and return a small number documents
+
 that are most relevant to the query.
 
-:param query: The query
-:param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-:param top_k: How many documents to return per query.
-:param index: The name of the index in the DocumentStore from which to retrieve documents
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a id="sparse.TfidfRetriever.fit"></a>
 
@@ -210,12 +225,15 @@ def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, inde
 ```
 
 Scan through documents in DocumentStore and return a small number documents
+
 that are most relevant to the query.
 
-:param query: The query
-:param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-:param top_k: How many documents to return per query.
-:param index: The name of the index in the DocumentStore from which to retrieve documents
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a id="dense.DensePassageRetriever.embed_queries"></a>
 
@@ -227,8 +245,13 @@ def embed_queries(texts: List[str]) -> List[np.ndarray]
 
 Create embeddings for a list of queries using the query encoder
 
-:param texts: Queries to embed
-:return: Embeddings, one per input queries
+**Arguments**:
+
+- `texts`: Queries to embed
+
+**Returns**:
+
+Embeddings, one per input queries
 
 <a id="dense.DensePassageRetriever.embed_documents"></a>
 
@@ -240,8 +263,13 @@ def embed_documents(docs: List[Document]) -> List[np.ndarray]
 
 Create embeddings for a list of documents using the passage encoder
 
-:param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-:return: Embeddings of documents / passages shape (batch_size, embedding_dim)
+**Arguments**:
+
+- `docs`: List of Document objects used to represent documents / passages in a standardized way within Haystack.
+
+**Returns**:
+
+Embeddings of documents / passages shape (batch_size, embedding_dim)
 
 <a id="dense.DensePassageRetriever.train"></a>
 
@@ -252,40 +280,43 @@ def train(data_dir: str, train_filename: str, dev_filename: str = None, test_fil
 ```
 
 train a DensePassageRetrieval model
-:param data_dir: Directory where training file, dev file and test file are present
-:param train_filename: training filename
-:param dev_filename: development set filename, file to be used by model in eval step of training
-:param test_filename: test set filename, file to be used by model in test step after training
-:param max_samples: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
-:param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
-                      It can be set to 1 to disable the use of multiprocessing or make debugging easier.
-:param multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
-                                 If your system has low limits for the number of open file descriptors, and you can’t raise them,
-                                 you should use the file_system strategy.
-:param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
-:param batch_size: total number of samples in 1 batch of data
-:param embed_title: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
-:param num_hard_negatives: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
-:param num_positives: number of positive passages
-:param n_epochs: number of epochs to train the model on
-:param evaluate_every: number of training steps after evaluation is run
-:param n_gpu: number of gpus to train on
-:param learning_rate: learning rate of optimizer
-:param epsilon: epsilon parameter of optimizer
-:param weight_decay: weight decay parameter of optimizer
-:param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
-:param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-            "O0" (FP32)
-            "O1" (Mixed Precision)
-            "O2" (Almost FP16)
-            "O3" (Pure FP16).
-            For more information, refer to: https://nvidia.github.io/apex/amp.html
-:param optimizer_name: what optimizer to use (default: AdamW)
-:param num_warmup_steps: number of warmup steps
-:param optimizer_correct_bias: Whether to correct bias in optimizer
-:param save_dir: directory where models are saved
-:param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
-:param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
+
+**Arguments**:
+
+- `data_dir`: Directory where training file, dev file and test file are present
+- `train_filename`: training filename
+- `dev_filename`: development set filename, file to be used by model in eval step of training
+- `test_filename`: test set filename, file to be used by model in test step after training
+- `max_samples`: maximum number of input samples to convert. Can be used for debugging a smaller dataset.
+- `max_processes`: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
+It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+- `multiprocessing_strategy`: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
+If your system has low limits for the number of open file descriptors, and you can’t raise them,
+you should use the file_system strategy.
+- `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None
+- `batch_size`: total number of samples in 1 batch of data
+- `embed_title`: whether to concatenate passage title with each passage. The default setting in official DPR embeds passage title with the corresponding passage
+- `num_hard_negatives`: number of hard negative passages(passages which are very similar(high score by BM25) to query but do not contain the answer
+- `num_positives`: number of positive passages
+- `n_epochs`: number of epochs to train the model on
+- `evaluate_every`: number of training steps after evaluation is run
+- `n_gpu`: number of gpus to train on
+- `learning_rate`: learning rate of optimizer
+- `epsilon`: epsilon parameter of optimizer
+- `weight_decay`: weight decay parameter of optimizer
+- `grad_acc_steps`: number of steps to accumulate gradient over before back-propagation is done
+- `use_amp`: Whether to use automatic mixed precision (AMP) or not. The options are:
+"O0" (FP32)
+"O1" (Mixed Precision)
+"O2" (Almost FP16)
+"O3" (Pure FP16).
+For more information, refer to: https://nvidia.github.io/apex/amp.html
+- `optimizer_name`: what optimizer to use (default: AdamW)
+- `num_warmup_steps`: number of warmup steps
+- `optimizer_correct_bias`: Whether to correct bias in optimizer
+- `save_dir`: directory where models are saved
+- `query_encoder_save_dir`: directory inside save_dir where query_encoder model files are saved
+- `passage_encoder_save_dir`: directory inside save_dir where passage_encoder model files are saved
 
 <a id="dense.DensePassageRetriever.save"></a>
 
@@ -297,10 +328,15 @@ def save(save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder", p
 
 Save DensePassageRetriever to the specified directory.
 
-:param save_dir: Directory to save to.
-:param query_encoder_dir: Directory in save_dir that contains query encoder model.
-:param passage_encoder_dir: Directory in save_dir that contains passage encoder model.
-:return: None
+**Arguments**:
+
+- `save_dir`: Directory to save to.
+- `query_encoder_dir`: Directory in save_dir that contains query encoder model.
+- `passage_encoder_dir`: Directory in save_dir that contains passage encoder model.
+
+**Returns**:
+
+None
 
 <a id="dense.DensePassageRetriever.load"></a>
 
@@ -337,8 +373,13 @@ def embed_queries(texts: List[str]) -> List[np.ndarray]
 
 Create embeddings for a list of queries using the query encoder
 
-:param texts: Queries to embed
-:return: Embeddings, one per input queries
+**Arguments**:
+
+- `texts`: Queries to embed
+
+**Returns**:
+
+Embeddings, one per input queries
 
 <a id="dense.TableTextRetriever.embed_documents"></a>
 
@@ -349,11 +390,17 @@ def embed_documents(docs: List[Document]) -> List[np.ndarray]
 ```
 
 Create embeddings for a list of text documents and / or tables using the text passage encoder and
+
 the table encoder.
 
-:param docs: List of Document objects used to represent documents / passages in
-             a standardized way within Haystack.
-:return: Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
+**Arguments**:
+
+- `docs`: List of Document objects used to represent documents / passages in
+a standardized way within Haystack.
+
+**Returns**:
+
+Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
 
 <a id="dense.TableTextRetriever.train"></a>
 
@@ -364,42 +411,45 @@ def train(data_dir: str, train_filename: str, dev_filename: str = None, test_fil
 ```
 
 Train a TableTextRetrieval model.
-:param data_dir: Directory where training file, dev file and test file are present.
-:param train_filename: Training filename.
-:param dev_filename: Development set filename, file to be used by model in eval step of training.
-:param test_filename: Test set filename, file to be used by model in test step after training.
-:param max_samples: Maximum number of input samples to convert. Can be used for debugging a smaller dataset.
-:param max_processes: The maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
-                      It can be set to 1 to disable the use of multiprocessing or make debugging easier.
-:param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
-:param batch_size: Total number of samples in 1 batch of data.
-:param embed_meta_fields: Concatenate meta fields with each passage and table.
-                          The default setting in official MMRetrieval embeds page title,
-                          section title and caption with the corresponding table and title with
-                          corresponding text passage.
-:param num_hard_negatives: Number of hard negative passages (passages which are
-                           very similar (high score by BM25) to query but do not contain the answer)-
-:param num_positives: Number of positive passages.
-:param n_epochs: Number of epochs to train the model on.
-:param evaluate_every: Number of training steps after evaluation is run.
-:param n_gpu: Number of gpus to train on.
-:param learning_rate: Learning rate of optimizer.
-:param epsilon: Epsilon parameter of optimizer.
-:param weight_decay: Weight decay parameter of optimizer.
-:param grad_acc_steps: Number of steps to accumulate gradient over before back-propagation is done.
-:param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-            "O0" (FP32)
-            "O1" (Mixed Precision)
-            "O2" (Almost FP16)
-            "O3" (Pure FP16).
-            For more information, refer to: https://nvidia.github.io/apex/amp.html
-:param optimizer_name: What optimizer to use (default: TransformersAdamW).
-:param num_warmup_steps: Number of warmup steps.
-:param optimizer_correct_bias: Whether to correct bias in optimizer.
-:param save_dir: Directory where models are saved.
-:param query_encoder_save_dir: Directory inside save_dir where query_encoder model files are saved.
-:param passage_encoder_save_dir: Directory inside save_dir where passage_encoder model files are saved.
-:param table_encoder_save_dir: Directory inside save_dir where table_encoder model files are saved.
+
+**Arguments**:
+
+- `data_dir`: Directory where training file, dev file and test file are present.
+- `train_filename`: Training filename.
+- `dev_filename`: Development set filename, file to be used by model in eval step of training.
+- `test_filename`: Test set filename, file to be used by model in test step after training.
+- `max_samples`: Maximum number of input samples to convert. Can be used for debugging a smaller dataset.
+- `max_processes`: The maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
+It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+- `dev_split`: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
+- `batch_size`: Total number of samples in 1 batch of data.
+- `embed_meta_fields`: Concatenate meta fields with each passage and table.
+The default setting in official MMRetrieval embeds page title,
+section title and caption with the corresponding table and title with
+corresponding text passage.
+- `num_hard_negatives`: Number of hard negative passages (passages which are
+very similar (high score by BM25) to query but do not contain the answer)-
+- `num_positives`: Number of positive passages.
+- `n_epochs`: Number of epochs to train the model on.
+- `evaluate_every`: Number of training steps after evaluation is run.
+- `n_gpu`: Number of gpus to train on.
+- `learning_rate`: Learning rate of optimizer.
+- `epsilon`: Epsilon parameter of optimizer.
+- `weight_decay`: Weight decay parameter of optimizer.
+- `grad_acc_steps`: Number of steps to accumulate gradient over before back-propagation is done.
+- `use_amp`: Whether to use automatic mixed precision (AMP) or not. The options are:
+"O0" (FP32)
+"O1" (Mixed Precision)
+"O2" (Almost FP16)
+"O3" (Pure FP16).
+For more information, refer to: https://nvidia.github.io/apex/amp.html
+- `optimizer_name`: What optimizer to use (default: TransformersAdamW).
+- `num_warmup_steps`: Number of warmup steps.
+- `optimizer_correct_bias`: Whether to correct bias in optimizer.
+- `save_dir`: Directory where models are saved.
+- `query_encoder_save_dir`: Directory inside save_dir where query_encoder model files are saved.
+- `passage_encoder_save_dir`: Directory inside save_dir where passage_encoder model files are saved.
+- `table_encoder_save_dir`: Directory inside save_dir where table_encoder model files are saved.
 
 <a id="dense.TableTextRetriever.save"></a>
 
@@ -411,11 +461,16 @@ def save(save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder", p
 
 Save TableTextRetriever to the specified directory.
 
-:param save_dir: Directory to save to.
-:param query_encoder_dir: Directory in save_dir that contains query encoder model.
-:param passage_encoder_dir: Directory in save_dir that contains passage encoder model.
-:param table_encoder_dir: Directory in save_dir that contains table encoder model.
-:return: None
+**Arguments**:
+
+- `save_dir`: Directory to save to.
+- `query_encoder_dir`: Directory in save_dir that contains query encoder model.
+- `passage_encoder_dir`: Directory in save_dir that contains passage encoder model.
+- `table_encoder_dir`: Directory in save_dir that contains table encoder model.
+
+**Returns**:
+
+None
 
 <a id="dense.TableTextRetriever.load"></a>
 
@@ -445,12 +500,15 @@ def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, inde
 ```
 
 Scan through documents in DocumentStore and return a small number documents
+
 that are most relevant to the query.
 
-:param query: The query
-:param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-:param top_k: How many documents to return per query.
-:param index: The name of the index in the DocumentStore from which to retrieve documents
+**Arguments**:
+
+- `query`: The query
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a id="dense.EmbeddingRetriever.embed_queries"></a>
 
@@ -462,8 +520,13 @@ def embed_queries(texts: List[str]) -> List[np.ndarray]
 
 Create embeddings for a list of queries.
 
-:param texts: Queries to embed
-:return: Embeddings, one per input queries
+**Arguments**:
+
+- `texts`: Queries to embed
+
+**Returns**:
+
+Embeddings, one per input queries
 
 <a id="dense.EmbeddingRetriever.embed_documents"></a>
 
@@ -475,8 +538,13 @@ def embed_documents(docs: List[Document]) -> List[np.ndarray]
 
 Create embeddings for a list of documents.
 
-:param docs: List of documents to embed
-:return: Embeddings, one per input document
+**Arguments**:
+
+- `docs`: List of documents to embed
+
+**Returns**:
+
+Embeddings, one per input document
 
 <a id="text2sparql"></a>
 
@@ -504,8 +572,10 @@ def retrieve(query: str, top_k: Optional[int] = None)
 
 Translate a text query to SPARQL and execute it on the knowledge graph to retrieve a list of answers
 
-:param query: Text query that shall be translated to SPARQL and then executed on the knowledge graph
-:param top_k: How many SPARQL queries to generate per text query.
+**Arguments**:
+
+- `query`: Text query that shall be translated to SPARQL and then executed on the knowledge graph
+- `top_k`: How many SPARQL queries to generate per text query.
 
 <a id="text2sparql.Text2SparqlRetriever.format_result"></a>
 
@@ -517,5 +587,7 @@ def format_result(result)
 
 Generate formatted dictionary output with text answer and additional info
 
-:param result: The result of a SPARQL query as retrieved from the knowledge graph
+**Arguments**:
+
+- `result`: The result of a SPARQL query as retrieved from the knowledge graph
 

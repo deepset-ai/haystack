@@ -29,6 +29,7 @@ def eval(label_index: str = "label", doc_index: str = "eval_document", label_ori
 ```
 
 Performs evaluation of the Ranker.
+
 Ranker is evaluated in the same way as a Retriever based on whether it finds the correct document given the query string and at which
 position in the ranking of documents the correct document is.
 
@@ -43,15 +44,17 @@ position in the ranking of documents the correct document is.
       If ``open_domain=False``, average precision is normalized by the number of all relevant documents
       per query.
 
-:param label_index: Index/Table in DocumentStore where labeled questions are stored
-:param doc_index: Index/Table in DocumentStore where documents that are used for evaluation are stored
-:param top_k: How many documents to return per query
-:param open_domain: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
-                    contained in the retrieved docs (common approach in open-domain QA).
-                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
-                    are within ids explicitly stated in the labels.
-:param return_preds: Whether to add predictions in the returned dictionary. If True, the returned dictionary
-                     contains the keys "predictions" and "metrics".
+**Arguments**:
+
+- `label_index`: Index/Table in DocumentStore where labeled questions are stored
+- `doc_index`: Index/Table in DocumentStore where documents that are used for evaluation are stored
+- `top_k`: How many documents to return per query
+- `open_domain`: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
+contained in the retrieved docs (common approach in open-domain QA).
+If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
+are within ids explicitly stated in the labels.
+- `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
+contains the keys "predictions" and "metrics".
 
 <a id="sentence_transformers"></a>
 
@@ -96,10 +99,15 @@ Use loaded Ranker model to, for a list of queries, rank each query's supplied li
 
 Returns list of dictionary of query and list of document sorted by (desc.) similarity with query
 
-:param query_doc_list: List of dictionaries containing queries with their retrieved documents
-:param top_k: The maximum number of answers to return for each query
-:param batch_size: Number of samples the model receives in one batch for inference
-:return: List of dictionaries containing query and ranked list of Document
+**Arguments**:
+
+- `query_doc_list`: List of dictionaries containing queries with their retrieved documents
+- `top_k`: The maximum number of answers to return for each query
+- `batch_size`: Number of samples the model receives in one batch for inference
+
+**Returns**:
+
+List of dictionaries containing query and ranked list of Document
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 
@@ -113,8 +121,13 @@ Use loaded ranker model to re-rank the supplied list of Document.
 
 Returns list of Document sorted by (desc.) similarity with the query.
 
-:param query: Query string
-:param documents: List of Document to be re-ranked
-:param top_k: The maximum number of documents to return
-:return: List of Document
+**Arguments**:
+
+- `query`: Query string
+- `documents`: List of Document to be re-ranked
+- `top_k`: The maximum number of documents to return
+
+**Returns**:
+
+List of Document
 
