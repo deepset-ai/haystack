@@ -184,9 +184,16 @@ For a list of all text-generation models see https://huggingface.co/models?pipel
 |
 |     # Answer
 |
-|     {'answers': [" The Dothraki language is a constructed fictional language. It's important because George R.R. Martin wrote it."],
-|      'query': 'Why is Dothraki language important?'}
-|
+|     {'query': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'query': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'content': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
 ```
 
 <a name="transformers.Seq2SeqGenerator.__init__"></a>

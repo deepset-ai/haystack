@@ -240,15 +240,10 @@ class RAGenerator(BaseGenerator):
             logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {top_k}")
 
         # Flatten the documents so easy to reference
-        flat_docs_dict: Dict[str, Any] = {}
-        for document in documents:
-            for k, v in document.__dict__.items():
-                if k not in flat_docs_dict:
-                    flat_docs_dict[k] = []
-                flat_docs_dict[k].append(v)
+        flat_docs_dict = self._flatten_docs(documents)
 
         # Extract title
-        titles = [d.meta["name"] if d.meta and "name" in d.meta else "" for d in documents]
+        titles = [d.get("name", "") for d in flat_docs_dict["meta"]]
 
         # Raw document embedding and set device of query_embedding
         passage_embeddings = self._prepare_passage_embeddings(docs=documents, embeddings=flat_docs_dict["embedding"])
@@ -281,21 +276,7 @@ class RAGenerator(BaseGenerator):
         )
 
         generated_answers = self.tokenizer.batch_decode(generator_ids, skip_special_tokens=True)
-        answers: List[Any] = []
-
-        for generated_answer in generated_answers:
-            answers.append(
-                Answer(
-                    answer=generated_answer,
-                    type="generative",
-                    meta={
-                        "doc_ids": flat_docs_dict["id"],
-                        "doc_scores": flat_docs_dict["score"],
-                        "content": flat_docs_dict["content"],
-                        "titles": titles,
-                    },
-                )
-            )
+        answers = self._create_answers(generated_answers, documents)
         result = {"query": query, "answers": answers}
 
         return result
@@ -304,48 +285,55 @@ class RAGenerator(BaseGenerator):
 class Seq2SeqGenerator(BaseGenerator):
 
     """
-    A generic sequence-to-sequence generator based on HuggingFace's transformers.
+        A generic sequence-to-sequence generator based on HuggingFace's transformers.
 
-    Text generation is supported by so called auto-regressive language models like GPT2,
-    XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
-    GenerationMixin can be used by Seq2SeqGenerator.
+        Text generation is supported by so called auto-regressive language models like GPT2,
+        XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
+        GenerationMixin can be used by Seq2SeqGenerator.
 
-    Moreover, as language models prepare model input in their specific encoding, each model
-    specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
-    accompanying model input converter that takes care of prefixes, separator tokens etc.
-    By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5).
-    It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter
-    is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
+        Moreover, as language models prepare model input in their specific encoding, each model
+        specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
+        accompanying model input converter that takes care of prefixes, separator tokens etc.
+        By default, we provide model input converters for a few well-known seq2seq language models (e.g. ELI5). 
+        It is the responsibility of Seq2SeqGenerator user to ensure an appropriate model input converter 
+        is either already registered or specified on a per-model basis in the Seq2SeqGenerator constructor.
 
-    For mode details on custom model input converters refer to _BartEli5Converter
+        For mode details on custom model input converters refer to _BartEli5Converter
 
 
-    See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
-    as well as https://huggingface.co/blog/how-to-generate
+        See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
+        as well as https://huggingface.co/blog/how-to-generate
 
-    For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text-generation
+        For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text-generation
 
-    **Example**
+        **Example**
 
-    ```python
-    |     query = "Why is Dothraki language important?"
-    |
-    |     # Retrieve related documents from retriever
-    |     retrieved_docs = retriever.retrieve(query=query)
-    |
-    |     # Now generate answer from query and retrieved documents
-    |     generator.predict(
-    |        query=query,
-    |        documents=retrieved_docs,
-    |        top_k=1
-    |     )
-    |
-    |     # Answer
-    |
-    |     {'answers': [" The Dothraki language is a constructed fictional language. It's important because George R.R. Martin wrote it."],
-    |      'query': 'Why is Dothraki language important?'}
-    |
-    ```
+        ```python
+        |     query = "Why is Dothraki language important?"
+        |
+        |     # Retrieve related documents from retriever
+        |     retrieved_docs = retriever.retrieve(query=query)
+        |
+        |     # Now generate answer from query and retrieved documents
+        |     generator.predict(
+        |        query=query,
+        |        documents=retrieved_docs,
+        |        top_k=1
+        |     )
+        |
+        |     # Answer
+        |
+        |     {'query': 'who got the first nobel prize in physics',
+        |      'answers':
+        |          [{'query': 'who got the first nobel prize in physics',
+        |            'answer': ' albert einstein',
+        |            'meta': { 'doc_ids': [...],
+        |                      'doc_scores': [80.42758 ...],
+        |                      'doc_probabilities': [40.71379089355469, ...
+        |                      'content': ['Albert Einstein was a ...]
+        |                      'titles': ['"Albert Einstein"', ...]
+        |      }}]}
+        ```
     """
 
     _model_input_converters: Dict[str, Callable] = dict()
@@ -464,8 +452,12 @@ class Seq2SeqGenerator(BaseGenerator):
             num_return_sequences=top_k,
             decoder_start_token_id=self.tokenizer.bos_token_id,
         )
+
         generated_answers = self.tokenizer.batch_decode(generated_answers_encoded, skip_special_tokens=True)
-        return {"query": query, "answers": generated_answers}
+        answers = self._create_answers(generated_answers, documents)
+        result = {"query": query, "answers": answers}
+
+        return result
 
 
 class _BartEli5Converter:
