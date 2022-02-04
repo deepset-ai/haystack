@@ -49,6 +49,7 @@ jobs:
   code-and-docs-updates:
     needs: build-cache
     runs-on: ubuntu-latest
+    if: ${{ "master" not in github.ref }}
 
     steps:
       - uses: actions/checkout@v2
