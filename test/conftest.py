@@ -55,7 +55,6 @@ from haystack.nodes.question_generator import QuestionGenerator
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
 
-
 SAMPLES_PATH = Path(__file__).parent / "samples"
 
 # to run tests against Deepset Cloud set MOCK_DC to False and set the following params

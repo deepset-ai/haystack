@@ -88,7 +88,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
         :param custom_schema: Allows to create custom schema in Weaviate, for more details
                            See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
-        :param module_name : Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
+        :param module_name: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
                             For more details, See https://www.semi.technology/developers/weaviate/current/modules/
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.

@@ -41,7 +41,7 @@ class Evaluator:
         :param model: The model on which to perform evaluation
         :param return_preds_and_labels: Whether to add preds and labels in the returned dicts of the
         :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
-        :return all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
+        :return: all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
                              and reports generated during evaluation.
         """
         model.eval()

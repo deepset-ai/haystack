@@ -1,26 +1,31 @@
-<a name="base"></a>
+<a id="base"></a>
+
 # Module base
 
-<a name="base.BaseDocumentClassifier"></a>
+<a id="base.BaseDocumentClassifier"></a>
+
 ## BaseDocumentClassifier
 
 ```python
 class BaseDocumentClassifier(BaseComponent)
 ```
 
-<a name="base.BaseDocumentClassifier.timing"></a>
+<a id="base.BaseDocumentClassifier.timing"></a>
+
 #### timing
 
 ```python
- | timing(fn, attr_name)
+def timing(fn, attr_name)
 ```
 
 Wrapper method used to time functions.
 
-<a name="transformers"></a>
+<a id="transformers"></a>
+
 # Module transformers
 
-<a name="transformers.TransformersDocumentClassifier"></a>
+<a id="transformers.TransformersDocumentClassifier"></a>
+
 ## TransformersDocumentClassifier
 
 ```python
@@ -74,50 +79,16 @@ With this document_classifier, you can directly get predictions via predict()
 |    p.run(file_paths=file_paths)
  ```
 
-<a name="transformers.TransformersDocumentClassifier.__init__"></a>
-#### \_\_init\_\_
+<a id="transformers.TransformersDocumentClassifier.predict"></a>
 
-```python
- | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
-```
-
-Load a text classification model from Transformers.
-Available models for the task of text-classification include:
-- ``'bhadresh-savani/distilbert-base-uncased-emotion'``
-- ``'Hate-speech-CNERG/dehatebert-mono-english'``
-
-Available models for the task of zero-shot-classification include:
-- ``'valhalla/distilbart-mnli-12-3'``
-- ``'cross-encoder/nli-distilroberta-base'``
-
-See https://huggingface.co/models for full list of available models.
-Filter for text classification models: https://huggingface.co/models?pipeline_tag=text-classification&sort=downloads
-Filter for zero-shot classification models (NLI): https://huggingface.co/models?pipeline_tag=zero-shot-classification&sort=downloads&search=nli
-
-**Arguments**:
-
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bhadresh-savani/distilbert-base-uncased-emotion'.
-See https://huggingface.co/models for full list of available models.
-- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `tokenizer`: Name of the tokenizer (usually the same as model)
-- `use_gpu`: Whether to use GPU (if available).
-- `return_all_scores`: Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
-- `task`: 'text-classification' or 'zero-shot-classification'
-- `labels`: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
-["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
-classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
-or an entailment.
-- `batch_size`: batch size to be processed at once
-- `classification_field`: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
-
-<a name="transformers.TransformersDocumentClassifier.predict"></a>
 #### predict
 
 ```python
- | predict(documents: List[Document]) -> List[Document]
+def predict(documents: List[Document]) -> List[Document]
 ```
 
 Returns documents containing classification result in meta field.
+
 Documents are updated in place.
 
 **Arguments**:
