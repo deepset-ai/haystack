@@ -46,7 +46,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
-  code_and_docs_updates:
+  code-and-docs-updates:
     needs: build-cache
     runs-on: ubuntu-latest
 
@@ -89,7 +89,6 @@ jobs:
       # Generates the OpenAPI specs file to be used on the documentation website
       - name: Generate OpenAPI Specs
         run: |
-          pip install rest_api/
           cd docs/_src/api/openapi/
           python generate_openapi_specs.py
 
