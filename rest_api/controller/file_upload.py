@@ -49,7 +49,8 @@ except KeyError:
     logger.warning("Indexing Pipeline not found in the YAML configuration. File Upload API will not be available.")
 
 
-os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)  # create directory for uploading files
+# create directory for uploading files
+os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)
 
 
 @as_form

@@ -136,9 +136,7 @@ jobs:
       - name: Test with mypy
         run: |
           mypy --install-types --non-interactive
-          mypy haystack
-          mypy rest_api
-          mypy ui
+          mypy . --exclude **/test/*.*
 
 
   linter:
@@ -160,9 +158,7 @@ jobs:
 
       - name: Linter
         run: |
-          pylint haystack
-          pylint rest_api
-          pylint ui
+          pylint . --ignore-patterns=**/test/*.*
 
 
   build:
