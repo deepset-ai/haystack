@@ -16,16 +16,15 @@ jobs:
         with:
           python-version: 3.7
 
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          # The cache currently misses at every change in the Python files to ensure
-          # that the code changes to Haystack are not being cached along with the dependencies.
-          # TODO for the tests refactoring: We could speed up the process by caching only 
-          # the dependencies and installing Haystack again separately for each test runner.
-          key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+          # The cache will be rebuild every day and at every change of the dependency files
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
 
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
@@ -34,7 +33,8 @@ jobs:
           pip install --upgrade --upgrade-strategy eager .[test]
           pip install --upgrade --upgrade-strategy eager rest_api/
           pip install --upgrade --upgrade-strategy eager ui/
-          pip install black[jupyter] "pydoc-markdown>=4,<5" mkdocs jupytercontrib watchdog==1.0.2
+          pip install black[jupyter] "pydoc-markdown>=4,<5" mkdocs jupytercontrib watchdog==1.0.2   # documentation generator deps (TODO move into setup.cfg)
+          pip install mypy types-Markdown types-requests types-PyYAML pydantic                      # mypy deps (TODO move into setup.cfg)
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
@@ -54,6 +54,8 @@ jobs:
     if: github.ref != 'refs/heads/master'
 
     steps:
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - uses: actions/checkout@v2
         with:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
@@ -67,7 +69,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
           
       # Apply black on the entire codebase
       - name: Blacken
@@ -111,7 +113,7 @@ jobs:
           git status
 
       - name: Push changes
-        run: git push
+        run: git push origin HEAD:${{ github.head_ref }}
       
       # - name: Push changes
       #   uses: ad-m/github-push-action@master
@@ -125,12 +127,16 @@ jobs:
     steps:
 
       - uses: actions/checkout@v2
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - uses: actions/setup-python@v2
         with:
           python-version: 3.8
 
-      - name: Install dependencies
-        run:  pip install mypy types-Markdown types-requests types-PyYAML pydantic
+      - name: Cache Python
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
 
       - name: Test with mypy
         run: mypy haystack
@@ -142,8 +148,10 @@ jobs:
       matrix:
         test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
       fail-fast: false
+
     steps:
     - uses: actions/checkout@v2
+    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
@@ -154,7 +162,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -182,6 +190,12 @@ jobs:
 
     - name: Install tesseract
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
+
+    - name: Reinstall Haystack
+      run: |
+        pip install .[test]
+        pip install rest_api/
+        pip install eager ui/
 
     - name: Run tests
       run: pytest -s ${{ matrix.test-path }}
