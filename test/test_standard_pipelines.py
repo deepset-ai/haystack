@@ -156,7 +156,7 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert len(results["documents"]) == 3
+    assert len(results["documents"]) == 5
 
     # test merge with weights
     join_node = JoinDocuments(join_mode="merge", weights=[1000, 1], top_k_join=2)
@@ -165,7 +165,7 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert math.isclose(results["documents"][0].score, 0.5350644373470798, rel_tol=0.0001)
+    assert math.isclose(results["documents"][0].score, 0.5481393431183286, rel_tol=0.0001)
     assert len(results["documents"]) == 2
 
     # test concatenate
@@ -175,7 +175,7 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert len(results["documents"]) == 3
+    assert len(results["documents"]) == 5
 
     # test concatenate with top_k_join parameter
     join_node = JoinDocuments(join_mode="concatenate")
