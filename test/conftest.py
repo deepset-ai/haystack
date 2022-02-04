@@ -144,14 +144,6 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_docstore)
 
 
-@pytest.fixture
-def tmpdir(tmpdir):
-    """
-    Makes pytest's tmpdir fixture fully compatible with pathlib
-    """
-    return Path(tmpdir)
-
-
 @pytest.fixture(scope="function", autouse=True)
 def gc_cleanup(request):
     """
@@ -344,12 +336,30 @@ def de_to_en_translator():
 def test_docs_xs():
     return [
         # current "dict" format for a document
-        {"content": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
+        {
+            "content": "My name is Carla and I live in Berlin",
+            "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
+        },
         # metafield at the top level for backward compatibility
-        {"content": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
+        {
+            "content": "My name is Paul and I live in New York",
+            "meta_field": "test2",
+            "name": "filename2",
+            "date_field": "2019-10-01",
+            "numeric_field": 5,
+        },
         # Document object for a doc
         Document(
-            content="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"}
+            content="My name is Christelle and I live in Paris",
+            meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
+        ),
+        Document(
+            content="My name is Camila and I live in Madrid",
+            meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3},
+        ),
+        Document(
+            content="My name is Matteo and I live in Rome",
+            meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0},
         ),
     ]
 
@@ -543,6 +553,16 @@ def document_store_with_docs(request, test_docs_xs, tmp_path):
     document_store = get_document_store(
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path
     )
+    # TODO: remove the following part once we allow numbers as metadatfield value in WeaviateDocumentStore
+    if request.param == "weaviate":
+        for doc in test_docs_xs:
+            if isinstance(doc, Document):
+                doc.meta["numeric_field"] = str(doc.meta["numeric_field"])
+            else:
+                if "meta" in doc:
+                    doc["meta"]["numeric_field"] = str(doc["meta"]["numeric_field"])
+                else:
+                    doc["numeric_field"] = str(doc["numeric_field"])
     document_store.write_documents(test_docs_xs)
     yield document_store
     document_store.delete_documents()
