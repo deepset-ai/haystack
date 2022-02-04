@@ -39,7 +39,8 @@ class Milvus1DocumentStore(SQLDocumentStore):
 
     Usage:
     1. Start a Milvus server (see https://milvus.io/docs/v1.0.0/install_milvus.md)
-    2. Init a MilvusDocumentStore in Haystack
+    2. Run pip install farm-haystack[milvus1]
+    3. Init a MilvusDocumentStore in Haystack
     """
 
     def __init__(

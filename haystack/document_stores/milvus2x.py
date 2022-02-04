@@ -45,7 +45,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
     Usage:
     1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
-    2. Run pip install pymilvus>=2.0.0
+    2. Run pip install farm-haystack[milvus]
     3. Init a Milvus2DocumentStore() in Haystack
 
     Overview:
