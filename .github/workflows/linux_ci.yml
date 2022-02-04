@@ -112,9 +112,7 @@ jobs:
           git add .
           git commit -m "Update Documentation & Code Style" -a || echo "No changes to commit"
           git status
-
-      - name: Push changes
-        run: git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:${{ github.head_ref }}
       
       # - name: Push changes
       #   uses: ad-m/github-push-action@master
