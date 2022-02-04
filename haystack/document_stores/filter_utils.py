@@ -4,6 +4,12 @@ from collections import defaultdict
 
 
 def nested_defaultdict():
+    """
+    Data structure that recursively adds a dictionary as value if a key does not exist. Advantage: In nested dictionary
+    structures, we don't need to check if a key already exists (which can become hard to maintain in nested dictionaries
+    with many levels) but access the existing value if a key exists and create an empty dictionary if a key does not
+    exist.
+    """
     return defaultdict(nested_defaultdict)
 
 
@@ -173,6 +179,13 @@ class ComparisonOperation(ABC):
             comparison_operations.append((EqOperation(field_name, comparison_clause)))
 
         return comparison_operations
+
+    @abstractmethod
+    def convert_to_elasticsearch(self):
+        """
+        Converts the ComparisonOperation instance to an Elasticsearch query.
+        """
+        pass
 
 
 class NotOperation(LogicalFilterClause):
