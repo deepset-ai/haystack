@@ -114,12 +114,6 @@ jobs:
           git commit -m "Update Documentation & Code Style" -a || echo "No changes to commit"
           git status
           git push
-      
-      # - name: Push changes
-      #   uses: ad-m/github-push-action@master
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     branch: ${{ github.ref }}
 
   type-check:
     needs: code-and-docs-updates
