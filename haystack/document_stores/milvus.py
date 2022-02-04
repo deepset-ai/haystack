@@ -24,7 +24,7 @@ from haystack.document_stores.base import get_batches_from_generator
 logger = logging.getLogger(__name__)
 
 
-class MilvusDocumentStore(SQLDocumentStore):
+class Milvus1DocumentStore(SQLDocumentStore):
     """
     Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
     Therefore, it is particularly suited for Haystack users that work with dense retrieval methods (like DPR).
