@@ -33,8 +33,6 @@ jobs:
           pip install --upgrade --upgrade-strategy eager .[test]
           pip install --upgrade --upgrade-strategy eager rest_api/
           pip install --upgrade --upgrade-strategy eager ui/
-          pip install black[jupyter] "pydoc-markdown>=4,<5" mkdocs jupytercontrib watchdog==1.0.2   # documentation generator deps (TODO move into setup.cfg)
-          pip install mypy types-Markdown types-requests types-PyYAML pydantic                      # mypy deps (TODO move into setup.cfg)
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
@@ -57,8 +55,10 @@ jobs:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - uses: actions/checkout@v2
-        # with:
-        #   persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+        with:
+          fetch-depth: 0
+          ref: ${{github.event.pull_request.head.ref}}
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
 
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
