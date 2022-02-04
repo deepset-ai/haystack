@@ -1,4 +1,5 @@
 import pytest
+import pandas as pd
 from pathlib import Path
 
 from haystack.utils.preprocessing import convert_files_to_dicts, tika_convert_files_to_dicts
@@ -38,3 +39,33 @@ def test_squad_augmentation():
     original_squad = SquadData.from_file(input_)
     augmented_squad = SquadData.from_file(output)
     assert original_squad.count(unit="paragraph") == augmented_squad.count(unit="paragraph") * multiplication_factor
+
+
+def test_squad_to_df():
+    df = pd.DataFrame(
+        [["title", "context", "question", "id", "answer", 1, False]],
+        columns=["title", "context", "question", "id", "answer_text", "answer_start", "is_impossible"],
+    )
+
+    expected_result = [
+        {
+            "title": "title",
+            "paragraphs": [
+                {
+                    "context": "context",
+                    "qas": [
+                        {
+                            "question": "question",
+                            "id": "id",
+                            "answers": [{"text": "answer", "answer_start": 1}],
+                            "is_impossible": False,
+                        }
+                    ],
+                }
+            ],
+        }
+    ]
+
+    result = SquadData.df_to_data(df)
+
+    assert result == expected_result
