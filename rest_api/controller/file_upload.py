@@ -1,10 +1,11 @@
+from typing import Optional, List, Union
+
 import json
 import logging
 import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Optional, List
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
@@ -75,7 +76,7 @@ class Response(BaseModel):
 @router.post("/file-upload")
 def upload_file(
     files: List[UploadFile] = File(...),
-    meta: Optional[str] = Form("null"),  # JSON serialized string
+    meta: Union[Optional[str], Form] = Form("null"),  # JSON serialized string
     fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),
     preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),
 ):
@@ -88,7 +89,7 @@ def upload_file(
 
     file_paths: list = []
     file_metas: list = []
-    meta = json.loads(meta) or {}
+    meta: Form = json.loads(meta or "{}")
 
     for file in files:
         try:
