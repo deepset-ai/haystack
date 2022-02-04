@@ -30,9 +30,9 @@ jobs:
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager .[test]
-          pip install --upgrade --upgrade-strategy eager rest_api/
-          pip install --upgrade --upgrade-strategy eager ui/
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
