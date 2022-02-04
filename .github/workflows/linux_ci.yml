@@ -6,6 +6,7 @@ on:
   # Activate this workflow on every update of a PR
   pull_request:
     types:
+      - opened
       - synchronize
   # Activate this workflow on every push to master
   push:
