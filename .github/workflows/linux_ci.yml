@@ -2,30 +2,13 @@ name: Linux CI
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ master ]
   pull_request:
-    branches: [ master ]
+    types:
+      - synchronize
 
 jobs:
-  type-check:
-    runs-on: ubuntu-20.04
-    steps:
-
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-
-      - name: Install dependencies
-        run:  pip install mypy types-Markdown types-requests types-PyYAML pydantic
-
-      - name: Test with mypy
-        run: mypy haystack
-
 
   build-cache:
-    needs: type-check
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -33,24 +16,23 @@ jobs:
         with:
           python-version: 3.7
 
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - name: Cache
         id: cache-python-env
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          # The cache currently misses at every change in the Python files to ensure
-          # that the code changes to Haystack are not being cached along with the dependencies.
-          # TODO for the tests refactoring: We could speed up the process by caching only 
-          # the dependencies and installing Haystack again separately for each test runner.
-          key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+          # The cache will be rebuild every day and at every change of the dependency files
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
 
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager .[test]
-          pip install --upgrade --upgrade-strategy eager rest_api/
-          pip install --upgrade --upgrade-strategy eager ui/
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
@@ -64,6 +46,95 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
+  code-and-docs-updates:
+    needs: build-cache
+    runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/master'
+
+    steps:
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: ${{github.event.pull_request.head.ref}}
+          # persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          # token: ${{ secrets.GITHUB_PAT }}
+      
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Cache Python
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+          
+      # Apply black on the entire codebase
+      - name: Blacken
+        run: python3 -m black .
+
+      # Convert the Jupyter notebooks into markdown tutorials
+      - name: Generate Tutorials
+        run: |
+          cd docs/_src/tutorials/tutorials/
+          python3 convert_ipynb.py
+
+      # Generate markdown files from the docstrings with pydoc-markdown
+      - name: Generate Docstrings
+        run: |
+          set -e   # Fails on any error in the following loop
+          cd docs/_src/api/api/
+          for file in ../pydoc/* ; do
+            echo "Processing" $file
+            pydoc-markdown "$file"
+          done
+
+      # Generates the OpenAPI specs file to be used on the documentation website
+      - name: Generate OpenAPI Specs
+        run: |
+          pip install rest_api/
+          cd docs/_src/api/openapi/
+          python generate_openapi_specs.py
+
+      # Generates a new JSON schema for the pipeline YAML validation
+      - name: Generate JSON schema for pipelines
+        run: python ./.github/utils/generate_json_schema.py
+      
+      # Commit the files to GitHub
+      - name: Commit files
+        run: |
+          git status
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add .
+          git commit -m "Update Documentation & Code Style" -a || echo "No changes to commit"
+          git status
+          git push
+
+  type-check:
+    needs: code-and-docs-updates
+    runs-on: ubuntu-20.04
+    steps:
+
+      - uses: actions/checkout@v2
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Cache Python
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+
+      - name: Test with mypy
+        run: mypy haystack
+
   build:
     needs: prepare-build
     runs-on: ubuntu-20.04
@@ -71,8 +142,10 @@ jobs:
       matrix:
         test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
       fail-fast: false
+
     steps:
     - uses: actions/checkout@v2
+    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
@@ -83,7 +156,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: linux-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -111,6 +184,12 @@ jobs:
 
     - name: Install tesseract
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
+
+    - name: Reinstall Haystack
+      run: |
+        pip install .[test]
+        pip install rest_api/
+        pip install eager ui/
 
     - name: Run tests
       run: pytest -s ${{ matrix.test-path }}

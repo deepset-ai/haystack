@@ -343,7 +343,7 @@ def text_similarity_metric(preds, labels) -> Dict[str, float]:
     :param labels: list of arrays of dimension n1 x n2 where each array contains n2 labels(0/1) indicating whether the sequence/passage is a positive(1) passage or hard_negative(0) passage
     :type labels: List of list containing values(0/1)
 
-    :return metrics(accuracy, F1, average rank) for text similarity task
+    :return: metrics(accuracy, F1, average rank) for text similarity task
     """
     scores = text_similarity_acc_and_f1(preds, labels)
     scores["average_rank"] = text_similarity_avg_ranks(preds, labels)

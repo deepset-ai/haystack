@@ -921,7 +921,7 @@ class TextSimilarityHead(PredictionHead):
                         where n2 is (batch_size * num_positives) + (batch_size * num_hard_negatives)
                         and D is embedding size
 
-        :return dot_product: similarity score of each query with each context/passage (dimension: n1xn2)
+        :return: dot_product: similarity score of each query with each context/passage (dimension: n1xn2)
         """
         # q_vector: n1 x D, ctx_vectors: n2 x D, result n1 x n2
         dot_product = torch.matmul(query_vectors, torch.transpose(passage_vectors, 0, 1))
