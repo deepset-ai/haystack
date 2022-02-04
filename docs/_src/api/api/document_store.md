@@ -986,11 +986,6 @@ None
 class OpenSearchDocumentStore(ElasticsearchDocumentStore)
 ```
 
-Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
-
-In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
-the KNN plugin that can scale to a large number of documents.
-
 <a id="elasticsearch.OpenSearchDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
