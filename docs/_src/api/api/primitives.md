@@ -268,7 +268,7 @@ Rows are enriched with basic infos like rank, query, type or node.
 Additional answer or document specific evaluation infos like gold labels
 and metrics depicting whether the row matches the gold labels are included, too.
 The DataFrames have the following schema:
-- query_id: the id of the query, which is unique for the pair of query and filters
+- multilabel_id: the id of the multilabel, which is unique for the pair of query and filters
 - query: the query
 - filters: the filters used with the query
 - gold_answers (answers only): the answers to be given
