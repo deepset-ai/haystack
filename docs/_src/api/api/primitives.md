@@ -124,8 +124,77 @@ For TableQA: Cell where the answer starts (counted from top left to bottom right
 - `meta`: Dict that can be used to associate any kind of custom meta data with the answer. 
 In extractive QA, this will carry the meta data of the document where the answer was found.
 
-<a id="schema.EvaluationResult"></a>
+Enable sorting of Answers by score
 
+<a name="schema.Label"></a>
+## Label
+
+```python
+@dataclass
+class Label()
+```
+
+<a name="schema.Label.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(query: str, document: Document, is_correct_answer: bool, is_correct_document: bool, origin: Literal["user-feedback", "gold-label"], answer: Optional[Answer], id: Optional[str] = None, no_answer: Optional[bool] = None, pipeline_id: Optional[str] = None, created_at: Optional[str] = None, updated_at: Optional[str] = None, meta: Optional[dict] = None, filters: Optional[dict] = None)
+```
+
+Object used to represent label/feedback in a standardized way within Haystack.
+This includes labels from dataset like SQuAD, annotations from labeling tools,
+or, user-feedback from the Haystack REST API.
+
+**Arguments**:
+
+- `query`: the question (or query) for finding answers.
+- `document`: 
+- `answer`: the answer object.
+- `is_correct_answer`: whether the sample is positive or negative.
+- `is_correct_document`: in case of negative sample(is_correct_answer is False), there could be two cases;
+                            incorrect answer but correct document & incorrect document. This flag denotes if
+                            the returned document was correct.
+- `origin`: the source for the labels. It can be used to later for filtering.
+- `id`: Unique ID used within the DocumentStore. If not supplied, a uuid will be generated automatically.
+- `no_answer`: whether the question in unanswerable.
+- `pipeline_id`: pipeline identifier (any str) that was involved for generating this label (in-case of user feedback).
+- `created_at`: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
+                   Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
+- `created_at`: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
+                   Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
+- `meta`: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
+- `filters`: filters that should be applied to the query to rule out non-relevant documents. For example, if there are different correct answers
+                in a DocumentStore depending on the retrieved document and the answer in this label is correct only on condition of the filters.
+
+<a name="schema.MultiLabel"></a>
+## MultiLabel
+
+```python
+@dataclass
+class MultiLabel()
+```
+
+<a name="schema.MultiLabel.__init__"></a>
+#### \_\_init\_\_
+
+```python
+ | __init__(labels: List[Label], drop_negative_labels=False, drop_no_answers=False)
+```
+
+There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
+answers for one question or multiple documents contain the information you want for a query.
+This class is "syntactic sugar" that simplifies the work with such a list of related Labels.
+It stored the original labels in MultiLabel.labels and provides additional aggregated attributes that are
+automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
+underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
+
+**Arguments**:
+
+- `labels`: A list of labels that belong to a similar query and shall be "grouped" together
+- `drop_negative_labels`: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
+- `drop_no_answers`: Whether to drop labels that specify the answer is impossible
+
+<a name="schema.EvaluationResult"></a>
 ## EvaluationResult
 
 ```python
@@ -134,6 +203,60 @@ class EvaluationResult()
 
 <a id="schema.EvaluationResult.calculate_metrics"></a>
 
+```python
+ | __init__(node_results: Dict[str, pd.DataFrame] = None) -> None
+```
+
+Convenience class to store, pass and interact with results of a pipeline evaluation run (e.g. pipeline.eval()).
+Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
+convenience methods to work with them.
+For example, you can calculate eval metrics, get detailed reports or simulate different top_k settings.
+
+Example:
+```python
+| eval_results = pipeline.eval(...)
+|
+| # derive detailed metrics
+| eval_results.calculate_metrics()
+|
+| # show summary of incorrect queries
+| eval_results.wrong_examples()
+```
+
+Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
+Rows are enriched with basic infos like rank, query, type or node.
+Additional answer or document specific evaluation infos like gold labels
+and metrics depicting whether the row matches the gold labels are included, too.
+The DataFrames have the following schema:
+- query_id: the id of the query, which is unique for the pair of query and filters
+- query: the query
+- filters: the filters used with the query
+- gold_answers (answers only): the answers to be given
+- answer (answers only): the answer
+- context (answers only): the surrounding context of the answer within the document
+- exact_match (answers only): metric depicting if the answer exactly matches the gold label
+- f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
+- sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
+- gold_document_contents (documents only): the contents of the gold documents
+- content (documents only): the content of the document
+- gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
+- answer_match (documents only): metric depicting whether the document contains the answer
+- gold_id_or_answer_match (documents only): metric depicting whether one of the former two conditions are met
+- rank: rank or 1-based-position in result list
+- document_id: the id of the document that has been retrieved or that contained the answer
+- gold_document_ids: the documents to be retrieved
+- offsets_in_document (answers only): the position or offsets within the document the answer was found
+- gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
+- type: 'answer' or 'document'
+- node: the node name
+- eval_mode: evaluation mode depicting whether the evaluation was executed in integrated or isolated mode.
+             Check pipeline.eval()'s add_isolated_node_eval param for more information.
+
+**Arguments**:
+
+- `node_results`: the evaluation Dataframes per pipeline node
+
+<a name="schema.EvaluationResult.calculate_metrics"></a>
 #### calculate\_metrics
 
 ```python
