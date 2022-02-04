@@ -1,10 +1,17 @@
 name: Linux CI
 
 on:
+  # Activate this workflow manually
   workflow_dispatch:
+  # Activate this workflow on every update of a PR
   pull_request:
     types:
+      - opened
       - synchronize
+  # Activate this workflow on every push to master
+  push:
+    branches:
+      - master
 
 jobs:
 
@@ -49,7 +56,7 @@ jobs:
   code-and-docs-updates:
     needs: build-cache
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/master'
+    if: ${{ github.event_name }} != "push"
 
     steps:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
@@ -58,8 +65,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{github.event.pull_request.head.ref}}
-          # persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          # token: ${{ secrets.GITHUB_PAT }}
       
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
