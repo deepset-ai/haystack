@@ -3,9 +3,6 @@ name: Linux CI
 on:
   workflow_dispatch:
   push:
-  pull_request:
-    types:
-      - synchronize
 
 jobs:
 
