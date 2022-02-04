@@ -2,7 +2,9 @@ name: Linux CI
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
+    types:
+      - synchronize
 
 jobs:
 
@@ -49,7 +51,7 @@ jobs:
   code-and-docs-updates:
     needs: build-cache
     runs-on: ubuntu-latest
-    if: ${{ "master" not in github.ref }}
+    if: github.ref != 'refs/heads/master'
 
     steps:
       - uses: actions/checkout@v2
@@ -135,7 +137,7 @@ jobs:
           branch: ${{ github.ref }}
 
   type-check:
-    needs: code_and_docs_updates
+    needs: code-and-docs-updates
     runs-on: ubuntu-20.04
     steps:
 
