@@ -21,6 +21,9 @@
             "$ref": "#/definitions/AzureConverterComponent"
           },
           {
+            "$ref": "#/definitions/CrawlerComponent"
+          },
+          {
             "$ref": "#/definitions/DensePassageRetrieverComponent"
           },
           {
@@ -54,7 +57,19 @@
             "$ref": "#/definitions/FileTypeClassifierComponent"
           },
           {
+            "$ref": "#/definitions/ImageToTextConverterComponent"
+          },
+          {
             "$ref": "#/definitions/JoinDocumentsComponent"
+          },
+          {
+            "$ref": "#/definitions/MarkdownConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/PDFToTextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/PDFToTextOCRConverterComponent"
           },
           {
             "$ref": "#/definitions/ParsrConverterComponent"
@@ -236,6 +251,63 @@
           "required": [
             "endpoint",
             "credential_key"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "CrawlerComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Crawler"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "output_dir": {
+              "title": "Output Dir",
+              "type": "string"
+            },
+            "urls": {
+              "title": "Urls",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "crawler_depth": {
+              "title": "Crawler Depth",
+              "default": 1,
+              "type": "integer"
+            },
+            "filter_urls": {
+              "title": "Filter Urls",
+              "type": "array",
+              "items": {}
+            },
+            "overwrite_existing_files": {
+              "title": "Overwrite Existing Files",
+              "default": true
+            }
+          },
+          "required": [
+            "output_dir"
           ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
@@ -977,6 +1049,50 @@
       ],
       "additionalProperties": false
     },
+    "ImageToTextConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "ImageToTextConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "default": [
+                "eng"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "JoinDocumentsComponent": {
       "type": "object",
       "properties": {
@@ -1010,6 +1126,132 @@
             "top_k_join": {
               "title": "Top K Join",
               "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "MarkdownConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "MarkdownConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PDFToTextConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PDFToTextConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PDFToTextOCRConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PDFToTextOCRConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "default": [
+                "eng"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
