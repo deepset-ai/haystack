@@ -7,7 +7,6 @@ on:
 jobs:
 
   build-cache:
-    needs: type-check
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -48,6 +47,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
   code_and_docs_updates:
+    needs: build-cache
     runs-on: ubuntu-latest
 
     steps:
