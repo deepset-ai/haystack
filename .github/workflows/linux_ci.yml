@@ -58,8 +58,9 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{github.event.pull_request.head.ref}}
-          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-
+          # persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          # token: ${{ secrets.GITHUB_PAT }}
+      
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
         with:
