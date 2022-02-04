@@ -478,7 +478,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self.collection.drop()
             self.collection = self._create_collection_and_index_if_not_exist(self.index)
 
-
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
