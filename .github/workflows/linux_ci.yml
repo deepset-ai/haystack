@@ -35,6 +35,7 @@ jobs:
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
+
   prepare-build:
     needs: build-cache
     runs-on: ubuntu-20.04
@@ -45,6 +46,7 @@ jobs:
           echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+
 
   code-and-docs-updates:
     needs: build-cache
@@ -58,8 +60,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{github.event.pull_request.head.ref}}
-          # persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          # token: ${{ secrets.GITHUB_PAT }}
       
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
@@ -115,6 +115,7 @@ jobs:
           git status
           git push
 
+
   type-check:
     needs: code-and-docs-updates
     runs-on: ubuntu-20.04
@@ -133,7 +134,36 @@ jobs:
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
 
       - name: Test with mypy
-        run: mypy haystack
+        run: |
+          mypy --install-types --non-interactive
+          mypy haystack
+          mypy rest_api
+          mypy ui
+
+
+  linter:
+    needs: code-and-docs-updates
+    runs-on: ubuntu-20.04
+    steps:
+
+      - uses: actions/checkout@v2
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Cache Python
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+
+      - name: Linter
+        run: |
+          pylint haystack
+          pylint rest_api
+          pylint ui
+
 
   build:
     needs: prepare-build
