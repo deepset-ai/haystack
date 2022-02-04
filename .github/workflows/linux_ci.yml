@@ -69,7 +69,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: linux-${{ env.date }}-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
           
       # Apply black on the entire codebase
       - name: Blacken
@@ -94,6 +94,7 @@ jobs:
       # Generates the OpenAPI specs file to be used on the documentation website
       - name: Generate OpenAPI Specs
         run: |
+          pip install rest_api/
           cd docs/_src/api/openapi/
           python generate_openapi_specs.py
 
