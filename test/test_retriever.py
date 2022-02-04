@@ -74,7 +74,7 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
     # test without filters
     res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
     assert res[0].content == "My name is Carla and I live in Berlin"
-    assert len(res) == 3
+    assert len(res) == 5
     assert res[0].meta["name"] == "filename1"
 
     # test with filters
