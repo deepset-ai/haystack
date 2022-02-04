@@ -195,9 +195,8 @@ class BaseDocumentStore(BaseComponent):
                             and also the id of the document that the label is tied to. In this setting, this function
                             might return multiple MultiLabel objects with the same question string.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-        :param TODO drop params
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-
+        TODO drop params
         """
         aggregated_labels = []
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)

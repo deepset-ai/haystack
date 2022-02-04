@@ -441,7 +441,7 @@ def test_documentsearch_es_authentication(retriever_with_docs, document_store_wi
         params={"Retriever": {"top_k": 10, "headers": auth_headers}},
     )
     assert prediction is not None
-    assert len(prediction["documents"]) == 3
+    assert len(prediction["documents"]) == 5
     mock_client.search.assert_called_once()
     args, kwargs = mock_client.search.call_args
     assert "headers" in kwargs
@@ -470,7 +470,7 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
             params={"Retriever": {"top_k": 10, "headers": auth_headers}},
         )
         assert prediction is not None
-        assert len(prediction["documents"]) == 3
+        assert len(prediction["documents"]) == 5
         mock_client.count.assert_called_once()
         args, kwargs = mock_client.count.call_args
         assert "headers" in kwargs
