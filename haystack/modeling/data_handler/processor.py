@@ -990,7 +990,7 @@ class TextSimilarityProcessor(Processor):
                          }
         :param indices: indices used during multiprocessing so that IDs assigned to our baskets is unique
         :param return_baskets: whether to return the baskets or not (baskets are needed during inference)
-        :return dataset, tensor_names, problematic_ids, [baskets]
+        :return: dataset, tensor_names, problematic_ids, [baskets]
         """
         # Take the dict and insert into our basket structure, this stages also adds an internal IDs
         baskets = self._fill_baskets(dicts, indices)

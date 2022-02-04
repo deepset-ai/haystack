@@ -218,7 +218,7 @@ class TriAdaptiveModel(nn.Module):
         :param global_step: number of current training step.
         :param kwargs: Placeholder for passing generic parameters.
                        Note: Contains the batch (as dict of tensors), when called from Trainer.train().
-        :return loss: torch.Tensor that is the per sample loss (len: batch_size)
+        :return: loss: torch.Tensor that is the per sample loss (len: batch_size)
         """
         all_losses = self.logits_to_loss_per_head(logits, **kwargs)
         # This aggregates the loss per sample across multiple prediction heads

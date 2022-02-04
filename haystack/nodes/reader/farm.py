@@ -407,7 +407,7 @@ class FARMReader(BaseReader):
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
-        :param caching whether or not to use caching for preprocessed dataset
+        :param caching: whether or not to use caching for preprocessed dataset
         :param cache_path: Path to cache the preprocessed dataset
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :return: None
@@ -514,7 +514,7 @@ class FARMReader(BaseReader):
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
-        :param caching whether or not to use caching for preprocessed dataset and teacher logits
+        :param caching: whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
@@ -628,7 +628,7 @@ class FARMReader(BaseReader):
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
-        :param caching whether or not to use caching for preprocessed dataset and teacher logits
+        :param caching: whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
