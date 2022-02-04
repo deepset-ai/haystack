@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Any
 
 import copy
+import json
 import inspect
 import logging
 import os
@@ -476,13 +477,19 @@ class Pipeline(BasePipeline):
             if params is None:
                 params = {}
             params["add_isolated_node_eval"] = True
-        queries = [label.query for label in labels]
-        for query, label in zip(queries, labels):
-            predictions = self.run(query=query, labels=label, params=params, debug=True)
+        for label in labels:
+            params_per_label = copy.deepcopy(params)
+            if label.filters is not None:
+                if params_per_label is None:
+                    params_per_label = {"filters": label.filters}
+                else:
+                    # join both filters and overwrite filters in params with filters in labels
+                    params_per_label["filters"] = {**params_per_label.get("filters", {}), **label.filters}
+            predictions = self.run(query=label.query, labels=label, params=params_per_label, debug=True)
 
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
-                df = self._build_eval_dataframe(query, label, node_name, node_output)
+                df = self._build_eval_dataframe(label.query, label, node_name, node_output)
                 eval_result.append(node_name, df)
 
         # add sas values in batch mode for whole Dataframe
@@ -500,7 +507,9 @@ class Pipeline(BasePipeline):
         # reorder columns for better qualitative evaluation
         for key, df in eval_result.node_results.items():
             desired_col_order = [
-                "query",  # generic
+                "multilabel_id",
+                "query",
+                "filters",  # generic
                 "gold_answers",
                 "answer",
                 "context",
@@ -593,7 +602,9 @@ class Pipeline(BasePipeline):
 
             # add general info
             df["node"] = node_name
+            df["multilabel_id"] = query_labels.id
             df["query"] = query
+            df["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
@@ -634,7 +645,9 @@ class Pipeline(BasePipeline):
 
             # add general info
             df["node"] = node_name
+            df["multilabel_id"] = query_labels.id
             df["query"] = query
+            df["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
