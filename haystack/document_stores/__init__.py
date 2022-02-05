@@ -15,6 +15,7 @@ OpenSearchDocumentStore = safe_import(
 
 SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
 FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumentStore", "faiss")
+PineconeDocumentStore = safe_import("haystack.document_stores.pinecone", "PineconeDocumentStore", "pinecone")
 if os.getenv("MILVUS2_ENABLED"):
     MilvusDocumentStore = safe_import("haystack.document_stores.milvus2x", "MilvusDocumentStore", "milvus2")
 else:
@@ -24,4 +25,5 @@ GraphDBKnowledgeGraph = safe_import("haystack.document_stores.graphdb", "GraphDB
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
+#from haystack.document_stores.pinecone import PineconeDocumentStore
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
