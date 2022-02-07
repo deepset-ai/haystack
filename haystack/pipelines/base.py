@@ -212,7 +212,7 @@ class BasePipeline:
                         'total_file_count': 31}}]
         """
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        pipeline_config_infos = client.list_pipeline_configs()
+        pipeline_config_infos = list(client.list_pipeline_configs())
         return pipeline_config_infos
 
     @classmethod
