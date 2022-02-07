@@ -137,6 +137,7 @@ jobs:
 
       - name: Test with mypy
         run: |
+          pip install . rest_api/ ui/    # Allows mypy to understand which types to install in the following step
           mypy --install-types --non-interactive
           mypy --exclude=test/ --exclude=rest_api/test/ --exclude=ui/test/ .
 
