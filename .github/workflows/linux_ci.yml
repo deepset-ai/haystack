@@ -127,7 +127,7 @@ jobs:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.7
 
       - name: Cache Python
         uses: actions/cache@v2
@@ -150,7 +150,7 @@ jobs:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.7
 
       - name: Cache Python
         uses: actions/cache@v2
