@@ -1,3 +1,6 @@
+import itertools
+from collections import namedtuple
+
 from copy import deepcopy
 from typing import Optional, List
 
@@ -12,6 +15,7 @@ class JoinDocuments(BaseComponent):
     * concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
     * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
              `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
+    * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.
     """
 
     outgoing_edges = 1
@@ -20,8 +24,8 @@ class JoinDocuments(BaseComponent):
         self, join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None
     ):
         """
-        :param join_mode: `concatenate` to combine documents from multiple retrievers or `merge` to aggregate scores of
-                          individual documents.
+        :param join_mode: `concatenate` to combine documents from multiple retrievers `merge` to aggregate scores of
+                          individual documents, `reciprocal_rank_fusion` to apply rank based scoring.
         :param weights: A node-wise list(length of list must be equal to the number of input nodes) of weights for
                         adjusting document scores when using the `merge` join_mode. By default, equal weight is given
                         to each retriever score. This param is not compatible with the `concatenate` join_mode.
@@ -41,33 +45,39 @@ class JoinDocuments(BaseComponent):
         self.top_k_join = top_k_join
 
     def run(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
-        if self.join_mode == "concatenate":
-            document_map = {}
-            for input_from_node in inputs:
-                for doc in input_from_node["documents"]:
-                    document_map[doc.id] = doc
-        elif self.join_mode == "merge":
-            document_map = {}
-            if self.weights:
-                weights = self.weights
-            else:
-                weights = [1 / len(inputs)] * len(inputs)
-            for input_from_node, weight in zip(inputs, weights):
-                for doc in input_from_node["documents"]:
-                    if document_map.get(doc.id):  # document already exists; update score
-                        document_map[doc.id].score += doc.score * weight
-                    else:  # add the document in map
-                        document_map[doc.id] = deepcopy(doc)
-                        document_map[doc.id].score *= weight
-        else:
-            raise Exception(f"Invalid join_mode: {self.join_mode}")
+        results = [inp["documents"] for inp in inputs]
+        DocScore = namedtuple("DocScore", field_names="document,score")
+        weights = self.weights if self.weights else [1 / len(inputs)] * len(inputs)
+        document_map = {doc.id: DocScore(document=doc, score=0) for doc in itertools.chain(*results)}
 
-        documents = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
+        for result, weight in zip(results, weights):
+            for rank, doc in enumerate(result):
+                if self.join_mode == "concatenate":
+                    document_map[doc.id].score = doc.score
+                elif self.join_mode == "merge":
+                    document_map[doc.id].score += self._calculate_comb_sum(doc, weight)
+                elif self.join_mode == "reciprocal_rank_fusion":
+                    document_map[doc.id].score += self._calculate_rrf(rank)
+                else:
+                    raise Exception(f"Invalid join_mode: {self.join_mode}")
 
-        if top_k_join is None:
-            top_k_join = self.top_k_join
+        sorted_docs = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
+        docs = []
+        for document_tuple in sorted_docs:
+            doc = document_tuple.document
+            doc.score = document_tuple.score
+            docs.append(doc)
 
+        top_k_join = top_k_join if top_k_join else self.top_k_join
         if top_k_join:
-            documents = documents[:top_k_join]
-        output = {"documents": documents, "labels": inputs[0].get("labels", None)}
+            docs = docs[:top_k_join]
+
+        output = {"documents": docs, "labels": inputs[0].get("labels", None)}
+
         return output, "output_1"
+
+    def _calculate_comb_sum(self, document, weight):
+        return document.score * weight
+
+    def _calculate_rrf(self, rank):
+        return 1 / (61 + rank)

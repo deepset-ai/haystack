@@ -1,4 +1,5 @@
 from pathlib import Path
+from collections import defaultdict
 
 import os
 import math
@@ -198,6 +199,24 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     results = p.run(query=query)
     # check whether correct answer is within top 2 predictions
     assert results["answers"][0].answer == "Berlin" or results["answers"][1].answer == "Berlin"
+
+    # test join node with reciprocal rank fusion
+    join_node = JoinDocuments(join_mode="reciprocal_rank_fusion")
+    p = Pipeline()
+    p.add_node(component=es, name="R1", inputs=["Query"])
+    p.add_node(component=dpr, name="R2", inputs=["Query"])
+    p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
+    results = p.run(query=query)
+
+    results_es = es.retrieve(query=query)
+    results_dpr = dpr.retrieve(query=query)
+    full_docs = defaultdict(int)
+    for idx, docs in enumerate(zip(results_es, results_dpr)):
+        es_result, dpr_result = docs
+        full_docs[es_result.id] += 1 / (61 + idx)
+        full_docs[dpr_result.id] += 1 / (61 + idx)
+
+    assert all([doc.score == full_docs[doc.id] for doc in results])
 
 
 def test_query_keyword_statement_classifier():
