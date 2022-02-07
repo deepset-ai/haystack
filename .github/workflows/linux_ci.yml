@@ -217,7 +217,7 @@ jobs:
       run: |
         pip install .[test]
         pip install rest_api/
-        pip install eager ui/
+        pip install ui/
 
     - name: Run tests
       run: pytest -s ${{ matrix.test-path }}
