@@ -1,5 +1,4 @@
 import itertools
-from collections import namedtuple
 
 from copy import deepcopy
 from typing import Optional, List
@@ -31,7 +30,7 @@ class JoinDocuments(BaseComponent):
                         to each retriever score. This param is not compatible with the `concatenate` join_mode.
         :param top_k_join: Limit documents to top_k based on the resulting scores of the join.
         """
-        assert join_mode in ["concatenate", "merge"], f"JoinDocuments node does not support '{join_mode}' join_mode."
+        assert join_mode in ["concatenate", "merge", "reciprocal_rank_fusion"], f"JoinDocuments node does not support '{join_mode}' join_mode."
 
         assert not (
             weights is not None and join_mode == "concatenate"
