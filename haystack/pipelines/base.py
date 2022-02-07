@@ -442,7 +442,7 @@ class Pipeline(BasePipeline):
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
         add_isolated_node_eval: bool = False,
-        pass_documents_as_input: bool = False
+        pass_documents_as_input: bool = False,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -488,7 +488,9 @@ class Pipeline(BasePipeline):
                     # join both filters and overwrite filters in params with filters in labels
                     params_per_label["filters"] = {**params_per_label.get("filters", {}), **label.filters}
             documents = [l.document for l in label.labels] if pass_documents_as_input else None
-            predictions = self.run(query=label.query, labels=label, documents=documents, params=params_per_label, debug=True)
+            predictions = self.run(
+                query=label.query, labels=label, documents=documents, params=params_per_label, debug=True
+            )
 
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]

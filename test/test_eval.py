@@ -522,11 +522,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
 def test_reader_eval_in_pipeline(reader):
     pipeline = Pipeline()
     pipeline.add_node(component=reader, name="Reader", inputs=["Query"])
-    eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
-        params={},
-        pass_documents_as_input=True
-    )
+    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={}, pass_documents_as_input=True)
 
     metrics = eval_result.calculate_metrics()
 
