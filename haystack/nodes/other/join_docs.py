@@ -45,26 +45,25 @@ class JoinDocuments(BaseComponent):
 
     def run(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
         results = [inp["documents"] for inp in inputs]
-        DocScore = namedtuple("DocScore", field_names="document,score")
         weights = self.weights if self.weights else [1 / len(inputs)] * len(inputs)
-        document_map = {doc.id: DocScore(document=doc, score=0) for doc in itertools.chain(*results)}
+        document_map = {doc.id: [doc, 0] for doc in itertools.chain(*results)}
 
         for result, weight in zip(results, weights):
             for rank, doc in enumerate(result):
                 if self.join_mode == "concatenate":
-                    document_map[doc.id].score = doc.score
+                    document_map[doc.id][1] = doc.score
                 elif self.join_mode == "merge":
-                    document_map[doc.id].score += self._calculate_comb_sum(doc, weight)
+                    document_map[doc.id][1] += self._calculate_comb_sum(doc, weight)
                 elif self.join_mode == "reciprocal_rank_fusion":
-                    document_map[doc.id].score += self._calculate_rrf(rank)
+                    document_map[doc.id][1] += self._calculate_rrf(rank)
                 else:
                     raise Exception(f"Invalid join_mode: {self.join_mode}")
 
-        sorted_docs = sorted(document_map.values(), key=lambda d: d.score, reverse=True)
+        sorted_docs = sorted(document_map.values(), key=lambda d: d[1], reverse=True)
         docs = []
-        for document_tuple in sorted_docs:
-            doc = document_tuple.document
-            doc.score = document_tuple.score
+        for document_score_pair in sorted_docs:
+            doc = document_score_pair[0]
+            doc.score = document_score_pair[1]
             docs.append(doc)
 
         top_k_join = top_k_join if top_k_join else self.top_k_join
