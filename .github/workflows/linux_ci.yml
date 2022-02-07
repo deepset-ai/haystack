@@ -137,9 +137,13 @@ jobs:
 
       - name: Test with mypy
         run: |
-          pip install rest_api/ ui/    # Allows mypy to understand which types to install in the following step
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
           mypy --install-types --non-interactive
-          mypy --exclude=test/ --exclude=rest_api/test/ --exclude=ui/test/ .
+          mypy haystack/
+          mypy rest_api/
+          mypy ui/
 
 
   linter:
@@ -161,8 +165,9 @@ jobs:
 
       - name: Linter
         run: |
-          pylint --ignore-paths=test/,rest_api/test,ui/test
-
+          pylint haystack
+          pylint rest_api
+          pylint ui
 
   tests:
     needs: prepare-matrix
