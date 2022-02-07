@@ -439,17 +439,16 @@ class Pipeline(BasePipeline):
     def eval(
         self,
         labels: List[MultiLabel],
-        documents: Optional[List[List[Document]]] = None,
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
         add_isolated_node_eval: bool = False,
+        pass_documents_as_input: bool = False
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
         and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
         :param labels: The labels to evaluate on
-        :param documents: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
         :param params: Dictionary of parameters to be dispatched to the nodes.
                     If you want to pass a param to all nodes, you can just use: {"top_k":10}
                     If you want to pass it to targeted nodes, you can do:
@@ -473,13 +472,14 @@ class Pipeline(BasePipeline):
                     To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
                     The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
                     values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+        :param documents: If set to True, the documents specified in the labels are passed as input to the first node in the pipeline. Can be used to evaluate a pipeline that consists of a reader without a retriever.
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
             if params is None:
                 params = {}
             params["add_isolated_node_eval"] = True
-        for i,label in enumerate(labels):
+        for label in labels:
             params_per_label = copy.deepcopy(params)
             if label.filters is not None:
                 if params_per_label is None:
@@ -487,11 +487,8 @@ class Pipeline(BasePipeline):
                 else:
                     # join both filters and overwrite filters in params with filters in labels
                     params_per_label["filters"] = {**params_per_label.get("filters", {}), **label.filters}
-            if documents is not None:
-                # documents are passed as input to the first node in the pipeline
-                predictions = self.run(query=label.query, labels=label, documents=documents[i], params=params_per_label, debug=True)
-            else:
-                predictions = self.run(query=label.query, labels=label, params=params_per_label, debug=True)
+            documents = [l.document for l in label.labels] if pass_documents_as_input else None
+            predictions = self.run(query=label.query, labels=label, documents=documents, params=params_per_label, debug=True)
 
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
