@@ -140,10 +140,8 @@ jobs:
           pip install .[test]
           pip install rest_api/
           pip install ui/
-          mypy --install-types --non-interactive
-          mypy haystack/
-          mypy rest_api/
-          mypy ui/
+          mypy --install-types --non-interactive haystack/ rest-api/ ui/
+          mypy haystack/ rest_api/ ui/
 
 
   linter:
@@ -165,9 +163,9 @@ jobs:
 
       - name: Linter
         run: |
-          pylint haystack
-          pylint rest_api
-          pylint ui
+          pylint haystack/
+          pylint rest_api/
+          pylint ui/
 
   tests:
     needs: prepare-matrix
