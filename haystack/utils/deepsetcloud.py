@@ -62,7 +62,8 @@ class DeepsetCloudClient:
             raise_on_error=raise_on_error,
         )
 
-    def get_with_auto_paging(self,
+    def get_with_auto_paging(
+        self,
         url: str,
         query_params: dict = None,
         headers: dict = None,
@@ -78,7 +79,7 @@ class DeepsetCloudClient:
             stream=stream,
             raise_on_error=raise_on_error,
             auto_paging_page_size=auto_paging_page_size,
-        ) 
+        )
 
     def post(
         self,
@@ -118,7 +119,7 @@ class DeepsetCloudClient:
             headers=headers,
             raise_on_error=raise_on_error,
             auto_paging_page_size=auto_paging_page_size,
-        )       
+        )
 
     def _execute_auto_paging_request(
         self,
