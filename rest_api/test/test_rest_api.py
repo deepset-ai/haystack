@@ -42,7 +42,6 @@ def exclude_no_answer(responses):
     return responses
 
 
-@pytest.mark.elasticsearch
 @pytest.fixture(scope="session")
 def client() -> TestClient:
     os.environ["PIPELINE_YAML_PATH"] = str(
@@ -55,7 +54,6 @@ def client() -> TestClient:
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
 
 
-@pytest.mark.elasticsearch
 @pytest.fixture(scope="session")
 def populated_client(client: TestClient) -> TestClient:
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')

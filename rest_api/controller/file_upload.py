@@ -78,8 +78,8 @@ class Response(BaseModel):
 def upload_file(
     files: List[UploadFile] = File(...),
     meta: Optional[str] = None,  # JSON serialized string
-    fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),
-    preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),
+    fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),  # type: ignore
+    preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),  # type: ignore
 ):
     """
     You can use this endpoint to upload a file for indexing
@@ -90,7 +90,7 @@ def upload_file(
 
     file_paths: list = []
     file_metas: list = []
-    meta: Form = json.loads(meta or "{}")
+    meta_form = json.loads(meta or "{}")
 
     for file in files:
         try:
@@ -99,8 +99,8 @@ def upload_file(
                 shutil.copyfileobj(file.file, buffer)
 
             file_paths.append(file_path)
-            meta["name"] = file.filename
-            file_metas.append(meta)
+            meta_form["name"] = file.filename
+            file_metas.append(meta_form)
         finally:
             file.file.close()
 
