@@ -76,7 +76,7 @@ jobs:
           
       # Apply black on the entire codebase
       - name: Blacken
-        run: python3 -m black .
+        run: black .
 
       # Convert the Jupyter notebooks into markdown tutorials
       - name: Generate Tutorials
