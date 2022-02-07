@@ -145,9 +145,9 @@ jobs:
           # Hotfixing by installing type packages explicitly. Run mypy --install-types haystack locally to ensure the list 
           # is still up to date
           # mypy --install-types --non-interactive .
-          pip install types-Markdown types-PyYAML types-chardet types-emoji types-protobuf types-requests types-setuptools types-six types-tabulate
+          pip install types-Markdown types-PyYAML types-requests # types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
 
-          mypy haystack/ rest_api/ ui/ --exclude=ui/build/
+          mypy haystack/ rest_api/ ui/ --exclude=ui/build/ --exclude=rest_api/build/
 
 
   linter:
