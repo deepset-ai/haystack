@@ -140,7 +140,13 @@ jobs:
           pip install .[test]
           pip install rest_api/
           pip install ui/
-          mypy --install-types --non-interactive haystack/ rest-api/ ui/
+
+          # FIXME --install-types Does not work yet, check https://github.com/python/mypy/issues/10600 for a resolution
+          # Hotfixing by installing type packages explicitly. Run mypy --install-types haystack locally to ensure the list 
+          # is still up to date
+          # mypy --install-types --non-interactive .
+          pip install types-Markdown types-PyYAML types-chardet types-emoji types-protobuf types-requests types-setuptools types-six types-tabulate
+
           mypy haystack/ rest_api/ ui/
 
 
