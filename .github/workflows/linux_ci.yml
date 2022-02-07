@@ -38,7 +38,7 @@ jobs:
           pip freeze
 
 
-  prepare-build:
+  prepare-matrix:
     needs: build-cache
     runs-on: ubuntu-20.04
     steps:
@@ -163,8 +163,8 @@ jobs:
           pylint . --ignore-patterns=**/test/*.*
 
 
-  build:
-    needs: prepare-build
+  tests:
+    needs: prepare-matrix
     runs-on: ubuntu-20.04
     strategy:
       matrix:
