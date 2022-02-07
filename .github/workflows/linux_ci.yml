@@ -161,7 +161,7 @@ jobs:
 
       - name: Linter
         run: |
-          pylint . --ignore-patterns=**/test/*.*
+          pylint --ignore-paths=test/,rest_api/test,ui/test
 
 
   tests:
