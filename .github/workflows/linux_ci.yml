@@ -147,7 +147,7 @@ jobs:
           # mypy --install-types --non-interactive .
           pip install types-Markdown types-PyYAML types-chardet types-emoji types-protobuf types-requests types-setuptools types-six types-tabulate
 
-          mypy haystack/ rest_api/ ui/
+          mypy haystack/ rest_api/ ui/ --exclude=**/build/
 
 
   linter:
@@ -169,9 +169,9 @@ jobs:
 
       - name: Linter
         run: |
-          pylint haystack/
-          pylint rest_api/
-          pylint ui/
+          pylint -ry haystack/
+          pylint -ry rest_api/
+          pylint -ry ui/
 
   tests:
     needs: prepare-matrix
