@@ -145,6 +145,7 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
         passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
         use_gpu=False,
+
     )
     document_store_dot_product_with_docs.update_embeddings(dpr)
 
@@ -208,15 +209,10 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
 
-    results_es = es.retrieve(query=query)
-    results_dpr = dpr.retrieve(query=query)
-    full_docs = defaultdict(int)
-    for idx, docs in enumerate(zip(results_es, results_dpr)):
-        es_result, dpr_result = docs
-        full_docs[es_result.id] += 1 / (61 + idx)
-        full_docs[dpr_result.id] += 1 / (61 + idx)
+    # list of precalculated expected results
+    expected_scores = [0.03278688524590164, 0.03200204813108039, 0.03200204813108039, 0.031009615384615385, 0.031009615384615385]
 
-    assert all([doc.score == full_docs[doc.id] for doc in results["documents"]])
+    assert all([doc.score == expected_scores[idx] for idx, doc in enumerate(results["documents"])])
 
 
 def test_query_keyword_statement_classifier():
