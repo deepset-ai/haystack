@@ -129,8 +129,18 @@ jobs:
       - name: Test with mypy
         run: |
           pip install mypy types-Markdown types-requests types-PyYAML pydantic
+
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+
+          echo "=== haystack/ ==="
           mypy haystack
+
+          echo "=== rest_api/ ==="
           mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
+
+          echo "=== ui/ ==="
           mypy ui --exclude=ui/build/ --exclude=ui/test/
 
           # pip install .[test]
