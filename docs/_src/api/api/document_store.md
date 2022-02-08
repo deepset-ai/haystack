@@ -1818,12 +1818,12 @@ Can be created via calling `save()`
 
 # Module milvus
 
-<a id="milvus.MilvusDocumentStore"></a>
+<a id="milvus.Milvus1DocumentStore"></a>
 
-## MilvusDocumentStore
+## Milvus1DocumentStore
 
 ```python
-class MilvusDocumentStore(SQLDocumentStore)
+class Milvus1DocumentStore(SQLDocumentStore)
 ```
 
 Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
@@ -1839,9 +1839,10 @@ does not allow these data types (yet).
 
 Usage:
 1. Start a Milvus server (see https://milvus.io/docs/v1.0.0/install_milvus.md)
-2. Init a MilvusDocumentStore in Haystack
+2. Run pip install farm-haystack[milvus1]
+3. Init a MilvusDocumentStore in Haystack
 
-<a id="milvus.MilvusDocumentStore.write_documents"></a>
+<a id="milvus.Milvus1DocumentStore.write_documents"></a>
 
 #### write\_documents
 
@@ -1872,7 +1873,7 @@ exists.
 
 None
 
-<a id="milvus.MilvusDocumentStore.update_embeddings"></a>
+<a id="milvus.Milvus1DocumentStore.update_embeddings"></a>
 
 #### update\_embeddings
 
@@ -1900,7 +1901,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 
 None
 
-<a id="milvus.MilvusDocumentStore.query_by_embedding"></a>
+<a id="milvus.Milvus1DocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
 
@@ -1923,7 +1924,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 
 list of Documents that are the most similar to `query_emb`
 
-<a id="milvus.MilvusDocumentStore.delete_all_documents"></a>
+<a id="milvus.Milvus1DocumentStore.delete_all_documents"></a>
 
 #### delete\_all\_documents
 
@@ -1943,7 +1944,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 
 None
 
-<a id="milvus.MilvusDocumentStore.delete_documents"></a>
+<a id="milvus.Milvus1DocumentStore.delete_documents"></a>
 
 #### delete\_documents
 
@@ -1968,7 +1969,7 @@ have their ID in the list).
 
 None
 
-<a id="milvus.MilvusDocumentStore.get_all_documents_generator"></a>
+<a id="milvus.Milvus1DocumentStore.get_all_documents_generator"></a>
 
 #### get\_all\_documents\_generator
 
@@ -1990,7 +1991,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
-<a id="milvus.MilvusDocumentStore.get_all_documents"></a>
+<a id="milvus.Milvus1DocumentStore.get_all_documents"></a>
 
 #### get\_all\_documents
 
@@ -2009,7 +2010,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
-<a id="milvus.MilvusDocumentStore.get_document_by_id"></a>
+<a id="milvus.Milvus1DocumentStore.get_document_by_id"></a>
 
 #### get\_document\_by\_id
 
@@ -2025,7 +2026,7 @@ Fetch a document by specifying its text id string
 - `index`: Name of the index to get the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
 
-<a id="milvus.MilvusDocumentStore.get_documents_by_id"></a>
+<a id="milvus.Milvus1DocumentStore.get_documents_by_id"></a>
 
 #### get\_documents\_by\_id
 
@@ -2042,7 +2043,7 @@ Fetch multiple documents by specifying their IDs (strings)
 DocumentStore's default index (self.index) will be used.
 - `batch_size`: is currently not used
 
-<a id="milvus.MilvusDocumentStore.get_all_vectors"></a>
+<a id="milvus.Milvus1DocumentStore.get_all_vectors"></a>
 
 #### get\_all\_vectors
 
@@ -2061,7 +2062,7 @@ DocumentStore's default index (self.index) will be used.
 
 List[np.array]: List of vectors.
 
-<a id="milvus.MilvusDocumentStore.get_embedding_count"></a>
+<a id="milvus.Milvus1DocumentStore.get_embedding_count"></a>
 
 #### get\_embedding\_count
 
