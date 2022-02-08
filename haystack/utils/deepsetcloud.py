@@ -154,7 +154,7 @@ class DeepsetCloudClient:
 
     def _execute_request(
         self,
-        method: Literal["GET", "POST", "PUT"],
+        method: Literal["GET", "POST", "PUT", "HEAD"],
         url: str,
         json: dict = None,
         query_params: dict = None,
