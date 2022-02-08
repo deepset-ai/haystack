@@ -1250,13 +1250,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if self.similarity == "cosine":
             similarity_fn_name = "cosineSimilarity"
         elif self.similarity == "dot_product":
-            if type(self) == OpenSearchDocumentStore:
-                similarity_fn_name = "innerproduct"
-            elif type(self) == ElasticsearchDocumentStore:
-                similarity_fn_name = "dotProduct"
+            similarity_fn_name = "dotProduct"
+        elif self.similarity == "l2":
+            similarity_fn_name = "l2norm"
         else:
             raise Exception(
-                "Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine' and 'dot_product'"
+                "Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'dot_product' and 'l2'"
             )
 
         # To handle scenarios where embeddings may be missing
@@ -1301,8 +1300,8 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 score = self._scale_embedding_score(score)
                 if self.similarity == "cosine":
                     score = (score + 1) / 2  # scaling probability from cosine similarity
-                elif self.similarity == "dot_product":
-                    score = float(expit(np.asarray(score / 100)))  # scaling probability from dot product
+                else:
+                    score = float(expit(np.asarray(score / 100)))  # scaling probability from dot product and l2
             else:
                 score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
@@ -1614,18 +1613,82 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
-    """
-    Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
-
-    In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
-    the KNN plugin that can scale to a large number of documents.
-    """
-
     def __init__(self, verify_certs=False, scheme="https", username="admin", password="admin", port=9200, **kwargs):
+        """
+        Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
 
+        In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
+        the KNN plugin that can scale to a large number of documents.
+
+        :param host: url(s) of elasticsearch nodes
+        :param port: port(s) of elasticsearch nodes
+        :param username: username (standard authentication via http_auth)
+        :param password: password (standard authentication via http_auth)
+        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
+        :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+        :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
+        :param search_fields: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+        :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+                           If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+        :param name_field: Name of field that contains the title of the the doc
+        :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+                                Note, that in OpenSearch the similarity type for efficient approximate vector similarity calculations is tied to the embedding field's data type which cannot be changed after creation.
+        :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+        :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+                         Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+                         https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
+        :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+                                   Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+        :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
+        :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
+        :param verify_certs: Whether to be strict about ca certificates
+        :param create_index: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
+        :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+                             If set to 'wait_for', continue only after changes are visible (slow, but safe).
+                             If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
+                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+                           Note, that the use of efficient approximate vector calculations in OpenSearch is tied to embedding_field's data type which cannot be changed after creation.
+                           You won't be able to use approximate vector calculations on an embedding_field which was created with a different similarity value.
+                           In such cases a fallback to exact but slow vector calculations will be attempted. If successful a warning will be displayed, otherwise an exception will be thrown.
+                           E.g. currently this fallback works if you want to use 'cosine' on a 'dot_product' embedding field, but not vice verca.
+        :param timeout: Number of seconds after which an ElasticSearch request times out.
+        :param return_embedding: To return document embedding
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'.
+                           As OpenSearch currently does not support all similarity functions (e.g. dot_product) in exact vector similarity calculations,
+                           we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but further optimized for accuracy.
+                           Exact vector similarity is only used as fallback when there's a mismatch between certain requested and indexed similarity types.
+                           In these cases however, a warning will be displayed. See similarity param for more information.
+        :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+                       Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+                       For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+        :param skip_missing_embeddings: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
+                                        Parameter options: (True, False)
+                                        False: Raises exception if one or more documents do not have embeddings at query time
+                                        True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
+        :param synonyms: List of synonyms can be passed while elasticsearch initialization.
+                         For example: [ "foo, bar => baz",
+                                        "foozball , foosball" ]
+                         More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
+        :param synonym_type: Synonym filter type can be passed.
+                             Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
+                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+        """
+        self.embeddings_field_supports_similarity = False
+        self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
+        self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
         # Overwrite default kwarg values of parent class so that in default cases we can initialize
         # an OpenSearchDocumentStore without provding any arguments
-
         super(OpenSearchDocumentStore, self).__init__(
             verify_certs=verify_certs, scheme=scheme, username=username, password=password, port=port, **kwargs
         )
@@ -1725,7 +1788,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             # +1 in similarity to avoid negative numbers (for cosine sim)
             body: Dict[str, Any] = {
                 "size": top_k,
-                "query": {"bool": {"must": [self._get_vector_similarity_query(query_emb, top_k)]}},
+                "query": self._get_vector_similarity_query(query_emb, top_k),
             }
             if filters:
                 body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
@@ -1758,6 +1821,66 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         """
         Create a new index for storing documents.
         """
+        # check if the existing index has the embedding field; if not create it
+        if self.client.indices.exists(index=index_name, headers=headers):
+            index_info = self.client.indices.get(index_name, headers=headers)[index_name]
+            mapping = index_info["mappings"]
+            settings = index_info["settings"]["index"]
+            if self.search_fields:
+                for search_field in self.search_fields:
+                    if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+                        raise Exception(
+                            f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
+                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
+                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
+                            f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                            f"Note, that all data stored in the index will be lost!"
+                        )
+
+            # embedding field will be created
+            if self.embedding_field not in mapping["properties"]:
+                mapping["properties"][self.embedding_field] = self._get_embedding_field_mapping(
+                    similarity=self.similarity
+                )
+                self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
+                self.embeddings_field_supports_similarity = True
+            else:
+                # bad embedding field
+                if mapping["properties"][self.embedding_field]["type"] != "knn_vector":
+                    raise Exception(
+                        f"The '{index_name}' index in OpenSearch already has a field called '{self.embedding_field}'"
+                        f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
+                        f"document_store to use a different name for the embedding_field parameter."
+                    )
+                else:
+                    # embedding field with global space_type setting
+                    if "method" not in mapping["properties"][self.embedding_field]:
+                        embedding_field_space_type = settings["knn.space_type"]
+                    # embedding field with local space_type setting
+                    else:
+                        embedding_field_space_type = mapping["properties"][self.embedding_field]["method"]["space_type"]
+
+                    embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
+                    if embedding_field_similarity == self.similarity:
+                        self.embeddings_field_supports_similarity = True
+                    else:
+                        if self.similarity == "dot_product":
+                            raise Exception(
+                                f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
+                                f"OpenSearch does not support the use of similarity '{self.similarity}' on '{embedding_field_similarity}'-optimized fields. "
+                                f"In order to try out '{self.similarity}' similarity on this index, you might want to use a different embedding field by setting the `embedding_field` param. "
+                                f"Consider creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
+                                f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
+                            )
+                        else:
+                            logger.warning(
+                                f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
+                                f"Falling back to slow exact vector calculation. "
+                                f"Consider creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
+                                f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
+                            )
+
+            return
 
         if self.custom_mapping:
             mapping = self.custom_mapping
@@ -1798,36 +1921,10 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     mapping["mappings"]["properties"].update({field: {"type": "text"}})
 
             if self.embedding_field:
-
-                if self.similarity == "cosine":
-                    similarity_space_type = "cosinesimil"
-                elif self.similarity == "dot_product":
-                    similarity_space_type = "innerproduct"
-                elif self.similarity == "l2":
-                    similarity_space_type = "l2"
-
-                mapping["settings"]["index"] = {}
-                mapping["settings"]["index"]["knn"] = True
-                mapping["settings"]["index"]["knn.space_type"] = similarity_space_type
-
-                mapping["mappings"]["properties"][self.embedding_field] = {
-                    "type": "knn_vector",
-                    "dimension": self.embedding_dim,
-                }
-
-                if self.index_type == "flat":
-                    pass
-                elif self.index_type == "hnsw":
-                    mapping["settings"]["index"]["knn.algo_param"] = {}
-                    mapping["settings"]["index"]["knn.algo_param"]["ef_search"] = 20
-                    mapping["mappings"]["properties"][self.embedding_field]["method"] = {
-                        "space_type": similarity_space_type,
-                        "name": "hnsw",
-                        "engine": "nmslib",
-                        "parameters": {"ef_construction": 80, "m": 64},
-                    }
-                else:
-                    logger.error("Please set index_type to either 'flat' or 'hnsw'")
+                mapping["settings"]["index"] = {"knn": True}
+                mapping["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
+                    similarity=self.similarity
+                )
 
         try:
             self.client.indices.create(index=index_name, body=mapping, headers=headers)
@@ -1838,6 +1935,21 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             # - one fails as the other one already created it
             if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
+
+    def _get_embedding_field_mapping(self, similarity: Optional[str]):
+        space_type = self.similarity_to_space_type[similarity]
+        method: dict = {"space_type": space_type, "name": "hnsw", "engine": "nmslib"}
+
+        if self.index_type == "flat":
+            # use default parameters
+            pass
+        elif self.index_type == "hnsw":
+            method["parameters"] = {"ef_construction": 80, "m": 64, "ef_search": 20}
+        else:
+            logger.error("Please set index_type to either 'flat' or 'hnsw'")
+
+        embeddings_field_mapping = {"type": "knn_vector", "dimension": self.embedding_dim, "method": method}
+        return embeddings_field_mapping
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         if self.client.indices.exists(index=index_name, headers=headers):
@@ -1876,10 +1988,49 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         """
         Generate Elasticsearch query for vector similarity.
         """
-        query = {"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}
+        if self.embeddings_field_supports_similarity:
+            query: dict = {
+                "bool": {"must": [{"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}]}
+            }
+        else:
+            # if we do not have a proper similarity field we have to fall back to exact but slow vector similarity calculation
+            query = {
+                "script_score": {
+                    "query": {"match_all": {}},
+                    "script": {
+                        "source": "knn_score",
+                        "lang": "knn",
+                        "params": {
+                            "field": self.embedding_field,
+                            "query_value": query_emb.tolist(),
+                            "space_type": self.similarity_to_space_type[self.similarity],
+                        },
+                    },
+                }
+            }
         return query
 
     def _scale_embedding_score(self, score):
+        # adjust approximate knn scores, see https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
+        if self.embeddings_field_supports_similarity:
+            if self.similarity == "dot_product":
+                if score > 1:
+                    score = score - 1
+                else:
+                    score = -(1 / score - 1)
+            elif self.similarity == "cosine":
+                score = -(1 / score - 2)
+            elif self.similarity == "l2":
+                score = 1 / score - 1
+        # adjust exact knn scores, see https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
+        else:
+            if self.similarity == "dot_product":
+                raise Exception("Exact dot_product similarity is not supported.")
+            elif self.similarity == "cosine":
+                score = score - 1
+            elif self.similarity == "l2":
+                score = 1 / score - 1
+
         return score
 
 
