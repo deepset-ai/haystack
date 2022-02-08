@@ -130,6 +130,8 @@ jobs:
         run: |
           pip install mypy types-Markdown types-requests types-PyYAML pydantic
           mypy haystack
+          mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
+          mypy ui --exclude=ui/build/ --exclude=ui/test/
 
           # pip install .[test]
           # pip install rest_api/
