@@ -1150,6 +1150,36 @@ def get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Doc
 
 Fetch documents by specifying a list of text id strings.
 
+<a id="memory.InMemoryDocumentStore.get_scores_torch"></a>
+
+#### get\_scores\_torch
+
+```python
+def get_scores_torch(query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]
+```
+
+Calculate similarity scores between query embedding and a list of documents using torch.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `document_to_search`: List of documents to compare `query_emb` against.
+
+<a id="memory.InMemoryDocumentStore.get_scores_numpy"></a>
+
+#### get\_scores\_numpy
+
+```python
+def get_scores_numpy(query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]
+```
+
+Calculate similarity scores between query embedding and a list of documents using numpy.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `document_to_search`: List of documents to compare `query_emb` against.
+
 <a id="memory.InMemoryDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
