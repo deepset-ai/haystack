@@ -16,7 +16,6 @@ from rest_api.config import ROOT_PATH
 from rest_api.controller.router import router as api_router
 
 
-
 def get_application() -> FastAPI:
     application = FastAPI(title="Haystack-API", debug=True, version="1.0.0", root_path=ROOT_PATH)
 
