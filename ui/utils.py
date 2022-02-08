@@ -5,13 +5,7 @@ import logging
 import requests
 from time import sleep
 from uuid import uuid4
-
-try:
-    import streamlit as st
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "ui", ie)
+import streamlit as st
 
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
