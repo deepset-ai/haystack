@@ -44,10 +44,11 @@ COPY rest_api /home/user/rest_api
 
 # Install package
 RUN pip install --upgrade pip
-# Install PyTorch for CUDA 11
-RUN pip3 install --no-cache-dir torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 RUN pip install --no-cache .[docstores-gpu,crawler,preprocessing,ocr,ray]
 RUN pip install --no-cache rest_api/
+
+# Install PyTorch for CUDA 11
+RUN pip3 install --no-cache-dir torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 
 # Cache Roberta and NLTK data
 RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"
