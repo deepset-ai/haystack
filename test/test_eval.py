@@ -525,7 +525,7 @@ def test_reader_eval_in_pipeline(reader):
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
         documents=[[label.document for label in multilabel.labels] for multilabel in EVAL_LABELS],
-        params={}
+        params={},
     )
 
     metrics = eval_result.calculate_metrics()
