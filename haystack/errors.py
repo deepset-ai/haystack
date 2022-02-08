@@ -4,4 +4,5 @@
 
 class DuplicateDocumentError(ValueError):
     """Exception for Duplicate document"""
+
     pass

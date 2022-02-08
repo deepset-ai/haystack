@@ -1,7 +1,4 @@
-from haystack.utils.preprocessing import (
-    convert_files_to_dicts, 
-    tika_convert_files_to_dicts
-)
+from haystack.utils.preprocessing import convert_files_to_dicts, tika_convert_files_to_dicts
 from haystack.utils.import_utils import fetch_archive_from_http
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.doc_store import (
@@ -13,7 +10,7 @@ from haystack.utils.doc_store import (
     stop_opensearch,
     stop_service,
 )
-from haystack.utils.deepsetcloud import DeepsetCloud
+from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudError
 from haystack.utils.export_utils import (
     print_answers,
     print_documents,

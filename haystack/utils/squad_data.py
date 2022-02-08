@@ -24,6 +24,7 @@ class SquadData:
     """
     This class is designed to manipulate data that is in SQuAD format
     """
+
     def __init__(self, squad_data):
         """
         :param squad_data: SQuAD format data, either as a dict with a `data` key, or just a list of SQuAD documents
@@ -79,12 +80,7 @@ class SquadData:
         df_docs = self.df[["title", "context"]]
         df_docs = df_docs.drop_duplicates()
         record_dicts = df_docs.to_dict("records")
-        documents = [
-            Document(
-                content=rd["context"],
-                id=rd["title"]
-            ) for rd in record_dicts
-        ]
+        documents = [Document(content=rd["context"], id=rd["title"]) for rd in record_dicts]
         return documents
 
     # TODO refactor to new Label objects
@@ -102,8 +98,9 @@ class SquadData:
                 is_correct_document=True,
                 id=rd["id"],
                 origin=rd.get("origin", "SquadData tool"),
-                document_id=rd.get("document_id", None)
-            ) for rd in record_dicts
+                document_id=rd.get("document_id", None),
+            )
+            for rd in record_dicts
         ]
         return labels
 
@@ -121,25 +118,33 @@ class SquadData:
                     is_impossible = question["is_impossible"]
                     # For no_answer samples
                     if len(question["answers"]) == 0:
-                        flat.append({"title": title,
-                                     "context": context,
-                                     "question": q,
-                                     "id": id,
-                                     "answer_text": "",
-                                     "answer_start": None,
-                                     "is_impossible": is_impossible})
+                        flat.append(
+                            {
+                                "title": title,
+                                "context": context,
+                                "question": q,
+                                "id": id,
+                                "answer_text": "",
+                                "answer_start": None,
+                                "is_impossible": is_impossible,
+                            }
+                        )
                     # For span answer samples
                     else:
                         for answer in question["answers"]:
                             answer_text = answer["text"]
                             answer_start = answer["answer_start"]
-                            flat.append({"title": title,
-                                         "context": context,
-                                         "question": q,
-                                         "id": id,
-                                         "answer_text": answer_text,
-                                         "answer_start": answer_start,
-                                         "is_impossible": is_impossible})
+                            flat.append(
+                                {
+                                    "title": title,
+                                    "context": context,
+                                    "question": q,
+                                    "id": id,
+                                    "answer_text": answer_text,
+                                    "answer_start": answer_start,
+                                    "is_impossible": is_impossible,
+                                }
+                            )
         df = pd.DataFrame.from_records(flat)
         return df
 
@@ -166,7 +171,8 @@ class SquadData:
                                 c += 1
         return c
 
-    def df_to_data(self, df):
+    @classmethod
+    def df_to_data(cls, df):
         """
         Convert a dataframe into SQuAD format data (list of SQuAD document dictionaries).
         """
@@ -174,9 +180,11 @@ class SquadData:
 
         # Aggregate the answers of each question
         logger.info("Aggregating the answers of each question")
-        df_grouped_answers = df.groupby(["title", "context", "question", "id",  "is_impossible"])
-        df_aggregated_answers = df[["title", "context", "question", "id",  "is_impossible"]].drop_duplicates().reset_index()
-        answers = df_grouped_answers.progress_apply(self._aggregate_answers).rename("answers")
+        df_grouped_answers = df.groupby(["title", "context", "question", "id", "is_impossible"])
+        df_aggregated_answers = (
+            df[["title", "context", "question", "id", "is_impossible"]].drop_duplicates().reset_index()
+        )
+        answers = df_grouped_answers.progress_apply(cls._aggregate_answers).rename("answers")
         answers = pd.DataFrame(answers).reset_index()
         df_aggregated_answers = pd.merge(df_aggregated_answers, answers)
 
@@ -184,14 +192,14 @@ class SquadData:
         logger.info("Aggregating the questions of each paragraphs of each document")
         df_grouped_questions = df_aggregated_answers.groupby(["title", "context"])
         df_aggregated_questions = df[["title", "context"]].drop_duplicates().reset_index()
-        questions = df_grouped_questions.progress_apply(self._aggregate_questions).rename("qas")
+        questions = df_grouped_questions.progress_apply(cls._aggregate_questions).rename("qas")
         questions = pd.DataFrame(questions).reset_index()
         df_aggregated_questions = pd.merge(df_aggregated_questions, questions)
 
         logger.info("Aggregating the paragraphs of each document")
         df_grouped_paragraphs = df_aggregated_questions.groupby(["title"])
         df_aggregated_paragraphs = df[["title"]].drop_duplicates().reset_index()
-        paragraphs = df_grouped_paragraphs.progress_apply(self._aggregate_passages).rename("paragraphs")
+        paragraphs = df_grouped_paragraphs.progress_apply(cls._aggregate_passages).rename("paragraphs")
         paragraphs = pd.DataFrame(paragraphs).reset_index()
         df_aggregated_paragraphs = pd.merge(df_aggregated_paragraphs, paragraphs)
 
@@ -263,7 +271,7 @@ class SquadData:
 
 if __name__ == "__main__":
     # Download the SQuAD dataset if it isn't at target directory
-    _read_squad_file( "../data/squad20/train-v2.0.json")
+    _read_squad_file("../data/squad20/train-v2.0.json")
 
     filename1 = "../data/squad20/train-v2.0.json"
     filename2 = "../data/squad20/dev-v2.0.json"

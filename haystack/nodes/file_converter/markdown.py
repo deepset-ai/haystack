@@ -8,6 +8,7 @@ try:
     from markdown import markdown
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
+
     _optional_component_not_installed(__name__, "preprocessing", ie)
 
 from haystack.nodes.file_converter import BaseConverter
@@ -18,12 +19,12 @@ logger = logging.getLogger(__name__)
 
 class MarkdownConverter(BaseConverter):
     def convert(
-            self,
-            file_path: Path,
-            meta: Optional[Dict[str, str]] = None,
-            remove_numeric_tables: Optional[bool] = None,
-            valid_languages: Optional[List[str]] = None,
-            encoding: Optional[str] = "utf-8",
+        self,
+        file_path: Path,
+        meta: Optional[Dict[str, str]] = None,
+        remove_numeric_tables: Optional[bool] = None,
+        valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = "utf-8",
     ) -> List[Dict[str, Any]]:
         """
         Reads text from a txt file and executes optional preprocessing steps.
@@ -54,11 +55,11 @@ class MarkdownConverter(BaseConverter):
         html = markdown(markdown_string)
 
         # remove code snippets
-        html = re.sub(r'<pre>(.*?)</pre>', ' ', html)
-        html = re.sub(r'<code>(.*?)</code >', ' ', html)
+        html = re.sub(r"<pre>(.*?)</pre>", " ", html)
+        html = re.sub(r"<code>(.*?)</code >", " ", html)
 
         # extract text
         soup = BeautifulSoup(html, "html.parser")
-        text = ''.join(soup.findAll(text=True))
+        text = "".join(soup.findAll(text=True))
 
         return text
