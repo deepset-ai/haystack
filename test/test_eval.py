@@ -524,8 +524,8 @@ def test_reader_eval_in_pipeline(reader):
     pipeline.add_node(component=reader, name="Reader", inputs=["Query"])
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
-        params={},
-        pass_documents_as_input=True
+        documents=[[label.document for label in multilabel.labels] for multilabel in EVAL_LABELS],
+        params={}
     )
 
     metrics = eval_result.calculate_metrics()
