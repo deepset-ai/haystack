@@ -74,7 +74,7 @@ jobs:
           path: ${{ env.pythonLocation }}
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
           
-      # Apply black on the entire codebase
+      # Apply Black on the entire codebase
       - name: Blacken
         run: black .
 
@@ -129,7 +129,7 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           # No cache can be used here, as mypy needs 3.8 for a proper parsing of Literal types.
-          # TODO Check if we still support 3.7 and make this job use the cache when we move to 3.8 everywhere
+          # FIXME Check if we still support 3.7 and make this job use the cache when we move to 3.8 everywhere
           python-version: 3.8
 
       - name: Test with mypy
