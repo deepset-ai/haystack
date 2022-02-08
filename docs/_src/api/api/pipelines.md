@@ -81,8 +81,8 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 #### load\_from\_deepset\_cloud
 
 ```python
- | @classmethod
- | load_from_deepset_cloud(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
+@classmethod
+def load_from_deepset_cloud(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
 ```
 
 Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
@@ -96,7 +96,7 @@ Use the returned `name` as `pipeline_config_name`.
 **Arguments**:
 
 - `pipeline_config_name`: name of the config file inside the Deepset Cloud workspace.
-                             To get a list of all available pipeline_config_names, call `list_pipelines_on_deepset_cloud()`.
+To get a list of all available pipeline_config_names, call `list_pipelines_on_deepset_cloud()`.
 - `pipeline_name`: specifies which pipeline to load from config.
 Deepset Cloud typically provides a 'query' and a 'index' pipeline per config.
 - `workspace`: workspace in Deepset Cloud
@@ -109,14 +109,13 @@ to change return_no_answer param for a FARMReader, an env
 variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
 
-<a id="base.Pipeline"></a>
+<a id="base.BasePipeline.list_pipelines_on_deepset_cloud"></a>
 
-<a name="base.BasePipeline.list_pipelines_on_deepset_cloud"></a>
 #### list\_pipelines\_on\_deepset\_cloud
 
 ```python
- | @classmethod
- | list_pipelines_on_deepset_cloud(cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None) -> List[dict]
+@classmethod
+def list_pipelines_on_deepset_cloud(cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None) -> List[dict]
 ```
 
 Lists all pipeline configs available on Deepset Cloud.
@@ -125,9 +124,9 @@ Lists all pipeline configs available on Deepset Cloud.
 
 - `workspace`: workspace in Deepset Cloud
 - `api_key`: Secret value of the API key.
-                If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
 - `api_endpoint`: The URL of the Deepset Cloud API.
-                     If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 
 Returns:
     list of dictionaries: List[dict]
@@ -146,7 +145,8 @@ Returns:
                 'pending_file_count': 3,
                 'total_file_count': 31}}]
 
-<a name="base.Pipeline"></a>
+<a id="base.Pipeline"></a>
+
 ## Pipeline
 
 ```python
