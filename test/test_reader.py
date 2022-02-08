@@ -28,7 +28,7 @@ def test_output(prediction):
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None
     assert no_answer_prediction["query"] == "What is the meaning of life?"
-    assert math.isclose(no_answer_prediction["no_ans_gap"], -13.048564434051514, rel_tol=0.0001)
+    assert math.isclose(no_answer_prediction["no_ans_gap"], -11.847594738006592, rel_tol=0.0001)
     assert no_answer_prediction["answers"][0].answer == ""
     assert no_answer_prediction["answers"][0].offsets_in_context[0].start == 0
     assert no_answer_prediction["answers"][0].offsets_in_context[0].end == 0
@@ -89,7 +89,9 @@ def test_context_window_size(reader, test_docs_xs, window_size):
         if len(answer.answer) <= window_size:
             assert len(answer.context) in [window_size, window_size - 1]
         else:
-            assert len(answer.answer) == len(answer.context)
+            # If the extracted answer is larger than the context window and is odd in length,
+            # the resulting context window is one more than the answer length
+            assert len(answer.context) in [len(answer.answer), len(answer.answer) + 1]
 
     reader.inferencer.model.prediction_heads[0].context_window_size = old_window_size
 

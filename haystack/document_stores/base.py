@@ -1,4 +1,4 @@
-from typing import Generator, Optional, Dict, List, Union
+from typing import Generator, Optional, Dict, List, Set, Union
 
 import logging
 import collections
@@ -195,9 +195,8 @@ class BaseDocumentStore(BaseComponent):
                             and also the id of the document that the label is tied to. In this setting, this function
                             might return multiple MultiLabel objects with the same question string.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-        :param TODO drop params
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-
+        TODO drop params
         """
         aggregated_labels = []
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
@@ -466,7 +465,7 @@ class BaseDocumentStore(BaseComponent):
         :param documents: A list of Haystack Document objects.
         :return: A list of Haystack Document objects.
         """
-        _hash_ids: list = []
+        _hash_ids: Set = set([])
         _documents: List[Document] = []
 
         for document in documents:
@@ -476,7 +475,7 @@ class BaseDocumentStore(BaseComponent):
                 )
                 continue
             _documents.append(document)
-            _hash_ids.append(document.id)
+            _hash_ids.add(document.id)
 
         return _documents
 
