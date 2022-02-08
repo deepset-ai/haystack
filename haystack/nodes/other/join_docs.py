@@ -1,3 +1,4 @@
+from collections import defaultdict
 import itertools
 
 from copy import deepcopy
@@ -50,29 +51,32 @@ class JoinDocuments(BaseComponent):
     def run(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
         results = [inp["documents"] for inp in inputs]
         weights = self.weights if self.weights else [1 / len(inputs)] * len(inputs)
-        document_map = {doc.id: [doc, 0] for doc in itertools.chain(*results)}
+        scores_map = defaultdict(int)
+        document_map = {doc.id: doc for doc in itertools.chain(*results)}
 
         for result, weight in zip(results, weights):
             for rank, doc in enumerate(result):
                 if self.join_mode == "concatenate":
-                    document_map[doc.id][1] = doc.score
+                    scores_map[doc.id] = doc.score
                 elif self.join_mode == "merge":
-                    document_map[doc.id][1] += self._calculate_comb_sum(doc, weight)
+                    scores_map[doc.id] += self._calculate_comb_sum(doc, weight)
                 elif self.join_mode == "reciprocal_rank_fusion":
-                    document_map[doc.id][1] += self._calculate_rrf(rank)
+                    scores_map[doc.id] += self._calculate_rrf(rank)
                 else:
                     raise ValueError(f"Invalid join_mode: {self.join_mode}")
 
-        sorted_docs = sorted(document_map.values(), key=lambda d: d[1], reverse=True)
-        docs = []
-        for document_score_pair in sorted_docs:
-            doc = document_score_pair[0]
-            doc.score = document_score_pair[1]
-            docs.append(doc)
+        sorted_docs = sorted(scores_map.items(), key=lambda d: d[1], reverse=True)
 
-        top_k_join = top_k_join if top_k_join else self.top_k_join
-        if top_k_join:
-            docs = docs[:top_k_join]
+        if not top_k_join:
+            top_k_join = self.top_k_join
+        if not top_k_join:
+            top_k_join = len(sorted_docs)
+
+        docs = []
+        for (id, score) in sorted_docs[:top_k_join]:
+            doc = document_map[id]
+            doc.score = score
+            docs.append(doc)
 
         output = {"documents": docs, "labels": inputs[0].get("labels", None)}
 
@@ -83,6 +87,9 @@ class JoinDocuments(BaseComponent):
         return document.score * weight
 
     def _calculate_rrf(self, rank):
-        """Calculates the reciprocal rank fusion. The constant K is set to 60 as suggested by the original paper."""
-        K = 60
+        """
+        Calculates the reciprocal rank fusion. The constant K is set to 61(60 was suggested by the original paper,
+        plus 1 as python lists are 0-based and the paper used 1-based ranking).
+        """
+        K = 61
         return 1 / (K + rank)
