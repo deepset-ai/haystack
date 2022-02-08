@@ -126,7 +126,7 @@ class BasePipeline:
         cls,
         pipeline_config_name: str,
         pipeline_name: str = "query",
-        workspace: Optional[str] = "default",
+        workspace: str = "default",
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         overwrite_with_env_variables: bool = False,
@@ -136,7 +136,11 @@ class BasePipeline:
         a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
         be passed.
 
+        In order to get a list of all available pipeline_config_names, call `list_pipelines_on_deepset_cloud()`.
+        Use the returned `name` as `pipeline_config_name`.
+
         :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+                                     To get a list of all available pipeline_config_names, call `list_pipelines_on_deepset_cloud()`.
         :param pipeline_name: specifies which pipeline to load from config.
                               Deepset Cloud typically provides a 'query' and a 'index' pipeline per config.
         :param workspace: workspace in Deepset Cloud
@@ -174,6 +178,43 @@ class BasePipeline:
             overwrite_with_env_variables=overwrite_with_env_variables,
         )
         return pipeline
+
+    @classmethod
+    def list_pipelines_on_deepset_cloud(
+        cls,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+    ) -> List[dict]:
+        """
+        Lists all pipeline configs available on Deepset Cloud.
+
+        :param workspace: workspace in Deepset Cloud
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+
+        Returns:
+            list of dictionaries: List[dict]
+            each dictionary: {
+                        "name": str -> `pipeline_config_name` to be used in `load_from_deepset_cloud()`,
+                        "..." -> additional pipeline meta information
+                        }
+            example:
+                    [{'name': 'my_super_nice_pipeline_config',
+                        'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
+                        'status': 'DEPLOYED',
+                        'created_at': '2022-02-01T09:57:03.803991+00:00',
+                        'deleted': False,
+                        'is_default': False,
+                        'indexing': {'status': 'IN_PROGRESS',
+                        'pending_file_count': 3,
+                        'total_file_count': 31}}]
+        """
+        client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        pipeline_config_infos = list(client.list_pipeline_configs())
+        return pipeline_config_infos
 
     @classmethod
     def _get_pipeline_definition(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None):

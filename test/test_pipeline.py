@@ -224,6 +224,36 @@ def test_load_from_deepset_cloud_indexing():
         indexing_pipeline.run(file_paths=[SAMPLES_PATH / "docs" / "doc_1.txt"])
 
 
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_list_pipelines_on_deepset_cloud():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            json={
+                "data": [
+                    {
+                        "name": "test_pipeline_config",
+                        "pipeline_id": "2184e0c1-c6ec-40a1-9b28-5d2768e5efa2",
+                        "status": "DEPLOYED",
+                        "created_at": "2022-02-01T09:57:03.803991+00:00",
+                        "deleted": False,
+                        "is_default": False,
+                        "indexing": {"status": "IN_PROGRESS", "pending_file_count": 4, "total_file_count": 33},
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+            status=200,
+        )
+
+    pipelines = Pipeline.list_pipelines_on_deepset_cloud(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    assert len(pipelines) == 1
+    assert pipelines[0]["name"] == "test_pipeline_config"
+
+
 # @pytest.mark.slow
 # @pytest.mark.elasticsearch
 # @pytest.mark.parametrize(
