@@ -195,9 +195,9 @@ class BasePipeline:
         Lists all pipeline configs available on Deepset Cloud.
 
         :param workspace: workspace in Deepset Cloud
-        :param api_key: Secret value of the API key. 
+        :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param api_endpoint: The URL of the Deepset Cloud API. 
+        :param api_endpoint: The URL of the Deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 
         Returns:
@@ -230,7 +230,7 @@ class BasePipeline:
         workspace: str = "default",
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
-        overwrite: bool = False
+        overwrite: bool = False,
     ):
         """
         Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
@@ -240,9 +240,9 @@ class BasePipeline:
         :param index_pipeline: the index pipeline to save.
         :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
         :param workspace: workspace in Deepset Cloud
-        :param api_key: Secret value of the API key. 
+        :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param api_endpoint: The URL of the Deepset Cloud API. 
+        :param api_endpoint: The URL of the Deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         """
         query_config = query_pipeline.get_config()
@@ -251,10 +251,7 @@ class BasePipeline:
         all_components = query_config["components"] + index_config["components"]
         components = {component["name"]: component for component in all_components}.values()
         config = {"components": components, "pipelines": pipelines, "version": "0.8"}
-        client = DeepsetCloud.get_pipeline_client(
-            api_key=api_key, 
-            api_endpoint=api_endpoint, 
-            workspace=workspace)
+        client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         pipeline_config_infos = client.list_pipeline_configs()
         pipeline_config_names = [info["name"] for info in pipeline_config_infos]
         if pipeline_config_name in pipeline_config_names:
@@ -262,7 +259,9 @@ class BasePipeline:
                 client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
                 logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
             else:
-                raise ValueError(f"Pipeline config {pipeline_config_name} already exists. Set `overwrite=True` to overwrite pipeline config.")
+                raise ValueError(
+                    f"Pipeline config {pipeline_config_name} already exists. Set `overwrite=True` to overwrite pipeline config."
+                )
         else:
             client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
@@ -919,7 +918,7 @@ class Pipeline(BasePipeline):
         :param return_defaults: whether to output parameters that have the default values.
         """
         config = self.get_config(return_defaults=return_defaults)
-        with open(path, 'w') as outfile:
+        with open(path, "w") as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
 
     def get_config(self, return_defaults: bool = False) -> dict:
@@ -972,7 +971,7 @@ class Pipeline(BasePipeline):
 
         config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
         return config
-    
+
     def _format_document_answer(self, document_or_answer: dict):
         return "\n \t".join([f"{name}: {value}" for name, value in document_or_answer.items()])
 
