@@ -479,7 +479,9 @@ class Pipeline(BasePipeline):
             if params is None:
                 params = {}
             params["add_isolated_node_eval"] = True
-        for i,label in enumerate(labels):
+
+        # if documents is None, set docs_per_label to None for each label
+        for docs_per_label,label in zip(documents or [None]*len(labels),labels):
             params_per_label = copy.deepcopy(params)
             if label.filters is not None:
                 if params_per_label is None:
@@ -487,11 +489,7 @@ class Pipeline(BasePipeline):
                 else:
                     # join both filters and overwrite filters in params with filters in labels
                     params_per_label["filters"] = {**params_per_label.get("filters", {}), **label.filters}
-            if documents is not None:
-                # documents are passed as input to the first node in the pipeline
-                predictions = self.run(query=label.query, labels=label, documents=documents[i], params=params_per_label, debug=True)
-            else:
-                predictions = self.run(query=label.query, labels=label, params=params_per_label, debug=True)
+            predictions = self.run(query=label.query, labels=label, documents=docs_per_label, params=params_per_label, debug=True)
 
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
