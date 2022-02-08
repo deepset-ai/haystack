@@ -117,35 +117,37 @@ jobs:
           git status
           git push
 
+  # type-check:
+  #   needs: code-and-docs-updates
+  #   runs-on: ubuntu-20.04
+  #   steps:
+
+  #     - uses: actions/checkout@v2
+  #     - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+  #     - uses: actions/setup-python@v2
+  #       with:
+  #         python-version: 3.8
+
+  #     - name: Cache Python
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: ${{ env.pythonLocation }}
+  #         key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+
+  #     - name: Test with mypy
+  #       run: mypy haystack
 
   type-check:
-    needs: code-and-docs-updates
     runs-on: ubuntu-20.04
     steps:
-
       - uses: actions/checkout@v2
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-      
       - uses: actions/setup-python@v2
         with:
-          # No cache can be used here, as mypy needs 3.8 for a proper parsing of Literal types.
-          # FIXME Check if we still support 3.7 and make this job use the cache when we move to 3.8 everywhere
           python-version: 3.8
-
       - name: Test with mypy
         run: |
-          pip install .[test]
-          pip install rest_api/
-          pip install ui/
-
-          # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
-          # Hotfixing by installing type packages explicitly. 
-          # Run mypy --install-types haystack locally to ensure the list is still up to date
-          # mypy --install-types --non-interactive .
-          pip install types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
-
-          mypy haystack/ rest_api/ ui/ --exclude=ui/build/ --exclude=ui/test/ --exclude=rest_api/build/ --exclude=rest_api/test/
-
+          pip install mypy==0.910 types-Markdown types-requests types-PyYAML pydantic
+          mypy haystack
 
   linter:
     needs: code-and-docs-updates
@@ -169,6 +171,7 @@ jobs:
           pylint -ry haystack/
           pylint -ry rest_api/
           pylint -ry ui/
+
 
   tests:
     needs: prepare-matrix
