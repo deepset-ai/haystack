@@ -173,6 +173,7 @@ jobs:
       - uses: actions/checkout@v2
       - id: set-matrix
         run: |
+          find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .
           echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
