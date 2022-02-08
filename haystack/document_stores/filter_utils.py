@@ -1,6 +1,9 @@
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional, Tuple
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from datetime import datetime
+
+import haystack.document_stores.weaviate as weaviate
 
 
 def nested_defaultdict():
@@ -122,6 +125,13 @@ class LogicalFilterClause(ABC):
         """
         pass
 
+    @abstractmethod
+    def convert_to_weaviate(self):
+        """
+        Converts the LogicalFilterClause instance to a Weaviate filter.
+        """
+        pass
+
     def _merge_es_range_queries(self, conditions: List[Dict]) -> List[Dict]:
         """
         Merges Elasticsearch range queries that perform on the same metadata field.
@@ -142,9 +152,18 @@ class LogicalFilterClause(ABC):
 
         return conditions
 
+    @abstractmethod
+    def invert(self) -> "LogicalFilterClause":
+        """
+        Inverts the LogicalOperation instance.
+        Necessary for Weaviate as Weaviate doesn't seem to support the 'Not' operator anymore.
+        (https://github.com/semi-technologies/weaviate/issues/1717)
+        """
+        pass
+
 
 class ComparisonOperation(ABC):
-    def __init__(self, field_name: str, comparison_value: Union[str, float, List]):
+    def __init__(self, field_name: str, comparison_value: Union[str, int, float, bool, List]):
         self.field_name = field_name
         self.comparison_value = comparison_value
 
@@ -187,6 +206,53 @@ class ComparisonOperation(ABC):
         """
         pass
 
+    @abstractmethod
+    def convert_to_weaviate(self):
+        """
+        Converts the ComparisonOperation instance to a Weaviate comparison operator.
+        """
+        pass
+
+    @abstractmethod
+    def invert(self) -> "ComparisonOperation":
+        """
+        Inverts the ComparisonOperation.
+        Necessary for Weaviate as Weaviate doesn't seem to support the 'Not' operator anymore.
+        (https://github.com/semi-technologies/weaviate/issues/1717)
+        """
+        pass
+
+    def _get_weaviate_datatype(self, value: Optional[Union[str, int, float, bool]] = None
+                               ) -> Tuple[str, Union[str, int, float, bool]]:
+        """
+        Determines the type of the comparison value and converts it to RFC3339 format if it is as date,
+        as Weaviate requires dates to be in RFC3339 format including the time and timezone.
+
+        """
+        if value is None:
+            assert not isinstance(self.comparison_value, list)  # Necessary for mypy
+            value = self.comparison_value
+
+        if isinstance(value, str):
+            # Check if comparison value is a date
+            try:
+                value = weaviate.WeaviateDocumentStore._convert_date_to_rfc3339(value)
+                data_type = "valueDate"
+            # Comparison value is a plain string
+            except ValueError:
+                data_type = "valueString"
+        elif isinstance(value, int):
+            data_type = "valueInt"
+        elif isinstance(value, float):
+            data_type = "valueNumber"
+        elif isinstance(value, bool):
+            data_type = "valueBoolean"
+        else:
+            raise ValueError(f"Unsupported data type of comparison value for {self.__class__.__name__}."
+                             f"Value needs to be of type str, int, float, or bool.")
+
+        return data_type, value
+
 
 class NotOperation(LogicalFilterClause):
     """
@@ -198,16 +264,32 @@ class NotOperation(LogicalFilterClause):
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"must_not": conditions}}
 
+    def convert_to_weaviate(self):
+        conditions = [condition.invert().convert_to_weaviate() for condition in self.conditions]
+        if len(conditions) > 1:
+            return {"operator": "And", "operands": conditions}
+        else:
+            return conditions[0]
+
+    def invert(self) -> "OrOperation":
+        return OrOperation([condition.invert() for condition in self.conditions])
+
 
 class AndOperation(LogicalFilterClause):
     """
     Handles conversion of logical 'AND' operations.
     """
+    def invert(self) -> "OrOperation":
+        return OrOperation([condition.invert() for condition in self.conditions])
 
     def convert_to_elasticsearch(self):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"must": conditions}}
+
+    def convert_to_weaviate(self):
+        conditions = [condition.convert_to_weaviate() for condition in self.conditions]
+        return {"operator": "And", "operands": conditions}
 
 
 class OrOperation(LogicalFilterClause):
@@ -220,6 +302,13 @@ class OrOperation(LogicalFilterClause):
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"should": conditions}}
 
+    def convert_to_weaviate(self):
+        conditions = [condition.convert_to_weaviate() for condition in self.conditions]
+        return {"operator": "Or", "operands": conditions}
+
+    def invert(self) -> AndOperation:
+        return AndOperation([condition.invert() for condition in self.conditions])
+
 
 class EqOperation(ComparisonOperation):
     """
@@ -228,6 +317,13 @@ class EqOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"term": {self.field_name: self.comparison_value}}
+
+    def convert_to_weaviate(self):
+        comp_value_type, comp_value = self._get_weaviate_datatype()
+        return {"path": [self.field_name], "operator": "Equal", comp_value_type: comp_value}
+
+    def invert(self) -> "NeOperation":
+        return NeOperation(self.field_name, self.comparison_value)
 
 
 class InOperation(ComparisonOperation):
@@ -238,6 +334,21 @@ class InOperation(ComparisonOperation):
     def convert_to_elasticsearch(self):
         return {"terms": {self.field_name: self.comparison_value}}
 
+    def convert_to_weaviate(self):
+        filter_dict = {"operator": "Or", "operands": []}
+        for value in self.comparison_value:
+            comp_value_type, comp_value = self._get_weaviate_datatype(value)
+            filter_dict["operands"].append({
+                "path": [self.field_name],
+                "operator": "Equal",
+                comp_value_type: comp_value
+            })
+
+        return filter_dict
+
+    def invert(self) -> "NinOperation":
+        return NinOperation(self.field_name, self.comparison_value)
+
 
 class NeOperation(ComparisonOperation):
     """
@@ -246,6 +357,13 @@ class NeOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"bool": {"must_not": {"term": {self.field_name: self.comparison_value}}}}
+
+    def convert_to_weaviate(self):
+        comp_value_type, comp_value = self._get_weaviate_datatype()
+        return {"path": [self.field_name], "operator": "NotEqual", comp_value_type: comp_value}
+
+    def invert(self) -> "EqOperation":
+        return EqOperation(self.field_name, self.comparison_value)
 
 
 class NinOperation(ComparisonOperation):
@@ -256,6 +374,21 @@ class NinOperation(ComparisonOperation):
     def convert_to_elasticsearch(self):
         return {"bool": {"must_not": {"terms": {self.field_name: self.comparison_value}}}}
 
+    def convert_to_weaviate(self):
+        filter_dict = {"operator": "And", "operands": []}
+        for value in self.comparison_value:
+            comp_value_type, comp_value = self._get_weaviate_datatype(value)
+            filter_dict["operands"].append({
+                "path": [self.field_name],
+                "operator": "NotEqual",
+                comp_value_type: comp_value
+            })
+
+        return filter_dict
+
+    def invert(self) -> "InOperation":
+        return InOperation(self.field_name, self.comparison_value)
+
 
 class GtOperation(ComparisonOperation):
     """
@@ -264,6 +397,13 @@ class GtOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"range": {self.field_name: {"gt": self.comparison_value}}}
+
+    def convert_to_weaviate(self):
+        comp_value_type, comp_value = self._get_weaviate_datatype()
+        return {"path": [self.field_name], "operator": "GreaterThan", comp_value_type: comp_value}
+
+    def invert(self) -> "LteOperation":
+        return LteOperation(self.field_name, self.comparison_value)
 
 
 class GteOperation(ComparisonOperation):
@@ -274,6 +414,13 @@ class GteOperation(ComparisonOperation):
     def convert_to_elasticsearch(self):
         return {"range": {self.field_name: {"gte": self.comparison_value}}}
 
+    def convert_to_weaviate(self):
+        comp_value_type, comp_value = self._get_weaviate_datatype()
+        return {"path": [self.field_name], "operator": "GreaterThanEqual", comp_value_type: comp_value}
+
+    def invert(self) -> "LtOperation":
+        return LtOperation(self.field_name, self.comparison_value)
+
 
 class LtOperation(ComparisonOperation):
     """
@@ -283,6 +430,13 @@ class LtOperation(ComparisonOperation):
     def convert_to_elasticsearch(self):
         return {"range": {self.field_name: {"lt": self.comparison_value}}}
 
+    def convert_to_weaviate(self):
+        comp_value_type, comp_value = self._get_weaviate_datatype()
+        return {"path": [self.field_name], "operator": "LessThan", comp_value_type: comp_value}
+
+    def invert(self) -> "GteOperation":
+        return GteOperation(self.field_name, self.comparison_value)
+
 
 class LteOperation(ComparisonOperation):
     """
@@ -291,3 +445,10 @@ class LteOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"range": {self.field_name: {"lte": self.comparison_value}}}
+
+    def convert_to_weaviate(self):
+        comp_value_type, comp_value = self._get_weaviate_datatype()
+        return {"path": [self.field_name], "operator": "LessThanEqual", comp_value_type: comp_value}
+
+    def invert(self) -> "GtOperation":
+        return GtOperation(self.field_name, self.comparison_value)
