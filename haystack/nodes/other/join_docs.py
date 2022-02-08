@@ -1,7 +1,5 @@
 from collections import defaultdict
-import itertools
 
-from copy import deepcopy
 from typing import Optional, List
 
 from haystack.nodes.base import BaseComponent
