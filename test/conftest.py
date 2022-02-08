@@ -136,6 +136,7 @@ def pytest_collection_modifyitems(config, items):
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
+        document_store_types_to_run = document_store_types_to_run.split(",")
         keywords = []
 
         if "milvus" in document_store_types_to_run and os.getenv("MILVUS2_ENABLED"):
