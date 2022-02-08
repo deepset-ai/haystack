@@ -2,6 +2,7 @@ import subprocess
 import time
 from subprocess import run
 from sys import platform
+import os
 import gc
 import uuid
 import logging
@@ -15,13 +16,18 @@ import pytest
 import requests
 
 try:
+    from milvus import Milvus
+    milvus2 = False
+except ImportError:
+    milvus2 = True
+
+try:
     from elasticsearch import Elasticsearch
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-    from milvus import Milvus
     import weaviate
 
     from haystack.document_stores.weaviate import WeaviateDocumentStore
-    from haystack.document_stores.milvus import MilvusDocumentStore
+    from haystack.document_stores import MilvusDocumentStore
     from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
     from haystack.document_stores.faiss import FAISSDocumentStore
     from haystack.document_stores.sql import SQLDocumentStore
@@ -30,6 +36,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed("test", "test", ie)
+
 
 from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
 
@@ -130,12 +137,19 @@ def pytest_collection_modifyitems(config, items):
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
         keywords = []
+
+        if "milvus" in document_store_types_to_run and os.getenv("MILVUS2_ENABLED"):
+            document_store_types_to_run.remove("milvus")
+            keywords.append("milvus2")
+            if not milvus2:
+                raise Exception("Milvus2 is enabled, but your pymilvus version only supports Milvus 1. Please update pymilvus.")
+
         for i in item.keywords:
             if "-" in i:
                 keywords.extend(i.split("-"))
             else:
                 keywords.append(i)
-        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate"]:
+        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus", "milvus2", "weaviate"]:
             if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
@@ -546,7 +560,7 @@ def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
             d["id"] = str(uuid.uuid4())
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "milvus2", "weaviate"])
 def document_store_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -577,7 +591,7 @@ def document_store(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
+@pytest.fixture(params=["memory", "faiss", "milvus", "milvus2", "elasticsearch"])
 def document_store_dot_product(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -590,7 +604,7 @@ def document_store_dot_product(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
+@pytest.fixture(params=["memory", "faiss", "milvus", "milvus2", "elasticsearch"])
 def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -617,7 +631,7 @@ def document_store_dot_product_small(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "milvus2", "weaviate"])
 def document_store_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
@@ -716,7 +730,7 @@ def get_document_store(
             isolation_level="AUTOCOMMIT",
         )
 
-    elif document_store_type == "milvus":
+    elif document_store_type == "milvus" or document_store_type == "milvus2":
         document_store = MilvusDocumentStore(
             embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
