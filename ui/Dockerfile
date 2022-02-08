@@ -11,7 +11,7 @@ COPY webapp.py /home/user/ui
 COPY eval_labels_example.csv /home/user/ui
 
 # install as a package
-RUN pip install /home/user/ui
+RUN pip install ui/
 
 EXPOSE 8501
 
