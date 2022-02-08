@@ -752,9 +752,9 @@ def get_document_store(
             embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
             return_embedding=True,
-            embedding_field="dot_product",
+            embedding_field=embedding_field,
             index=index,
-            similarity=similarity,
+            similarity="dot_product",
             isolation_level="AUTOCOMMIT",
         )
         collections = utility.list_collections()
