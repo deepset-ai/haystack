@@ -61,7 +61,7 @@ class JoinDocuments(BaseComponent):
                 elif self.join_mode == "reciprocal_rank_fusion":
                     document_map[doc.id][1] += self._calculate_rrf(rank)
                 else:
-                    raise Exception(f"Invalid join_mode: {self.join_mode}")
+                    raise ValueError(f"Invalid join_mode: {self.join_mode}")
 
         sorted_docs = sorted(document_map.values(), key=lambda d: d[1], reverse=True)
         docs = []
@@ -79,7 +79,10 @@ class JoinDocuments(BaseComponent):
         return output, "output_1"
 
     def _calculate_comb_sum(self, document, weight):
+        """Calculates a combination sum by multiplying each score by its weight."""
         return document.score * weight
 
     def _calculate_rrf(self, rank):
-        return 1 / (61 + rank)
+        """Calculates the reciprocal rank fusion. The constant K is set to 60 as suggested by the original paper."""
+        K = 60
+        return 1 / (K + rank)
