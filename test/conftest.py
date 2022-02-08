@@ -142,7 +142,7 @@ def pytest_collection_modifyitems(config, items):
 
         if "milvus" in document_store_types_to_run and os.getenv("MILVUS2_ENABLED"):
             document_store_types_to_run.remove("milvus")
-            keywords.append("milvus2")
+            document_store_types_to_run.append("milvus2")
             if not milvus2:
                 raise Exception("Milvus2 is enabled, but your pymilvus version only supports Milvus 1. Please update pymilvus.")
 
