@@ -50,20 +50,16 @@ class JoinDocuments(BaseComponent):
 
     def run(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
         results = [inp["documents"] for inp in inputs]
-        weights = self.weights if self.weights else [1 / len(inputs)] * len(inputs)
-        scores_map = defaultdict(int)
-        document_map = {doc.id: doc for doc in itertools.chain(*results)}
+        document_map = {doc.id: doc for result in results for doc in result}
 
-        for result, weight in zip(results, weights):
-            for rank, doc in enumerate(result):
-                if self.join_mode == "concatenate":
-                    scores_map[doc.id] = doc.score
-                elif self.join_mode == "merge":
-                    scores_map[doc.id] += self._calculate_comb_sum(doc, weight)
-                elif self.join_mode == "reciprocal_rank_fusion":
-                    scores_map[doc.id] += self._calculate_rrf(rank)
-                else:
-                    raise ValueError(f"Invalid join_mode: {self.join_mode}")
+        if self.join_mode == "concatenate":
+            scores_map = self._concatenate_results(results)
+        elif self.join_mode == "merge":
+            scores_map = self._calculate_comb_sum(results)
+        elif self.join_mode == "reciprocal_rank_fusion":
+            scores_map = self._calculate_rrf(results)
+        else:
+            raise ValueError(f"Invalid join_mode: {self.join_mode}")
 
         sorted_docs = sorted(scores_map.items(), key=lambda d: d[1], reverse=True)
 
@@ -82,14 +78,35 @@ class JoinDocuments(BaseComponent):
 
         return output, "output_1"
 
-    def _calculate_comb_sum(self, document, weight):
-        """Calculates a combination sum by multiplying each score by its weight."""
-        return document.score * weight
-
-    def _calculate_rrf(self, rank):
+    def _concatenate_results(self, results):
         """
-        Calculates the reciprocal rank fusion. The constant K is set to 61(60 was suggested by the original paper,
+        Concatenates multiple document result lists.
+        """
+        return {doc.id: doc.score for result in results for doc in result}
+
+    def _calculate_comb_sum(self, results):
+        """
+        Calculates a combination sum by multiplying each score by its weight.
+        """
+        scores_map = defaultdict(int)
+        weights = self.weights if self.weights else [1 / len(results)] * len(results)
+
+        for result, weight in zip(results, weights):
+            for doc in result:
+                scores_map[doc.id] += doc.score * weight
+
+        return scores_map
+
+    def _calculate_rrf(self, results):
+        """
+        Calculates the reciprocal rank fusion. The constant K is set to 61 (60 was suggested by the original paper,
         plus 1 as python lists are 0-based and the paper used 1-based ranking).
         """
         K = 61
-        return 1 / (K + rank)
+
+        scores_map = defaultdict(int)
+        for result in results:
+            for rank, doc in enumerate(result):
+                scores_map[doc.id] += 1 / (K + rank)
+
+        return scores_map
