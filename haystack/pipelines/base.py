@@ -472,7 +472,7 @@ class Pipeline(BasePipeline):
                     To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
                     The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
                     values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
-        :param pass_documents_as_input: If set to True, the documents specified in the labels are passed as input to the first node in the pipeline. Can be used to evaluate a pipeline that consists of a reader without a retriever.
+        :param documents: If set to True, the documents specified in the labels are passed as input to the first node in the pipeline. Can be used to evaluate a pipeline that consists of a reader without a retriever.
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
