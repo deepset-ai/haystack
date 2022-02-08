@@ -20,6 +20,7 @@ try:
     milvus2 = False
 except ImportError:
     milvus2 = True
+    from pymilvus import utility
 
 try:
     from elasticsearch import Elasticsearch
@@ -731,7 +732,7 @@ def get_document_store(
             isolation_level="AUTOCOMMIT",
         )
 
-    elif document_store_type == "milvus" or document_store_type == "milvus2":
+    elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
             embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
@@ -745,6 +746,21 @@ def get_document_store(
         for collection in collections:
             if collection.startswith(index):
                 document_store.milvus_server.drop_collection(collection)
+    
+    elif document_store_type == "milvus2":
+        document_store = MilvusDocumentStore(
+            embedding_dim=embedding_dim,
+            sql_url=get_sql_url(tmp_path),
+            return_embedding=True,
+            embedding_field="dot_product",
+            index=index,
+            similarity=similarity,
+            isolation_level="AUTOCOMMIT",
+        )
+        collections = utility.list_collections()
+        for collection in collections:
+            utility.drop_collection(collection)
+        
 
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
