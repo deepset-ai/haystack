@@ -145,7 +145,6 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
         passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
         use_gpu=False,
-
     )
     document_store_dot_product_with_docs.update_embeddings(dpr)
 
@@ -210,7 +209,13 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     results = p.run(query=query)
 
     # list of precalculated expected results
-    expected_scores = [0.03278688524590164, 0.03200204813108039, 0.03200204813108039, 0.031009615384615385, 0.031009615384615385]
+    expected_scores = [
+        0.03278688524590164,
+        0.03200204813108039,
+        0.03200204813108039,
+        0.031009615384615385,
+        0.031009615384615385,
+    ]
 
     assert all([doc.score == expected_scores[idx] for idx, doc in enumerate(results["documents"])])
 
