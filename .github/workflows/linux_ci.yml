@@ -126,14 +126,23 @@ jobs:
           # Mypy can't run properly on 3.7 as it misses support for Literal types.
           # FIXME once we drop support for 3.7, use the cache.
           python-version: 3.8
+      - name: Setup mypy
+        run: |
+          # FIXME installing the packages before running mypy raises
+          # a lot of errors which were never detected before!
+          # pip install .
+          # pip install rest_api/
+          # pip install ui/
+
+          # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
+          # Hotfixing by installing type packages explicitly. 
+          # Run mypy --install-types haystack locally to ensure the list is still up to date
+          # mypy --install-types --non-interactive .
+
+          pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
+
       - name: Test with mypy
         run: |
-          pip install mypy types-Markdown types-requests types-PyYAML pydantic
-
-          pip install .[test]
-          pip install rest_api/
-          pip install ui/
-
           echo "=== haystack/ ==="
           mypy haystack
 
@@ -142,16 +151,6 @@ jobs:
 
           echo "=== ui/ ==="
           mypy ui --exclude=ui/build/ --exclude=ui/test/
-
-          # pip install .[test]
-          # pip install rest_api/
-          # pip install ui/
-          # # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
-          # # Hotfixing by installing type packages explicitly. 
-          # # Run mypy --install-types haystack locally to ensure the list is still up to date
-          # # mypy --install-types --non-interactive .
-          # pip install types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
-          # mypy haystack/ rest_api/ ui/ --exclude=ui/build/ --exclude=ui/test/ --exclude=rest_api/build/ --exclude=rest_api/test/
 
 
   linter:
