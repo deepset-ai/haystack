@@ -213,8 +213,8 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     full_docs = defaultdict(int)
     for idx, docs in enumerate(zip(results_es, results_dpr)):
         es_result, dpr_result = docs
-        full_docs[es_result.id] += 1 / (61 + idx)
-        full_docs[dpr_result.id] += 1 / (61 + idx)
+        full_docs[es_result.id] += 1 / (60 + idx)
+        full_docs[dpr_result.id] += 1 / (60 + idx)
 
     assert all([doc.score == full_docs[doc.id] for doc in results["documents"]])
 
