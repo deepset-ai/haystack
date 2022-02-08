@@ -184,7 +184,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
+        test-path: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
       fail-fast: false
 
     steps:
