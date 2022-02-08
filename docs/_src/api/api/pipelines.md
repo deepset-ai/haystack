@@ -202,7 +202,7 @@ then be found in the dict returned by this method under the key "_debug"
 #### eval
 
 ```python
-def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
+def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False, pass_documents_as_input: bool = False) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -235,6 +235,7 @@ The isolated evaluation calculates the upper bound of each node's evaluation met
 To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
 The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
 values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+- `pass_documents_as_input`: If set to True, the documents specified in the labels are passed as input to the first node in the pipeline. Can be used to evaluate a pipeline that consists of a reader without a retriever.
 
 <a id="base.Pipeline.get_nodes_by_class"></a>
 
