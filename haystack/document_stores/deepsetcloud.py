@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Dict, Generator, Any
+from typing import List, Optional, Union, Dict, Generator
 
 import json
 import logging

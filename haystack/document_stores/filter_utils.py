@@ -87,7 +87,7 @@ class LogicalFilterClause(ABC):
         self.conditions = conditions
 
     @classmethod
-    def parse(cls, filter_term: Union[dict, List[dict]]) -> "LogicalFilterClause":
+    def parse(cls, filter_term: Union[dict, List[dict]]) -> Union["LogicalFilterClause", "ComparisonOperation"]:
         """
         Parses a filter dictionary/list and returns a LogicalFilterClause instance.
 
@@ -111,7 +111,6 @@ class LogicalFilterClause(ABC):
 
         if cls == LogicalFilterClause:
             if len(conditions) == 1:
-                assert isinstance(conditions[0], LogicalFilterClause)  # Necessary for mypy
                 return conditions[0]
             else:
                 return AndOperation(conditions)
