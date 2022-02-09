@@ -28,7 +28,7 @@ try:
 
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
-    raise ie
+
     _optional_component_not_installed("test", "test", ie)
 
 from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
