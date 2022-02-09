@@ -262,6 +262,8 @@ jobs:
         echo "=== pip freeze ==="
         pip freeze
 
+    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
+    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
     - name: Reinstall Haystack
       run: |
         pip install .[test]
@@ -269,4 +271,4 @@ jobs:
         pip install ui/
 
     - name: Run tests
-      run: pytest -s --random-order ${{ matrix.test-path }}
+      run: pytest -s ${{ matrix.test-path }}
