@@ -13,6 +13,7 @@ from conftest import DOCS_WITH_EMBEDDINGS
 
 
 # Keeping few (retriever,document_store) combination to reduce test time
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.slow
 @pytest.mark.generator
 @pytest.mark.parametrize(
@@ -59,7 +60,7 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
     assert "berlin" in answers[0].answer
 
 
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Gives memory allocation error on windows runner")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.slow
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
