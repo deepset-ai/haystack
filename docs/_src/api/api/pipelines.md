@@ -242,7 +242,7 @@ then be found in the dict returned by this method under the key "_debug"
 #### eval
 
 ```python
-def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
+def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -252,6 +252,7 @@ and putting together all data that is needed for evaluation, e.g. calculating me
 **Arguments**:
 
 - `labels`: The labels to evaluate on
+- `documents`: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
 - `params`: Dictionary of parameters to be dispatched to the nodes.
 If you want to pass a param to all nodes, you can just use: {"top_k":10}
 If you want to pass it to targeted nodes, you can do:
