@@ -269,4 +269,4 @@ jobs:
         pip install ui/
 
     - name: Run tests
-      run: pytest -s --random-order ${{ matrix.test-path }}
+      run: pytest -s ${{ matrix.test-path }}
