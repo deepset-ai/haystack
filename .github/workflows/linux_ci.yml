@@ -99,6 +99,8 @@ jobs:
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Install Dependencies (on cache miss only)
+        # The cache might miss during the execution of an action: there should always be a fallback step to
+        # rebuild it in case it goes missing
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
@@ -171,6 +173,8 @@ jobs:
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Install Dependencies (on cache miss only)
+        # The cache might miss during the execution of an action: there should always be a fallback step to
+        # rebuild it in case it goes missing
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
@@ -252,6 +256,8 @@ jobs:
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Install Dependencies (on cache miss only)
+      # The cache might miss during the execution of an action: there should always be a fallback step to
+      # rebuild it in case it goes missing
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         pip install --upgrade pip
