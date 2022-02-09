@@ -519,6 +519,21 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
 
 
+def test_reader_eval_in_pipeline(reader):
+    pipeline = Pipeline()
+    pipeline.add_node(component=reader, name="Reader", inputs=["Query"])
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS,
+        documents=[[label.document for label in multilabel.labels] for multilabel in EVAL_LABELS],
+        params={},
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+
+
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):

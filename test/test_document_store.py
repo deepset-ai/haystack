@@ -25,6 +25,7 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.nodes import EmbeddingRetriever
 from haystack.pipelines import DocumentSearchPipeline
+from haystack.utils import DeepsetCloudError
 
 
 DOCUMENTS = [
@@ -1254,7 +1255,7 @@ def test_DeepsetCloudDocumentStore_invalid_token():
         )
 
     with pytest.raises(
-        Exception,
+        DeepsetCloudError,
         match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 500 - Internal Server Error",
     ):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
@@ -1272,7 +1273,7 @@ def test_DeepsetCloudDocumentStore_invalid_api_endpoint():
         )
 
     with pytest.raises(
-        Exception,
+        DeepsetCloudError,
         match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 404 - Not Found",
     ):
         DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
@@ -1290,7 +1291,7 @@ def test_DeepsetCloudDocumentStore_invalid_index():
         )
 
     with pytest.raises(
-        Exception,
+        DeepsetCloudError,
         match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index failed: HTTP 404 - Not Found",
     ):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")

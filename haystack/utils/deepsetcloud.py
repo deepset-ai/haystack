@@ -1,6 +1,12 @@
 import logging
 import os
-from typing import Dict, List, Optional
+from typing import Dict, Generator, List, Optional
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 import requests
 
 DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1"  # TODO
@@ -17,6 +23,10 @@ class BearerAuth(requests.auth.AuthBase):
         return r
 
 
+class DeepsetCloudError(Exception):
+    """Raised when there is an error communicating with Deepset Cloud"""
+
+
 class DeepsetCloudClient:
     def __init__(self, api_key: str = None, api_endpoint: Optional[str] = None):
         """
@@ -29,26 +39,143 @@ class DeepsetCloudClient:
         """
         self.api_key = api_key or os.getenv("DEEPSET_CLOUD_API_KEY")
         if self.api_key is None:
-            raise ValueError(
+            raise DeepsetCloudError(
                 "No api_key specified. Please set api_key param or DEEPSET_CLOUD_API_KEY environment variable."
             )
 
         self.api_endpoint = api_endpoint or os.getenv("DEEPSET_CLOUD_API_ENDPOINT", DEFAULT_API_ENDPOINT)
 
-    def get(self, url: str, headers: dict = None, query_params: dict = None, raise_on_error: bool = True):
-        response = requests.get(url=url, auth=BearerAuth(self.api_key), headers=headers, params=query_params)
-        if raise_on_error and response.status_code > 299:
-            raise Exception(
-                f"GET {url} failed: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
-            )
-        return response
+    def get(
+        self,
+        url: str,
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+    ):
+        return self._execute_request(
+            method="GET",
+            url=url,
+            query_params=query_params,
+            headers=headers,
+            stream=stream,
+            raise_on_error=raise_on_error,
+        )
 
-    def post(self, url: str, json: dict = {}, stream: bool = False, headers: dict = None, raise_on_error: bool = True):
-        json = self._remove_null_values(json)
-        response = requests.post(url=url, json=json, stream=stream, headers=headers, auth=BearerAuth(self.api_key))
+    def get_with_auto_paging(
+        self,
+        url: str,
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+        auto_paging_page_size: Optional[int] = None,
+    ) -> Generator:
+        return self._execute_auto_paging_request(
+            method="GET",
+            url=url,
+            query_params=query_params,
+            headers=headers,
+            stream=stream,
+            raise_on_error=raise_on_error,
+            auto_paging_page_size=auto_paging_page_size,
+        )
+
+    def post(
+        self,
+        url: str,
+        json: dict = {},
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+    ):
+        return self._execute_request(
+            method="POST",
+            url=url,
+            query_params=query_params,
+            json=json,
+            stream=stream,
+            headers=headers,
+            raise_on_error=raise_on_error,
+        )
+
+    def post_with_auto_paging(
+        self,
+        url: str,
+        json: dict = {},
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+        auto_paging_page_size: Optional[int] = None,
+    ):
+        return self._execute_auto_paging_request(
+            method="POST",
+            url=url,
+            query_params=query_params,
+            json=json,
+            stream=stream,
+            headers=headers,
+            raise_on_error=raise_on_error,
+            auto_paging_page_size=auto_paging_page_size,
+        )
+
+    def _execute_auto_paging_request(
+        self,
+        method: Literal["GET", "POST", "PUT", "HEAD"],
+        url: str,
+        json: dict = None,
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+        auto_paging_page_size: Optional[int] = None,
+    ) -> Generator:
+        query_params = query_params.copy() if query_params is not None else {}
+        if auto_paging_page_size:
+            query_params["limit"] = auto_paging_page_size
+        page_number = 1
+        has_more = True
+        while has_more:
+            query_params["page_number"] = page_number
+            payload = self._execute_request(
+                method=method,
+                url=url,
+                json=json,
+                query_params=query_params,
+                headers=headers,
+                stream=stream,
+                raise_on_error=raise_on_error,
+            ).json()
+            yield from payload["data"]
+            has_more = payload["has_more"]
+            page_number += 1
+
+    def _execute_request(
+        self,
+        method: Literal["GET", "POST", "PUT", "HEAD"],
+        url: str,
+        json: dict = None,
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+    ):
+        if json is not None:
+            json = self._remove_null_values(json)
+        response = requests.request(
+            method=method,
+            url=url,
+            json=json,
+            params=query_params,
+            headers=headers,
+            auth=BearerAuth(self.api_key),
+            stream=stream,
+        )
         if raise_on_error and response.status_code > 299:
-            raise Exception(
-                f"POST {url} failed: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
+            raise DeepsetCloudError(
+                f"{method} {url} failed: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
             )
         return response
 
@@ -81,7 +208,7 @@ class IndexClient:
             response = self.client.get(url=index_url, headers=headers)
             return response.json()
         except Exception as ie:
-            raise Exception(f"Could not connect to Deepset Cloud:\n{ie}") from ie
+            raise DeepsetCloudError(f"Could not connect to Deepset Cloud:\n{ie}") from ie
 
     def query(
         self,
@@ -189,16 +316,25 @@ class PipelineClient:
     ) -> dict:
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         pipeline_config_url = f"{pipeline_url}/json"
-        response = self.client.get(url=pipeline_config_url, headers=headers)
-        return response.json()
+        response = self.client.get(url=pipeline_config_url, headers=headers).json()
+        return response
+
+    def list_pipeline_configs(self, workspace: Optional[str] = None, headers: dict = None) -> Generator:
+        workspace_url = self._build_workspace_url(workspace)
+        pipelines_url = f"{workspace_url}/pipelines"
+        generator = self.client.get_with_auto_paging(url=pipelines_url, headers=headers)
+        return generator
 
     def _build_pipeline_url(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None):
-        if workspace is None:
-            workspace = self.workspace
         if pipeline_config_name is None:
             pipeline_config_name = self.pipeline_config_name
-        workspace_url = self.client.build_workspace_url(workspace)
+        workspace_url = self._build_workspace_url(workspace)
         return f"{workspace_url}/pipelines/{pipeline_config_name}"
+
+    def _build_workspace_url(self, workspace: Optional[str] = None):
+        if workspace is None:
+            workspace = self.workspace
+        return self.client.build_workspace_url(workspace)
 
 
 class DeepsetCloud:
@@ -211,7 +347,7 @@ class DeepsetCloud:
         cls,
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
-        workspace: Optional[str] = None,
+        workspace: str = "default",
         index: Optional[str] = None,
     ) -> IndexClient:
         """
@@ -233,7 +369,7 @@ class DeepsetCloud:
         cls,
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
-        workspace: Optional[str] = None,
+        workspace: str = "default",
         pipeline_config_name: Optional[str] = None,
     ) -> PipelineClient:
         """
