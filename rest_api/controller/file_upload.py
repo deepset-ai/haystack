@@ -77,7 +77,8 @@ class Response(BaseModel):
 @router.post("/file-upload")
 def upload_file(
     files: List[UploadFile] = File(...),
-    meta: Optional[str] = None,  # JSON serialized string
+    # JSON serialized string
+    meta: Optional[str] = Form("null"),  # type: ignore
     fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),  # type: ignore
     preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),  # type: ignore
 ):
@@ -90,7 +91,7 @@ def upload_file(
 
     file_paths: list = []
     file_metas: list = []
-    meta_form = json.loads(meta or "{}")
+    meta_form = json.loads(meta) or {}
 
     for file in files:
         try:
