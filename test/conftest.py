@@ -345,7 +345,7 @@ def test_docs_xs():
             "meta_field": "test2",
             "name": "filename2",
             "date_field": "2019-10-01",
-            "numeric_field": 5.,
+            "numeric_field": 5.0,
         },
         # Document object for a doc
         Document(
@@ -354,11 +354,11 @@ def test_docs_xs():
         ),
         Document(
             content="My name is Camila and I live in Madrid",
-            meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.},
+            meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
         ),
         Document(
             content="My name is Matteo and I live in Rome",
-            meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.},
+            meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
         ),
     ]
 

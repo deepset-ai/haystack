@@ -221,8 +221,9 @@ class ComparisonOperation(ABC):
         """
         pass
 
-    def _get_weaviate_datatype(self, value: Optional[Union[str, int, float, bool]] = None
-                               ) -> Tuple[str, Union[str, int, float, bool]]:
+    def _get_weaviate_datatype(
+        self, value: Optional[Union[str, int, float, bool]] = None
+    ) -> Tuple[str, Union[str, int, float, bool]]:
         """
         Determines the type of the comparison value and converts it to RFC3339 format if it is as date,
         as Weaviate requires dates to be in RFC3339 format including the time and timezone.
@@ -247,8 +248,10 @@ class ComparisonOperation(ABC):
         elif isinstance(value, bool):
             data_type = "valueBoolean"
         else:
-            raise ValueError(f"Unsupported data type of comparison value for {self.__class__.__name__}."
-                             f"Value needs to be of type str, int, float, or bool.")
+            raise ValueError(
+                f"Unsupported data type of comparison value for {self.__class__.__name__}."
+                f"Value needs to be of type str, int, float, or bool."
+            )
 
         return data_type, value
 
@@ -278,6 +281,7 @@ class AndOperation(LogicalFilterClause):
     """
     Handles conversion of logical 'AND' operations.
     """
+
     def invert(self) -> "OrOperation":
         return OrOperation([condition.invert() for condition in self.conditions])
 
@@ -341,11 +345,9 @@ class InOperation(ComparisonOperation):
         for value in self.comparison_value:
             comp_value_type, comp_value = self._get_weaviate_datatype(value)
             assert isinstance(filter_dict["operands"], list)  # Necessary for mypy
-            filter_dict["operands"].append({
-                "path": [self.field_name],
-                "operator": "Equal",
-                comp_value_type: comp_value
-            })
+            filter_dict["operands"].append(
+                {"path": [self.field_name], "operator": "Equal", comp_value_type: comp_value}
+            )
 
         return filter_dict
 
@@ -385,11 +387,9 @@ class NinOperation(ComparisonOperation):
         for value in self.comparison_value:
             comp_value_type, comp_value = self._get_weaviate_datatype(value)
             assert isinstance(filter_dict["operands"], list)  # Necessary for mypy
-            filter_dict["operands"].append({
-                "path": [self.field_name],
-                "operator": "NotEqual",
-                comp_value_type: comp_value
-            })
+            filter_dict["operands"].append(
+                {"path": [self.field_name], "operator": "NotEqual", comp_value_type: comp_value}
+            )
 
         return filter_dict
 

@@ -676,7 +676,8 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         return vectors
 
-    def get_embedding_count(self,
+    def get_embedding_count(
+        self,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in MilvusDocStore
     ) -> int:
