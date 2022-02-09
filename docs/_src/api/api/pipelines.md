@@ -145,6 +145,30 @@ Returns:
                 'pending_file_count': 3,
                 'total_file_count': 31}}]
 
+<a id="base.BasePipeline.save_to_deepset_could"></a>
+
+#### save\_to\_deepset\_could
+
+```python
+@classmethod
+def save_to_deepset_could(cls, query_pipeline: BasePipeline, index_pipeline: BasePipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
+```
+
+Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
+
+a Pipeline. A single config must declare a query pipeline and a index pipeline.
+
+**Arguments**:
+
+- `query_pipeline`: the query pipeline to save.
+- `index_pipeline`: the index pipeline to save.
+- `pipeline_config_name`: name of the config file inside the Deepset Cloud workspace.
+- `workspace`: workspace in Deepset Cloud
+- `api_key`: Secret value of the API key.
+If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+- `api_endpoint`: The URL of the Deepset Cloud API.
+If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+
 <a id="base.Pipeline"></a>
 
 ## Pipeline
@@ -390,6 +414,20 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 **Arguments**:
 
 - `path`: path of the output YAML file.
+- `return_defaults`: whether to output parameters that have the default values.
+
+<a id="base.Pipeline.get_config"></a>
+
+#### get\_config
+
+```python
+def get_config(return_defaults: bool = False) -> dict
+```
+
+Returns a configuration for the Pipeline that can be used with `Pipeline.load()`.
+
+**Arguments**:
+
 - `return_defaults`: whether to output parameters that have the default values.
 
 <a id="base.Pipeline.print_eval_report"></a>
