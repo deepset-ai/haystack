@@ -480,6 +480,7 @@ class Pipeline(BasePipeline):
     def eval(
         self,
         labels: List[MultiLabel],
+        documents: Optional[List[List[Document]]] = None,
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
         add_isolated_node_eval: bool = False,
@@ -489,6 +490,7 @@ class Pipeline(BasePipeline):
         and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
         :param labels: The labels to evaluate on
+        :param documents: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
         :param params: Dictionary of parameters to be dispatched to the nodes.
                     If you want to pass a param to all nodes, you can just use: {"top_k":10}
                     If you want to pass it to targeted nodes, you can do:
@@ -518,7 +520,9 @@ class Pipeline(BasePipeline):
             if params is None:
                 params = {}
             params["add_isolated_node_eval"] = True
-        for label in labels:
+
+        # if documents is None, set docs_per_label to None for each label
+        for docs_per_label, label in zip(documents or [None] * len(labels), labels):
             params_per_label = copy.deepcopy(params)
             if label.filters is not None:
                 if params_per_label is None:
@@ -526,7 +530,9 @@ class Pipeline(BasePipeline):
                 else:
                     # join both filters and overwrite filters in params with filters in labels
                     params_per_label["filters"] = {**params_per_label.get("filters", {}), **label.filters}
-            predictions = self.run(query=label.query, labels=label, params=params_per_label, debug=True)
+            predictions = self.run(
+                query=label.query, labels=label, documents=docs_per_label, params=params_per_label, debug=True
+            )
 
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
