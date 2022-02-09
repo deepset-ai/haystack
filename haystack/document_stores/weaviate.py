@@ -9,10 +9,11 @@ import json
 import numpy as np
 from tqdm import tqdm
 
-from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.document_stores.utils import convert_date_to_rfc3339
 
 try:
     from weaviate import client, AuthClientPassword
@@ -394,23 +395,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         return data_type
 
-    @staticmethod
-    def _convert_date_to_rfc3339(date: str) -> str:
-        """
-        Converts a date to RFC3339 format, as Weaviate requires dates to be in RFC3339 format including the time and
-        timezone.
-
-        If the provided date string does not contain a time and/or timezone, we use 00:00 as default time
-        and UTC as default time zone.
-        """
-        parsed_datetime = datetime.fromisoformat(date)
-        if parsed_datetime.utcoffset() is None:
-            converted_date = parsed_datetime.isoformat() + "Z"
-        else:
-            converted_date = parsed_datetime.isoformat()
-
-        return converted_date
-
     def _check_document(self, cur_props: List[str], doc: dict) -> List[str]:
         """
         Find the properties in the document that don't exist in the existing schema.
@@ -522,7 +506,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     # Weaviate requires dates to be in RFC3339 format
                     date_fields = self._get_date_properties(index)
                     for date_field in date_fields:
-                        _doc[date_field] = self._convert_date_to_rfc3339(_doc[date_field])
+                        _doc[date_field] = convert_date_to_rfc3339(_doc[date_field])
 
                     docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
 
@@ -562,7 +546,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         date_fields = self._get_date_properties(index)
         for date_field in date_fields:
             if isinstance(meta[date_field], str):
-                meta[date_field] = self._convert_date_to_rfc3339(str(meta[date_field]))
+                meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
