@@ -1,4 +1,5 @@
 import pytest
+import sys
 from pathlib import Path
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
@@ -24,6 +25,7 @@ from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabe
 from conftest import SAMPLES_PATH
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_generativeqa_calculate_metrics(
@@ -49,6 +51,7 @@ def test_generativeqa_calculate_metrics(
     assert metrics["Generator"]["f1"] == 1.0 / 3
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_summarizer_calculate_metrics(
