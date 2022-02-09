@@ -83,7 +83,7 @@ class LogicalFilterClause(ABC):
 
     """
 
-    def __init__(self, conditions: List["LogicalFilterClause"]):
+    def __init__(self, conditions: List[Union["LogicalFilterClause", "ComparisonOperation"]]):
         self.conditions = conditions
 
     @classmethod
@@ -93,7 +93,7 @@ class LogicalFilterClause(ABC):
 
         :param filter_term: Dictionary or list that contains the filter definition.
         """
-        conditions = []
+        conditions: List[Union[LogicalFilterClause, ComparisonOperation]] = []
 
         if isinstance(filter_term, dict):
             filter_term = [filter_term]
@@ -111,6 +111,7 @@ class LogicalFilterClause(ABC):
 
         if cls == LogicalFilterClause:
             if len(conditions) == 1:
+                assert isinstance(conditions[0], LogicalFilterClause)  # Necessary for mypy
                 return conditions[0]
             else:
                 return AndOperation(conditions)
@@ -336,7 +337,7 @@ class InOperation(ComparisonOperation):
         return {"terms": {self.field_name: self.comparison_value}}
 
     def convert_to_weaviate(self) -> Dict[str, Union[str, List[Dict]]]:
-        filter_dict = {"operator": "Or", "operands": []}
+        filter_dict: Dict[str, Union[str, List[Dict]]] = {"operator": "Or", "operands": []}
         assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
         for value in self.comparison_value:
             comp_value_type, comp_value = self._get_weaviate_datatype(value)
@@ -380,7 +381,7 @@ class NinOperation(ComparisonOperation):
         return {"bool": {"must_not": {"terms": {self.field_name: self.comparison_value}}}}
 
     def convert_to_weaviate(self) -> Dict[str, Union[str, List[Dict]]]:
-        filter_dict = {"operator": "And", "operands": []}
+        filter_dict: Dict[str, Union[str, List[Dict]]] = {"operator": "And", "operands": []}
         assert isinstance(self.comparison_value, list), "'$nin' operation requires comparison value to be a list."
         for value in self.comparison_value:
             comp_value_type, comp_value = self._get_weaviate_datatype(value)
