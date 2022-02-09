@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 
-VERSION = None
+VERSION = "0.0.0"
 try:
     VERSION = open(Path(__file__).parent.parent / "VERSION.txt", "r").read()
 except Exception as e:
