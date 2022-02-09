@@ -91,3 +91,18 @@ def test_clean_header_footer():
 
     assert "This is a header." not in documents[0]["content"]
     assert "footer" not in documents[0]["content"]
+
+
+def test_remove_substrings():
+    converter = PDFToTextConverter()
+    document = converter.convert(file_path=Path(SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf"))
+
+    # check that the file contains the substrings we are about to remove
+    assert any("This is a header." in d["content"] for d in document)
+    assert any("wiki" in d["content"] for d in document)
+
+    preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki"])
+    documents = preprocessor.process(document)
+
+    assert all("This is a header." not in d["content"] for d in documents)
+    assert all("wiki" not in d["content"] for d in documents)

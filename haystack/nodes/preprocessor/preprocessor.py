@@ -160,7 +160,7 @@ class PreProcessor(BasePreProcessor):
             clean_header_footer = self.clean_header_footer
         if clean_empty_lines is None:
             clean_empty_lines = self.clean_empty_lines
-        if remove_substrings is None:
+        if not remove_substrings:
             remove_substrings = self.remove_substrings
         if split_by is None:
             split_by = self.split_by
