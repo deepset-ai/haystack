@@ -120,8 +120,7 @@ class BaseDocumentStore(BaseComponent):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
-
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -170,21 +169,20 @@ class BaseDocumentStore(BaseComponent):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
-
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
+                        __Example__:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
                                 }
                             }
-                            ```
+                        }
+                        ```
 
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
@@ -252,8 +250,7 @@ class BaseDocumentStore(BaseComponent):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
-
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -651,8 +648,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
-
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -664,6 +660,43 @@ class KeywordDocumentStore(BaseDocumentStore):
                                         "publisher": {"$eq": "nytimes"}
                                     }
                                 }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
                             ```
 

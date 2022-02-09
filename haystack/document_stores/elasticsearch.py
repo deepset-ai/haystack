@@ -499,7 +499,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -777,7 +777,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -828,7 +828,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -924,7 +924,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -949,10 +949,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
 
-                        To use the same logical operator multiple times on the same level, logical operators take
-                        optionally a list of dictionaries as value.
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$or": [
@@ -1127,7 +1127,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1152,10 +1152,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
 
-                        To use the same logical operator multiple times on the same level, logical operators take
-                        optionally a list of dictionaries as value.
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$or": [
@@ -1374,7 +1374,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1467,7 +1467,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1517,7 +1517,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1532,9 +1532,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
 
-                        If filters are provided along with a list of IDs, this method deletes the
-                        intersection of the two query results (documents that match the filters and
-                        have their ID in the list).
+                            If filters are provided along with a list of IDs, this method deletes the
+                            intersection of the two query results (documents that match the filters and
+                            have their ID in the list).
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
@@ -1580,7 +1580,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1718,7 +1718,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1743,10 +1743,10 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             }
                             ```
 
-                        To use the same logical operator multiple times on the same level, logical operators take
-                        optionally a list of dictionaries as value.
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$or": [

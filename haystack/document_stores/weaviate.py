@@ -620,8 +620,32 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -681,8 +705,32 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -712,7 +760,69 @@ class WeaviateDocumentStore(BaseDocumentStore):
         that are most relevant to the query as defined by Weaviate semantic search.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return per query.
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
                             https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
@@ -766,8 +876,69 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return
         :param index: index name for storing the docs and metadata
         :param return_embedding: To return document embedding
@@ -835,8 +1006,32 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param index: Index name to update
         :param update_existing_embeddings: Weaviate mandates an embedding while creating the document itself.
         This option must be always true for weaviate and it will update the embeddings for all the documents.
-        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
@@ -886,7 +1081,32 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
         :param index: Index name to delete the document from.
-        :param filters: Optional filters to narrow down the documents to be deleted.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :return: None
         """
         if headers:
@@ -913,11 +1133,35 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param index: Index name to delete the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
-        :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
-            If filters are provided along with a list of IDs, this method deletes the
-            intersection of the two query results (documents that match the filters and
-            have their ID in the list).
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
+                            If filters are provided along with a list of IDs, this method deletes the
+                            intersection of the two query results (documents that match the filters and
+                            have their ID in the list).
         :return: None
         """
         if headers:
