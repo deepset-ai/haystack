@@ -128,3 +128,4 @@ markers = [
     "weaviate: marks tests that require weaviate container",
     "embedding_dim: marks usage of document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
 ]
+log_cli = true
