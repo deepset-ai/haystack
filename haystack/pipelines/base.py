@@ -480,7 +480,7 @@ class Pipeline(BasePipeline):
     def eval(
         self,
         labels: List[MultiLabel],
-        documents: Optional[List[List[Document]]] = None,
+        documents: Optional[List[Optional[List[Document]]]] = None,
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
         add_isolated_node_eval: bool = False,
