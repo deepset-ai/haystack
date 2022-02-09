@@ -351,8 +351,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         return cur_properties
 
-    def _update_schema(self, new_prop: str, property_value: Union[List, str, int, float, bool],
-                       index: Optional[str] = None):
+    def _update_schema(
+        self, new_prop: str, property_value: Union[List, str, int, float, bool], index: Optional[str] = None
+    ):
         """
         Updates the schema with a new property.
         """
@@ -565,8 +566,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
-    def get_embedding_count(self, filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
-                            index: Optional[str] = None) -> int:
+    def get_embedding_count(
+        self, filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None, index: Optional[str] = None
+    ) -> int:
         """
         Return the number of embeddings in the document store, which is the same as the number of documents since
         every document has a default embedding.
