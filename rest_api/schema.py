@@ -35,7 +35,7 @@ class AnswerSerialized(Answer):
 @pydantic_dataclass
 class DocumentSerialized(Document):
     content: str
-    embedding: Optional[List[float]]
+    embedding: Optional[List[float]]  # type: ignore
 
 
 @pydantic_dataclass

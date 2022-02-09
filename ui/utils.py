@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 import os
 import logging
@@ -112,7 +112,7 @@ def upload_doc(file):
     return response
 
 
-def get_backlink(result) -> Tuple[str, str]:
+def get_backlink(result) -> Tuple[Optional[str], Optional[str]]:
     if result.get("document", None):
         doc = result["document"]
         if isinstance(doc, dict):

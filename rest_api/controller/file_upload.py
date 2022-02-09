@@ -1,10 +1,11 @@
+from typing import Optional, List, Union
+
 import json
 import logging
 import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Optional, List
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
@@ -48,7 +49,8 @@ except KeyError:
     logger.warning("Indexing Pipeline not found in the YAML configuration. File Upload API will not be available.")
 
 
-os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)  # create directory for uploading files
+# create directory for uploading files
+os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)
 
 
 @as_form
@@ -75,9 +77,10 @@ class Response(BaseModel):
 @router.post("/file-upload")
 def upload_file(
     files: List[UploadFile] = File(...),
-    meta: Optional[str] = Form("null"),  # JSON serialized string
-    fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),
-    preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),
+    # JSON serialized string
+    meta: Optional[str] = Form("null"),  # type: ignore
+    fileconverter_params: FileConverterParams = Depends(FileConverterParams.as_form),  # type: ignore
+    preprocessor_params: PreprocessorParams = Depends(PreprocessorParams.as_form),  # type: ignore
 ):
     """
     You can use this endpoint to upload a file for indexing
@@ -88,7 +91,7 @@ def upload_file(
 
     file_paths: list = []
     file_metas: list = []
-    meta = json.loads(meta) or {}
+    meta_form = json.loads(meta)  # type: ignore
 
     for file in files:
         try:
@@ -97,8 +100,8 @@ def upload_file(
                 shutil.copyfileobj(file.file, buffer)
 
             file_paths.append(file_path)
-            meta["name"] = file.filename
-            file_metas.append(meta)
+            meta_form["name"] = file.filename
+            file_metas.append(meta_form)
         finally:
             file.file.close()
 
