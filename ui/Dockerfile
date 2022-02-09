@@ -9,13 +9,13 @@ RUN mkdir ui/
 COPY setup.py /home/user/ui
 COPY utils.py /home/user/ui
 COPY webapp.py /home/user/ui
-COPY eval_labels_example.csv /home/user/ui
+COPY eval_labels_example.csv /home/user/
 
 # install as a package
 RUN pip install --upgrade pip
-RUN cd ui/ && pip install .
+RUN pip install ui/
 
 EXPOSE 8501
 
 # cmd for running the API
-CMD ["streamlit", "run", "ui/webapp.py"]
+CMD ["python", "-m", "streamlit", "run", "ui/webapp.py"]
