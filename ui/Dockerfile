@@ -18,4 +18,4 @@ RUN cd ui/ && pip install .
 EXPOSE 8501
 
 # cmd for running the API
-CMD ["streamlit", "run", "webapp.py"]
+CMD ["streamlit", "run", "ui/webapp.py"]
