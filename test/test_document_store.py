@@ -266,8 +266,9 @@ def test_extended_filter(document_store_with_docs):
     }
     documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
     # Order of returned documents might differ
-    assert len(documents) == len(documents_simplified_filter) and \
-           all(doc in documents_simplified_filter for doc in documents)
+    assert len(documents) == len(documents_simplified_filter) and all(
+        doc in documents_simplified_filter for doc in documents
+    )
 
     filters = {
         "$and": {
@@ -282,8 +283,9 @@ def test_extended_filter(document_store_with_docs):
         "$or": {"name": ["filename5", "filename3"], "numeric_field": {"$lte": 5.0}},
     }
     documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
-    assert len(documents) == len(documents_simplified_filter) and \
-           all(doc in documents_simplified_filter for doc in documents)
+    assert len(documents) == len(documents_simplified_filter) and all(
+        doc in documents_simplified_filter for doc in documents
+    )
 
     filters = {
         "$and": {
@@ -304,8 +306,9 @@ def test_extended_filter(document_store_with_docs):
         },
     }
     documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
-    assert len(documents) == len(documents_simplified_filter) and \
-           all(doc in documents_simplified_filter for doc in documents)
+    assert len(documents) == len(documents_simplified_filter) and all(
+        doc in documents_simplified_filter for doc in documents
+    )
 
     # Test same logical operator twice on same level
     filters = {
