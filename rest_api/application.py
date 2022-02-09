@@ -42,11 +42,11 @@ def get_openapi_specs() -> dict:
     """
     app = get_application()
     return get_openapi(
-        title=app.title if app.title else None,
-        version=app.version if app.version else None,
-        openapi_version=app.openapi_version if app.openapi_version else None,
-        description=app.description if app.description else None,
-        routes=app.routes if app.routes else None,
+        title=app.title,
+        version=app.version,
+        openapi_version=app.openapi_version,
+        description=app.description,
+        routes=app.routes,
     )
 
 
