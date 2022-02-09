@@ -1,3 +1,5 @@
+from typing import Dict, Union, Optional
+
 import json
 import logging
 
@@ -40,8 +42,8 @@ def get_feedback():
 @router.post("/eval-feedback")
 def get_feedback_metrics(filters: FilterRequest = None):
     """
-    This endpoint returns basic accuracy metrics based on user feedback, 
-    e.g., the ratio of correct answers or correctly identified documents. 
+    This endpoint returns basic accuracy metrics based on user feedback,
+    e.g., the ratio of correct answers or correctly identified documents.
     You can filter the output by document or label.
 
     Example:
@@ -51,13 +53,14 @@ def get_feedback_metrics(filters: FilterRequest = None):
     """
 
     if filters:
-        filters = filters.filters
-        filters["origin"] = ["user-feedback"]
+        filters_content = filters.filters or {}
+        filters_content["origin"] = ["user-feedback"]
     else:
-        filters = {"origin": ["user-feedback"]}
+        filters_content = {"origin": ["user-feedback"]}
 
-    labels = DOCUMENT_STORE.get_all_labels(filters=filters)
+    labels = DOCUMENT_STORE.get_all_labels(filters=filters_content)
 
+    res: Dict[str, Optional[Union[float, int]]]
     if len(labels) > 0:
         answer_feedback = [1 if l.is_correct_answer else 0 for l in labels]
         doc_feedback = [1 if l.is_correct_document else 0 for l in labels]

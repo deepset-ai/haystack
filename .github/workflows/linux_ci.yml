@@ -15,6 +15,42 @@ on:
 
 jobs:
 
+  type-check:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          # Mypy can't run properly on 3.7 as it misses support for Literal types.
+          # FIXME once we drop support for 3.7, use the cache.
+          python-version: 3.8
+      - name: Setup mypy
+        run: |
+          # FIXME installing the packages before running mypy raises
+          # a lot of errors which were never detected before!
+          # pip install .
+          # pip install rest_api/
+          # pip install ui/
+
+          # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
+          # Hotfixing by installing type packages explicitly. 
+          # Run mypy --install-types haystack locally to ensure the list is still up to date
+          # mypy --install-types --non-interactive .
+
+          pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
+
+      - name: Test with mypy
+        run: |
+          echo "=== haystack/ ==="
+          mypy haystack
+
+          echo "=== rest_api/ ==="
+          mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
+
+          echo "=== ui/ ==="
+          mypy ui --exclude=ui/build/ --exclude=ui/test/
+
+
   build-cache:
     runs-on: ubuntu-20.04
     steps:
@@ -31,7 +67,7 @@ jobs:
         with:
           path: ${{ env.pythonLocation }}
           # The cache will be rebuild every day and at every change of the dependency files
-          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
@@ -41,17 +77,9 @@ jobs:
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          echo "=== pip freeze ==="
+          pip freeze
 
-  prepare-build:
-    needs: build-cache
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - id: set-matrix
-        run: |
-          echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
 
   code-and-docs-updates:
     needs: build-cache
@@ -75,11 +103,24 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install Dependencies (on cache miss only)
+        # The cache might miss during the execution of an action: there should always be a fallback step to
+        # rebuild it in case it goes missing
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          echo "=== pip freeze ==="
+          pip freeze
           
-      # Apply black on the entire codebase
+      # Apply Black on the entire codebase
       - name: Blacken
-        run: python3 -m black .
+        run: black .
 
       # Convert the Jupyter notebooks into markdown tutorials
       - name: Generate Tutorials
@@ -120,7 +161,8 @@ jobs:
           git status
           git push
 
-  type-check:
+
+  linter:
     needs: code-and-docs-updates
     runs-on: ubuntu-20.04
     steps:
@@ -129,23 +171,53 @@ jobs:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.7
 
       - name: Cache Python
         uses: actions/cache@v2
         with:
           path: ${{ env.pythonLocation }}
-          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
-      - name: Test with mypy
-        run: mypy haystack
+      - name: Install Dependencies (on cache miss only)
+        # The cache might miss during the execution of an action: there should always be a fallback step to
+        # rebuild it in case it goes missing
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          echo "=== pip freeze ==="
+          pip freeze
 
-  build:
-    needs: prepare-build
+      - name: Linter
+        run: |
+          pylint -ry haystack/
+          pylint -ry rest_api/
+          pylint -ry ui/
+
+
+  prepare-matrix:
+    needs: build-cache
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - id: set-matrix
+        run: |
+          find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .
+          echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+
+  tests:
+    needs: prepare-matrix
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}
+        test-path: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
       fail-fast: false
 
     steps:
@@ -161,7 +233,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -190,11 +262,26 @@ jobs:
     - name: Install tesseract
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
+    - name: Install Dependencies (on cache miss only)
+      # The cache might miss during the execution of an action: there should always be a fallback step to
+      # rebuild it in case it goes missing
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        pip install --upgrade pip
+        pip install .[test]
+        pip install rest_api/
+        pip install ui/
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+        echo "=== pip freeze ==="
+        pip freeze
+
+    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
+    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
     - name: Reinstall Haystack
       run: |
         pip install .[test]
         pip install rest_api/
-        pip install eager ui/
+        pip install ui/
 
     - name: Run tests
       run: pytest -s ${{ matrix.test-path }}
