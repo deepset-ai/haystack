@@ -1,12 +1,11 @@
-from typing import Union, List, Dict, Optional, Tuple
+from typing import Union, List, Dict, Optional, Tuple, TypedDict
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from datetime import datetime
 
 import haystack.document_stores.weaviate as weaviate
 
 
-def nested_defaultdict():
+def nested_defaultdict() -> defaultdict:
     """
     Data structure that recursively adds a dictionary as value if a key does not exist. Advantage: In nested dictionary
     structures, we don't need to check if a key already exists (which can become hard to maintain in nested dictionaries
@@ -88,7 +87,7 @@ class LogicalFilterClause(ABC):
         self.conditions = conditions
 
     @classmethod
-    def parse(cls, filter_term: Union[dict, List[dict]]):
+    def parse(cls, filter_term: Union[dict, List[dict]]) -> "LogicalFilterClause":
         """
         Parses a filter dictionary/list and returns a LogicalFilterClause instance.
 
@@ -132,7 +131,7 @@ class LogicalFilterClause(ABC):
         """
         pass
 
-    def _merge_es_range_queries(self, conditions: List[Dict]) -> List[Dict]:
+    def _merge_es_range_queries(self, conditions: List[Dict]) -> List[Dict[str, Dict]]:
         """
         Merges Elasticsearch range queries that perform on the same metadata field.
         """
@@ -168,7 +167,7 @@ class ComparisonOperation(ABC):
         self.comparison_value = comparison_value
 
     @classmethod
-    def parse(cls, field_name, comparison_clause: Union[Dict, List, str, float]):
+    def parse(cls, field_name, comparison_clause: Union[Dict, List, str, float]) -> List["ComparisonOperation"]:
         comparison_operations: List[ComparisonOperation] = []
 
         if isinstance(comparison_clause, dict):
@@ -259,12 +258,12 @@ class NotOperation(LogicalFilterClause):
     Handles conversion of logical 'NOT' operations.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict]:
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"must_not": conditions}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[str, int, float, bool, List[Dict]]]:
         conditions = [condition.invert().convert_to_weaviate() for condition in self.conditions]
         if len(conditions) > 1:
             return {"operator": "And", "operands": conditions}
@@ -282,12 +281,12 @@ class AndOperation(LogicalFilterClause):
     def invert(self) -> "OrOperation":
         return OrOperation([condition.invert() for condition in self.conditions])
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict]:
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"must": conditions}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[str, List[Dict]]]:
         conditions = [condition.convert_to_weaviate() for condition in self.conditions]
         return {"operator": "And", "operands": conditions}
 
@@ -297,12 +296,12 @@ class OrOperation(LogicalFilterClause):
     Handles conversion of logical 'OR' operations.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict]:
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"should": conditions}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[str, List[Dict]]]:
         conditions = [condition.convert_to_weaviate() for condition in self.conditions]
         return {"operator": "Or", "operands": conditions}
 
@@ -315,10 +314,11 @@ class EqOperation(ComparisonOperation):
     Handles conversion of the '$eq' comparison operation.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Union[str, int, float, bool]]]:
+        assert not isinstance(self.comparison_value, list), "Use '$in' operation for lists as comparison values."
         return {"term": {self.field_name: self.comparison_value}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
         return {"path": [self.field_name], "operator": "Equal", comp_value_type: comp_value}
 
@@ -331,13 +331,16 @@ class InOperation(ComparisonOperation):
     Handles conversion of the '$in' comparison operation.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, List]]:
+        assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
         return {"terms": {self.field_name: self.comparison_value}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[str, List[Dict]]]:
         filter_dict = {"operator": "Or", "operands": []}
+        assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
         for value in self.comparison_value:
             comp_value_type, comp_value = self._get_weaviate_datatype(value)
+            assert isinstance(filter_dict["operands"], list)  # Necessary for mypy
             filter_dict["operands"].append({
                 "path": [self.field_name],
                 "operator": "Equal",
@@ -355,10 +358,11 @@ class NeOperation(ComparisonOperation):
     Handles conversion of the '$ne' comparison operation.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Dict[str, Union[str, int, float, bool]]]]]:
+        assert not isinstance(self.comparison_value, list), "Use '$nin' operation for lists as comparison values."
         return {"bool": {"must_not": {"term": {self.field_name: self.comparison_value}}}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
         return {"path": [self.field_name], "operator": "NotEqual", comp_value_type: comp_value}
 
@@ -371,13 +375,16 @@ class NinOperation(ComparisonOperation):
     Handles conversion of the '$nin' comparison operation.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Dict[str, List]]]]:
+        assert isinstance(self.comparison_value, list), "'$nin' operation requires comparison value to be a list."
         return {"bool": {"must_not": {"terms": {self.field_name: self.comparison_value}}}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[str, List[Dict]]]:
         filter_dict = {"operator": "And", "operands": []}
+        assert isinstance(self.comparison_value, list), "'$nin' operation requires comparison value to be a list."
         for value in self.comparison_value:
             comp_value_type, comp_value = self._get_weaviate_datatype(value)
+            assert isinstance(filter_dict["operands"], list)  # Necessary for mypy
             filter_dict["operands"].append({
                 "path": [self.field_name],
                 "operator": "NotEqual",
@@ -395,11 +402,13 @@ class GtOperation(ComparisonOperation):
     Handles conversion of the '$gt' comparison operation.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
+        assert not isinstance(self.comparison_value, list), "Comparison value for '$gt' operation must not be a list."
         return {"range": {self.field_name: {"gt": self.comparison_value}}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, float, int]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
+        assert not isinstance(comp_value, list), "Comparison value for '$gt' operation must not be a list."
         return {"path": [self.field_name], "operator": "GreaterThan", comp_value_type: comp_value}
 
     def invert(self) -> "LteOperation":
@@ -411,11 +420,13 @@ class GteOperation(ComparisonOperation):
     Handles conversion of the '$gte' comparison operation.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
+        assert not isinstance(self.comparison_value, list), "Comparison value for '$gte' operation must not be a list."
         return {"range": {self.field_name: {"gte": self.comparison_value}}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, float, int]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
+        assert not isinstance(comp_value, list), "Comparison value for '$gte' operation must not be a list."
         return {"path": [self.field_name], "operator": "GreaterThanEqual", comp_value_type: comp_value}
 
     def invert(self) -> "LtOperation":
@@ -427,11 +438,13 @@ class LtOperation(ComparisonOperation):
     Handles conversion of the '$lt' comparison operation.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
+        assert not isinstance(self.comparison_value, list), "Comparison value for '$lt' operation must not be a list."
         return {"range": {self.field_name: {"lt": self.comparison_value}}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, float, int]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
+        assert not isinstance(comp_value, list), "Comparison value for '$lt' operation must not be a list."
         return {"path": [self.field_name], "operator": "LessThan", comp_value_type: comp_value}
 
     def invert(self) -> "GteOperation":
@@ -443,11 +456,13 @@ class LteOperation(ComparisonOperation):
     Handles conversion of the '$lte' comparison operation.
     """
 
-    def convert_to_elasticsearch(self):
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
+        assert not isinstance(self.comparison_value, list), "Comparison value for '$lte' operation must not be a list."
         return {"range": {self.field_name: {"lte": self.comparison_value}}}
 
-    def convert_to_weaviate(self):
+    def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, float, int]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
+        assert not isinstance(comp_value, list), "Comparison value for '$lte' operation must not be a list."
         return {"path": [self.field_name], "operator": "LessThanEqual", comp_value_type: comp_value}
 
     def invert(self) -> "GtOperation":

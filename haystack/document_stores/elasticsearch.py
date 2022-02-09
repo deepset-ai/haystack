@@ -478,7 +478,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self,
         key: str,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[dict]:
@@ -705,7 +705,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -736,7 +736,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def get_embedding_count(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> int:
         """
@@ -756,7 +756,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -805,7 +805,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -862,7 +862,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000,
     ) -> List[Label]:
@@ -879,7 +879,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: str,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -901,7 +901,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -1105,7 +1105,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1348,7 +1348,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self,
         retriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -1449,7 +1449,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1497,7 +1497,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1560,7 +1560,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1696,7 +1696,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[List, str, int, float, bool]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
