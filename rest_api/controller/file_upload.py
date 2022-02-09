@@ -91,7 +91,7 @@ def upload_file(
 
     file_paths: list = []
     file_metas: list = []
-    meta_form = json.loads(meta or "{}")
+    meta_form = json.loads(meta)  # type: ignore
 
     for file in files:
         try:
