@@ -524,7 +524,8 @@ class Pipeline(BasePipeline):
         # if documents is None, set docs_per_label to None for each label
         for docs_per_label, label in zip(documents or [None] * len(labels), labels):
             params_per_label = copy.deepcopy(params)
-            if label.filters is not None:
+            # If the label contains a filter, the filter is applied unless documents are already given
+            if label.filters is not None and documents is None:
                 if params_per_label is None:
                     params_per_label = {"filters": label.filters}
                 else:
