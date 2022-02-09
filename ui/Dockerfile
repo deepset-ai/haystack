@@ -5,13 +5,15 @@ WORKDIR /home/user
 RUN apt-get update && apt-get install -y curl git pkg-config cmake
 
 # copy code
+RUN mkdir ui/
 COPY setup.py /home/user/ui
 COPY utils.py /home/user/ui
 COPY webapp.py /home/user/ui
 COPY eval_labels_example.csv /home/user/ui
 
 # install as a package
-RUN pip install ui/
+RUN pip install --upgrade pip
+RUN cd ui/ && pip install .
 
 EXPOSE 8501
 
