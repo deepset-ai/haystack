@@ -97,6 +97,17 @@ jobs:
         with:
           path: ${{ env.pythonLocation }}
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install Dependencies (on cache miss only)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          echo "=== pip freeze ==="
+          pip freeze
           
       # Apply Black on the entire codebase
       - name: Blacken
@@ -158,6 +169,17 @@ jobs:
         with:
           path: ${{ env.pythonLocation }}
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install Dependencies (on cache miss only)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          echo "=== pip freeze ==="
+          pip freeze
 
       - name: Linter
         run: |
@@ -228,6 +250,17 @@ jobs:
 
     - name: Install tesseract
       run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
+
+    - name: Install Dependencies (on cache miss only)
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        pip install --upgrade pip
+        pip install .[test]
+        pip install rest_api/
+        pip install ui/
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+        echo "=== pip freeze ==="
+        pip freeze
 
     - name: Reinstall Haystack
       run: |
