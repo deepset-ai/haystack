@@ -983,7 +983,8 @@ class Pipeline(BasePipeline):
         """
         nodes = self.graph.nodes
 
-        pipeline_name = self.root_node.lower()
+        root_node_to_pipeline_name = {"query": "query", "file": "indexing"}
+        pipeline_name = root_node_to_pipeline_name[self.root_node.lower()]
         pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": self.__class__.__name__, "nodes": []}}
 
         components = {}
