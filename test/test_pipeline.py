@@ -312,27 +312,33 @@ def test_save_to_deepset_cloud():
     )
 
     Pipeline.save_to_deepset_could(
-        query_pipeline=query_pipeline, 
-        index_pipeline=index_pipeline, 
-        pipeline_config_name="test_pipeline_config_copy", 
-        api_endpoint=DC_API_ENDPOINT, 
-        api_key=DC_API_KEY)
+        query_pipeline=query_pipeline,
+        index_pipeline=index_pipeline,
+        pipeline_config_name="test_pipeline_config_copy",
+        api_endpoint=DC_API_ENDPOINT,
+        api_key=DC_API_KEY,
+    )
 
-    with pytest.raises(ValueError, match="Pipeline config test_pipeline_config already exists. Set `overwrite=True` to overwrite pipeline config"):
+    with pytest.raises(
+        ValueError,
+        match="Pipeline config test_pipeline_config already exists. Set `overwrite=True` to overwrite pipeline config",
+    ):
         Pipeline.save_to_deepset_could(
-            query_pipeline=query_pipeline, 
-            index_pipeline=index_pipeline, 
-            pipeline_config_name="test_pipeline_config", 
-            api_endpoint=DC_API_ENDPOINT, 
-            api_key=DC_API_KEY)
+            query_pipeline=query_pipeline,
+            index_pipeline=index_pipeline,
+            pipeline_config_name="test_pipeline_config",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+        )
 
     Pipeline.save_to_deepset_could(
-        query_pipeline=query_pipeline, 
-        index_pipeline=index_pipeline, 
-        pipeline_config_name="test_pipeline_config", 
-        api_endpoint=DC_API_ENDPOINT, 
+        query_pipeline=query_pipeline,
+        index_pipeline=index_pipeline,
+        pipeline_config_name="test_pipeline_config",
+        api_endpoint=DC_API_ENDPOINT,
         api_key=DC_API_KEY,
-        overwrite=True)
+        overwrite=True,
+    )
 
 
 # @pytest.mark.slow
