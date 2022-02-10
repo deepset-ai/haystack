@@ -46,6 +46,6 @@ class LabelSerialized(Label):
 
 class QueryResponse(BaseModel):
     query: str
-    answers: List[AnswerSerialized]
-    documents: Optional[List[DocumentSerialized]]
+    answers: List[AnswerSerialized] = []
+    documents: List[DocumentSerialized] = []
     debug: Optional[Dict] = Field(None, alias="_debug")
