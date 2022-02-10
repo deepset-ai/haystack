@@ -211,7 +211,7 @@ class BaseDocumentStore(BaseComponent):
             # This group_keys determines the key by which we aggregate labels. Its contents depend on
             # whether we are in an open / closed domain setting, on filters that are specified for labels,
             # or if there are fields in the meta data that we should group by dynamically (set using group_by_meta).
-            label_filter_keys = [f"{k}={''.join(v)}" for k,v in l.filters.items()] if l.filters else []
+            label_filter_keys = [f"{k}={''.join(v)}" for k, v in l.filters.items()] if l.filters else []
             group_keys: list = [l.query] + label_filter_keys
             # Filters indicate the scope within which a label is valid.
             # Depending on the aggregation we need to add filters dynamically.
@@ -235,7 +235,7 @@ class BaseDocumentStore(BaseComponent):
                     l.filters = label_filters_to_add
                 else:
                     l.filters.update(label_filters_to_add)
-            
+
             group_key = tuple(group_keys)
             if group_key in grouped_labels:
                 grouped_labels[group_key].append(l)
@@ -244,9 +244,10 @@ class BaseDocumentStore(BaseComponent):
 
         # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
         # aggregated attributes like `no_answer`
-        aggregated_labels = [MultiLabel(
-                labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers
-            ) for ls in grouped_labels.values()]
+        aggregated_labels = [
+            MultiLabel(labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers)
+            for ls in grouped_labels.values()
+        ]
 
         return aggregated_labels
 
