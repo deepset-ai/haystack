@@ -1,10 +1,10 @@
 import os
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from rest_api.schema import LabelSerialized, CreateLabelSerialized
 from rest_api.application import app
 
 
@@ -42,7 +42,7 @@ def exclude_no_answer(responses):
     return responses
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def client() -> TestClient:
     os.environ["PIPELINE_YAML_PATH"] = str(
         (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
@@ -50,23 +50,17 @@ def client() -> TestClient:
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
     client = TestClient(app)
 
-    # Clean up
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
     client.delete(url="/feedback")
 
     yield client
 
-    # Clean up
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
     client.delete(url="/feedback")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def populated_client(client: TestClient) -> TestClient:
-    # Clean up
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
-    client.delete(url="/feedback")
-
     files_to_upload = [
         {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")},
         {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_2.pdf").open("rb")},
@@ -79,32 +73,10 @@ def populated_client(client: TestClient) -> TestClient:
 
     yield client
 
-    # Clean up
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
-    client.delete(url="/feedback")
 
-
-def test_get_documents():
-    os.environ["PIPELINE_YAML_PATH"] = str(
-        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
-    )
-    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
-    client = TestClient(app)
-
-    # Clean up to make sure the docstore is empty
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
-
-    # Upload the files
-    files_to_upload = [
-        {"files": (Path(__file__).parent / "samples" / "docs" / "doc_1.txt").open("rb")},
-        {"files": (Path(__file__).parent / "samples" / "docs" / "doc_2.txt").open("rb")},
-    ]
-    for index, fi in enumerate(files_to_upload):
-        response = client.post(url="/file-upload", files=fi, data={"meta": f'{{"meta_key": "meta_value_get"}}'})
-        assert 200 == response.status_code
-
+def test_get_documents(populated_client: TestClient):
     # Get the documents
-    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_get"]}}')
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_get"]}}')
     assert 200 == response.status_code
     response_json = response.json()
 
@@ -117,49 +89,30 @@ def test_get_documents():
     assert all("meta_value_get" == meta_key for meta_key in meta_keys)
 
 
-def test_delete_documents():
-    os.environ["PIPELINE_YAML_PATH"] = str(
-        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
-    )
-    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
-    client = TestClient(app)
-
-    # Clean up to make sure the docstore is empty
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
-
-    # Upload the files
-    files_to_upload = [
-        {"files": (Path(__file__).parent / "samples" / "docs" / "doc_1.txt").open("rb")},
-        {"files": (Path(__file__).parent / "samples" / "docs" / "doc_2.txt").open("rb")},
-    ]
-    for index, fi in enumerate(files_to_upload):
-        response = client.post(
-            url="/file-upload", files=fi, data={"meta": f'{{"meta_key": "meta_value_del", "meta_index": "{index}"}}'}
-        )
-        assert 200 == response.status_code
-
+def test_delete_documents(populated_client: TestClient):
     # Make sure there are two docs
-    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_del"]}}')
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_del"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 2
 
     # Delete one doc
-    response = client.post(url="/documents/delete_by_filters", data='{"filters": {"meta_index": ["0"]}}')
+    response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {"meta_index": ["0"]}}')
     assert 200 == response.status_code
 
     # Now there should be only one doc
-    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_del"]}}')
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_del"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 1
 
     # Make sure the right doc was deleted
-    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["0"]}}')
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["0"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 0
-    response = client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["1"]}}')
+
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["1"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 1
@@ -235,24 +188,16 @@ def test_write_feedback(populated_client: TestClient):
 
 
 def test_write_feedback_without_id(populated_client: TestClient):
-    feedback = {key: value for key, value in FEEDBACK.items() if key != "id"}
+    feedback = deepcopy(FEEDBACK)
+    del feedback["id"]
     response = populated_client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code
 
 
-def test_get_feedback():
-    os.environ["PIPELINE_YAML_PATH"] = str(
-        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
-    )
-    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
-    client = TestClient(app)
-
-    # Clean up to make sure the docstore is empty
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
-    client.delete(url="/feedback")
-
+def test_get_feedback(client: TestClient):
     response = client.post(url="/feedback", json=FEEDBACK)
     assert response.status_code == 200
+
     response = client.get(url="/feedback")
     assert response.status_code == 200
     json_response = response.json()
@@ -260,28 +205,23 @@ def test_get_feedback():
         assert response_item == expected_item
 
 
-def test_delete_feedback():
-    os.environ["PIPELINE_YAML_PATH"] = str(
-        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
-    )
-    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
-    client = TestClient(app)
-
-    # Clean up to make sure the docstore is empty
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
-    client.delete(url="/feedback")
-
+def test_delete_feedback(client: TestClient):
     client.post(url="/feedback", json=FEEDBACK)
+
+    feedback = deepcopy(FEEDBACK)
+    feedback.origin = "gold-label"
+    client.post(url="/feedback", json=feedback)
+
     response = client.get(url="/feedback")
     json_response = response.json()
-    assert len(json_response) == 1
+    assert len(json_response) == 2
 
     response = client.delete(url="/feedback")
     assert 200 == response.status_code
 
     response = client.get(url="/feedback")
     json_response = response.json()
-    assert len(json_response) == 0
+    assert len(json_response) == 1
 
 
 def test_export_feedback(client: TestClient):
@@ -303,7 +243,7 @@ def test_export_feedback(client: TestClient):
 
 
 def test_get_feedback_malformed_query(client: TestClient):
-    feedback = {key: value for key, value in FEEDBACK.items()}
+    feedback = deepcopy(FEEDBACK)
     feedback["unexpected_field"] = "misplaced-value"
     response = client.post(url="/feedback", json=feedback)
     assert response.status_code == 422
