@@ -198,7 +198,7 @@ class BaseDocumentStore(BaseComponent):
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
         TODO drop params
         """
-        if aggregate_by_meta: 
+        if aggregate_by_meta:
             if type(aggregate_by_meta) == str:
                 aggregate_by_meta = [aggregate_by_meta]
         else:
@@ -212,7 +212,7 @@ class BaseDocumentStore(BaseComponent):
             # This group_by_id determines the key by which we aggregate labels. Its contents depend on
             # whether we are in an open / closed domain setting, on filters that are specified for labels,
             # or if there are fields in the meta data that we should group by dynamically (set using group_by_meta).
-            label_filter_keys = [f"{k}={''.join(v)}" for k,v in l.filters.items()] if l.filters else []
+            label_filter_keys = [f"{k}={''.join(v)}" for k, v in l.filters.items()] if l.filters else []
             group_by_id_list: list = [l.query] + label_filter_keys
             # Filters indicate the scope within which a label is valid.
             # Depending on the aggregation we need to add filters dynamically.
@@ -236,7 +236,7 @@ class BaseDocumentStore(BaseComponent):
                     l.filters = label_filters_to_add
                 else:
                     l.filters.update(label_filters_to_add)
-            
+
             group_by_id = tuple(group_by_id_list)
             if group_by_id in question_ans_dict:
                 question_ans_dict[group_by_id].append(l)
