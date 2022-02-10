@@ -77,7 +77,7 @@ def populated_client(client: TestClient) -> TestClient:
 def test_get_documents(populated_client: TestClient):
     # Get the documents
     response = populated_client.post(
-        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_get"]}}'
+        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}'
     )
     assert 200 == response.status_code
     response_json = response.json()
@@ -85,16 +85,16 @@ def test_get_documents(populated_client: TestClient):
     # Make sure the right docs are found
     assert len(response_json) == 2
     names = [doc["meta"]["name"] for doc in response_json]
-    assert "doc_1.txt" in names
-    assert "doc_2.txt" in names
+    assert "sample_pdf_1.pdf" in names
+    assert "sample_pdf_1.pdf" in names
     meta_keys = [doc["meta"]["meta_key"] for doc in response_json]
-    assert all("meta_value_get" == meta_key for meta_key in meta_keys)
+    assert all("meta_value" == meta_key for meta_key in meta_keys)
 
 
 def test_delete_documents(populated_client: TestClient):
     # Make sure there are two docs
     response = populated_client.post(
-        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_del"]}}'
+        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}'
     )
     assert 200 == response.status_code
     response_json = response.json()
@@ -106,7 +106,7 @@ def test_delete_documents(populated_client: TestClient):
 
     # Now there should be only one doc
     response = populated_client.post(
-        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value_del"]}}'
+        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}'
     )
     assert 200 == response.status_code
     response_json = response.json()
@@ -215,7 +215,9 @@ def test_delete_feedback(client: TestClient):
     client.post(url="/feedback", json=FEEDBACK)
 
     feedback = deepcopy(FEEDBACK)
-    feedback.origin = "gold-label"
+    feedback["id"] = 456
+    feedback["origin"] = "gold-label"
+    print(feedback)
     client.post(url="/feedback", json=feedback)
 
     response = client.get(url="/feedback")
