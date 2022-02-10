@@ -1,3 +1,5 @@
+from typing import Dict, Any
+
 import logging
 import time
 import json
@@ -65,7 +67,7 @@ def query(request: QueryRequest):
         return result
 
 
-def _process_request(pipeline, request) -> QueryResponse:
+def _process_request(pipeline, request) -> Dict[str, Any]:
     start_time = time.time()
 
     params = request.params or {}
@@ -91,7 +93,6 @@ def _process_request(pipeline, request) -> QueryResponse:
     logger.info(
         json.dumps({"request": request, "response": response, "time": f"{(end_time - start_time):.2f}"}, default=str)
     )
-
     return response
 
 
