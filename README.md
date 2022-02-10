@@ -93,8 +93,8 @@ pip install -e .[all] ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
 If you cannot upgrade `pip` to version 21.3 or higher, you will need to replace:
-- `[all]` with `[sql,only-faiss,only-milvus,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]`
-- `[all-gpu]` with `[sql,only-faiss-gpu,only-milvus,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]`
+- `[all]` with `[sql,only-faiss,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]`
+- `[all-gpu]` with `[sql,only-faiss-gpu,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]`
 
 For an complete list of the dependency groups available, have a look at the `haystack/setup.cfg` file.
 
