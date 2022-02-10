@@ -198,7 +198,12 @@ class BaseDocumentStore(BaseComponent):
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
         TODO drop params
         """
-        aggregated_labels = []
+        if aggregate_by_meta: 
+            if type(aggregate_by_meta) == str:
+                aggregate_by_meta = [aggregate_by_meta]
+        else:
+            aggregate_by_meta = []
+
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
 
         # Collect all answers to a question in a dict
@@ -207,22 +212,32 @@ class BaseDocumentStore(BaseComponent):
             # This group_by_id determines the key by which we aggregate labels. Its contents depend on
             # whether we are in an open / closed domain setting,
             # or if there are fields in the meta data that we should group by (set using group_by_meta)
-            group_by_id_list: list = []
-            if open_domain:
-                group_by_id_list = [l.query]
-            else:
-                group_by_id_list = [l.document.id, l.query]
-            if aggregate_by_meta:
-                if type(aggregate_by_meta) == str:
-                    aggregate_by_meta = [aggregate_by_meta]
-                if l.meta is None:
-                    l.meta = {}
-                for meta_key in aggregate_by_meta:
-                    curr_meta = l.meta.get(meta_key, None)
-                    if curr_meta:
-                        group_by_id_list.append(curr_meta)
-            group_by_id = tuple(group_by_id_list)
+            label_filter_keys = [f"{k}={''.join(v)}" for k,v in l.filters.items()] if l.filters else []
+            group_by_id_list: list = [l.query] + label_filter_keys
+            # filters indicate the scope within a label is valid
+            # depending on the aggregation we need to add filters dynamically
+            label_filters_to_add: dict = {}
 
+            if not open_domain:
+                group_by_id_list.append(f"name={l.document.id}")
+                label_filters_to_add["name"] = l.document.id
+
+            for meta_key in aggregate_by_meta:
+                meta = l.meta or {}
+                curr_meta = meta.get(meta_key, None)
+                if curr_meta:
+                    curr_meta = curr_meta if isinstance(curr_meta, list) else [curr_meta]
+                    meta_str = f"{meta_key}={''.join(curr_meta)}"
+                    group_by_id_list.append(meta_str)
+                    label_filters_to_add[meta_key] = curr_meta
+
+            if label_filters_to_add:
+                if l.filters is None:
+                    l.filters = label_filters_to_add
+                else:
+                    l.filters.update(label_filters_to_add)
+            
+            group_by_id = tuple(group_by_id_list)
             if group_by_id in question_ans_dict:
                 question_ans_dict[group_by_id].append(l)
             else:
@@ -230,11 +245,13 @@ class BaseDocumentStore(BaseComponent):
 
         # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
         # aggregated attributes like `no_answer`
-        for q, ls in question_ans_dict.items():
+        aggregated_labels = []
+        for id, ls in question_ans_dict.items():
             agg_label = MultiLabel(
                 labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers
             )
             aggregated_labels.append(agg_label)
+
         return aggregated_labels
 
     @abstractmethod
