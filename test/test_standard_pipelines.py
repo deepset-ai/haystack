@@ -1,4 +1,5 @@
 from pathlib import Path
+from collections import defaultdict
 
 import os
 import math
@@ -136,8 +137,7 @@ def test_most_similar_documents_pipeline(retriever, document_store):
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
+def test_join_merge_no_weights(document_store_dot_product_with_docs):
     es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
@@ -149,7 +149,6 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
 
     query = "Where does Carla live?"
 
-    # test merge without weights
     join_node = JoinDocuments(join_mode="merge")
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
@@ -158,7 +157,21 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     results = p.run(query=query)
     assert len(results["documents"]) == 5
 
-    # test merge with weights
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+def test_join_merge_with_weights(document_store_dot_product_with_docs):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
     join_node = JoinDocuments(join_mode="merge", weights=[1000, 1], top_k_join=2)
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
@@ -168,7 +181,21 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     assert math.isclose(results["documents"][0].score, 0.5481393431183286, rel_tol=0.0001)
     assert len(results["documents"]) == 2
 
-    # test concatenate
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+def test_join_concatenate(document_store_dot_product_with_docs):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
     join_node = JoinDocuments(join_mode="concatenate")
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
@@ -177,7 +204,21 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     results = p.run(query=query)
     assert len(results["documents"]) == 5
 
-    # test concatenate with top_k_join parameter
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+def test_join_concatenate_with_topk(document_store_dot_product_with_docs):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
     join_node = JoinDocuments(join_mode="concatenate")
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
@@ -188,7 +229,22 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     assert len(one_result["documents"]) == 1
     assert len(two_results["documents"]) == 2
 
-    # test join_node with reader
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_join_with_reader(document_store_dot_product_with_docs, reader):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
     join_node = JoinDocuments()
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
@@ -198,6 +254,39 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     results = p.run(query=query)
     # check whether correct answer is within top 2 predictions
     assert results["answers"][0].answer == "Berlin" or results["answers"][1].answer == "Berlin"
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+def test_join_with_rrf(document_store_dot_product_with_docs):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
+    join_node = JoinDocuments(join_mode="reciprocal_rank_fusion")
+    p = Pipeline()
+    p.add_node(component=es, name="R1", inputs=["Query"])
+    p.add_node(component=dpr, name="R2", inputs=["Query"])
+    p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
+    results = p.run(query=query)
+
+    # list of precalculated expected results
+    expected_scores = [
+        0.03278688524590164,
+        0.03200204813108039,
+        0.03200204813108039,
+        0.031009615384615385,
+        0.031009615384615385,
+    ]
+
+    assert all([doc.score == expected_scores[idx] for idx, doc in enumerate(results["documents"])])
 
 
 def test_query_keyword_statement_classifier():
