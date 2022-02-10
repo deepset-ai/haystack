@@ -210,12 +210,12 @@ class BaseDocumentStore(BaseComponent):
         question_ans_dict: dict = {}
         for l in all_labels:
             # This group_by_id determines the key by which we aggregate labels. Its contents depend on
-            # whether we are in an open / closed domain setting,
-            # or if there are fields in the meta data that we should group by (set using group_by_meta)
+            # whether we are in an open / closed domain setting, on filters that are specified for labels,
+            # or if there are fields in the meta data that we should group by dynamically (set using group_by_meta).
             label_filter_keys = [f"{k}={''.join(v)}" for k,v in l.filters.items()] if l.filters else []
             group_by_id_list: list = [l.query] + label_filter_keys
-            # filters indicate the scope within a label is valid
-            # depending on the aggregation we need to add filters dynamically
+            # Filters indicate the scope within which a label is valid.
+            # Depending on the aggregation we need to add filters dynamically.
             label_filters_to_add: dict = {}
 
             if not open_domain:
