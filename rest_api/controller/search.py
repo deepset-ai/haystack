@@ -75,15 +75,15 @@ def _process_request(pipeline, request) -> QueryResponse:
         params["filters"] = _format_filters(params["filters"])
 
     # format targeted node filters (e.g. "params": {"Retriever": {"filters": {"value"}}})
-    for key, value in params.items():
+    for key in params.keys():
         if "filters" in params[key].keys():
             params[key]["filters"] = _format_filters(params[key]["filters"])
 
     result = pipeline.run(query=request.query, params=params, debug=request.debug)
-    response = QueryResponse(**result)
+    response = QueryResponse(**result).dict()  # Validation step
 
     # if any of the documents contains an embedding as an ndarray the latter needs to be converted to list of float
-    for document in response.documents:
+    for document in response["documents"]:
         if isinstance(document.embedding, ndarray):
             document.embedding = document.embedding.tolist()
 
