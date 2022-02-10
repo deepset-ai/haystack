@@ -224,11 +224,11 @@ class ParsrConverter(BaseConverter):
         following_elements = []
         for cur_page_idx, cur_page in enumerate(all_pages):
             for cur_elem_index, elem in enumerate(cur_page["elements"]):
-                if (
-                    (elem["type"] in ["paragraph", "heading"])
-                    and (self.remove_page_headers and "isHeader" not in elem["properties"])
-                    and (self.remove_page_footers and "isFooter" not in elem["properties"])
-                ):
+                if elem["type"] in ["paragraph", "heading"]:
+                    if (self.remove_page_headers and "isHeader" in elem["properties"]) \
+                            or (self.remove_page_footers and "isFooter" in elem["properties"]):
+                        # Skip header and footer elements if remove_page_header/footer is set to True
+                        continue
                     if cur_page_idx < page_idx:
                         preceding_elements.append(elem)
                     elif cur_page_idx == page_idx:
@@ -240,10 +240,12 @@ class ParsrConverter(BaseConverter):
                         following_elements.append(elem)
 
         preceding_context = (
-            "\n\n".join([self._get_paragraph_string(elem) for elem in preceding_elements]) + f"\n\n{caption}"
+            "\n\n".join([self._get_paragraph_string(elem)
+                         for elem in preceding_elements[-self.preceding_context_len:]]) + f"\n\n{caption}"
         )
         preceding_context = preceding_context.strip()
-        following_context = "\n\n".join([self._get_paragraph_string(elem) for elem in following_elements])
+        following_context = "\n\n".join([self._get_paragraph_string(elem)
+                                         for elem in following_elements[:self.following_context_len]])
         following_context = following_context.strip()
 
         if meta is not None:
