@@ -206,21 +206,20 @@ class BaseDocumentStore(BaseComponent):
 
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
 
-        # Collect all answers to a question in a dict
-        question_ans_dict: dict = {}
+        grouped_labels: dict = {}
         for l in all_labels:
-            # This group_by_id determines the key by which we aggregate labels. Its contents depend on
+            # This group_keys determines the key by which we aggregate labels. Its contents depend on
             # whether we are in an open / closed domain setting, on filters that are specified for labels,
             # or if there are fields in the meta data that we should group by dynamically (set using group_by_meta).
             label_filter_keys = [f"{k}={''.join(v)}" for k,v in l.filters.items()] if l.filters else []
-            group_by_id_list: list = [l.query] + label_filter_keys
+            group_keys: list = [l.query] + label_filter_keys
             # Filters indicate the scope within which a label is valid.
             # Depending on the aggregation we need to add filters dynamically.
             label_filters_to_add: dict = {}
 
             if not open_domain:
-                group_by_id_list.append(f"name={l.document.id}")
-                label_filters_to_add["name"] = l.document.id
+                group_keys.append(f"_id={l.document.id}")
+                label_filters_to_add["_id"] = l.document.id
 
             for meta_key in aggregate_by_meta:
                 meta = l.meta or {}
@@ -228,7 +227,7 @@ class BaseDocumentStore(BaseComponent):
                 if curr_meta:
                     curr_meta = curr_meta if isinstance(curr_meta, list) else [curr_meta]
                     meta_str = f"{meta_key}={''.join(curr_meta)}"
-                    group_by_id_list.append(meta_str)
+                    group_keys.append(meta_str)
                     label_filters_to_add[meta_key] = curr_meta
 
             if label_filters_to_add:
@@ -237,20 +236,17 @@ class BaseDocumentStore(BaseComponent):
                 else:
                     l.filters.update(label_filters_to_add)
             
-            group_by_id = tuple(group_by_id_list)
-            if group_by_id in question_ans_dict:
-                question_ans_dict[group_by_id].append(l)
+            group_key = tuple(group_keys)
+            if group_key in grouped_labels:
+                grouped_labels[group_key].append(l)
             else:
-                question_ans_dict[group_by_id] = [l]
+                grouped_labels[group_key] = [l]
 
         # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
         # aggregated attributes like `no_answer`
-        aggregated_labels = []
-        for id, ls in question_ans_dict.items():
-            agg_label = MultiLabel(
+        aggregated_labels = [MultiLabel(
                 labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers
-            )
-            aggregated_labels.append(agg_label)
+            ) for ls in grouped_labels.values()]
 
         return aggregated_labels
 
