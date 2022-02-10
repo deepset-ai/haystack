@@ -198,7 +198,7 @@ class BaseDocumentStore(BaseComponent):
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
         TODO drop params
         """
-        if aggregate_by_meta: 
+        if aggregate_by_meta:
             if type(aggregate_by_meta) == str:
                 aggregate_by_meta = [aggregate_by_meta]
         else:
