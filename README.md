@@ -98,6 +98,13 @@ If you cannot upgrade `pip` to version 21.3 or higher, you will need to replace:
 
 For an complete list of the dependency groups available, have a look at the `haystack/setup.cfg` file.
 
+To install the REST API and UI, run the following from the root directory of the Haystack repo
+
+```
+pip install rest_api/
+pip install ui/
+```
+
 **3. Installing on Windows**
 
 ```
