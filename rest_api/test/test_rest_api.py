@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-
+from rest_api.schema import LabelSerialized, CreateLabelSerialized
 from rest_api.application import app
 
 
@@ -49,14 +49,25 @@ def client() -> TestClient:
     )
     os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
     client = TestClient(app)
-    yield client
+
     # Clean up
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+    client.delete(url="/feedback")
+
+    yield client
+
+    # Clean up
+    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+    client.delete(url="/feedback")
+
 
 
 @pytest.fixture(scope="session")
 def populated_client(client: TestClient) -> TestClient:
+    # Clean up
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+    client.delete(url="/feedback")
+
     files_to_upload = [
         {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")},
         {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_2.pdf").open("rb")},
@@ -66,8 +77,12 @@ def populated_client(client: TestClient) -> TestClient:
             url="/file-upload", files=fi, data={"meta": f'{{"meta_key": "meta_value", "meta_index": "{index}"}}'}
         )
         assert 200 == response.status_code
+
     yield client
+
+    # Clean up
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+    client.delete(url="/feedback")
 
 
 def test_get_documents():
@@ -220,7 +235,23 @@ def test_write_feedback(populated_client: TestClient):
     assert 200 == response.status_code
 
 
-def test_get_feedback(client: TestClient):
+def test_write_feedback_without_id(populated_client: TestClient):
+    feedback = {key: value for key, value in FEEDBACK.items() if key != "id"}
+    response = populated_client.post(url="/feedback", json=feedback)
+    assert 200 == response.status_code
+
+
+def test_get_feedback():
+    os.environ["PIPELINE_YAML_PATH"] = str(
+        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
+    )
+    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
+    client = TestClient(app)
+
+    # Clean up to make sure the docstore is empty
+    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+    client.delete(url="/feedback")
+
     response = client.post(url="/feedback", json=FEEDBACK)
     assert response.status_code == 200
     response = client.get(url="/feedback")
@@ -228,6 +259,30 @@ def test_get_feedback(client: TestClient):
     json_response = response.json()
     for response_item, expected_item in [(json_response[0][key], value) for key, value in FEEDBACK.items()]:
         assert response_item == expected_item
+
+
+def test_delete_feedback():
+    os.environ["PIPELINE_YAML_PATH"] = str(
+        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
+    )
+    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
+    client = TestClient(app)
+
+    # Clean up to make sure the docstore is empty
+    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+    client.delete(url="/feedback")
+    
+    client.post(url="/feedback", json=FEEDBACK)
+    response = client.get(url="/feedback")
+    json_response = response.json()
+    assert len(json_response) == 1
+
+    response = client.delete(url="/feedback")
+    assert 200 == response.status_code
+
+    response = client.get(url="/feedback")
+    json_response = response.json()
+    assert len(json_response) == 0
 
 
 def test_export_feedback(client: TestClient):
@@ -249,7 +304,7 @@ def test_export_feedback(client: TestClient):
 
 
 def test_get_feedback_malformed_query(client: TestClient):
-    feedback = FEEDBACK.copy()
+    feedback = {key: value for key, value in FEEDBACK.items()}
     feedback["unexpected_field"] = "misplaced-value"
     response = client.post(url="/feedback", json=feedback)
     assert response.status_code == 422
