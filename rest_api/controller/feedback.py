@@ -49,7 +49,9 @@ def delete_feedback():
     feedback that has been sumbitted through the
     `POST /feedback` endpoint
     """
-    DOCUMENT_STORE.delete_labels()
+    all_labels = DOCUMENT_STORE.get_all_labels()
+    user_label_ids = [label.id for label in all_labels if label.origin == "user-feedback"]
+    DOCUMENT_STORE.delete_labels(ids=user_label_ids)
 
 
 @router.post("/eval-feedback")
