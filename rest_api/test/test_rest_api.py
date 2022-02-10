@@ -76,9 +76,7 @@ def populated_client(client: TestClient) -> TestClient:
 
 def test_get_documents(populated_client: TestClient):
     # Get the documents
-    response = populated_client.post(
-        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}'
-    )
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
     assert 200 == response.status_code
     response_json = response.json()
 
@@ -93,9 +91,7 @@ def test_get_documents(populated_client: TestClient):
 
 def test_delete_documents(populated_client: TestClient):
     # Make sure there are two docs
-    response = populated_client.post(
-        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}'
-    )
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 2
@@ -105,9 +101,7 @@ def test_delete_documents(populated_client: TestClient):
     assert 200 == response.status_code
 
     # Now there should be only one doc
-    response = populated_client.post(
-        url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}'
-    )
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
     assert 200 == response.status_code
     response_json = response.json()
     assert len(response_json) == 1
