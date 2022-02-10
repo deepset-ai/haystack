@@ -69,57 +69,59 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 ## :floppy_disk: Installation
 
-If you're interested in learning more about Haystack and using it as part of your application, we offer several options.
+**1. Basic Installation**
 
-**1. Installing from a package**
-
-You can install Haystack by using [pip](https://github.com/pypa/pip).
+You can install a basic version of Haystack's latest release by using [pip](https://github.com/pypa/pip).
 
 ```
     pip3 install farm-haystack
 ```
 
-Please check our page [on PyPi](https://pypi.org/project/farm-haystack/) for more information.
+This command will install everything needed for basic Pipelines that use an Elasticsearch Document Store.
 
-**2. Installing from GitHub**
+**2. Full Installation**
 
-You can also clone it from GitHub — in case you'd like to work with the master branch and check the latest features:
-
-```
-    git clone https://github.com/deepset-ai/haystack.git
-    cd haystack
-    pip install --editable .
-```
-
-To update your installation, do a ``git pull``. The ``--editable`` flag will update changes immediately.
-
-Note that this command will install the **base** version of the package, which includes only the 
-Elasticsearch document store and the most commonly used components. 
-
-For a complete installation that includes all optional components, please run instead:
+If you plan to be using more advanced features like Milvus, FAISS, Weaviate, OCR or Ray,
+you will need to install a full version of Haystack.
+The following command will install the latest version of Haystack from the master branch.
 
 ```
-    git clone https://github.com/deepset-ai/haystack.git
-    cd haystack
-    pip install --upgrade pip
-    pip install --editable .[all]   # or 'all-gpu' to get the GPU-enabled dependencies
+git clone https://github.com/deepset-ai/haystack.git
+cd haystack
+pip install --upgrade pip
+pip install -e .[all] ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
-Do not forget to upgrade pip before performing the installation: pip version below 21.3.1 might
-enter infinite loops due to a bug. If you encounter such loop, either upgrade pip or replace 
-`[all]` with `[docstores,crawler,preprocessing,ocr,ray,rest,ui,dev,onnx]`.
+If you cannot upgrade `pip` to version 21.3 or higher, you will need to replace:
+- `[all]` with `[sql,only-faiss,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]`
+- `[all-gpu]` with `[sql,only-faiss-gpu,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]`
 
-For an complete list of the dependency groups available, have a look at the 
-[setup.cfg file](https://github.com/deepset-ai/haystack/blob/488c3e9e52b9286afc3ad9a5f2e3161772be2e2f/setup.cfg#L103).
-
+For an complete list of the dependency groups available, have a look at the `haystack/setup.cfg` file.
 
 **3. Installing on Windows**
 
-On Windows, you might need:
+```
+pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
+```
+
+**4. Installing on Apple Silicon (M1)**
+
+M1 Macbooks require some extra depencies in order to install Haystack.
 
 ```
-    pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
+# some additional dependencies needed on m1 mac
+brew install postgresql
+brew install cmake
+brew install rust
+
+# haystack installation
+GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true pip install git+https://github.com/deepset-ai/haystack.git
 ```
+
+**5. Learn More**
+
+See our [installation guide](https://haystack.deepset.ai/overview/get-started) for more options. 
+You can find out more about our PyPi package on our [PyPi page](https://pypi.org/project/farm-haystack/). 
 
 ## :mortar_board: Tutorials
 
