@@ -61,7 +61,6 @@ def client() -> TestClient:
     client.delete(url="/feedback")
 
 
-
 @pytest.fixture(scope="session")
 def populated_client(client: TestClient) -> TestClient:
     # Clean up
@@ -271,7 +270,7 @@ def test_delete_feedback():
     # Clean up to make sure the docstore is empty
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
     client.delete(url="/feedback")
-    
+
     client.post(url="/feedback", json=FEEDBACK)
     response = client.get(url="/feedback")
     json_response = response.json()

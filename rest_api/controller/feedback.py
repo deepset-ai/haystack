@@ -26,7 +26,7 @@ def post_feedback(feedback: Union[LabelSerialized, CreateLabelSerialized]):
     """
     if feedback.origin is None:
         feedback.origin = "user-feedback"
-    
+
     label = Label(**feedback.dict())
     DOCUMENT_STORE.write_labels([label])
 
