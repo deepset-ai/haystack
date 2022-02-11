@@ -2018,19 +2018,23 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
         return score
 
-    def _clone_embedding_field(self, new_embedding_field: str, similarity: str, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None):
+    def _clone_embedding_field(
+        self,
+        new_embedding_field: str,
+        similarity: str,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
         if new_embedding_field in mapping["properties"]:
-            raise Exception(f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}")
+            raise Exception(
+                f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}"
+            )
         mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)
         self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
 
         document_count = self.get_document_count(headers=headers)
-        result = self._get_all_documents_in_index(
-            index=self.index,
-            batch_size=batch_size,
-            headers=headers
-        )
+        result = self._get_all_documents_in_index(index=self.index, batch_size=batch_size, headers=headers)
 
         logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
 
@@ -2040,11 +2044,12 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 doc_updates = []
                 for doc in document_batch:
                     if doc.embedding is not None:
-                        update = {"_op_type": "update",
-                                "_index": self.index,
-                                "_id": doc.id,
-                                "doc": {new_embedding_field: doc.embedding.tolist()},
-                                }
+                        update = {
+                            "_op_type": "update",
+                            "_index": self.index,
+                            "_id": doc.id,
+                            "doc": {new_embedding_field: doc.embedding.tolist()},
+                        }
                         doc_updates.append(update)
 
                 bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
