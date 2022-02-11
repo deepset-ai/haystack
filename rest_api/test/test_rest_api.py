@@ -94,7 +94,7 @@ def test_delete_documents(populated_client: TestClient):
     assert 200 == response.status_code
     response_json = response.json()
     initial_docs = len(response_json)
-    
+
     # Check how many docs we will delete
     response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["0"]}}')
     assert 200 == response.status_code
