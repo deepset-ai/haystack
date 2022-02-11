@@ -2018,6 +2018,38 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
         return score
 
+    def _clone_embedding_field(self, new_embedding_field: str, similarity: str, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None):
+        mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
+        if new_embedding_field in mapping["properties"]:
+            raise Exception(f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}")
+        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)
+        self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
+
+        document_count = self.get_document_count(headers=headers)
+        result = self._get_all_documents_in_index(
+            index=self.index,
+            batch_size=batch_size,
+            headers=headers
+        )
+
+        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
+
+        with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
+            for result_batch in get_batches_from_generator(result, batch_size):
+                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch]
+                doc_updates = []
+                for doc in document_batch:
+                    if doc.embedding is not None:
+                        update = {"_op_type": "update",
+                                "_index": self.index,
+                                "_id": doc.id,
+                                "doc": {new_embedding_field: doc.embedding.tolist()},
+                                }
+                        doc_updates.append(update)
+
+                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                progress_bar.update(batch_size)
+
 
 class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
     """
