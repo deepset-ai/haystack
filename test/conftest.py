@@ -565,6 +565,7 @@ def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "milvus2", "weaviate"])
 def document_store_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
+    print("oy!")
     document_store = get_document_store(
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path
     )
@@ -754,12 +755,11 @@ def get_document_store(
             return_embedding=True,
             embedding_field=embedding_field,
             index=index,
-            similarity="dot_product",
+            similarity=similarity,
             isolation_level="AUTOCOMMIT",
         )
-        collections = utility.list_collections()
-        for collection in collections:
-            utility.drop_collection(collection)
+        print(document_store.collection.query("id in [1,]", output_fields=["id"]))
+        document_store.collection.delete("id in [1,]")
         
 
     elif document_store_type == "weaviate":

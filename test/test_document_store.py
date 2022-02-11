@@ -149,6 +149,7 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
+    print("hey!")
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
     assert len(documents) == 5
@@ -667,10 +668,14 @@ def test_delete_documents_with_filters(document_store_with_docs):
 
 
 def test_delete_documents_by_id(document_store_with_docs):
+    import logging
+    logging.info(len(document_store_with_docs.get_all_documents()))
     docs_to_delete = document_store_with_docs.get_all_documents(
         filters={"meta_field": ["test1", "test2", "test4", "test5"]}
     )
+    logging.info(len(docs_to_delete))
     docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test3"]})
+    logging.info(len(docs_not_to_delete))
 
     document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete])
     all_docs_left = document_store_with_docs.get_all_documents()

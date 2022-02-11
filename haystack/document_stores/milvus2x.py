@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 if TYPE_CHECKING:
     from haystack.nodes.retriever.base import BaseRetriever
 
-import numpy
 import numpy as np
 
 from scipy.special import expit
@@ -168,6 +167,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self.embedding_dim = embedding_dim
 
         self.index_file_size = index_file_size
+        self.cosine = False
 
         if similarity == "dot_product":
             self.metric_type = "IP"
@@ -175,6 +175,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
         elif similarity == "l2":
             self.metric_type = "L2"
             self.similarity = similarity
+        elif similarity == "cosine":
+            self.metric_type = "IP"
+            self.similarity = "dot_product"
+            self.cosine = True
         else:
             raise ValueError(
                 "The Milvus document store can currently only support dot_product and L2 similarity. "
@@ -227,7 +231,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         else:
             collection_schema = None
 
-        collection = Collection(name=index, schema=collection_schema)
+        collection = Collection(name=index, schema=collection_schema, consistency_level=0)
 
         has_index = collection.has_index()
         if not has_index:
@@ -235,6 +239,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 field_name=self.embedding_field,
                 index_params={"index_type": self.index_type, "metric_type": self.metric_type, "params": index_param},
             )
+
+        collection.load()
 
         return collection
 
@@ -298,9 +304,18 @@ class Milvus2DocumentStore(SQLDocumentStore):
                     for doc in document_batch:
                         doc_ids.append(doc.id)
                         if isinstance(doc.embedding, np.ndarray):
-                            embeddings.append(doc.embedding.tolist())
+                            if self.cosine:
+                                embedding = doc.embedding / np.linalg.norm(doc.embedding)
+                                embeddings.append(embedding.tolist())
+                            else:
+                                embeddings.append(doc.embedding.tolist())
                         elif isinstance(doc.embedding, list):
-                            embeddings.append(doc.embedding)
+                            if self.cosine:
+                                embedding = np.array(doc.embedding)
+                                embedding /= np.linalg.norm(embedding)
+                                embeddings.append(embedding.tolist())
+                            else:
+                                embeddings.append(doc.embedding)
                         else:
                             raise AttributeError(
                                 f"Format of supplied document embedding {type(doc.embedding)} is not "
@@ -376,6 +391,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
+                if self.cosine:
+                    embeddings = [embedding / np.linalg.norm(embedding) for embedding in embeddings]
                 embeddings_list = [embedding.tolist() for embedding in embeddings]
                 assert len(document_batch) == len(embeddings_list)
 
@@ -423,9 +440,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        self.collection.load()
-
         query_emb = query_emb.reshape(-1).astype(np.float32)
+        if self.cosine:
+            query_emb = query_emb / np.linalg.norm(query_emb)
 
         search_result: QueryResult = self.collection.search(
             data=[query_emb.tolist()],
@@ -447,7 +464,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         for doc in documents:
             raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = float(expit(np.asarray(raw_score / 100)))
+            if self.cosine:
+                doc.score = float((raw_score + 1) / 2)
+            else:
+                doc.score = float(expit(np.asarray(raw_score / 100)))
 
         return documents
 
@@ -468,15 +488,18 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if headers:
             raise NotImplementedError("Milvus2DocumentStore does not support headers.")
 
-        index = index or self.index
-        super().delete_documents(index=index, filters=filters)
-
-        if filters:
+        if ids:
+            self._delete_vector_ids_from_milvus(ids=ids, index=index)
+        elif filters:
             existing_docs = super().get_all_documents(filters=filters, index=index)
             self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
         else:
             self.collection.drop()
             self.collection = self._create_collection_and_index_if_not_exist(self.index)
+
+        index = index or self.index
+        super().delete_documents(index=index, filters=filters, ids=ids)
+
 
     def get_all_documents_generator(
         self,
@@ -591,25 +614,40 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if len(docs_with_vector_ids) == 0:
             return
 
-        ids = [str(doc.meta.get("vector_id")) for doc in docs_with_vector_ids]  # type: ignore
+        ids = []
+        vector_id_map = {}
 
-        search_result: QueryResult = self.collection.search(
+        for doc in docs_with_vector_ids:
+            vector_id = doc.meta.get("vector_id")
+            ids.append(str(vector_id))
+            vector_id_map[int(vector_id)] = doc
+
+        search_result: QueryResult = self.collection.query(
             expr=f'{self.id_field} in [ {",".join(ids)} ]',
             output_fields=[self.embedding_field],
         )
 
-        for result, doc in zip(search_result, docs_with_vector_ids):
-            doc.embedding = numpy.array(result["embedding"], dtype="float32")
+        for result in search_result:
+            doc = vector_id_map[result["id"]]
+            doc.embedding = np.array(result["embedding"], "float32")
 
-    def _delete_vector_ids_from_milvus(self, documents: List[Document], index: Optional[str] = None):
-
+    def _delete_vector_ids_from_milvus(self, documents: Optional[List[Document]] = None, ids: Optional[List[str]] = None, index: Optional[str] = None):
         index = index or self.index
-        existing_vector_ids = []
-        for doc in documents:
-            if "vector_id" in doc.meta:
-                existing_vector_ids.append(str(doc.meta["vector_id"]))
+        if ids is None:
+            ids = []
+            if documents is None:
+                raise ValueError("You must either specify documents or ids to delete.")
+            for doc in documents:
+                if "vector_id" in doc.meta:
+                    ids.append(str(doc.meta["vector_id"]))
+        else:
+            docs = super().get_documents_by_id(ids=ids, index=index)
+            ids = [doc.meta["vector_id"] for doc in docs if "vector_id" in doc.meta]
 
-        self.collection.delete(f"{self.id_field} in [ {','.join(existing_vector_ids)} ]")
+        expr = f"{self.id_field} in [{','.join(ids)}]"
+        import logging
+        #logging.info(expr)
+        self.collection.delete(expr)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
         """
@@ -617,4 +655,4 @@ class Milvus2DocumentStore(SQLDocumentStore):
         """
         if filters:
             raise Exception("filters are not supported for get_embedding_count in MilvusDocumentStore.")
-        return self.collection.num_entities
+        return len(self.get_all_documents())
