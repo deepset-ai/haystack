@@ -1654,8 +1654,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
                            Note, that the use of efficient approximate vector calculations in OpenSearch is tied to embedding_field's data type which cannot be changed after creation.
                            You won't be able to use approximate vector calculations on an embedding_field which was created with a different similarity value.
-                           In such cases a fallback to exact but slow vector calculations will be attempted. If successful a warning will be displayed, otherwise an exception will be thrown.
-                           E.g. currently this fallback works if you want to use 'cosine' on a 'dot_product' embedding field, but not vice verca.
+                           In such cases a fallback to exact but slow vector calculations will happen and a warning will be displayed.
         :param timeout: Number of seconds after which an ElasticSearch request times out.
         :param return_embedding: To return document embedding
         :param duplicate_documents: Handle duplicates document based on parameter options.
@@ -1864,21 +1863,12 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     if embedding_field_similarity == self.similarity:
                         self.embeddings_field_supports_similarity = True
                     else:
-                        if self.similarity == "dot_product":
-                            raise Exception(
-                                f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
-                                f"OpenSearch does not support the use of similarity '{self.similarity}' on '{embedding_field_similarity}'-optimized fields. "
-                                f"In order to try out '{self.similarity}' similarity on this index, you might want to use a different embedding field by setting the `embedding_field` param. "
-                                f"Consider creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
-                                f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
-                            )
-                        else:
-                            logger.warning(
-                                f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
-                                f"Falling back to slow exact vector calculation. "
-                                f"Consider creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
-                                f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
-                            )
+                        logger.warning(
+                            f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
+                            f"Falling back to slow exact vector calculation. "
+                            f"Consider creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
+                            f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
+                        )
 
             return
 
@@ -2012,24 +2002,19 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
     def _scale_embedding_score(self, score):
         # adjust approximate knn scores, see https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
-        if self.embeddings_field_supports_similarity:
-            if self.similarity == "dot_product":
-                if score > 1:
-                    score = score - 1
-                else:
-                    score = -(1 / score - 1)
-            elif self.similarity == "cosine":
-                score = -(1 / score - 2)
-            elif self.similarity == "l2":
-                score = 1 / score - 1
         # adjust exact knn scores, see https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
-        else:
-            if self.similarity == "dot_product":
-                raise Exception("Exact dot_product similarity is not supported.")
-            elif self.similarity == "cosine":
+        if self.similarity == "dot_product":
+            if score > 1:
                 score = score - 1
-            elif self.similarity == "l2":
-                score = 1 / score - 1
+            else:
+                score = -(1 / score - 1)
+        elif self.similarity == "l2":
+            score = 1 / score - 1
+        elif self.similarity == "cosine":
+            if self.embeddings_field_supports_similarity:
+                score = -(1 / score - 2)
+            else:
+                score = score - 1
 
         return score
 
