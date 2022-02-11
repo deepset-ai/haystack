@@ -67,7 +67,7 @@ def query(request: QueryRequest):
         return result
 
 
-def _process_request(pipeline, request) -> Dict[str, Any]:
+def _process_request(pipeline, request) -> QueryResponse:
     start_time = time.time()
 
     params = request.params or {}
@@ -82,16 +82,15 @@ def _process_request(pipeline, request) -> Dict[str, Any]:
             params[key]["filters"] = _format_filters(params[key]["filters"])
 
     result = pipeline.run(query=request.query, params=params, debug=request.debug)
-    response = QueryResponse(**result).dict()  # Validation step
+    response = QueryResponse(**result)
 
     # if any of the documents contains an embedding as an ndarray the latter needs to be converted to list of float
-    for document in response["documents"]:
+    for document in response.documents:
         if isinstance(document.embedding, ndarray):
             document.embedding = document.embedding.tolist()
 
-    end_time = time.time()
     logger.info(
-        json.dumps({"request": request, "response": response, "time": f"{(end_time - start_time):.2f}"}, default=str)
+        json.dumps({"request": request, "response": response, "time": f"{(time.time() - start_time):.2f}"}, default=str)
     )
     return response
 
