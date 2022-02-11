@@ -215,7 +215,7 @@ def test_query_with_invalid_filter(populated_client: TestClient):
     assert len(response_json["answers"]) == 0
 
 
-def test_query_with_no_documents():
+def test_query_with_no_documents_and_no_answers():
     os.environ["PIPELINE_YAML_PATH"] = str(
         (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
     )
