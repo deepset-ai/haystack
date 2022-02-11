@@ -19,4 +19,4 @@ specs = get_openapi_specs()
 
 # Dump the specs into a JSON file
 with open(f"openapi.json", "w") as f:
-    json.dump(specs, f)
+    json.dump(specs, f, indent=4)
