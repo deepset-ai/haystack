@@ -597,7 +597,7 @@ class Pipeline(BasePipeline):
     def eval(
         self,
         labels: List[MultiLabel],
-        documents: Optional[List[Optional[List[Document]]]] = None,
+        documents: Optional[List[List[Document]]] = None,
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
         add_isolated_node_eval: bool = False,
@@ -639,7 +639,8 @@ class Pipeline(BasePipeline):
             params["add_isolated_node_eval"] = True
 
         # if documents is None, set docs_per_label to None for each label
-        for docs_per_label, label in zip(documents or [None] * len(labels), labels):
+        label_documents = documents or [None] * len(labels) #type: ignore
+        for docs_per_label, label in zip(label_documents, labels):
             params_per_label = copy.deepcopy(params)
             if label.filters is not None:
                 if params_per_label is None:

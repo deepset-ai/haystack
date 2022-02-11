@@ -6,6 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from functools import wraps
 from time import perf_counter
+from haystack.pipelines import Pipeline
 
 from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
@@ -101,6 +102,13 @@ class BaseReader(BaseComponent):
             ]
 
         return results, "output_1"
+
+    def eval_in_single_node_pipeline(self, labels: List[MultiLabel], params: dict = {}, sas_model_name_or_path: Optional[str] = None):
+        pipeline = Pipeline()
+        pipeline.add_node(self, name="Reader", inputs=["query"])
+        documents = [[d for d in {l.document.id: l.document for l in label.labels}.values()] for label in labels]
+        eval_result = pipeline.eval(labels=labels, documents=documents, params=params, sas_model_name_or_path=sas_model_name_or_path)
+        return eval_result
 
     def run_batch(self, query_doc_list: List[Dict], top_k: Optional[int] = None):
         """A unoptimized implementation of running Reader queries in batch"""
