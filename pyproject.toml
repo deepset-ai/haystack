@@ -92,16 +92,6 @@ disable = [
   "c-extension-no-member",
   "useless-super-delegation",
   "useless-else-on-loop",
-  "used-before-assignment",
-  "unsupported-membership-test",
-  "unneeded-not",
-  "unnecessary-lambda",
-  "trailing-newlines",
-  "too-many-boolean-expressions",
-  "super-init-not-called",
-  "pointless-string-statement",
-  "non-parent-init-called",
-  "invalid-sequence-index",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
