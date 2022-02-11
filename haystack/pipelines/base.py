@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Dict, List, Optional, Any
 
 import copy
@@ -36,6 +37,9 @@ from haystack.document_stores.base import BaseDocumentStore
 logger = logging.getLogger(__name__)
 
 
+ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
+
+
 class RootNode(BaseComponent):
     """
     RootNode feeds inputs together with corresponding params to a Pipeline.
@@ -55,6 +59,82 @@ class BasePipeline:
 
     def run(self, **kwargs):
         raise NotImplementedError
+
+    def get_config(self, return_defaults: bool = False) -> dict:
+        """
+        Returns a configuration for the Pipeline that can be used with `BasePipeline.load_from_config()`.
+
+        :param return_defaults: whether to output parameters that have the default values.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def load_from_config(
+        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+    ):
+        """
+        Load Pipeline from a config dict defining the individual components and how they're tied together to form
+        a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        be passed.
+
+        Here's a sample configuration:
+
+            ```python
+            |   {
+            |       "version": "0.9",
+            |       "components": [
+            |           {  # define all the building-blocks for Pipeline
+            |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
+            |               "type": "FARMReader",  # Haystack Class name for the component
+            |               "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
+            |           },
+            |           {
+            |               "name": "MyESRetriever",
+            |               "type": "ElasticsearchRetriever",
+            |               "params": {
+            |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
+            |                   "custom_query": None,
+            |               },
+            |           },
+            |           {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
+            |       ],
+            |       "pipelines": [
+            |           {  # multiple Pipelines can be defined using the components from above
+            |               "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
+            |               "nodes": [
+            |                   {"name": "MyESRetriever", "inputs": ["Query"]},
+            |                   {"name": "MyReader", "inputs": ["MyESRetriever"]},
+            |               ],
+            |           }
+            |       ],
+            |   }
+            ```
+
+        :param pipeline_config: the pipeline config as dict
+        :param pipeline_name: if the config contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the configuration with environment variables. For example,
+                                             to change index name param for an ElasticsearchDocumentStore, an env
+                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+                                             `_` sign must be used to specify nested hierarchical properties.
+        """
+        pipeline_definition = cls._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
+        if pipeline_definition["type"] == "Pipeline":
+            return Pipeline.load_from_config(
+                pipeline_config=pipeline_config,
+                pipeline_name=pipeline_name,
+                overwrite_with_env_variables=overwrite_with_env_variables,
+            )
+        elif pipeline_definition["type"] == "RayPipeline":
+            return RayPipeline.load_from_config(
+                pipeline_config=pipeline_config,
+                pipeline_name=pipeline_name,
+                overwrite_with_env_variables=overwrite_with_env_variables,
+            )
+        else:
+            raise KeyError(
+                f"Pipeline Type '{pipeline_definition['type']}' is not a valid. The available types are"
+                f"'Pipeline' and 'RayPipeline'."
+            )
 
     @classmethod
     def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
@@ -102,24 +182,11 @@ class BasePipeline:
         """
 
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
-        pipeline_definition = cls._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
-        if pipeline_definition["type"] == "Pipeline":
-            return Pipeline._load_from_config(
-                pipeline_config=pipeline_config,
-                pipeline_name=pipeline_name,
-                overwrite_with_env_variables=overwrite_with_env_variables,
-            )
-        elif pipeline_definition["type"] == "RayPipeline":
-            return RayPipeline._load_from_config(
-                pipeline_config=pipeline_config,
-                pipeline_name=pipeline_name,
-                overwrite_with_env_variables=overwrite_with_env_variables,
-            )
-        else:
-            raise KeyError(
-                f"Pipeline Type '{pipeline_definition['type']}' is not a valid. The available types are"
-                f"'Pipeline' and 'RayPipeline'."
-            )
+        return cls.load_from_config(
+            pipeline_config=pipeline_config,
+            pipeline_name=pipeline_name,
+            overwrite_with_env_variables=overwrite_with_env_variables,
+        )
 
     @classmethod
     def load_from_deepset_cloud(
@@ -172,7 +239,7 @@ class BasePipeline:
                 )
                 component_config["params"] = params
 
-        pipeline = Pipeline._load_from_config(
+        pipeline = cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
@@ -217,6 +284,57 @@ class BasePipeline:
         return pipeline_config_infos
 
     @classmethod
+    def save_to_deepset_could(
+        cls,
+        query_pipeline: BasePipeline,
+        index_pipeline: BasePipeline,
+        pipeline_config_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        overwrite: bool = False,
+    ):
+        """
+        Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
+        a Pipeline. A single config must declare a query pipeline and a index pipeline.
+
+        :param query_pipeline: the query pipeline to save.
+        :param index_pipeline: the index pipeline to save.
+        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+        :param workspace: workspace in Deepset Cloud
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param overwrite: Whether to overwrite the config if it already exists. Otherwise an error is being raised.
+        """
+        query_config = query_pipeline.get_config()
+        index_config = index_pipeline.get_config()
+        pipelines = query_config["pipelines"] + index_config["pipelines"]
+        all_components = query_config["components"] + index_config["components"]
+        distinct_components = [c for c in {component["name"]: component for component in all_components}.values()]
+        config = {"components": distinct_components, "pipelines": pipelines, "version": "0.9"}
+
+        client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        pipeline_config_info = client.get_pipeline_config_info(pipeline_config_name=pipeline_config_name)
+        if pipeline_config_info:
+            if overwrite:
+                if pipeline_config_info["status"] == "DEPLOYED":
+                    raise ValueError(
+                        f"Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config '{pipeline_config_name}' first."
+                    )
+                else:
+                    client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
+                    logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
+            else:
+                raise ValueError(
+                    f"Pipeline config '{pipeline_config_name}' already exists. Set `overwrite=True` to overwrite pipeline config."
+                )
+        else:
+            client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
+            logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
+
+    @classmethod
     def _get_pipeline_definition(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None):
         """
         Get the definition of Pipeline from a given pipeline config. If the config contains more than one Pipeline,
@@ -225,7 +343,6 @@ class BasePipeline:
         :param pipeline_config: Dict Pipeline config parsed as a dictionary.
         :param pipeline_name: name of the Pipeline.
         """
-
         if pipeline_name is None:
             if len(pipeline_config["pipelines"]) == 1:
                 pipeline_definition = pipeline_config["pipelines"][0]
@@ -762,60 +879,54 @@ class Pipeline(BasePipeline):
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+    def load_from_config(
+        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+    ):
         """
-        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
-        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+        Load Pipeline from a config dict defining the individual components and how they're tied together to form
+        a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
         be passed.
 
         Here's a sample configuration:
 
-            ```yaml
-            |   version: '0.8'
-            |
-            |    components:    # define all the building-blocks for Pipeline
-            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            |      type: FARMReader    # Haystack Class name for the component
-            |      params:
-            |        no_ans_boost: -10
-            |        model_name_or_path: deepset/roberta-base-squad2
-            |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
-            |      params:
-            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
-            |    - name: MyDocumentStore
-            |      type: ElasticsearchDocumentStore
-            |      params:
-            |        index: haystack_test
-            |
-            |    pipelines:    # multiple Pipelines can be defined using the components from above
-            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            |      nodes:
-            |      - name: MyESRetriever
-            |        inputs: [Query]
-            |      - name: MyReader
-            |        inputs: [MyESRetriever]
+            ```python
+            |   {
+            |       "version": "0.9",
+            |       "components": [
+            |           {  # define all the building-blocks for Pipeline
+            |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
+            |               "type": "FARMReader",  # Haystack Class name for the component
+            |               "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
+            |           },
+            |           {
+            |               "name": "MyESRetriever",
+            |               "type": "ElasticsearchRetriever",
+            |               "params": {
+            |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
+            |                   "custom_query": None,
+            |               },
+            |           },
+            |           {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
+            |       ],
+            |       "pipelines": [
+            |           {  # multiple Pipelines can be defined using the components from above
+            |               "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
+            |               "nodes": [
+            |                   {"name": "MyESRetriever", "inputs": ["Query"]},
+            |                   {"name": "MyReader", "inputs": ["MyESRetriever"]},
+            |               ],
+            |           }
+            |       ],
+            |   }
             ```
 
-        :param path: path of the YAML file.
-        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
+        :param pipeline_config: the pipeline config as dict
+        :param pipeline_name: if the config contains multiple pipelines, the pipeline_name to load must be set.
+        :param overwrite_with_env_variables: Overwrite the configuration with environment variables. For example,
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        pipeline_config = cls._read_pipeline_config_from_yaml(path)
-        return Pipeline._load_from_config(
-            pipeline_config=pipeline_config,
-            pipeline_name=pipeline_name,
-            overwrite_with_env_variables=overwrite_with_env_variables,
-        )
-
-    @classmethod
-    def _load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
-    ):
         pipeline_definition = cls._get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = cls._get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
@@ -873,10 +984,20 @@ class Pipeline(BasePipeline):
         :param path: path of the output YAML file.
         :param return_defaults: whether to output parameters that have the default values.
         """
+        config = self.get_config(return_defaults=return_defaults)
+        with open(path, "w") as outfile:
+            yaml.dump(config, outfile, default_flow_style=False)
+
+    def get_config(self, return_defaults: bool = False) -> dict:
+        """
+        Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
+
+        :param return_defaults: whether to output parameters that have the default values.
+        """
         nodes = self.graph.nodes
 
-        pipeline_name = self.root_node.lower()
-        pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": "Pipeline", "nodes": []}}
+        pipeline_name = ROOT_NODE_TO_PIPELINE_NAME[self.root_node.lower()]
+        pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": self.__class__.__name__, "nodes": []}}
 
         components = {}
         for node in nodes:
@@ -916,9 +1037,7 @@ class Pipeline(BasePipeline):
             pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
 
         config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
-
-        with open(path, "w") as outfile:
-            yaml.dump(config, outfile, default_flow_style=False)
+        return config
 
     def _format_document_answer(self, document_or_answer: dict):
         return "\n \t".join([f"{name}: {value}" for name, value in document_or_answer.items()])
@@ -1086,7 +1205,7 @@ class RayPipeline(Pipeline):
         super().__init__()
 
     @classmethod
-    def _load_from_config(
+    def load_from_config(
         cls,
         pipeline_config: Dict,
         pipeline_name: Optional[str] = None,
@@ -1179,7 +1298,7 @@ class RayPipeline(Pipeline):
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         """
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
-        return RayPipeline._load_from_config(
+        return RayPipeline.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
