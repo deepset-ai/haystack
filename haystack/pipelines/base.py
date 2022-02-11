@@ -314,14 +314,21 @@ class BasePipeline:
 
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         pipeline_config_infos = client.list_pipeline_configs()
-        pipeline_config_names = (info["name"] for info in pipeline_config_infos)
-        if pipeline_config_name in pipeline_config_names:
+        pipeline_config_info = next(
+            filter(lambda info: info["name"] == pipeline_config_name, pipeline_config_infos), None
+        )
+        if pipeline_config_info:
             if overwrite:
-                client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
-                logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
+                if pipeline_config_info["status"] == "DEPLOYED":
+                    raise ValueError(
+                        f"Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config '{pipeline_config_name}' first."
+                    )
+                else:
+                    client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
+                    logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
             else:
                 raise ValueError(
-                    f"Pipeline config {pipeline_config_name} already exists. Set `overwrite=True` to overwrite pipeline config."
+                    f"Pipeline config '{pipeline_config_name}' already exists. Set `overwrite=True` to overwrite pipeline config."
                 )
         else:
             client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
