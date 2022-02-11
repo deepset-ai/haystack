@@ -747,7 +747,9 @@ class DataSiloForCrossVal:
     ):
         keyfunc = lambda x: x[id_index][1]
         if shuffle:
-            random.shuffle(documents, random_state)  # type: ignore
+            fixed_random = random.Random()
+            fixed_random.seed(random_state)
+            fixed_random.shuffle(documents)
 
         questions_per_doc = []
         for doc in documents:

@@ -60,7 +60,9 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
 
 
 # All modules to be aliased need to be imported here
-import haystack
+
+# This self-import is used to monkey-patch, keep for now
+import haystack  # pylint: disable=import-self
 from haystack.nodes import (
     connector,
     document_classifier,

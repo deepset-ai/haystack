@@ -156,10 +156,15 @@ class PredictionHead(nn.Module):
         This function compares the output dimensionality of the language model against the input dimensionality
         of the prediction head. If there is a mismatch, the prediction head will be resized to fit.
         """
+        # Note on pylint disable
+        # self.feed_forward's existence seems to be a condition for its own initialization
+        # within this class, which is clearly wrong. The only way this code could ever be called is 
+        # thanks to subclasses initializing self.feed_forward somewhere else; however, this is a 
+        # very implicit requirement for subclasses, and in general bad design. FIXME when possible.
         if "feed_forward" not in dir(self):
             return
         else:
-            old_dims = self.feed_forward.layer_dims
+            old_dims = self.feed_forward.layer_dims  #pylint: disable=access-member-before-definition
             if input_dim == old_dims[0]:
                 return
             new_dims = [input_dim] + old_dims[1:]

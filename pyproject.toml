@@ -13,11 +13,12 @@ line-length = 120
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
 disable = [
+  "fixme",
+
   "missing-docstring",
   "unused-argument",
   "no-member",
   "line-too-long",
-  "fixme",
   "protected-access",
   "too-few-public-methods",
   "raise-missing-from",
@@ -101,9 +102,6 @@ disable = [
   "pointless-string-statement",
   "non-parent-init-called",
   "invalid-sequence-index",
-  "import-self",
-  "deprecated-argument",
-  "access-member-before-definition",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
