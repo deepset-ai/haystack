@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 try:
     from typing import Literal
@@ -8,6 +8,7 @@ except ImportError:
     from typing_extensions import Literal  # type: ignore
 
 import requests
+import yaml
 
 DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1"  # TODO
 
@@ -85,6 +86,7 @@ class DeepsetCloudClient:
         self,
         url: str,
         json: dict = {},
+        data: Any = None,
         query_params: dict = None,
         headers: dict = None,
         stream: bool = False,
@@ -95,6 +97,7 @@ class DeepsetCloudClient:
             url=url,
             query_params=query_params,
             json=json,
+            data=data,
             stream=stream,
             headers=headers,
             raise_on_error=raise_on_error,
@@ -104,6 +107,7 @@ class DeepsetCloudClient:
         self,
         url: str,
         json: dict = {},
+        data: Any = None,
         query_params: dict = None,
         headers: dict = None,
         stream: bool = False,
@@ -115,6 +119,51 @@ class DeepsetCloudClient:
             url=url,
             query_params=query_params,
             json=json,
+            data=data,
+            stream=stream,
+            headers=headers,
+            raise_on_error=raise_on_error,
+            auto_paging_page_size=auto_paging_page_size,
+        )
+
+    def put(
+        self,
+        url: str,
+        json: dict = None,
+        data: Any = None,
+        query_params: dict = None,
+        stream: bool = False,
+        headers: dict = None,
+        raise_on_error: bool = True,
+    ):
+        return self._execute_request(
+            method="PUT",
+            url=url,
+            query_params=query_params,
+            json=json,
+            data=data,
+            stream=stream,
+            headers=headers,
+            raise_on_error=raise_on_error,
+        )
+
+    def put_with_auto_paging(
+        self,
+        url: str,
+        json: dict = {},
+        data: Any = None,
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+        auto_paging_page_size: Optional[int] = None,
+    ):
+        return self._execute_auto_paging_request(
+            method="PUT",
+            url=url,
+            query_params=query_params,
+            json=json,
+            data=data,
             stream=stream,
             headers=headers,
             raise_on_error=raise_on_error,
@@ -126,6 +175,7 @@ class DeepsetCloudClient:
         method: Literal["GET", "POST", "PUT", "HEAD"],
         url: str,
         json: dict = None,
+        data: Any = None,
         query_params: dict = None,
         headers: dict = None,
         stream: bool = False,
@@ -143,6 +193,7 @@ class DeepsetCloudClient:
                 method=method,
                 url=url,
                 json=json,
+                data=data,
                 query_params=query_params,
                 headers=headers,
                 stream=stream,
@@ -157,6 +208,7 @@ class DeepsetCloudClient:
         method: Literal["GET", "POST", "PUT", "HEAD"],
         url: str,
         json: dict = None,
+        data: Any = None,
         query_params: dict = None,
         headers: dict = None,
         stream: bool = False,
@@ -168,6 +220,7 @@ class DeepsetCloudClient:
             method=method,
             url=url,
             json=json,
+            data=data,
             params=query_params,
             headers=headers,
             auth=BearerAuth(self.api_key),
@@ -319,11 +372,45 @@ class PipelineClient:
         response = self.client.get(url=pipeline_config_url, headers=headers).json()
         return response
 
+    def get_pipeline_config_info(
+        self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None, headers: dict = None
+    ) -> Optional[dict]:
+        pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
+        response = self.client.get(url=pipeline_url, headers=headers, raise_on_error=False)
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 404:
+            return None
+        else:
+            raise DeepsetCloudError(
+                f"GET {pipeline_url} failed: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
+            )
+
     def list_pipeline_configs(self, workspace: Optional[str] = None, headers: dict = None) -> Generator:
         workspace_url = self._build_workspace_url(workspace)
         pipelines_url = f"{workspace_url}/pipelines"
         generator = self.client.get_with_auto_paging(url=pipelines_url, headers=headers)
         return generator
+
+    def save_pipeline_config(
+        self, config: dict, pipeline_config_name: str, workspace: Optional[str] = None, headers: dict = None
+    ):
+        config["name"] = pipeline_config_name
+        workspace_url = self._build_workspace_url(workspace=workspace)
+        pipelines_url = f"{workspace_url}/pipelines"
+        response = self.client.post(url=pipelines_url, data=yaml.dump(config), headers=headers).json()
+        if "name" not in response or response["name"] != pipeline_config_name:
+            logger.warning(f"Unexpected response from saving pipeline config: {response}")
+
+    def update_pipeline_config(
+        self, config: dict, pipeline_config_name: str, workspace: Optional[str] = None, headers: dict = None
+    ):
+        config["name"] = pipeline_config_name
+        pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
+        yaml_url = f"{pipeline_url}/yaml"
+        response = self.client.put(url=yaml_url, data=yaml.dump(config), headers=headers).json()
+        if "name" not in response or response["name"] != pipeline_config_name:
+            logger.warning(f"Unexpected response from updating pipeline config: {response}")
 
     def _build_pipeline_url(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None):
         if pipeline_config_name is None:
