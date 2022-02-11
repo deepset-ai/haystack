@@ -104,9 +104,6 @@ disable = [
   "import-self",
   "deprecated-argument",
   "access-member-before-definition",
-
-  "invalid-envvar-default",
-  "logging-too-many-args",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
