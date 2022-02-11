@@ -82,6 +82,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         isolation_level: str = None,
+        consistency_level: int = 0
+
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -193,7 +195,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self.id_field = id_field
         self.custom_fields = custom_fields
 
-        self.collection = self._create_collection_and_index_if_not_exist(self.index)
+        self.collection = self._create_collection_and_index_if_not_exist(self.index, consistency_level)
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
@@ -209,6 +211,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self,
         index: Optional[str] = None,
         index_param: Optional[Dict[str, Any]] = None,
+        consistency_level: int = 0,
     ):
         index = index or self.index
         index_param = index_param or self.index_param
@@ -231,7 +234,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         else:
             collection_schema = None
 
-        collection = Collection(name=index, schema=collection_schema, consistency_level=0)
+        collection = Collection(name=index, schema=collection_schema, consistency_level=consistency_level)
 
         has_index = collection.has_index()
         if not has_index:
