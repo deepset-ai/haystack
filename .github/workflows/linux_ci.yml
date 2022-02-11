@@ -194,9 +194,7 @@ jobs:
 
       - name: Linter
         run: |
-          pylint -ry haystack/
-          pylint -ry rest_api/
-          pylint -ry ui/
+          pylint -ry haystack/ rest_api/ ui/
 
 
   prepare-matrix:
