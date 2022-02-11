@@ -398,8 +398,9 @@ class PipelineClient:
         config["name"] = pipeline_config_name
         workspace_url = self._build_workspace_url(workspace=workspace)
         pipelines_url = f"{workspace_url}/pipelines"
-        response = self.client.post(url=pipelines_url, data=yaml.dump(config), headers=headers)
-        assert response.json()["name"] == pipeline_config_name
+        response = self.client.post(url=pipelines_url, data=yaml.dump(config), headers=headers).json()
+        if "name" not in response or response["name"] != pipeline_config_name:
+            logger.warning(f"Unexpected response from saving pipeline config: {response}")
 
     def update_pipeline_config(
         self, config: dict, pipeline_config_name: str, workspace: Optional[str] = None, headers: dict = None
@@ -407,8 +408,9 @@ class PipelineClient:
         config["name"] = pipeline_config_name
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         yaml_url = f"{pipeline_url}/yaml"
-        response = self.client.put(url=yaml_url, data=yaml.dump(config), headers=headers)
-        assert response.json()["name"] == pipeline_config_name
+        response = self.client.put(url=yaml_url, data=yaml.dump(config), headers=headers).json()
+        if "name" not in response or response["name"] != pipeline_config_name:
+            logger.warning(f"Unexpected response from updating pipeline config: {response}")
 
     def _build_pipeline_url(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None):
         if pipeline_config_name is None:
