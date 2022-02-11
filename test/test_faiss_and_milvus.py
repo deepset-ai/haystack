@@ -218,7 +218,7 @@ def test_update_docs(document_store, retriever, batch_size):
         # compare original input vec with stored one (ignore extra dim added by hnsw)
         # original input vec is normalized as faiss only stores normalized vectors
         a = updated_embedding / np.linalg.norm(updated_embedding)
-        assert np.allclose(a[0], stored_doc.embedding, rtol=0.2) # high tolerance necessary for Milvus 2
+        assert np.allclose(a[0], stored_doc.embedding, rtol=0.2)  # high tolerance necessary for Milvus 2
 
 
 @pytest.mark.slow
@@ -506,7 +506,7 @@ def test_cosine_similarity(document_store):
         original_emb = indexed_docs[doc.content].astype("float32")
 
         # check if the stored embedding was normalized
-        assert np.allclose(original_emb, result_emb, rtol=0.2) # high tolerance necessary for Milvus 2
+        assert np.allclose(original_emb, result_emb, rtol=0.2)  # high tolerance necessary for Milvus 2
 
         # check if the score is plausible for cosine similarity
         assert 0 <= doc.score <= 1.0

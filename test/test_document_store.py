@@ -669,6 +669,7 @@ def test_delete_documents_with_filters(document_store_with_docs):
 
 def test_delete_documents_by_id(document_store_with_docs):
     import logging
+
     logging.info(len(document_store_with_docs.get_all_documents()))
     docs_to_delete = document_store_with_docs.get_all_documents(
         filters={"meta_field": ["test1", "test2", "test4", "test5"]}

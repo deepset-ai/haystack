@@ -17,6 +17,7 @@ import requests
 
 try:
     from milvus import Milvus
+
     milvus2 = False
 except ImportError:
     milvus2 = True
@@ -144,7 +145,9 @@ def pytest_collection_modifyitems(config, items):
             document_store_types_to_run.remove("milvus")
             document_store_types_to_run.append("milvus2")
             if not milvus2:
-                raise Exception("Milvus2 is enabled, but your pymilvus version only supports Milvus 1. Please update pymilvus.")
+                raise Exception(
+                    "Milvus2 is enabled, but your pymilvus version only supports Milvus 1. Please update pymilvus."
+                )
 
         for i in item.keywords:
             if "-" in i:
@@ -747,7 +750,7 @@ def get_document_store(
         for collection in collections:
             if collection.startswith(index):
                 document_store.milvus_server.drop_collection(collection)
-    
+
     elif document_store_type == "milvus2":
         document_store = MilvusDocumentStore(
             embedding_dim=embedding_dim,
@@ -760,7 +763,6 @@ def get_document_store(
         )
         print(document_store.collection.query("id in [1,]", output_fields=["id"]))
         document_store.collection.delete("id in [1,]")
-        
 
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
