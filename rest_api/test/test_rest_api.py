@@ -81,32 +81,37 @@ def test_get_documents(populated_client: TestClient):
     response_json = response.json()
 
     # Make sure the right docs are found
-    assert len(response_json) == 2
     names = [doc["meta"]["name"] for doc in response_json]
     assert "sample_pdf_1.pdf" in names
-    assert "sample_pdf_1.pdf" in names
+    assert "sample_pdf_2.pdf" in names
     meta_keys = [doc["meta"]["meta_key"] for doc in response_json]
     assert all("meta_value" == meta_key for meta_key in meta_keys)
 
 
 def test_delete_documents(populated_client: TestClient):
-    # Make sure there are two docs
+    # Check how many docs there are
     response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
     assert 200 == response.status_code
     response_json = response.json()
-    assert len(response_json) == 2
+    initial_docs = len(response_json)
+    
+    # Check how many docs we will delete
+    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["0"]}}')
+    assert 200 == response.status_code
+    response_json = response.json()
+    docs_to_delete = len(response_json)
 
     # Delete one doc
     response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {"meta_index": ["0"]}}')
     assert 200 == response.status_code
 
-    # Now there should be only one doc
+    # Now there should be less document
     response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_key": ["meta_value"]}}')
     assert 200 == response.status_code
     response_json = response.json()
-    assert len(response_json) == 1
+    assert len(response_json) == initial_docs - docs_to_delete
 
-    # Make sure the right doc was deleted
+    # Make sure the right docs were deleted
     response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["0"]}}')
     assert 200 == response.status_code
     response_json = response.json()
@@ -115,7 +120,7 @@ def test_delete_documents(populated_client: TestClient):
     response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"meta_index": ["1"]}}')
     assert 200 == response.status_code
     response_json = response.json()
-    assert len(response_json) == 1
+    assert len(response_json) >= 1
 
 
 def test_file_upload(client: TestClient):
