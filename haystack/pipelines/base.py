@@ -37,6 +37,9 @@ from haystack.document_stores.base import BaseDocumentStore
 logger = logging.getLogger(__name__)
 
 
+ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
+
+
 class RootNode(BaseComponent):
     """
     RootNode feeds inputs together with corresponding params to a Pipeline.
@@ -987,8 +990,7 @@ class Pipeline(BasePipeline):
         """
         nodes = self.graph.nodes
 
-        root_node_to_pipeline_name = {"query": "query", "file": "indexing"}
-        pipeline_name = root_node_to_pipeline_name[self.root_node.lower()]
+        pipeline_name = ROOT_NODE_TO_PIPELINE_NAME[self.root_node.lower()]
         pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": self.__class__.__name__, "nodes": []}}
 
         components = {}
