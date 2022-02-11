@@ -168,6 +168,8 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
             sparql.customHttpHeaders = headers
         results = sparql.query().convert()
         # if query is a boolean query, return boolean instead of text result
-        # FIXME: 'results' likely doesn't support membership test (`"something" in results`). 
+        # FIXME: 'results' likely doesn't support membership test (`"something" in results`).
         # Pylint raises unsupported-membership-test. Silenced for now, keep in mind for future debugging.
-        return results["results"]["bindings"] if "results" in results else results["boolean"]  # pylint: disable=unsupported-membership-test
+        return (
+            results["results"]["bindings"] if "results" in results else results["boolean"]
+        )  # pylint: disable=unsupported-membership-test
