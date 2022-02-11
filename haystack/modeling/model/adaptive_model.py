@@ -630,6 +630,8 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         """
         import onnxruntime
 
+        super().__init__(prediction_heads)
+
         if str(device) == "cuda" and onnxruntime.get_device() != "GPU":
             raise Exception(
                 f"Device {device} not available for Inference. For CPU, run pip install onnxruntime and"

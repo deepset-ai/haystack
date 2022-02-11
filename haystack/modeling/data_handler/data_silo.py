@@ -723,7 +723,7 @@ class DataSiloForCrossVal:
                 for key, question in groupby(doc, key=keyfunc):
                     # add all available answrs to train set
                     sample_list = list(question)
-                    neg_answer_idx = []
+                    neg_answer_idx: List[int] = []
                     for index, sample in enumerate(sample_list):
                         if sample[label_index][0][0] or sample[label_index][0][1]:
                             train_samples.append(sample)
@@ -734,7 +734,7 @@ class DataSiloForCrossVal:
                         train_samples.extend([sample_list[idx] for idx in neg_answer_idx])
                     else:
                         neg_answer_idx = random.sample(neg_answer_idx, n_neg_answers_per_question)
-                        train_samples.extend([sample_list[idx] for idx in neg_answer_idx])
+                        train_samples.extend([sample_list[idx] for idx in neg_answer_idx])  # pilynt: disable=invalid-sequence-index
 
             ds_train = train_samples
             ds_test = [sample for document in test_set for sample in document]
