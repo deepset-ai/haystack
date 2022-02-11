@@ -372,6 +372,20 @@ class PipelineClient:
         response = self.client.get(url=pipeline_config_url, headers=headers).json()
         return response
 
+    def get_pipeline_config_info(
+        self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None, headers: dict = None
+    ) -> Optional[dict]:
+        pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
+        response = self.client.get(url=pipeline_url, headers=headers, raise_on_error=False)
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 404:
+            return None
+        else:
+            raise DeepsetCloudError(
+                f"GET {pipeline_url} failed: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
+            )
+
     def list_pipeline_configs(self, workspace: Optional[str] = None, headers: dict = None) -> Generator:
         workspace_url = self._build_workspace_url(workspace)
         pipelines_url = f"{workspace_url}/pipelines"

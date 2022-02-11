@@ -260,32 +260,39 @@ def test_save_to_deepset_cloud():
     if MOCK_DC:
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_pipeline_config",
             json={
-                "data": [
-                    {
-                        "name": "test_pipeline_config",
-                        "pipeline_id": "2184e9c1-c6ec-40a1-9b28-5d2768e5efa2",
-                        "status": "UNDEPLOYED",
-                        "created_at": "2022-02-01T09:57:03.803991+00:00",
-                        "deleted": False,
-                        "is_default": False,
-                        "indexing": {"status": "IN_PROGRESS", "pending_file_count": 4, "total_file_count": 33},
-                    },
-                    {
-                        "name": "test_pipeline_config_deployed",
-                        "pipeline_id": "8184e0c1-c6ec-40a1-9b28-5d2768e5efa3",
-                        "status": "DEPLOYED",
-                        "created_at": "2022-02-09T09:57:03.803991+00:00",
-                        "deleted": False,
-                        "is_default": False,
-                        "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 33},
-                    },
-                ],
-                "has_more": False,
-                "total": 1,
+                "name": "test_pipeline_config",
+                "pipeline_id": "2184e9c1-c6ec-40a1-9b28-5d2768e5efa2",
+                "status": "UNDEPLOYED",
+                "created_at": "2022-02-01T09:57:03.803991+00:00",
+                "deleted": False,
+                "is_default": False,
+                "indexing": {"status": "IN_PROGRESS", "pending_file_count": 4, "total_file_count": 33},
             },
             status=200,
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_pipeline_config_deployed",
+            json={
+                "name": "test_pipeline_config_deployed",
+                "pipeline_id": "8184e0c1-c6ec-40a1-9b28-5d2768e5efa3",
+                "status": "DEPLOYED",
+                "created_at": "2022-02-09T09:57:03.803991+00:00",
+                "deleted": False,
+                "is_default": False,
+                "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 33},
+            },
+            status=200,
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_pipeline_config_copy",
+            json={"errors": ["Pipeline with the name test_pipeline_config_copy does not exists."]},
+            status=404,
         )
 
         with open(SAMPLES_PATH / "dc" / "pipeline_config.json", "r") as f:

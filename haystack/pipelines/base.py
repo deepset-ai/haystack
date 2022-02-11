@@ -313,10 +313,7 @@ class BasePipeline:
         config = {"components": distinct_components, "pipelines": pipelines, "version": "0.9"}
 
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        pipeline_config_infos = client.list_pipeline_configs()
-        pipeline_config_info = next(
-            filter(lambda info: info["name"] == pipeline_config_name, pipeline_config_infos), None
-        )
+        pipeline_config_info = client.get_pipeline_config_info(pipeline_config_name=pipeline_config_name)
         if pipeline_config_info:
             if overwrite:
                 if pipeline_config_info["status"] == "DEPLOYED":
