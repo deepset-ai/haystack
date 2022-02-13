@@ -168,8 +168,9 @@ class TransformersSummarizer(BaseSummarizer):
 
         result: List[Document] = []
 
-        for context, summarized_answer in zip(contexts, summaries):
-            cur_doc = Document(content=summarized_answer["summary_text"], meta={"context": context})
+        for context, summarized_answer, document in zip(contexts, summaries, documents):
+            cur_doc = Document(content=summarized_answer["summary_text"], meta=document.meta)
+            cur_doc.meta.update({"context": context})
             result.append(cur_doc)
 
         return result
