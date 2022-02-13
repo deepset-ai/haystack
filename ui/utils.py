@@ -1,17 +1,11 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 import os
 import logging
 import requests
 from time import sleep
 from uuid import uuid4
-
-try:
-    import streamlit as st
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "ui", ie)
+import streamlit as st
 
 
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000")
@@ -118,7 +112,7 @@ def upload_doc(file):
     return response
 
 
-def get_backlink(result) -> Tuple[str, str]:
+def get_backlink(result) -> Tuple[Optional[str], Optional[str]]:
     if result.get("document", None):
         doc = result["document"]
         if isinstance(doc, dict):
