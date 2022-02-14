@@ -2164,7 +2164,7 @@ def _read_dpr_json(
 
     """
     # get remote dataset if needed
-    if not (os.path.exists(file)):
+    if not os.path.exists(file):
         logger.info(f" Couldn't find {file} locally. Trying to download ...")
         _download_extract_downstream_data(file, proxies=proxies)
 
@@ -2226,7 +2226,7 @@ def _read_dpr_json(
 
 def _read_squad_file(filename: str, proxies=None):
     """Read a SQuAD json file"""
-    if not (os.path.exists(filename)):
+    if not os.path.exists(filename):
         logger.info(f" Couldn't find {filename} locally. Trying to download ...")
         _download_extract_downstream_data(filename, proxies)
     with open(filename, "r", encoding="utf-8") as reader:
