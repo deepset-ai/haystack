@@ -87,10 +87,6 @@ class ConcatTensorDataset(ConcatDataset):
     Args:
         datasets (sequence): List of datasets to be concatenated
     """
-
-    def __init__(self, datasets: Iterable[Dataset]) -> None:
-        super(ConcatTensorDataset, self).__init__(datasets)
-
     def __getitem__(self, idx):
         if isinstance(idx, slice):
             rows = [super(ConcatTensorDataset, self).__getitem__(i) for i in range(self.__len__())[idx]]
