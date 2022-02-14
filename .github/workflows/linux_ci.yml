@@ -165,10 +165,10 @@ jobs:
       - name: Pushes to another repository
         uses: cpina/github-action-push-to-another-repository@main
         env:
-          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+          API_TOKEN_GITHUB: ${{github.token}}
         with:
           destination-github-username: ${{github.actor}}
-          destination-repository-name: ${{github.event.pull_request.head.repo.full_name}}
+          destination-repository-name: 'haystack'
           user-email: '41898282+github-actions[bot]@users.noreply.github.com'
           user-name: 'github-actions[bot]'
           commit-message: Update Documentation & Code Style
