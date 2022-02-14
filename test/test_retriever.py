@@ -10,7 +10,7 @@ from haystack.document_stores import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.milvus import MilvusDocumentStore
+from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
@@ -34,8 +34,7 @@ def docs():
             content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
             meta={"name": "1"},
             id="3",
-        ),
-        Document(
+        ), Document(
             content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
             meta={"name": "2"},
             id="4",
