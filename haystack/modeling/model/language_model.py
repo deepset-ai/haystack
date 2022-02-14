@@ -300,8 +300,7 @@ class LanguageModel(nn.Module):
         for odn in OUTPUT_DIM_NAMES:
             if odn in dir(config):
                 return getattr(config, odn)
-        else:
-            raise Exception("Could not infer the output dimensions of the language model")
+        raise Exception("Could not infer the output dimensions of the language model")
 
     def freeze(self, layers):
         """To be implemented"""
