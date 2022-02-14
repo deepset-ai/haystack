@@ -15,6 +15,11 @@ max-line-length=120
 disable = [
   "fixme",
 
+  "c-extension-no-member",
+
+
+
+
   "missing-docstring",
   "unused-argument",
   "no-member",
@@ -87,11 +92,6 @@ disable = [
   "superfluous-parens",
   "no-value-for-parameter",
   "no-else-break",
-  "inconsistent-return-statements",
-  "consider-using-set-comprehension",
-  "c-extension-no-member",
-  "useless-super-delegation",
-  "useless-else-on-loop",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
