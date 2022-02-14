@@ -129,9 +129,6 @@ class EvalDocuments(BaseComponent):
             )
         return {"correct_retrieval": correct_retrieval}, "output_1"
 
-    def is_correctly_retrieved(self, retriever_labels, predictions):
-        return self.reciprocal_rank_retrieved(retriever_labels, predictions) > 0
-
     def reciprocal_rank_retrieved(self, retriever_labels, predictions, top_k_eval_documents):
         if self.open_domain:
             for answer in retriever_labels.answers:
