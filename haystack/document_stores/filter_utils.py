@@ -1,6 +1,16 @@
 from typing import Union, List, Dict
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from functools import reduce
+
+from haystack.utils.import_utils import safe_import
+
+try:
+    from haystack.document_stores.sql import MetaDocumentORM
+    from sqlalchemy import and_, or_, not_
+    sql_available = True
+except ImportError:
+    sql_available = False
 
 
 def nested_defaultdict():
@@ -122,6 +132,13 @@ class LogicalFilterClause(ABC):
         """
         pass
 
+    @abstractmethod
+    def convert_to_sql(self):
+        """
+        Converts the LogicalFilterClause instance to an SQL filter.
+        """
+        pass
+
     def _merge_es_range_queries(self, conditions: List[Dict]) -> List[Dict]:
         """
         Merges Elasticsearch range queries that perform on the same metadata field.
@@ -187,6 +204,13 @@ class ComparisonOperation(ABC):
         """
         pass
 
+    @abstractmethod
+    def convert_to_sql(self):
+        """
+        Converts the ComparisonOperation instance to an SQL filter.
+        """
+        pass
+
 
 class NotOperation(LogicalFilterClause):
     """
@@ -197,6 +221,10 @@ class NotOperation(LogicalFilterClause):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"must_not": conditions}}
+    
+    def convert_to_sql(self):
+        conditions = [condition.convert_to_sql() for condition in self.conditions]
+        return not_(reduce(or_, conditions))
 
 
 class AndOperation(LogicalFilterClause):
@@ -208,6 +236,10 @@ class AndOperation(LogicalFilterClause):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"must": conditions}}
+    
+    def convert_to_sql(self):
+        conditions = [condition.convert_to_sql() for condition in self.conditions]
+        return reduce(and_, conditions)
 
 
 class OrOperation(LogicalFilterClause):
@@ -219,6 +251,10 @@ class OrOperation(LogicalFilterClause):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"should": conditions}}
+    
+    def convert_to_sql(self):
+        conditions = [condition.convert_to_sql() for condition in self.conditions]
+        return reduce(or_, conditions)
 
 
 class EqOperation(ComparisonOperation):
