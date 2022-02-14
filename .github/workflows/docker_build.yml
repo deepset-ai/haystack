@@ -17,17 +17,17 @@ jobs:
           - dockerfile: Dockerfile
             repository: arzelaascoli/haystack-cpu
             tagprefix: ''
-            latest: true
+            default: true
 
           - dockerfile: Dockerfile-GPU
             repository: arzelaascoli/haystack-gpu
             tagprefix: 'demo-'
-            latest: true
+            default: true
 
           - dockerfile: Dockerfile-GPU-minimal
             repository: arzelaascoli/haystack-gpu
             tagprefix: 'minimal-'
-            latest: false
+            default: false
 
     steps:
       - name: Checkout
@@ -39,13 +39,12 @@ jobs:
         with:
           images: |
             ${{ matrix.repository }}
-          flavor: |
-            prefix=${{ matrix.tagprefix }}
           tags: |
-            type=ref,event=tag                    
-            type=sha,format=long
-            type=raw,value=latest
-            type=raw,value=latest,prefix=,enable=${{ matrix.latest }}
+            type=ref,event=tag,prefix=${{ matrix.tagprefix }}                     
+            type=sha,format=long,prefix=${{ matrix.tagprefix }}
+            type=sha,format=long,prefix=,enable=${{ matrix.default }}
+            type=raw,value=latest,prefix=${{ matrix.tagprefix }}
+            type=raw,value=latest,prefix=,enable=${{ matrix.default }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
