@@ -734,7 +734,7 @@ class DataSiloForCrossVal:
                         train_samples.extend([sample_list[idx] for idx in neg_answer_idx])
                     else:
                         neg_answer_idx = random.sample(neg_answer_idx, n_neg_answers_per_question)
-                        train_samples.extend([sample_list[idx] for idx in neg_answer_idx])  # pilynt: disable=invalid-sequence-index
+                        train_samples.extend([sample_list[idx] for idx in neg_answer_idx])  # pylint: disable=invalid-sequence-index
 
             ds_train = train_samples
             ds_test = [sample for document in test_set for sample in document]
