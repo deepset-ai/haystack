@@ -15,17 +15,17 @@ jobs:
       matrix:
         include:
           - dockerfile: Dockerfile
-            repository: deepset/haystack-cpu
+            repository: arzelaascoli/haystack-cpu
             tagprefix: ''
             latest: true
 
           - dockerfile: Dockerfile-GPU
-            repository: deepset/haystack-gpu
+            repository: arzelaascoli/haystack-gpu
             tagprefix: 'demo-'
             latest: true
 
           - dockerfile: Dockerfile-GPU-minimal
-            repository: deepset/haystack-gpu
+            repository: arzelaascoli/haystack-gpu
             tagprefix: 'minimal-'
             latest: false
 
@@ -42,7 +42,7 @@ jobs:
           flavor: |
             prefix=${{ matrix.tagprefix }}
           tags: |
-            type=ref,event=tag
+            type=ref,event=tag                    
             type=sha,format=long
             type=raw,value=latest
             type=raw,value=latest,prefix=,enable=${{ matrix.latest }}
