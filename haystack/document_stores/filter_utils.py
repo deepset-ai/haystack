@@ -1,4 +1,4 @@
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
@@ -85,7 +85,7 @@ class LogicalFilterClause(ABC):
         self.conditions = conditions
 
     @abstractmethod
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
         pass
 
     @classmethod
@@ -153,7 +153,7 @@ class ComparisonOperation(ABC):
         self.comparison_value = comparison_value
 
     @abstractmethod
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
         pass
 
     @classmethod
@@ -201,8 +201,11 @@ class NotOperation(LogicalFilterClause):
     Handles conversion of logical 'NOT' operations.
     """
 
-    def evaluate(self, fields) -> bool:
-        return not self.conditions[0].evaluate(fields)
+    def evaluate(self, fields) -> Optional[bool]:
+        evaluations = [condition.evaluate(fields) for condition in self.conditions]
+        if None in evaluations:
+            return None
+        return not any(evaluations)
 
     def convert_to_elasticsearch(self):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
@@ -215,8 +218,11 @@ class AndOperation(LogicalFilterClause):
     Handles conversion of logical 'AND' operations.
     """
 
-    def evaluate(self, fields) -> bool:
-        return all(condition.evaluate(fields) for condition in self.conditions)
+    def evaluate(self, fields) -> Optional[bool]:
+        evaluations = [condition.evaluate(fields) for condition in self.conditions]
+        if None in evaluations:
+            return None
+        return all(evaluations)
 
     def convert_to_elasticsearch(self):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
@@ -229,8 +235,11 @@ class OrOperation(LogicalFilterClause):
     Handles conversion of logical 'OR' operations.
     """
 
-    def evaluate(self, fields) -> bool:
-        return any(condition.evaluate(fields) for condition in self.conditions)
+    def evaluate(self, fields) -> Optional[bool]:
+        evaluations = [condition.evaluate(fields) for condition in self.conditions]
+        if None in evaluations:
+            return None
+        return any(evaluations)
 
     def convert_to_elasticsearch(self):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
@@ -243,7 +252,9 @@ class EqOperation(ComparisonOperation):
     Handles conversion of the '$eq' comparison operation.
     """
 
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
+        if self.field_name not in fields:
+            return None
         return fields[self.field_name] == self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -255,7 +266,9 @@ class InOperation(ComparisonOperation):
     Handles conversion of the '$in' comparison operation.
     """
 
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
+        if self.field_name not in fields:
+            return None
         return fields[self.field_name] in self.comparison_value  # type: ignore
         # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
@@ -268,7 +281,9 @@ class NeOperation(ComparisonOperation):
     Handles conversion of the '$ne' comparison operation.
     """
 
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
+        if self.field_name not in fields:
+            return None
         return fields[self.field_name] != self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -280,7 +295,9 @@ class NinOperation(ComparisonOperation):
     Handles conversion of the '$nin' comparison operation.
     """
 
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
+        if self.field_name not in fields:
+            return None
         return fields[self.field_name] not in self.comparison_value  # type: ignore
         # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
@@ -293,7 +310,9 @@ class GtOperation(ComparisonOperation):
     Handles conversion of the '$gt' comparison operation.
     """
 
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
+        if self.field_name not in fields:
+            return None
         return fields[self.field_name] > self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -305,7 +324,9 @@ class GteOperation(ComparisonOperation):
     Handles conversion of the '$gte' comparison operation.
     """
 
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
+        if self.field_name not in fields:
+            return None
         return fields[self.field_name] >= self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -317,7 +338,9 @@ class LtOperation(ComparisonOperation):
     Handles conversion of the '$lt' comparison operation.
     """
 
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
+        if self.field_name not in fields:
+            return None
         return fields[self.field_name] < self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -329,7 +352,9 @@ class LteOperation(ComparisonOperation):
     Handles conversion of the '$lte' comparison operation.
     """
 
-    def evaluate(self, fields) -> bool:
+    def evaluate(self, fields) -> Optional[bool]:
+        if self.field_name not in fields:
+            return None
         return fields[self.field_name] <= self.comparison_value
 
     def convert_to_elasticsearch(self):
