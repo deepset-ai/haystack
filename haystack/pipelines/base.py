@@ -522,7 +522,7 @@ class Pipeline(BasePipeline):
             params["add_isolated_node_eval"] = True
 
         # if documents is None, set docs_per_label to None for each label
-        for docs_per_label, label in zip(documents or [None] * len(labels), labels):
+        for docs_per_label, label in zip(documents or [None] * len(labels), labels): # type: ignore
             params_per_label = copy.deepcopy(params)
             # If the label contains a filter, the filter is applied unless documents are already given
             if label.filters is not None and documents is None:
