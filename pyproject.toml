@@ -84,11 +84,7 @@ disable = [
   "use-a-generator",
   "simplifiable-if-statement",
   "import-error",
-  "consider-using-from-import",
-  "useless-object-inheritance",
-  "use-dict-literal",
   "unsubscriptable-object",
-  "too-many-return-statements",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
