@@ -618,8 +618,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
         ids = []
         vector_id_map = {}
 
+        doc.meta: Dict[str, str]
+
         for doc in docs_with_vector_ids:
-            vector_id: str = doc.meta.get("vector_id")
+            vector_id: str = doc.meta["vector_id"]
             ids.append(str(vector_id))
             vector_id_map[int(vector_id)] = doc
 
