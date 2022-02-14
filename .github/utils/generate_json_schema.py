@@ -8,7 +8,6 @@ import haystack.document_stores
 import haystack.nodes
 import pydantic.schema
 from fastapi.dependencies.utils import get_typed_signature
-from github import Github
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
 from pydantic.fields import ModelField
 from pydantic.schema import SkipField, TypeModelOrEnum, TypeModelSet, encode_default
@@ -217,6 +216,8 @@ def generate_json_schema():
 
 
 def main():
+    from github import Github
+
     generate_json_schema()
     logging.basicConfig(level=logging.INFO)
     settings = Settings()
