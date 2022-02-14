@@ -210,8 +210,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
     def _create_collection_and_index_if_not_exist(
         self,
         index: Optional[str] = None,
-        index_param: Optional[Dict[str, Any]] = None,
         consistency_level: int = 0,
+        index_param: Optional[Dict[str, Any]] = None,
     ):
         index = index or self.index
         index_param = index_param or self.index_param
