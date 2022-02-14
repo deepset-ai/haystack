@@ -420,10 +420,8 @@ class Label:
                     )
             else:
                 # Automatically infer no_answer from Answer object
-                if self.answer.answer == "" or self.answer.answer is None:
-                    no_answer = True
-                else:
-                    no_answer = False
+                no_answer = self.answer.answer == "" or self.answer.answer is None
+
         self.no_answer = no_answer
 
         # TODO autofill answer.document_id if Document is provided

@@ -1070,10 +1070,7 @@ class FARMReader(BaseReader):
                 logger.error(
                     "Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'"
                 )
-        if c.answer == "no_answer":
-            return True
-        else:
-            return False
+        return c.answer == "no_answer"
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         """
