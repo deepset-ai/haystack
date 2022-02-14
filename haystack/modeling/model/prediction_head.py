@@ -965,7 +965,9 @@ class TextSimilarityHead(PredictionHead):
         elif "cosine" in self.similarity_function:
             return TextSimilarityHead.cosine_scores
         else:
-            raise AttributeError(f"The similarity function can only be 'dot_product' or 'cosine', not '{self.similarity_function}'")
+            raise AttributeError(
+                f"The similarity function can only be 'dot_product' or 'cosine', not '{self.similarity_function}'"
+            )
 
     def forward(self, query_vectors: torch.Tensor, passage_vectors: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
