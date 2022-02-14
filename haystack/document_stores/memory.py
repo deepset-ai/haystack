@@ -302,7 +302,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Narrow down the scope to documents that match the given filters.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
                         operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
                         `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
@@ -313,29 +314,54 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
                                 "rating": {"$gte": 3},
                                 "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
+                            ```
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
                             }
-                        }
-                        ```
+                            ```
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
@@ -395,29 +421,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+                            ```
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
@@ -529,7 +545,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: :param filters: Narrow down the scope to documents that match the given filters.
+        :param filters: Narrow down the scope to documents that match the given filters.
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
                         operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
                         `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
@@ -540,29 +556,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
@@ -588,7 +594,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: :param filters: Narrow down the scope to documents that match the given filters.
+        :param filters: Narrow down the scope to documents that match the given filters.
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
                         operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
                         `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
@@ -599,29 +605,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
@@ -678,29 +674,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+                            ```
         :return: None
         """
         if headers:
@@ -738,29 +724,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
                         Example:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
                                 }
                             }
-                        }
-                        # or simpler using default operators
-                        filters = {
-                            "type": "article",
-                            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                            "rating": {"$gte": 3},
-                            "$or": {
-                                "genre": ["economy", "politics"],
-                                "publisher": "nytimes"
-                            }
-                        }
-                        ```
+                            ```
         :return: None
         """
         if headers:
@@ -789,8 +765,30 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param index: Index name to delete the labels from. If None, the
                       DocumentStore's default label index (self.label_index) will be used.
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
-        :param filters: Optional filters to narrow down the labels to be deleted.
-                        Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+        :param filters: Narrow down the scope to documents that match the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+                        Example:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :return: None
         """
         if headers:
