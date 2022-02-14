@@ -430,7 +430,7 @@ class Label:
 
         self.pipeline_id = pipeline_id
         if not meta:
-            self.meta = dict()
+            self.meta = {}
         else:
             self.meta = meta
         self.filters = filters

@@ -336,7 +336,7 @@ class Seq2SeqGenerator(BaseGenerator):
     ```
     """
 
-    _model_input_converters: Dict[str, Callable] = dict()
+    _model_input_converters: Dict[str, Callable] = {}
 
     def __init__(
         self,
