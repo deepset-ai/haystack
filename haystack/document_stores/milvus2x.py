@@ -82,8 +82,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         isolation_level: str = None,
-        consistency_level: int = 0
-
+        consistency_level: int = 0,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -503,7 +502,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index = index or self.index
         super().delete_documents(index=index, filters=filters, ids=ids)
 
-
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
@@ -634,7 +632,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
             doc = vector_id_map[result["id"]]
             doc.embedding = np.array(result["embedding"], "float32")
 
-    def _delete_vector_ids_from_milvus(self, documents: Optional[List[Document]] = None, ids: Optional[List[str]] = None, index: Optional[str] = None):
+    def _delete_vector_ids_from_milvus(
+        self, documents: Optional[List[Document]] = None, ids: Optional[List[str]] = None, index: Optional[str] = None
+    ):
         index = index or self.index
         if ids is None:
             ids = []
@@ -649,7 +649,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         expr = f"{self.id_field} in [{','.join(ids)}]"
         import logging
-        #logging.info(expr)
+
+        # logging.info(expr)
         self.collection.delete(expr)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
