@@ -16,17 +16,17 @@ jobs:
         include:
           - dockerfile: Dockerfile
             repository: deepset/haystack-cpu
-            tagprefix: ""
+            tagprefix: ''
             latest: true
 
           - dockerfile: Dockerfile-GPU
             repository: deepset/haystack-gpu
-            tagprefix: "demo-"
+            tagprefix: 'demo-'
             latest: true
 
           - dockerfile: Dockerfile-GPU-minimal
             repository: deepset/haystack-gpu
-            tagprefix: "minimal-"
+            tagprefix: 'minimal-'
             latest: false
 
     steps:
@@ -45,7 +45,7 @@ jobs:
             type=ref,event=tag
             type=sha,format=long
             type=raw,value=latest
-            type=raw,value=latest,prefix="",enable=${{ matrix.latest }}
+            type=raw,value=latest,prefix=,enable=${{ matrix.latest }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
