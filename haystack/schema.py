@@ -560,7 +560,7 @@ class MultiLabel:
                 if l.filters not in unique_values:
                     unique_values.append(l.filters)
         else:
-            unique_values = list(set([getattr(l, key) for l in self.labels]))
+            unique_values = list({getattr(l, key) for l in self.labels})
         if must_be_single_value and len(unique_values) > 1:
             raise ValueError(
                 f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}"
