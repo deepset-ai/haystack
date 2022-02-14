@@ -15,17 +15,17 @@ jobs:
       matrix:
         include:
           - dockerfile: Dockerfile
-            repository: arzelaascoli/haystack-cpu
+            repository: deepset/haystack-cpu
             tagprefix: ''
             default: true
 
           - dockerfile: Dockerfile-GPU
-            repository: arzelaascoli/haystack-gpu
+            repository: deepset/haystack-gpu
             tagprefix: 'demo-'
             default: true
 
           - dockerfile: Dockerfile-GPU-minimal
-            repository: arzelaascoli/haystack-gpu
+            repository: deepset/haystack-gpu
             tagprefix: 'minimal-'
             default: false
 
