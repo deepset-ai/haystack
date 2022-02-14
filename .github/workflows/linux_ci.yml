@@ -211,11 +211,29 @@ jobs:
     needs: build-cache
     runs-on: ubuntu-20.04
     steps:
+
       - uses: actions/checkout@v2
+    
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'haystack/**'
+              - 'rest_api/**'
+              - 'test/**'
+              - 'ui/**'
+              - 'conftest.py'
+              - 'Dockerfile*'
+              - 'pyproject.toml'
+              - 'setup.cfg'
+              - 'setup.py'
       - id: set-matrix
+        if: steps.filter.outputs.code == 'true'  # run only if 'code' files were changed
         run: |
           find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .
           echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
+        
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
