@@ -168,6 +168,9 @@ def test_file_upload(client: TestClient):
 
 
 def test_file_upload_with_no_meta(client: TestClient):
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) == 0
+
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(
         url="/file-upload",
@@ -177,20 +180,23 @@ def test_file_upload_with_no_meta(client: TestClient):
     assert 200 == response.status_code
 
     response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
-    assert 200 == response.status_code
-    response_json = response.json()
-    assert len(response_json) > 0
+    assert len(response.json()) > 0
 
 
-def test_file_upload_with_no_meta(client: TestClient):
+def test_file_upload_with_wrong_meta(client: TestClient):
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) == 0
+
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(
         url="/file-upload",
         files=file_to_upload,
-        data={"meta": ''},
+        data={"meta": '1'},
     )
-    assert 200 == response.status_code
+    assert 200 < response.status_code
 
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) == 0
 
 def test_query_with_no_filter(populated_client: TestClient):
     query_with_no_filter_value = {"query": "Who made the PDF specification?"}
