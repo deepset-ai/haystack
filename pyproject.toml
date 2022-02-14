@@ -89,9 +89,6 @@ disable = [
   "use-dict-literal",
   "unsubscriptable-object",
   "too-many-return-statements",
-  "superfluous-parens",
-  "no-value-for-parameter",
-  "no-else-break",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
