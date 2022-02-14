@@ -167,12 +167,13 @@ def get_passage_offsets(doc_offsets, doc_stride, passage_len_t, doc_text):
     return passage_spans
 
 
-def offset_to_token_idx(token_offsets, ch_idx):
+def offset_to_token_idx(token_offsets, ch_idx) -> Optional[int]:
     """Returns the idx of the token at the given character idx"""
     n_tokens = len(token_offsets)
     for i in range(n_tokens):
         if (i + 1 == n_tokens) or (token_offsets[i] <= ch_idx < token_offsets[i + 1]):
             return i
+    return None
 
 
 def offset_to_token_idx_vecorized(token_offsets, ch_idx):
