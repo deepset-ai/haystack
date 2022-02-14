@@ -171,5 +171,5 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         # FIXME: 'results' likely doesn't support membership test (`"something" in results`).
         # Pylint raises unsupported-membership-test. Silenced for now, keep in mind for future debugging.
         return (
-            results["results"]["bindings"] if "results" in results else results["boolean"]
-        )  # pylint: disable=unsupported-membership-test
+            results["results"]["bindings"] if "results" in results else results["boolean"]  # pylint: disable=unsupported-membership-test
+        )  
