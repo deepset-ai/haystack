@@ -619,7 +619,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         vector_id_map = {}
 
         for doc in docs_with_vector_ids:
-            vector_id: str = doc.meta["vector_id"] # type: ignore
+            vector_id: str = doc.meta["vector_id"]  # type: ignore
             # vector_id is always a string, but it isn't part of type hint
             ids.append(str(vector_id))
             vector_id_map[int(vector_id)] = doc
