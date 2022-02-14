@@ -1,8 +1,11 @@
+from typing import Dict, Union, Optional
+
 import json
 import logging
 
 from fastapi import APIRouter
-from rest_api.schema import FilterRequest, LabelSerialized
+from haystack.schema import Label
+from rest_api.schema import FilterRequest, LabelSerialized, CreateLabelSerialized
 from rest_api.controller.search import DOCUMENT_STORE
 
 
@@ -12,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/feedback")
-def post_feedback(feedback: LabelSerialized):
+def post_feedback(feedback: Union[LabelSerialized, CreateLabelSerialized]):
     """
     This endpoint allows the API user to submit feedback on
     an answer for a particular query. For example, the user
@@ -23,7 +26,9 @@ def post_feedback(feedback: LabelSerialized):
     """
     if feedback.origin is None:
         feedback.origin = "user-feedback"
-    DOCUMENT_STORE.write_labels([feedback])
+
+    label = Label(**feedback.dict())
+    DOCUMENT_STORE.write_labels([label])
 
 
 @router.get("/feedback")
@@ -37,11 +42,23 @@ def get_feedback():
     return labels
 
 
+@router.delete("/feedback")
+def delete_feedback():
+    """
+    This endpoint allows the API user to delete all the
+    feedback that has been sumbitted through the
+    `POST /feedback` endpoint
+    """
+    all_labels = DOCUMENT_STORE.get_all_labels()
+    user_label_ids = [label.id for label in all_labels if label.origin == "user-feedback"]
+    DOCUMENT_STORE.delete_labels(ids=user_label_ids)
+
+
 @router.post("/eval-feedback")
 def get_feedback_metrics(filters: FilterRequest = None):
     """
-    This endpoint returns basic accuracy metrics based on user feedback, 
-    e.g., the ratio of correct answers or correctly identified documents. 
+    This endpoint returns basic accuracy metrics based on user feedback,
+    e.g., the ratio of correct answers or correctly identified documents.
     You can filter the output by document or label.
 
     Example:
@@ -51,13 +68,14 @@ def get_feedback_metrics(filters: FilterRequest = None):
     """
 
     if filters:
-        filters = filters.filters
-        filters["origin"] = ["user-feedback"]
+        filters_content = filters.filters or {}
+        filters_content["origin"] = ["user-feedback"]
     else:
-        filters = {"origin": ["user-feedback"]}
+        filters_content = {"origin": ["user-feedback"]}
 
-    labels = DOCUMENT_STORE.get_all_labels(filters=filters)
+    labels = DOCUMENT_STORE.get_all_labels(filters=filters_content)
 
+    res: Dict[str, Optional[Union[float, int]]]
     if len(labels) > 0:
         answer_feedback = [1 if l.is_correct_answer else 0 for l in labels]
         doc_feedback = [1 if l.is_correct_document else 0 for l in labels]

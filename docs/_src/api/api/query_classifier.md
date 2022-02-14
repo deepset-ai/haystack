@@ -1,7 +1,9 @@
-<a name="base"></a>
+<a id="base"></a>
+
 # Module base
 
-<a name="base.BaseQueryClassifier"></a>
+<a id="base.BaseQueryClassifier"></a>
+
 ## BaseQueryClassifier
 
 ```python
@@ -10,10 +12,12 @@ class BaseQueryClassifier(BaseComponent)
 
 Abstract class for Query Classifiers
 
-<a name="sklearn"></a>
+<a id="sklearn"></a>
+
 # Module sklearn
 
-<a name="sklearn.SklearnQueryClassifier"></a>
+<a id="sklearn.SklearnQueryClassifier"></a>
+
 ## SklearnQueryClassifier
 
 ```python
@@ -60,27 +64,12 @@ and the further processing can be customized. You can define this by connecting 
   
   See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
-<a name="sklearn.SklearnQueryClassifier.__init__"></a>
-#### \_\_init\_\_
+<a id="transformers"></a>
 
-```python
- | __init__(model_name_or_path: Union[
- |             str, Any
- |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
- |             str, Any
- |         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle")
-```
-
-**Arguments**:
-
-- `model_name_or_path`: Gradient boosting based binary classifier to classify between keyword vs statement/question
-queries or statement vs question queries.
-- `vectorizer_name_or_path`: A ngram based Tfidf vectorizer for extracting features from query.
-
-<a name="transformers"></a>
 # Module transformers
 
-<a name="transformers.TransformersQueryClassifier"></a>
+<a id="transformers.TransformersQueryClassifier"></a>
+
 ## TransformersQueryClassifier
 
 ```python
@@ -128,16 +117,4 @@ from this node.
   
   
   See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
-
-<a name="transformers.TransformersQueryClassifier.__init__"></a>
-#### \_\_init\_\_
-
-```python
- | __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", use_gpu: bool = True)
-```
-
-**Arguments**:
-
-- `model_name_or_path`: Transformer based fine tuned mini bert model for query classification
-- `use_gpu`: Whether to use GPU (if available).
 
