@@ -117,7 +117,15 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/LabelSerialized"
+                                "title": "Feedback",
+                                "anyOf": [
+                                    {
+                                        "$ref": "#/components/schemas/LabelSerialized"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/CreateLabelSerialized"
+                                    }
+                                ]
                             }
                         }
                     },
@@ -139,6 +147,24 @@
                                 "schema": {
                                     "$ref": "#/components/schemas/HTTPValidationError"
                                 }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Delete Feedback",
+                "description": "This endpoint allows the API user to delete all the\nfeedback that has been sumbitted through the\n`POST /feedback` endpoint",
+                "operationId": "delete_feedback_feedback_delete",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
                             }
                         }
                     }
@@ -479,6 +505,74 @@
                         "title": "Split Respect Sentence Boundary"
                     }
                 }
+            },
+            "CreateLabelSerialized": {
+                "title": "CreateLabelSerialized",
+                "required": [
+                    "query",
+                    "document",
+                    "is_correct_answer",
+                    "is_correct_document",
+                    "origin"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "document": {
+                        "$ref": "#/components/schemas/DocumentSerialized"
+                    },
+                    "is_correct_answer": {
+                        "title": "Is Correct Answer",
+                        "type": "boolean"
+                    },
+                    "is_correct_document": {
+                        "title": "Is Correct Document",
+                        "type": "boolean"
+                    },
+                    "origin": {
+                        "title": "Origin",
+                        "enum": [
+                            "user-feedback",
+                            "gold-label"
+                        ],
+                        "type": "string"
+                    },
+                    "answer": {
+                        "$ref": "#/components/schemas/AnswerSerialized"
+                    },
+                    "no_answer": {
+                        "title": "No Answer",
+                        "type": "boolean"
+                    },
+                    "pipeline_id": {
+                        "title": "Pipeline Id",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "title": "Created At",
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "title": "Updated At",
+                        "type": "string"
+                    },
+                    "meta": {
+                        "title": "Meta",
+                        "type": "object"
+                    },
+                    "filters": {
+                        "title": "Filters",
+                        "type": "object"
+                    }
+                },
+                "additionalProperties": false
             },
             "DocumentSerialized": {
                 "title": "DocumentSerialized",
