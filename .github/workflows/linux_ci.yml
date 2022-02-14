@@ -150,24 +150,30 @@ jobs:
       - name: Generate JSON schema for pipelines
         run: python ./.github/utils/generate_json_schema.py
       
-      # Commit the files to GitHub
-      - name: Commit files
-        run: |
-          git status
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
+      # # Commit the files to GitHub
+      # - name: Commit files
+      #   run: |
+      #     git status
+      #     git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      #     git config --local user.name "github-actions[bot]"
 
-          git add .
-          git commit -m "Update Documentation & Code Style" -a || echo "No changes to commit"
-          git status
-          #git push
+      #     git add .
+      #     git commit -m "Update Documentation & Code Style" -a || echo "No changes to commit"
+      #     git status
+      #     #git push
 
-      - name: Push changes
-        uses: ad-m/github-push-action@master
+      - name: Pushes to another repository
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
-          branch: ${{github.ref}}
+          destination-github-username: ${{github.actor}}
+          destination-repository-name: ${{github.event.pull_request.head.repo.full_name}}
+          user-email: '41898282+github-actions[bot]@users.noreply.github.com'
+          user-name: 'github-actions[bot]'
+          commit-message: Update Documentation & Code Style
+          target-branch: ${{github.event.pull_request.head.ref}}
+
 
 
   linter:
