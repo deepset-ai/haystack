@@ -92,7 +92,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-          persist-credentials: false
           repository: ${{github.event.pull_request.head.repo.full_name}}
           ref: ${{github.event.pull_request.head.ref}}
       
@@ -161,13 +160,14 @@ jobs:
           git add .
           git commit -m "Update Documentation & Code Style" -a || echo "No changes to commit"
           git status
+          #git push
 
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{github.event.pull_request.head.repo.full_name}}
-          ref: ${{github.event.pull_request.head.ref}}
+          branch: ${{github.ref}}
 
 
   linter:
