@@ -167,6 +167,7 @@ jobs:
         env:
           API_TOKEN_GITHUB: ${{github.token}}
         with:
+          source-directory: "."
           destination-github-username: ${{github.actor}}
           destination-repository-name: 'haystack'
           user-email: '41898282+github-actions[bot]@users.noreply.github.com'
