@@ -8,7 +8,7 @@ from haystack.modeling.visual import SAMPLE
 logger = logging.getLogger(__name__)
 
 
-class Sample(object):
+class Sample:
     """A single training/test sample. This should contain the input and the label. Is initialized with
     the human readable clear_text. Over the course of data preprocessing, this object is populated
     with tokenized and featurized versions of the data."""
