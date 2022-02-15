@@ -128,6 +128,7 @@ jobs:
   code-and-docs-check:
     needs: build-cache
     runs-on: ubuntu-latest
+    if: ${{ github.event_name }} != "push"
 
     steps:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
@@ -164,7 +165,7 @@ jobs:
           
       # Get any additional commit that might have been pushed in the meantime
       - name: Pull changes (if any)
-        run: git pull origin ${{github.ref_name}}
+        run: git pull origin ${{ github.head_ref }}
 
       # Apply Black on the entire codebase
       - name: Blacken
