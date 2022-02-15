@@ -12,7 +12,7 @@ on:
       - '.github/**'
       - '**/*.md'
       - '**/*.txt'
-  # Activate this workflow on every push of code changes
+  # Activate this workflow on every push of code changes on master
   push:
     branches:
       - master
