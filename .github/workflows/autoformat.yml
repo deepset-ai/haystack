@@ -11,7 +11,6 @@ on:
   # TODO make sure this is still necessary later on.
   push:
     paths-ignore:
-      - '.github/**'
       - '**/*.md'
       - '**/*.txt'
 
