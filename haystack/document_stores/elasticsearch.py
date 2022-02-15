@@ -2002,7 +2002,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         return query
 
     def _scale_embedding_score(self, score):
-        # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn 
+        # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
         if self.similarity == "dot_product":
             if score > 1:
