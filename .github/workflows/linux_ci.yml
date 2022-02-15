@@ -137,6 +137,8 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+          repository: ${{github.repository}
+          ref: ${{github.ref_name}}
       
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
@@ -162,6 +164,10 @@ jobs:
           echo "=== pip freeze ==="
           pip freeze
           
+      # Get any additional commit that might have been pushed in the meantime
+      - name: Pull changes (if any)
+        run: git pull origin ${{github.ref_name}}
+
       # Apply Black on the entire codebase
       - name: Blacken
         run: black .
@@ -199,7 +205,6 @@ jobs:
       # check will fail.
       - name: Check git status
         run: |
-          git pull
           if [[ `git status --porcelain` ]]; then
             git status
             echo ""
