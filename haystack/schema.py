@@ -563,8 +563,7 @@ class MultiLabel:
             raise ValueError(
                 f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}"
             )
-        else:
-            return unique_values
+        return unique_values
 
     def to_dict(self):
         return asdict(self)

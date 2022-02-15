@@ -148,11 +148,10 @@ class BaseDocumentStore(BaseComponent):
     def __next__(self):
         if len(self.ids_iterator) == 0:
             raise StopIteration
-        else:
-            curr_id = self.ids_iterator[0]
-            ret = self.get_document_by_id(curr_id)
-            self.ids_iterator = self.ids_iterator[1:]
-            return ret
+        curr_id = self.ids_iterator[0]
+        ret = self.get_document_by_id(curr_id)
+        self.ids_iterator = self.ids_iterator[1:]
+        return ret
 
     @abstractmethod
     def get_all_labels(

@@ -141,7 +141,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                     raise DuplicateDocumentError(
                         f"Document with id '{document.id} already " f"exists in index '{index}'"
                     )
-                elif duplicate_documents == "skip":
+                if duplicate_documents == "skip":
                     logger.warning(
                         f"Duplicate Documents: Document with id '{document.id} already exists in index " f"'{index}'"
                     )

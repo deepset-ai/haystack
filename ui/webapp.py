@@ -164,8 +164,7 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         # Re-runs the script setting the random question as the textbox value
         # Unfortunately necessary as the Random Question button is _below_ the textbox
         raise st.script_runner.RerunException(st.script_request_queue.RerunData(None))
-    else:
-        st.session_state.random_question_requested = False
+    st.session_state.random_question_requested = False
 
     run_query = (
         run_pressed or question != st.session_state.question

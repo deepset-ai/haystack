@@ -68,7 +68,6 @@ disable = [
   "unnecessary-comprehension",
   "subprocess-run-check",
   "singleton-comparison",
-  "no-else-raise",
   "import-outside-toplevel",
   "consider-iterating-dictionary",
   "too-many-nested-blocks",
@@ -81,9 +80,7 @@ disable = [
   "simplifiable-if-expression",
   "use-list-literal",
   "reimported",
-  "no-else-continue",
   "deprecated-method",
-  "unsubscriptable-object",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
