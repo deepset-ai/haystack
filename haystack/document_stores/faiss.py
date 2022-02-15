@@ -109,7 +109,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             sig = signature(self.__class__.__init__)
             self._validate_params_load_from_disk(sig, locals(), kwargs)
             init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
-            self.__init__(self, **init_params)  # pylint: disable=non-parent-init-called
+            self.__class__.__init__(self, **init_params)  # pylint: disable=non-parent-init-called
             return
 
         # save init parameters to enable export of component config as YAML

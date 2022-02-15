@@ -13,8 +13,11 @@ line-length = 120
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
 disable = [
+
+  # Warnings
   "fixme",
 
+  # Info
   "c-extension-no-member",
 
 
@@ -80,10 +83,6 @@ disable = [
   "reimported",
   "no-else-continue",
   "deprecated-method",
-  "consider-using-dict-items",
-  "use-a-generator",
-  "simplifiable-if-statement",
-  "import-error",
   "unsubscriptable-object",
 ]
 [tool.pylint.'DESIGN']
