@@ -22,7 +22,6 @@ on:
 jobs:
 
   code-and-docs-updates:
-    needs: build-cache
     runs-on: ubuntu-latest
     if: ${{ github.event_name }} != "push"
 

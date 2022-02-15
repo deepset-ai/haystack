@@ -102,7 +102,6 @@ jobs:
 
 
   linter:
-    needs: code-and-docs-updates
     runs-on: ubuntu-20.04
     steps:
 
