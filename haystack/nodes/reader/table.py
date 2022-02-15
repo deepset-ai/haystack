@@ -383,7 +383,7 @@ class TableReader(BaseReader):
             return f"{answer_value}{' ' + unit if unit else ''}"
 
         except KeyError as e:
-            if e.message == "unknown aggregator":
+            if "unknown aggregator" in str(e):
                 pass
 
         # Not all selected answer cells contain a numerical value or answer cells don't share the same unit
