@@ -7,8 +7,15 @@ on:
   pull_request:
     types:
       - opened
+      - synchronize
+    paths-ignore:
+      - '.github/**'
+      - '**/*.md'
+      - '**/*.txt'
   # Activate this workflow on every push of code changes
   push:
+    branches:
+      - master
     paths-ignore:
       - '.github/**'
       - '**/*.md'
