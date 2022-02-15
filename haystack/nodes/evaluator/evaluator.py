@@ -408,7 +408,7 @@ def semantic_answer_similarity(
     config = AutoConfig.from_pretrained(sas_model_name_or_path)
     cross_encoder_used = False
     if config.architectures is not None:
-        cross_encoder_used = any([arch.endswith("ForSequenceClassification") for arch in config.architectures])
+        cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
 
     # Compute similarities
     top_1_sas = []
