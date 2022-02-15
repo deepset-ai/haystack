@@ -169,9 +169,10 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         results = sparql.query().convert()
         # if query is a boolean query, return boolean instead of text result
         # FIXME: 'results' likely doesn't support membership test (`"something" in results`).
-        # Pylint raises unsupported-membership-test. Silenced for now, keep in mind for future debugging.
+        # Pylint raises unsupported-membership-test and unsubscriptable-object.
+        # Silenced for now, keep in mind for future debugging.
         return (
-            results["results"]["bindings"]
-            if "results" in results
-            else results["boolean"]  # pylint: disable=unsupported-membership-test
+            results["results"]["bindings"]  # pylint: disable=unsubscriptable-object
+            if "results" in results  # pylint: disable=unsupported-membership-test
+            else results["boolean"]  # pylint: disable=unsubscriptable-object
         )
