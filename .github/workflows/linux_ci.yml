@@ -199,6 +199,7 @@ jobs:
       # check will fail.
       - name: Check git status
         run: |
+          git pull
           if [[ `git status --porcelain` ]]; then
             git status
             echo ""
