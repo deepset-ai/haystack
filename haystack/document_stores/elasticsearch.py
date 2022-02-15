@@ -1866,7 +1866,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         logger.warning(
                             f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
                             f"Falling back to slow exact vector calculation. "
-                            f"Consider creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
+                            f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
+                            f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
                             f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
                         )
 
@@ -2001,8 +2002,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         return query
 
     def _scale_embedding_score(self, score):
-        # adjust approximate knn scores, see https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
-        # adjust exact knn scores, see https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
+        # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn 
+        # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
         if self.similarity == "dot_product":
             if score > 1:
                 score = score - 1
@@ -2018,7 +2019,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
         return score
 
-    def _clone_embedding_field(
+    def clone_embedding_field(
         self,
         new_embedding_field: str,
         similarity: str,
