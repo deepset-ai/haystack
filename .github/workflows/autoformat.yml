@@ -27,6 +27,14 @@ jobs:
           fetch-depth: 0
           # persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
       
+      - name: Cache
+        id: cache-python-env
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          # The cache will be rebuild every day and at every change of the dependency files
+          key: haystack-ci-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
         with:
