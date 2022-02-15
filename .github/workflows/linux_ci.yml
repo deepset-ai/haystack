@@ -3,7 +3,9 @@ name: Linux CI
 on:
   # Activate this workflow manually
   workflow_dispatch:
-  # Activate this workflow when the PR is opened
+  # Activate this workflow when the PR is opened and code is added to it
+  # Note: using pull_request instead of push to keep the CI workflows 
+  # running on our repo, not the contributor's. See autoformat.yml
   pull_request:
     types:
       - opened
@@ -17,7 +19,6 @@ on:
     branches:
       - master
     paths-ignore:
-      - '.github/**'
       - '**/*.md'
       - '**/*.txt'
 

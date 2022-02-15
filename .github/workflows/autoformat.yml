@@ -96,10 +96,4 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add .
           git commit -m "Update Documentation & Code Style" -a || echo "No changes to commit"
-          #git push
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          git push
