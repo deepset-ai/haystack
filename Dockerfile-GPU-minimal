@@ -6,43 +6,29 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 # Install software dependencies
-RUN apt-get update && apt-get install -y software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get install -y \
-    cmake \
-    git \
-    libpoppler-cpp-dev \
-    libtesseract-dev \
-    pkg-config \
-    poppler-utils \
-    python3-pip \
-    python3.7 \
-    python3.7-dev \
-    python3.7-distutils \
-    swig 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        poppler-utils \
+        git \
+        python3-pip \
+        python3.8 \
+        python3.8-distutils \
+        swig && \
+    # Cleanup apt cache
+    rm -rf /var/lib/apt/lists/*
 
-# Set default Python version
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 && \
-    update-alternatives --set python3 /usr/bin/python3.7
-
-# Copy package files & models
+# Copy Haystack package files but not the source code
 COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md /home/user/
 
-# Install dependencies
-RUN pip3 install --upgrade pip
-RUN pip3 install --no-cache-dir . 
+# Install all the dependencies
+RUN pip3 install --upgrade --no-cache-dir pip && \
+    pip3 install --no-cache-dir . && \
+    # Install PyTorch with CUDA 11
+    pip3 install --no-cache-dir torch==1.10.2+cu113 -f https://download.pytorch.org/whl/torch_stable.html
 
-# Install PyTorch for CUDA 11
-RUN pip3 install --no-cache-dir torch==1.10.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
-
-# Haystack code
+# Copy Haystack source code
 COPY haystack /home/user/haystack/
-RUN pip3 install --no-cache-dir --no-deps .
-
-# Remove 
-RUN apt-get remove -y libpoppler-cpp-dev \
-    libtesseract-dev \ 
-    python3.7-dev 
-
-RUN rm -rf /var/lib/apt/lists/* && \ 
+# Install Haystack
+RUN pip3 install --no-cache-dir --no-deps . && \
+    # Cleanup copied files after installation is completed
     rm -rf /home/user/*
