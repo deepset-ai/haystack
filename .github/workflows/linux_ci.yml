@@ -8,30 +8,18 @@ on:
     types:
       - opened
       - synchronize
-    paths:
-      - 'haystack/**'
-      - 'rest_api/**'
-      - 'test/**'
-      - 'ui/**'
-      - 'conftest.py'
-      - 'Dockerfile*'
-      - 'pyproject.toml'
-      - 'setup.cfg'
-      - 'setup.py'
+    paths-ignore:
+      - '.github/**'
+      - '**/*.md'
+      - '**/*.txt'
   # Activate this workflow on every push of code files to master
   push:
     branches:
       - master
-    paths:
-      - 'haystack/**'
-      - 'rest_api/**'
-      - 'test/**'
-      - 'ui/**'
-      - 'conftest.py'
-      - 'Dockerfile*'
-      - 'pyproject.toml'
-      - 'setup.cfg'
-      - 'setup.py'
+    paths-ignore:
+      - '.github/**'
+      - '**/*.md'
+      - '**/*.txt'
 
 jobs:
 

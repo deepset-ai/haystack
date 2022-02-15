@@ -8,17 +8,10 @@ on:
     types:
       - opened
       - synchronize
-    paths:
-      - 'haystack/**'
-      - 'rest_api/**'
-      - 'test/**'
-      - 'ui/**'
-      - 'conftest.py'
-      - 'Dockerfile*'
-      - 'pyproject.toml'
-      - 'setup.cfg'
-      - 'setup.py'
-
+    paths-ignore:
+      - '.github/**'
+      - '**/*.md'
+      - '**/*.txt'
 jobs:
 
   code-and-docs-updates:
