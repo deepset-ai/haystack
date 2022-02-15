@@ -202,10 +202,7 @@ class NotOperation(LogicalFilterClause):
     """
 
     def evaluate(self, fields) -> Optional[bool]:
-        evaluations = [condition.evaluate(fields) for condition in self.conditions]
-        if None in evaluations:
-            return None
-        return not any(evaluations)
+        return not any(condition.evaluate(fields) for condition in self.conditions)
 
     def convert_to_elasticsearch(self):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
@@ -219,10 +216,7 @@ class AndOperation(LogicalFilterClause):
     """
 
     def evaluate(self, fields) -> Optional[bool]:
-        evaluations = [condition.evaluate(fields) for condition in self.conditions]
-        if None in evaluations:
-            return None
-        return all(evaluations)
+        return all(condition.evaluate(fields) for condition in self.conditions)
 
     def convert_to_elasticsearch(self):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
@@ -236,10 +230,7 @@ class OrOperation(LogicalFilterClause):
     """
 
     def evaluate(self, fields) -> Optional[bool]:
-        evaluations = [condition.evaluate(fields) for condition in self.conditions]
-        if None in evaluations:
-            return None
-        return any(evaluations)
+        return any(condition.evaluate(fields) for condition in self.conditions)
 
     def convert_to_elasticsearch(self):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
@@ -254,7 +245,7 @@ class EqOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> Optional[bool]:
         if self.field_name not in fields:
-            return None
+            return False
         return fields[self.field_name] == self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -268,7 +259,7 @@ class InOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> Optional[bool]:
         if self.field_name not in fields:
-            return None
+            return False
         return fields[self.field_name] in self.comparison_value  # type: ignore
         # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
@@ -283,7 +274,7 @@ class NeOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> Optional[bool]:
         if self.field_name not in fields:
-            return None
+            return False
         return fields[self.field_name] != self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -297,7 +288,7 @@ class NinOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> Optional[bool]:
         if self.field_name not in fields:
-            return None
+            return False
         return fields[self.field_name] not in self.comparison_value  # type: ignore
         # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
@@ -312,7 +303,7 @@ class GtOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> Optional[bool]:
         if self.field_name not in fields:
-            return None
+            return False
         return fields[self.field_name] > self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -326,7 +317,7 @@ class GteOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> Optional[bool]:
         if self.field_name not in fields:
-            return None
+            return False
         return fields[self.field_name] >= self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -340,7 +331,7 @@ class LtOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> Optional[bool]:
         if self.field_name not in fields:
-            return None
+            return False
         return fields[self.field_name] < self.comparison_value
 
     def convert_to_elasticsearch(self):
@@ -354,7 +345,7 @@ class LteOperation(ComparisonOperation):
 
     def evaluate(self, fields) -> Optional[bool]:
         if self.field_name not in fields:
-            return None
+            return False
         return fields[self.field_name] <= self.comparison_value
 
     def convert_to_elasticsearch(self):
