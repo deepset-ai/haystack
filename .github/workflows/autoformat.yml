@@ -20,33 +20,19 @@ jobs:
 
   code-and-docs-updates:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name }} != "push"
-
     steps:
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          # repository: ${{github.event.pull_request.head.repo.full_name}}
-          # ref: ${{github.event.pull_request.head.ref}}
+          # persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
       
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
         with:
           python-version: 3.7
 
-      # - name: Cache Python
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: ${{ env.pythonLocation }}
-      #     key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
-
-      - name: Install Dependencies (on cache miss only)
-        # The cache might miss during the execution of an action: there should always be a fallback step to
-        # rebuild it in case it goes missing
-        #if: steps.cache.outputs.cache-hit != 'true'
+      - name: Install Dependencies
         run: |
           pip install --upgrade pip
           pip install .[test]
