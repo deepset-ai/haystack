@@ -4,7 +4,8 @@ import json
 import logging
 
 from fastapi import APIRouter
-from rest_api.schema import FilterRequest, LabelSerialized
+from haystack.schema import Label
+from rest_api.schema import FilterRequest, LabelSerialized, CreateLabelSerialized
 from rest_api.controller.search import DOCUMENT_STORE
 
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/feedback")
-def post_feedback(feedback: LabelSerialized):
+def post_feedback(feedback: Union[LabelSerialized, CreateLabelSerialized]):
     """
     This endpoint allows the API user to submit feedback on
     an answer for a particular query. For example, the user
@@ -25,7 +26,9 @@ def post_feedback(feedback: LabelSerialized):
     """
     if feedback.origin is None:
         feedback.origin = "user-feedback"
-    DOCUMENT_STORE.write_labels([feedback])
+
+    label = Label(**feedback.dict())
+    DOCUMENT_STORE.write_labels([label])
 
 
 @router.get("/feedback")
@@ -37,6 +40,18 @@ def get_feedback():
     """
     labels = DOCUMENT_STORE.get_all_labels()
     return labels
+
+
+@router.delete("/feedback")
+def delete_feedback():
+    """
+    This endpoint allows the API user to delete all the
+    feedback that has been sumbitted through the
+    `POST /feedback` endpoint
+    """
+    all_labels = DOCUMENT_STORE.get_all_labels()
+    user_label_ids = [label.id for label in all_labels if label.origin == "user-feedback"]
+    DOCUMENT_STORE.delete_labels(ids=user_label_ids)
 
 
 @router.post("/eval-feedback")
