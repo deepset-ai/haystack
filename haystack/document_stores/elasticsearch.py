@@ -1193,7 +1193,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
-        
+
         # +1 in similarity to avoid negative numbers (for cosine sim)
         body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
@@ -1218,9 +1218,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         logger.debug(f"Retriever query: {body}")
         try:
-            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"][
-                "hits"
-            ]
+            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
                 count_embeddings = self.get_embedding_count(index=index, headers=headers)
                 if count_embeddings == 0:
