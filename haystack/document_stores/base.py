@@ -18,16 +18,16 @@ from haystack.errors import DuplicateDocumentError
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
+logger = logging.getLogger(__name__)
 
 try:
-    from numba import njit
-except:
+    from numba import njit  # pylint: disable=import-error
+except (ImportError, ModuleNotFoundError):
+    logger.info("Numba not found, replacing njit() with no-op implementation. "
+                "Enable it with 'pip install numba'.")
 
     def njit(f):
         return f
-
-
-logger = logging.getLogger(__name__)
 
 
 @njit  # (fastmath=True)
