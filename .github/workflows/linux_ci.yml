@@ -11,6 +11,7 @@ on:
       - opened
       - synchronize
     paths-ignore:
+      - '.github/**'
       - '**/*.md'
       - '**/*.txt'
   # Activate this workflow on every push of code changes on master
@@ -136,7 +137,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-          repository: ${{github.repository}
+          repository: ${{github.repository}}
           ref: ${{github.ref_name}}
       
       - name: Set up Python 3.7
