@@ -9,10 +9,10 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+from pydantic.dataclasses import dataclass
+
 if typing.TYPE_CHECKING:
-    from dataclasses import dataclass
-else:
-    from pydantic.dataclasses import dataclass
+    from dataclasses import dataclass  # type: ignore
 
 from pydantic.json import pydantic_encoder
 from pathlib import Path
