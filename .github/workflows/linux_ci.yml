@@ -3,23 +3,17 @@ name: Linux CI
 on:
   # Activate this workflow manually
   workflow_dispatch:
-  # Activate this workflow on every update of code files on a PR
+  # Activate this workflow when the PR is opened
   pull_request:
     types:
       - opened
-      - synchronize
-    paths-ignore:
-      - '.github/**'
-      - '**/*.md'
-      - '**/*.txt'
-  # Activate this workflow on every push of code files to master
+  # Activate this workflow on every push of code changes
   push:
-    branches:
-      - master
     paths-ignore:
       - '.github/**'
       - '**/*.md'
       - '**/*.txt'
+
 
 jobs:
 
