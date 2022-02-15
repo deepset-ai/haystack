@@ -107,7 +107,7 @@ from haystack.nodes.query_classifier import SklearnQueryClassifier, Transformers
 from haystack.nodes.file_classifier import FileTypeClassifier
 from haystack.utils import preprocessing
 import haystack.modeling.utils as modeling_utils
-from  haystack.utils import cleaning
+from haystack.utils import cleaning
 
 # For the alias to work as an importable module (like `from haystack import reader`),
 # modules need to be set as attributes of their parent model.

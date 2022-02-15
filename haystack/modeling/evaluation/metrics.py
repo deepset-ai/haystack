@@ -91,7 +91,7 @@ def compute_metrics(metric: str, preds, labels):
         "mse": lambda labels, preds: {"mse": mean_squared_error(preds, labels)},
         "r2": lambda labels, preds: {"r2": r2_score(preds, labels)},
         "top_n_accuracy": lambda labels, preds: {"top_n_accuracy": top_n_accuracy(preds, labels)},
-        "text_similarity_metric": text_similarity_metric
+        "text_similarity_metric": text_similarity_metric,
     }
     assert len(preds) == len(labels)
     if metric in FUNCTION_FOR_METRIC.keys():
