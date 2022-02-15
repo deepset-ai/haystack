@@ -2010,11 +2010,12 @@ class InferenceProcessor(TextClassificationProcessor):
         # this tokenization also stores offsets
         tokenized = tokenize_with_metadata(dictionary["text"], self.tokenizer)
         # truncate tokens, offsets and start_of_word to max_seq_len that can be handled by the model
-        for seq_name in tokenized.keys():
-            tokenized[seq_name], _, _ = truncate_sequences(
-                seq_a=tokenized[seq_name], seq_b=None, tokenizer=self.tokenizer, max_seq_len=self.max_seq_len
+        truncated_tokens = {}
+        for seq_name, tokens in tokenized.items():
+            truncated_tokens[seq_name], _, _ = truncate_sequences(
+                seq_a=tokens, seq_b=None, tokenizer=self.tokenizer, max_seq_len=self.max_seq_len
             )
-        return Sample(id="", clear_text=dictionary, tokenized=tokenized)
+        return Sample(id="", clear_text=dictionary, tokenized=truncated_tokens)
 
     # Private method to keep s3e pooling and embedding extraction working
     def _sample_to_features(self, sample: Sample) -> Dict:
