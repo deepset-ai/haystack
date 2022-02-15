@@ -516,17 +516,15 @@ class QuestionAnsweringHead(PredictionHead):
         # Iterate over all candidates and break when we have all our n_best candidates
         for candidate_idx in range(n_candidates):
             if len(top_candidates) == self.n_best_per_sample:
-                break 
-            
+                break
+
             # Retrieve candidate's indices
             start_idx = sorted_candidates[candidate_idx, 0].item()
             end_idx = sorted_candidates[candidate_idx, 1].item()
             # Ignore no_answer scores which will be extracted later in this method
             if start_idx == 0 and end_idx == 0:
                 continue
-            if self.duplicate_filtering > -1 and (
-                start_idx in start_idx_candidates or end_idx in end_idx_candidates
-            ):
+            if self.duplicate_filtering > -1 and (start_idx in start_idx_candidates or end_idx in end_idx_candidates):
                 continue
             score = start_end_matrix[start_idx, end_idx].item()
             confidence = (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2

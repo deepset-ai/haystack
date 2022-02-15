@@ -914,7 +914,7 @@ class FARMReader(BaseReader):
                     if aggregation_key in aggregated_per_question.keys():
                         if label.no_answer:
                             continue
-                        
+
                         # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
                         if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
                             logger.warning(

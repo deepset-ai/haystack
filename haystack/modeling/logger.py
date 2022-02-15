@@ -126,9 +126,10 @@ class TensorBoardLogger(BaseMLLogger):
         try:
             from tensorboardX import SummaryWriter  # pylint: disable=import-error
         except (ImportError, ModuleNotFoundError):
-            logger.info("tensorboardX not found, can't initialize TensorBoardLogger. "
-                        "Enable it with 'pip install tensorboardX'.")
-
+            logger.info(
+                "tensorboardX not found, can't initialize TensorBoardLogger. "
+                "Enable it with 'pip install tensorboardX'."
+            )
 
         TensorBoardLogger.summary_writer = SummaryWriter()
         super().__init__(**kwargs)
