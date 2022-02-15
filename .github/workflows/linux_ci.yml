@@ -28,12 +28,12 @@ jobs:
   build-cache:
     runs-on: ubuntu-20.04
     steps:
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - name: Cache
         id: cache-python-env
@@ -208,7 +208,7 @@ jobs:
           if [[ `git status --porcelain` ]]; then
             git status
             echo ""
-            echo "This means that the `autoformat.yml` action dodn't run on the fork."
+            echo "This means that the `autoformat.yml` action didn't run on the fork."
             echo "Please enable GitHub Action on your fork to pass this check!"
             exit 1
           fi
