@@ -1079,9 +1079,7 @@ class Pipeline(BasePipeline):
             types_to_import = [c["type"] for c in component_definitions]
             code_parts.append(cls._generate_imports_code(types_to_import=types_to_import))
 
-        component_variable_names = {
-            c["name"]: cls._camel_to_snake_case(c["name"]) for c in component_definitions
-        }
+        component_variable_names = {c["name"]: cls._camel_to_snake_case(c["name"]) for c in component_definitions}
         code_parts.append(
             cls._generate_components_code(
                 component_definitions=component_definitions, component_variable_names=component_variable_names
