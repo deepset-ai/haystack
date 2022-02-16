@@ -220,8 +220,8 @@ class NotOperation(LogicalFilterClause):
     
     def convert_to_sql(self):
         conditions = [condition.convert_to_sql() for condition in self.conditions]
-        ids = reduce(lambda a, b: intersect(a, b), conditions)
-        return select(MetaDocumentORM.document_id).filter(~MetaDocumentORM.document_id.in_(ids))
+        conditions = [MetaDocumentORM.document_id.in_(condition.convert_to_sql()) for condition in self.conditions]
+        return select(MetaDocumentORM.document_id).filter(~or_(*conditions))
     
 
 class AndOperation(LogicalFilterClause):
