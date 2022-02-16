@@ -105,7 +105,7 @@ class MetaLabelORM(ORMBase):
         {},
     )  # type: ignore
 
-from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.document_stores.filter_utils import LogicalFilterClause # Necessary to avoid circular import
 
 class SQLDocumentStore(BaseDocumentStore):
     def __init__(
