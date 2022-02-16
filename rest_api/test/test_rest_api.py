@@ -124,6 +124,9 @@ def test_delete_documents(populated_client: TestClient):
 
 
 def test_file_upload(client: TestClient):
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) == 0
+
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(
         url="/file-upload",
@@ -131,6 +134,41 @@ def test_file_upload(client: TestClient):
         data={"meta": '{"meta_key": "meta_value", "non-existing-field": "wrong-value"}'},
     )
     assert 200 == response.status_code
+
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) > 0
+
+
+def test_file_upload_with_no_meta(client: TestClient):
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) == 0
+
+    file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
+    response = client.post(
+        url="/file-upload",
+        files=file_to_upload,
+        data={"meta": ""},
+    )
+    assert 200 == response.status_code
+
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) > 0
+
+
+def test_file_upload_with_wrong_meta(client: TestClient):
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) == 0
+
+    file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
+    response = client.post(
+        url="/file-upload",
+        files=file_to_upload,
+        data={"meta": "1"},
+    )
+    assert 500 == response.status_code
+
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+    assert len(response.json()) == 0
 
 
 def test_query_with_no_filter(populated_client: TestClient):
