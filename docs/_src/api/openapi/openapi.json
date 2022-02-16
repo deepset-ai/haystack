@@ -93,7 +93,7 @@
                     "feedback"
                 ],
                 "summary": "Get Feedback",
-                "description": "This endpoint allows the API user to retrieve all the\nfeedback that has been sumbitted through the\n`POST /feedback` endpoint",
+                "description": "This endpoint allows the API user to retrieve all the feedback that has been submitted\nthrough the `POST /feedback` endpoint.",
                 "operationId": "get_feedback_feedback_get",
                 "responses": {
                     "200": {
@@ -111,7 +111,7 @@
                     "feedback"
                 ],
                 "summary": "Post Feedback",
-                "description": "This endpoint allows the API user to submit feedback on\nan answer for a particular query. For example, the user\ncan send feedback on whether the answer was correct and\nwhether the right snippet was identified as the answer.\nInformation submitted through this endpoint is used to\ntrain the underlying QA model.",
+                "description": "This endpoint allows the API user to submit feedback on an answer for a particular query.\n\nFor example, the user can send feedback on whether the answer was correct and\nwhether the right snippet was identified as the answer.\n\nInformation submitted through this endpoint is used to train the underlying QA model.",
                 "operationId": "post_feedback_feedback_post",
                 "requestBody": {
                     "content": {
@@ -177,7 +177,7 @@
                     "feedback"
                 ],
                 "summary": "Get Feedback Metrics",
-                "description": "This endpoint returns basic accuracy metrics based on user feedback,\ne.g., the ratio of correct answers or correctly identified documents.\nYou can filter the output by document or label.\n\nExample:\n`curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback'      --header 'Content-Type: application/json'      --data-raw '{ \"filters\": {\"document_id\": [\"XRR3xnEBCYVTkbTystOB\"]} }'`",
+                "description": "This endpoint returns basic accuracy metrics based on user feedback,\ne.g., the ratio of correct answers or correctly identified documents.\nYou can filter the output by document or label.\n\nExample:\n\n`curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback'      --header 'Content-Type: application/json'      --data-raw '{ \"filters\": {\"document_id\": [\"XRR3xnEBCYVTkbTystOB\"]} }'`",
                 "operationId": "get_feedback_metrics_eval_feedback_post",
                 "requestBody": {
                     "content": {
