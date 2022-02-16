@@ -13,6 +13,8 @@ on:
     paths-ignore:
       - '**/*.md'
       - '**/*.txt'
+      - '**/*.png'
+      - '**/*.gif'
   # Activate this workflow on every push of code changes on master
   push:
     branches:
@@ -20,6 +22,8 @@ on:
     paths-ignore:
       - '**/*.md'
       - '**/*.txt'
+      - '**/*.png'
+      - '**/*.gif'
 
 jobs:
 
