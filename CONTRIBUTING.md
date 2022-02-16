@@ -20,7 +20,17 @@ Please give a concise description in the first comment in the PR that includes:
 ## Running tests
 
 ### CI
-Tests will automatically run in our CI for every commit you push to your PR. This is the most convenient way for you and we encourage you to create early "WIP Pull requests".
+Tests will automatically run in our CI for every commit you push to your PR. This is the most convenient way for you and we encourage you to create early "draft pull requests".
+
+#### Forks
+Some actions in our CI (code style and documentation updates) will run on your code and occasionally commit back small changes after a push. To be able to do so,
+these actions are configured to run on your fork instead of on the base repository. To allow those actions to run, please don't forget to:
+
+1. Enable actions on your fork with read and write permissions:
+
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/fork_action_config.png"></p>
+
+2. Verify that "Allow edits and access to secrets by maintainers" on the PR page's sidebar is checked
 
 ### Local
 However, you can also run the tests locally by executing pytest in your terminal from the `/test` folder.
@@ -118,6 +128,30 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
     document_store = ElasticsearchDocumentStore(index="haystack_test_custom", text_field="custom_text_field",
                                                 embedding_field="custom_embedding_field")
 ``` 
+
+
+## Code format and style
+We use [Black](https://github.com/psf/black) to ensure consistent code style, [mypy](http://mypy-lang.org/) for static type checking and 
+[pylint](https://pylint.org/) for linting and code quality.
+
+All checks and autoformatting happen on the CI, so in general you don't need to worry about configuring them in your local environment.
+However, should you prefer to execute them locally, here are a few details about the setup.
+
+### Black
+Black runs with no other configuration than an increase line lenght to 120 characters. Its condiguration can be found in `pyproject.toml`.
+
+You can run it with `python -m black .` from the root folder.
+
+### Mypy
+Mypy currently runs with limited configuration options that can be found at the bottom of `setup.cfg`.
+
+You can run it with `python -m mypy haystack/ rest_api/ ui/` from the root folder.
+
+### Pylint
+Pylint is still being integrated in Haystack. The current exclusion list is very long, and can be found in `pyproject.toml`.
+
+You can run it with `python -m pylint haystack/ rest_api/ ui/ -ry` from the root folder.
+
 
 ## Contributor Licence Agreement (CLA)
 

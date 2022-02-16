@@ -8,7 +8,6 @@ from haystack.schema import Label
 from rest_api.schema import FilterRequest, LabelSerialized, CreateLabelSerialized
 from rest_api.controller.search import DOCUMENT_STORE
 
-
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
@@ -17,13 +16,14 @@ logger = logging.getLogger(__name__)
 @router.post("/feedback")
 def post_feedback(feedback: Union[LabelSerialized, CreateLabelSerialized]):
     """
-    This endpoint allows the API user to submit feedback on
-    an answer for a particular query. For example, the user
-    can send feedback on whether the answer was correct and
+    This endpoint allows the API user to submit feedback on an answer for a particular query.
+
+    For example, the user can send feedback on whether the answer was correct and
     whether the right snippet was identified as the answer.
-    Information submitted through this endpoint is used to
-    train the underlying QA model.
+
+    Information submitted through this endpoint is used to train the underlying QA model.
     """
+
     if feedback.origin is None:
         feedback.origin = "user-feedback"
 
@@ -34,9 +34,8 @@ def post_feedback(feedback: Union[LabelSerialized, CreateLabelSerialized]):
 @router.get("/feedback")
 def get_feedback():
     """
-    This endpoint allows the API user to retrieve all the
-    feedback that has been sumbitted through the
-    `POST /feedback` endpoint
+    This endpoint allows the API user to retrieve all the feedback that has been submitted
+    through the `POST /feedback` endpoint.
     """
     labels = DOCUMENT_STORE.get_all_labels()
     return labels
@@ -62,6 +61,7 @@ def get_feedback_metrics(filters: FilterRequest = None):
     You can filter the output by document or label.
 
     Example:
+
     `curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback' \
      --header 'Content-Type: application/json' \
      --data-raw '{ "filters": {"document_id": ["XRR3xnEBCYVTkbTystOB"]} }'`
