@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
+CAMEL_CASE_TO_SNAKE_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
 
 
 class RootNode(BaseComponent):
@@ -1043,7 +1044,8 @@ class Pipeline(BasePipeline):
         return config
 
     def to_code(self, pipeline_name: str = "pipeline", create_ipython_cell: bool = True, generate_imports: bool = True):
-        code = self._generate_pipeline_code(pipeline_name=pipeline_name, generate_imports=generate_imports)
+        config = self.get_config()
+        code = self._generate_code(config=config, pipeline_name=pipeline_name, generate_imports=generate_imports)
         if create_ipython_cell:
             try:
                 get_ipython().set_next_input(code)  # type: ignore
@@ -1052,62 +1054,95 @@ class Pipeline(BasePipeline):
         else:
             return code
 
-    def _order_component_code(self, depedency: Dict[str, List[str]], keys: Optional[List[str]] = None):
+    @classmethod
+    def _order_component_code(cls, depedency: Dict[str, List[str]], keys: Optional[List[str]] = None):
         ordered = []
         keys = keys or depedency.keys()  # type: ignore
         for k in keys:  # type: ignore
             v = depedency[k]
             if len(v) > 0:
-                ordered += [k for k in self._order_component_code(depedency, v) if k not in ordered]
+                ordered += [k for k in cls._order_component_code(depedency, v) if k not in ordered]
             if k not in ordered:
                 ordered.append(k)
         return ordered
 
-    def _generate_pipeline_code(self, pipeline_name: str = "pipeline", generate_imports: bool = True):
-        config = self.get_config()
-        code = ""
+    @classmethod
+    def _camel_to_snake_case(cls, input: str) -> str:
+        return CAMEL_CASE_TO_SNAKE_CASE_REGEX.sub("_", input).lower()
+
+    @classmethod
+    def _generate_code(cls, config: dict, pipeline_name: str = "pipeline", generate_imports: bool = True):
+        component_definitions = config["components"]
+        pipeline_definition = config["pipelines"][0]
+        code_parts = []
         if generate_imports:
-            types = [c["type"] for c in config["components"]]
-            allowed_imports = ["haystack.nodes", "haystack.document_stores"]
-            importable_classes = {
-                name: mod
-                for mod in allowed_imports
-                for name, obj in inspect.getmembers(sys.modules[mod])
-                if inspect.isclass(obj)
-            }
+            types_to_import = [c["type"] for c in component_definitions]
+            code_parts.append(cls._generate_imports_code(types_to_import=types_to_import))
 
-            for t in types:
-                if t in importable_classes:
-                    code += f"from {importable_classes[t]} import {t}\n"
-                else:
-                    code += f"# from MODULE_NOT_FOUND import {t}\n"
-            code += "\n"
-
-        name_to_variable_name = {
-            c["name"]: re.sub(r"(?<!^)(?=[A-Z])", "_", c["name"]).lower() for c in config["components"]
+        component_variable_names = {
+            c["name"]: cls._camel_to_snake_case(c["name"]) for c in component_definitions
         }
-        component_code = {}
-        component_dependency = {}
-        for component in config["components"]:
+        code_parts.append(
+            cls._generate_components_code(
+                component_definitions=component_definitions, component_variable_names=component_variable_names
+            )
+        )
+        code_parts.append(
+            cls._generate_pipeline_code(
+                pipeline_definition=pipeline_definition,
+                component_variable_names=component_variable_names,
+                pipeline_name=pipeline_name,
+            )
+        )
+        code = "\n".join(code_parts)
+        return code
+
+    @classmethod
+    def _generate_pipeline_code(
+        cls, pipeline_definition: Dict, component_variable_names: Dict[str, str], pipeline_name: str
+    ):
+        code = f"{pipeline_name} = Pipeline()\n"
+        for node in pipeline_definition["nodes"]:
+            component_variable_name = component_variable_names[node["name"]]
+            inputs = ", ".join(f'"{name}"' for name in node["inputs"])
+            code += f"{pipeline_name}.add_node(component={component_variable_name}, name=\"{node['name']}\", inputs=[{inputs}])\n"
+
+    @classmethod
+    def _generate_components_code(cls, component_definitions: List[Dict], component_variable_names: Dict[str, str]):
+        code = ""
+        declarations = {}
+        dependencies = {}
+        for component in component_definitions:
             param_value_dict = {
-                k: name_to_variable_name.get(v, f'"{v}"') if type(v) == str else v
+                k: component_variable_names.get(v, f'"{v}"') if type(v) == str else v
                 for k, v in component["params"].items()
             }
             args = ", ".join(f"{k}={v}" for k, v in param_value_dict.items())
-            variable_name = name_to_variable_name[component["name"]]
-            component_code[variable_name] = f"{variable_name} = {component['type']}({args})\n"
-            component_dependency[variable_name] = [
-                name_to_variable_name[v] for v in component["params"].values() if v in name_to_variable_name
+            variable_name = component_variable_names[component["name"]]
+            declarations[variable_name] = f"{variable_name} = {component['type']}({args})\n"
+            dependencies[variable_name] = [
+                component_variable_names[v] for v in component["params"].values() if v in component_variable_names
             ]
-        for v in self._order_component_code(component_dependency):
-            code += component_code[v]
+        for v in cls._order_component_code(dependencies):
+            code += declarations[v]
+        return code
 
-        code += "\n"
-        code += f"{pipeline_name} = Pipeline()\n"
-        for node in config["pipelines"][0]["nodes"]:
-            component_variable_name = name_to_variable_name[node["name"]]
-            inputs = ", ".join(f'"{name}"' for name in node["inputs"])
-            code += f"{pipeline_name}.add_node(component={component_variable_name}, name=\"{node['name']}\", inputs=[{inputs}])\n"
+    @classmethod
+    def _generate_imports_code(cls, types_to_import: List[str]):
+        code = ""
+        allowed_imports = ["haystack.nodes", "haystack.document_stores"]
+        importable_classes = {
+            name: mod
+            for mod in allowed_imports
+            for name, obj in inspect.getmembers(sys.modules[mod])
+            if inspect.isclass(obj)
+        }
+
+        for t in types_to_import:
+            if t in importable_classes:
+                code += f"from {importable_classes[t]} import {t}\n"
+            else:
+                code += f"# from MODULE_NOT_FOUND import {t}\n"
         return code
 
     def _format_document_answer(self, document_or_answer: dict):
