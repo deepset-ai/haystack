@@ -193,7 +193,7 @@ def test_file_upload_with_wrong_meta(client: TestClient):
         files=file_to_upload,
         data={"meta": '1'},
     )
-    assert 200 < response.status_code
+    assert 500 == response.status_code
 
     response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
     assert len(response.json()) == 0

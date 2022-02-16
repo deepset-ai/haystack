@@ -94,7 +94,7 @@ def upload_file(
     
     meta_form = json.loads(meta) or {}  # type: ignore
     if not isinstance(meta_form, dict):
-        raise ValueError(f"The meta field must be a dict or None, not {type(meta_form)}")
+        raise HTTPException(status_code=500, detail=f"The meta field must be a dict or None, not {type(meta_form)}")
 
     for file in files:
         try:
