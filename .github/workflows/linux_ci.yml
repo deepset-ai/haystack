@@ -45,7 +45,7 @@ jobs:
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
-          pip install .[all]
+          pip install .[test]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
@@ -66,7 +66,7 @@ jobs:
         run: |
           # FIXME installing the packages before running mypy raises
           # a lot of errors which were never detected before!
-          # pip install .[all]
+          # pip install .
           # pip install rest_api/
           # pip install ui/
 
@@ -111,7 +111,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
-          pip install .[all]
+          pip install .[test]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
@@ -156,7 +156,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
-          pip install .[all]
+          pip install .[test]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
