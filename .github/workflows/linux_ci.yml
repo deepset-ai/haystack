@@ -137,7 +137,7 @@ jobs:
         with:
           fetch-depth: 0
           repository: ${{github.repository}}
-          ref: ${{github.ref_name}}
+          ref: ${{ github.head_ref }}
       
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
