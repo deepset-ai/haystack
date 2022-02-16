@@ -105,6 +105,7 @@ class MetaLabelORM(ORMBase):
         {},
     )  # type: ignore
 
+from haystack.document_stores.filter_utils import LogicalFilterClause
 
 class SQLDocumentStore(BaseDocumentStore):
     def __init__(
@@ -294,12 +295,10 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
-            for key, values in filters.items():
-                documents_query = documents_query.join(MetaDocumentORM, aliased=True).filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
-                )
-
+            parsed_filter = LogicalFilterClause.parse(filters)
+            select_ids = parsed_filter.convert_to_sql()
+            documents_query = documents_query.filter(DocumentORM.id.in_(select_ids))
+        
         if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
         if vector_ids:

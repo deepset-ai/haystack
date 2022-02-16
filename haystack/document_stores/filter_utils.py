@@ -4,13 +4,9 @@ from collections import defaultdict
 from functools import reduce
 
 from haystack.utils.import_utils import safe_import
-
-try:
-    from haystack.document_stores.sql import MetaDocumentORM
-    from sqlalchemy import and_, or_, not_
-    sql_available = True
-except ImportError:
-    sql_available = False
+from haystack.document_stores.sql import MetaDocumentORM
+from sqlalchemy.sql import select
+from sqlalchemy import and_, or_
 
 
 def nested_defaultdict():
@@ -224,8 +220,9 @@ class NotOperation(LogicalFilterClause):
     
     def convert_to_sql(self):
         conditions = [condition.convert_to_sql() for condition in self.conditions]
-        return not_(reduce(or_, conditions))
-
+        ids = reduce(lambda a, b: intersect(a, b), conditions)
+        return select(MetaDocumentORM.document_id).filter(~MetaDocumentORM.document_id.in_(ids))
+    
 
 class AndOperation(LogicalFilterClause):
     """
@@ -238,9 +235,9 @@ class AndOperation(LogicalFilterClause):
         return {"bool": {"must": conditions}}
     
     def convert_to_sql(self):
-        conditions = [condition.convert_to_sql() for condition in self.conditions]
-        return reduce(and_, conditions)
-
+        conditions = [MetaDocumentORM.document_id.in_(condition.convert_to_sql()) for condition in self.conditions]
+        return select(MetaDocumentORM.document_id).filter(and_(*conditions))
+    
 
 class OrOperation(LogicalFilterClause):
     """
@@ -253,8 +250,8 @@ class OrOperation(LogicalFilterClause):
         return {"bool": {"should": conditions}}
     
     def convert_to_sql(self):
-        conditions = [condition.convert_to_sql() for condition in self.conditions]
-        return reduce(or_, conditions)
+        conditions = [MetaDocumentORM.document_id.in_(condition.convert_to_sql()) for condition in self.conditions]
+        return select(MetaDocumentORM.document_id).filter(or_(*conditions))
 
 
 class EqOperation(ComparisonOperation):
@@ -264,6 +261,9 @@ class EqOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"term": {self.field_name: self.comparison_value}}
+    
+    def convert_to_sql(self):
+        return select([MetaDocumentORM.document_id]).where(MetaDocumentORM.name == self.field_name, MetaDocumentORM.value == self.comparison_value)
 
 
 class InOperation(ComparisonOperation):
@@ -273,6 +273,9 @@ class InOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"terms": {self.field_name: self.comparison_value}}
+    
+    def convert_to_sql(self):
+        return select([MetaDocumentORM.document_id]).where(MetaDocumentORM.name == self.field_name, MetaDocumentORM.value.in_(self.comparison_value))
 
 
 class NeOperation(ComparisonOperation):
@@ -283,6 +286,9 @@ class NeOperation(ComparisonOperation):
     def convert_to_elasticsearch(self):
         return {"bool": {"must_not": {"term": {self.field_name: self.comparison_value}}}}
 
+    def convert_to_sql(self):
+        return select([MetaDocumentORM.document_id]).where(MetaDocumentORM.name == self.field_name, MetaDocumentORM.value != self.comparison_value)
+
 
 class NinOperation(ComparisonOperation):
     """
@@ -291,6 +297,9 @@ class NinOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"bool": {"must_not": {"terms": {self.field_name: self.comparison_value}}}}
+    
+    def convert_to_sql(self):
+        return select([MetaDocumentORM.document_id]).where(MetaDocumentORM.name == self.field_name, MetaDocumentORM.value.notin_(self.comparison_value))
 
 
 class GtOperation(ComparisonOperation):
@@ -300,6 +309,9 @@ class GtOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"range": {self.field_name: {"gt": self.comparison_value}}}
+    
+    def convert_to_sql(self):
+        return select([MetaDocumentORM.document_id]).where(MetaDocumentORM.name == self.field_name, MetaDocumentORM.value > self.comparison_value)
 
 
 class GteOperation(ComparisonOperation):
@@ -309,6 +321,9 @@ class GteOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"range": {self.field_name: {"gte": self.comparison_value}}}
+    
+    def convert_to_sql(self):
+        return select([MetaDocumentORM.document_id]).where(MetaDocumentORM.name == self.field_name, MetaDocumentORM.value >= self.comparison_value)
 
 
 class LtOperation(ComparisonOperation):
@@ -318,6 +333,9 @@ class LtOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"range": {self.field_name: {"lt": self.comparison_value}}}
+    
+    def convert_to_sql(self):
+        return select([MetaDocumentORM.document_id]).where(MetaDocumentORM.name == self.field_name, MetaDocumentORM.value < self.comparison_value)
 
 
 class LteOperation(ComparisonOperation):
@@ -327,3 +345,6 @@ class LteOperation(ComparisonOperation):
 
     def convert_to_elasticsearch(self):
         return {"range": {self.field_name: {"lte": self.comparison_value}}}
+    
+    def convert_to_sql(self):
+        return select([MetaDocumentORM.document_id]).where(MetaDocumentORM.name == self.field_name, MetaDocumentORM.value <= self.comparison_value)
