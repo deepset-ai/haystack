@@ -219,7 +219,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
-        if: steps.filter.outputs.code == 'true'  # run only if 'code' files were changed
         run: |
           find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .
           echo "::set-output name=matrix::$(find $(find . -type d -name test -not -path "./*env*/*") -type f -name test_*.py | jq -SR . | jq -cs .)"
