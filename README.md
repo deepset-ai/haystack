@@ -313,3 +313,16 @@ Thanks so much to all those who have contributed to our project!
 <a href="https://github.com/deepset-ai/haystack/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=deepset-ai/haystack" />
 </a>
+
+
+## Who uses Haystack
+
+Here's a list of organizations who use Haystack. Don't hesitate to send a PR to let the world know that you use Haystack. Join our growing community!
+
+- [Airbus](https://www.airbus.com/en)
+- [Alcatel-Lucent](https://www.al-enterprise.com/)
+- [BetterUp](https://www.betterup.com/)
+- [Deepset](https://deepset.ai/)
+- [Etalab](https://www.etalab.gouv.fr/)
+- [Infineon](https://www.infineon.com/)
+- [Sooth.ai](https://sooth.ai/)

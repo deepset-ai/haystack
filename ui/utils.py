@@ -92,7 +92,6 @@ def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, doc
     """
     url = f"{API_ENDPOINT}/{DOC_FEEDBACK}"
     req = {
-        "id": str(uuid4()),
         "query": query,
         "document": document,
         "is_correct_answer": is_correct_answer,
