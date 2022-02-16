@@ -175,7 +175,7 @@ def test_file_upload_with_no_meta(client: TestClient):
     response = client.post(
         url="/file-upload",
         files=file_to_upload,
-        data={"meta": ''},
+        data={"meta": ""},
     )
     assert 200 == response.status_code
 
@@ -191,12 +191,13 @@ def test_file_upload_with_wrong_meta(client: TestClient):
     response = client.post(
         url="/file-upload",
         files=file_to_upload,
-        data={"meta": '1'},
+        data={"meta": "1"},
     )
     assert 500 == response.status_code
 
     response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
     assert len(response.json()) == 0
+
 
 def test_query_with_no_filter(populated_client: TestClient):
     query_with_no_filter_value = {"query": "Who made the PDF specification?"}
