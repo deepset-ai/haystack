@@ -140,17 +140,17 @@ However, should you prefer to execute them locally, here are a few details about
 ### Black
 Black runs with no other configuration than an increase line lenght to 120 characters. Its condiguration can be found in `pyproject.toml`.
 
-You can run it with `python -m black .`.
+You can run it with `python -m black .` from the root folder.
 
 ### Mypy
 Mypy currently runs with limited configuration options that can be found at the bottom of `setup.cfg`.
 
-You can run it with `python -m mypy haystack/ rest_api/ ui/`.
+You can run it with `python -m mypy haystack/ rest_api/ ui/` from the root folder.
 
 ### Pylint
 Pylint is still being integrated in Haystack. The current exclusion list is very long, and can be found in `pyproject.toml`.
 
-You can run it with `python -m pylint haystack/ rest_api/ ui/ -ry`.
+You can run it with `python -m pylint haystack/ rest_api/ ui/ -ry` from the root folder.
 
 
 ## Contributor Licence Agreement (CLA)
