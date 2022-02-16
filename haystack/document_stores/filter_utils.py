@@ -219,7 +219,6 @@ class NotOperation(LogicalFilterClause):
         return {"bool": {"must_not": conditions}}
     
     def convert_to_sql(self):
-        conditions = [condition.convert_to_sql() for condition in self.conditions]
         conditions = [MetaDocumentORM.document_id.in_(condition.convert_to_sql()) for condition in self.conditions]
         return select(MetaDocumentORM.document_id).filter(~or_(*conditions))
     
