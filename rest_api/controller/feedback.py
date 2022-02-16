@@ -15,19 +15,14 @@ logger = logging.getLogger(__name__)
 @router.post("/feedback")
 def post_feedback(feedback: LabelSerialized):
     """
-    This endpoint allows the API user to submit feedback on an answer for a particular query. 
-    
+    This endpoint allows the API user to submit feedback on an answer for a particular query.
+
     For example, the user can send feedback on whether the answer was correct and
     whether the right snippet was identified as the answer.
 
     Information submitted through this endpoint is used to train the underlying QA model.
     """
 
-
-
-
-
-    
     if feedback.origin is None:
         feedback.origin = "user-feedback"
     DOCUMENT_STORE.write_labels([feedback])
@@ -36,7 +31,7 @@ def post_feedback(feedback: LabelSerialized):
 @router.get("/feedback")
 def get_feedback():
     """
-    This endpoint allows the API user to retrieve all the feedback that has been submitted 
+    This endpoint allows the API user to retrieve all the feedback that has been submitted
     through the `POST /feedback` endpoint.
     """
     labels = DOCUMENT_STORE.get_all_labels()
