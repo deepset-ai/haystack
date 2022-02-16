@@ -20,7 +20,17 @@ Please give a concise description in the first comment in the PR that includes:
 ## Running tests
 
 ### CI
-Tests will automatically run in our CI for every commit you push to your PR. This is the most convenient way for you and we encourage you to create early "WIP Pull requests".
+Tests will automatically run in our CI for every commit you push to your PR. This is the most convenient way for you and we encourage you to create early "draft pull requests".
+
+#### Forks
+Some actions in our CI (code style and documentation updates) will run on your code and occasionally commit back small changes after a push. To be able to do so,
+these actions are configured to run on your fork instead of on the base repository. To allow those actions to run, please don't forget to:
+
+1. Enable actions on your fork with read and write permissions:
+
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/fork_action_config.png"></p>
+
+2. Verify that "Allow edits and access to secrets by maintainers" on the PR page's sidebar is checked
 
 ### Local
 However, you can also run the tests locally by executing pytest in your terminal from the `/test` folder.
