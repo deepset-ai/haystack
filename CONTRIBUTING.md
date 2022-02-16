@@ -32,6 +32,8 @@ these actions are configured to run on your fork instead of on the base reposito
 
 2. Verify that "Allow edits and access to secrets by maintainers" on the PR page's sidebar is checked
 
+3. Make sure the branch of your fork where you push your changes is not called `master`. If it is, either change its name or remember to manually trigger the `Code & Documentation Updates` action after a push.
+
 ### Local
 However, you can also run the tests locally by executing pytest in your terminal from the `/test` folder.
 

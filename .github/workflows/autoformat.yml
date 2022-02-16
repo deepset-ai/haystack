@@ -10,9 +10,13 @@ on:
   # cannot push changes back to the source fork.
   # TODO make sure this is still necessary later on.
   push:
+    branches-ignore:    
+      - 'master'
     paths-ignore:
       - '**/*.md'
       - '**/*.txt'
+      - '**/*.png'
+      - '**/*.gif'
 
 
 jobs:
