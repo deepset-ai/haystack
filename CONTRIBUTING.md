@@ -129,6 +129,30 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
                                                 embedding_field="custom_embedding_field")
 ``` 
 
+
+## Code format and style
+We use [Black](https://github.com/psf/black) to ensure consistent code style, [mypy](http://mypy-lang.org/) for static type checking and 
+[pylint](https://pylint.org/) for linting and code quality.
+
+All checks and autoformatting happen on the CI, so in general you don't need to worry about configuring them in your local environment.
+However, should you prefer to execute them locally, here are a few details about the setup.
+
+### Black
+Black runs with no other configuration than an increase line lenght to 120 characters. Its condiguration can be found in `pyproject.toml`.
+
+You can run it with `python -m black .`.
+
+### Mypy
+Mypy currently runs with limited configuration options that can be found at the bottom of `setup.cfg`.
+
+You can run it with `python -m mypy haystack/ rest_api/ ui/`.
+
+### Pylint
+Pylint is still being integrated in Haystack. The current exclusion list is very long, and can be found in `pyproject.toml`.
+
+You can run it with `python -m pylint haystack/ rest_api/ ui/ -ry`.
+
+
 ## Contributor Licence Agreement (CLA)
 
 Significant contributions to Haystack require a Contributor License Agreement (CLA). If the contribution requires a CLA, we will get in contact with you. CLAs are quite common among company backed open-source frameworks and our CLA’s wording is similar to other popular projects, like [Rasa](https://cla-assistant.io/RasaHQ/rasa) or [Google's Tensorflow](https://cla.developers.google.com/clas/new?domain=DOMAIN_GOOGLE&kind=KIND_INDIVIDUAL) (retrieved 4th November 2021). 
