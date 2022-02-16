@@ -82,20 +82,20 @@ def compute_metrics(metric: str, preds, labels):
     :return: a dictionary mapping metric names to values.
     """
     FUNCTION_FOR_METRIC = {
-        "mcc": lambda labels, preds: {"mcc": matthews_corrcoef(labels, preds)},
+        "mcc": lambda preds, labels: {"mcc": matthews_corrcoef(labels, preds)},
         "acc": simple_accuracy,
         "acc_f1": acc_and_f1,
         "pear_spear": pearson_and_spearman,
         "f1_macro": f1_macro,
         "squad": squad,
-        "mse": lambda labels, preds: {"mse": mean_squared_error(preds, labels)},
-        "r2": lambda labels, preds: {"r2": r2_score(preds, labels)},
-        "top_n_accuracy": lambda labels, preds: {"top_n_accuracy": top_n_accuracy(preds, labels)},
+        "mse": lambda preds, labels: {"mse": mean_squared_error(preds, labels)},
+        "r2": lambda preds, labels: {"r2": r2_score(preds, labels)},
+        "top_n_accuracy": lambda preds, labels: {"top_n_accuracy": top_n_accuracy(preds, labels)},
         "text_similarity_metric": text_similarity_metric,
     }
     assert len(preds) == len(labels)
     if metric in FUNCTION_FOR_METRIC.keys():
-        return FUNCTION_FOR_METRIC[metric](labels, preds)
+        return FUNCTION_FOR_METRIC[metric](preds, labels)
     elif isinstance(metric, list):
         ret = {}
         for m in metric:
