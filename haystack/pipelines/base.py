@@ -6,6 +6,7 @@ import json
 import inspect
 import logging
 import os
+import re
 import traceback
 import numpy as np
 import pandas as pd
@@ -1039,6 +1040,50 @@ class Pipeline(BasePipeline):
 
         config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
         return config
+
+    def to_code(self, pipeline_name="pipeline", create_ipython_cell=True):
+        code = self._generate_pipeline_code(pipeline_name=pipeline_name)
+        if create_ipython_cell:
+            try:
+                get_ipython().set_next_input(code) #type: ignore
+            except NameError:
+                return code
+        else:
+            return code
+
+    def _order_component_code(self, depedency: Dict[str, List[str]], keys: Optional[List[str]]=None):
+        ordered = []
+        keys = keys or depedency.keys() #type: ignore
+        for k in keys: #type: ignore
+            v = depedency[k]
+            if len(v) > 0:
+                ordered += [k for k in self._order_component_code(depedency, v) if k not in ordered]
+            if k not in ordered: 
+                ordered.append(k)
+        return ordered
+
+    def _generate_pipeline_code(self, pipeline_name="pipeline"):
+        config = self.get_config()
+        code = ""
+        name_to_variable_name = {c['name']: re.sub(r'(?<!^)(?=[A-Z])', '_', c['name']).lower() for c in config["components"]}
+        component_code = {}
+        component_dependency = {}
+        for component in config["components"]:
+            param_value_dict = {k: name_to_variable_name.get(v, f'"{v}"') if type(v) == str else v for k,v in component['params'].items()}
+            args = ', '.join(f"{k}={v}" for k,v in param_value_dict.items())
+            variable_name = name_to_variable_name[component['name']]
+            component_code[variable_name] = f"{variable_name} = {component['type']}({args})\n"
+            component_dependency[variable_name] = [name_to_variable_name[v] for v in component['params'].values() if v in name_to_variable_name]
+        for v in self._order_component_code(component_dependency):
+            code += component_code[v]
+
+        code += "\n"
+        code += f"{pipeline_name} = Pipeline()\n"
+        for node in config["pipelines"][0]["nodes"]:
+            component_variable_name = name_to_variable_name[node["name"]]
+            inputs = ', '.join(f'"{name}"' for name in node["inputs"])
+            code += f"{pipeline_name}.add_node(component={component_variable_name}, name=\"{node['name']}\", inputs=[{inputs}])\n"
+        return code
 
     def _format_document_answer(self, document_or_answer: dict):
         return "\n \t".join([f"{name}: {value}" for name, value in document_or_answer.items()])
