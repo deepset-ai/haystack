@@ -215,13 +215,13 @@ Returns:
                 'pending_file_count': 3,
                 'total_file_count': 31}}]
 
-<a id="base.BasePipeline.save_to_deepset_could"></a>
+<a id="base.BasePipeline.save_to_deepset_cloud"></a>
 
-#### save\_to\_deepset\_could
+#### save\_to\_deepset\_cloud
 
 ```python
 @classmethod
-def save_to_deepset_could(cls, query_pipeline: BasePipeline, index_pipeline: BasePipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
+def save_to_deepset_cloud(cls, query_pipeline: BasePipeline, index_pipeline: BasePipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
 ```
 
 Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
