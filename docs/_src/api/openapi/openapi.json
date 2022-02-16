@@ -755,8 +755,7 @@
             "QueryResponse": {
                 "title": "QueryResponse",
                 "required": [
-                    "query",
-                    "answers"
+                    "query"
                 ],
                 "type": "object",
                 "properties": {
@@ -769,14 +768,16 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/AnswerSerialized"
-                        }
+                        },
+                        "default": []
                     },
                     "documents": {
                         "title": "Documents",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/DocumentSerialized"
-                        }
+                        },
+                        "default": []
                     },
                     "_debug": {
                         "title": " Debug",
