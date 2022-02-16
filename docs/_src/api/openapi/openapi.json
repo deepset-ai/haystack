@@ -278,7 +278,7 @@
                     "file-upload"
                 ],
                 "summary": "Upload File",
-                "description": "You can use this endpoint to upload a file for indexing\n(see [http://localhost:3000/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store]).",
+                "description": "You can use this endpoint to upload a file for indexing\n(see https://haystack.deepset.ai/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store).",
                 "operationId": "upload_file_file_upload_post",
                 "requestBody": {
                     "content": {
