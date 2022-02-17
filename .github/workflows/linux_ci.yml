@@ -211,7 +211,7 @@ jobs:
           if [[ `git status --porcelain` ]]; then
             git status
             echo ""
-            echo "This means that the `autoformat.yml` action didn't run on the fork."
+            echo "This means that the 'autoformat.yml' action didn't run."
             echo "Please enable GitHub Action on your fork to pass this check!"
             exit 1
           fi
