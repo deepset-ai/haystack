@@ -37,6 +37,29 @@ Returns a configuration for the Pipeline that can be used with `BasePipeline.loa
 
 - `return_defaults`: whether to output parameters that have the default values.
 
+<a id="base.BasePipeline.to_code"></a>
+
+#### to\_code
+
+```python
+def to_code(pipeline_variable_name: str = "pipeline", create_ipython_cell: bool = True, generate_imports: bool = True)
+```
+
+Returns the respecting code to create this pipeline.
+
+If we're running in a notebook environment and create_ipyhton_cell is set to True,
+this will automatically create a new notebook cell containing the code instead of returning a string.
+
+**Arguments**:
+
+- `pipeline_variable_name`: The variable name of the generated pipeline.
+Default value is 'pipeline'.
+- `create_ipython_cell`: If set to True and we're running in a notebook environment, to_code() will automatically create a new notebook cell containing the code.
+Otherwise to_code() will return the code as string.
+Default value is True.
+- `generate_imports`: Whether to include the required import statements into the code.
+Default value is True.
+
 <a id="base.BasePipeline.load_from_config"></a>
 
 #### load\_from\_config
