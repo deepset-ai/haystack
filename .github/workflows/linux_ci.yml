@@ -345,6 +345,7 @@ jobs:
     - name: Reinstall Haystack
       run: |
         pip install .[test]
+        pip install .[milvus]
 
     - name: Run Milvus2 tests
       run: |
