@@ -174,6 +174,9 @@ class BasePipeline:
             |        inputs: [MyESRetriever]
             ```
 
+        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown. 
+        If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
+
         :param path: path of the YAML file.
         :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
         :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
@@ -1294,6 +1297,10 @@ class RayPipeline(Pipeline):
             |      - name: MyReader
             |        inputs: [MyESRetriever]
             ```
+
+        
+        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown. 
+        If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
 
         :param path: path of the YAML file.
         :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
