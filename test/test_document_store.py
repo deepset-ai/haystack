@@ -310,6 +310,26 @@ def test_extended_filter(document_store_with_docs):
         doc in documents_simplified_filter for doc in documents
     )
 
+    # Test nested logical operations within "$not", important as we apply De Morgan's laws in WeaviateDocumentstore
+    filters = {
+        "$not": {
+            "$or": {
+                "$and": {
+                    "numeric_field": {"$gt": 3.0},
+                    "meta_field": {"$ne": "test3"}
+                },
+                "$not": {
+                    "date_field": {"$lt": "2020-01-01"}
+                }
+            }
+        }
+    }
+    documents = document_store_with_docs.get_all_documents(filters=filters)
+    docs_meta = [doc.meta["meta_field"] for doc in documents]
+    assert len(documents) == 2
+    assert "test3" in docs_meta
+    assert "test5" in docs_meta
+
     # Test same logical operator twice on same level
     filters = {
         "$or": [

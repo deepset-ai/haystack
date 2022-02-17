@@ -269,12 +269,20 @@ class NotOperation(LogicalFilterClause):
     def convert_to_weaviate(self) -> Dict[str, Union[str, int, float, bool, List[Dict]]]:
         conditions = [condition.invert().convert_to_weaviate() for condition in self.conditions]
         if len(conditions) > 1:
-            return {"operator": "And", "operands": conditions}
+            # Conditions in self.conditions are by default combined with AND which becomes OR according to DeMorgan
+            return {"operator": "Or", "operands": conditions}
         else:
             return conditions[0]
 
-    def invert(self) -> "OrOperation":
-        return OrOperation([condition.invert() for condition in self.conditions])
+    def invert(self) -> Union[LogicalFilterClause, ComparisonOperation]:
+        # This method is called when a "$not" operation is embedded in another "$not" operation. Therefore, we don't
+        # invert the operations here, as two "$not" operation annihilate each other.
+        # (If we have more than one condition, we return an AndOperation, the default logical operation for combining
+        # multiple conditions.)
+        if len(self.conditions) > 1:
+            return AndOperation(self.conditions)
+        else:
+            return self.conditions[0]
 
 
 class AndOperation(LogicalFilterClause):
