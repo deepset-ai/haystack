@@ -314,13 +314,8 @@ def test_extended_filter(document_store_with_docs):
     filters = {
         "$not": {
             "$or": {
-                "$and": {
-                    "numeric_field": {"$gt": 3.0},
-                    "meta_field": {"$ne": "test3"}
-                },
-                "$not": {
-                    "date_field": {"$lt": "2020-01-01"}
-                }
+                "$and": {"numeric_field": {"$gt": 3.0}, "meta_field": {"$ne": "test3"}},
+                "$not": {"date_field": {"$lt": "2020-01-01"}},
             }
         }
     }
