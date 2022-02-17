@@ -481,11 +481,20 @@ class Label:
         return str(self.to_dict())
 
     def __str__(self):
-        return str(self.to_dict())
+        return f"<Label: {self.to_dict()}>"
 
 
 @dataclass
 class MultiLabel:
+    labels: List[Label]
+    query: str
+    answers: List[str]
+    no_answer: bool
+    document_ids: List[str]
+    document_contents: List[str]
+    gold_offsets_in_contexts: List[Dict]
+    gold_offsets_in_documents: List[Dict]
+
     def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -499,7 +508,6 @@ class MultiLabel:
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
-
         # drop duplicate labels and remove negative labels if needed.
         labels = list(set(labels))
         if drop_negative_labels:
@@ -588,7 +596,7 @@ class MultiLabel:
         return str(self.to_dict())
 
     def __str__(self):
-        return str(self.to_dict())
+        return f"<MultiLabel: {self.to_dict()}>"
 
 
 def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
