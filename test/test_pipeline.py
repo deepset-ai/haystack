@@ -72,7 +72,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
             - ESRetriever
             name: Reader
           type: Pipeline
-        version: '{__version__}'
+        version: {__version__}
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
@@ -132,7 +132,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
             - ESRetriever
             name: Reader
           type: Pipeline
-        version: '{__version__}'
+        version: {__version__}
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
