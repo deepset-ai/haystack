@@ -378,7 +378,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if isinstance(value, str):
             # If the value is parsable by datetime, it is a date
             try:
-                datetime.fromisoformat(value)
+                convert_date_to_rfc3339(value)
                 data_type = "date"
             # Otherwise, the value is a string
             except ValueError:
