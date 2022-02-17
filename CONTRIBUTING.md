@@ -30,7 +30,10 @@ these actions are configured to run on your fork instead of on the base reposito
 
 <p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/fork_action_config.png"></p>
 
-2. Verify that "Allow edits and access to secrets by maintainers" on the PR page's sidebar is checked
+2. Verify that "Allow edits and access to secrets by maintainers" on the PR preview page is checked (you can check it later on the PR's sidebar once it's created).
+
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/first_time_contributor_enable_access.png"></p>
+
 
 3. Make sure the branch of your fork where you push your changes is not called `master`. If it is, either change its name or remember to manually trigger the `Code & Documentation Updates` action after a push.
 
