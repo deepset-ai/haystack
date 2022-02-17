@@ -243,9 +243,7 @@ class ParsrConverter(BaseConverter):
                             following_lines.append(line)
 
         preceding_context = (
-            "\n".join(
-                [self._get_line_string(line) for line in preceding_lines[-self.preceding_context_len :]]
-            )
+            "\n".join([self._get_line_string(line) for line in preceding_lines[-self.preceding_context_len :]])
             + f"\n\n{caption}"
         )
         preceding_context = preceding_context.strip()
