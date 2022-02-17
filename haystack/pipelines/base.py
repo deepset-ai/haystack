@@ -174,7 +174,7 @@ class BasePipeline:
             |        inputs: [MyESRetriever]
             ```
 
-        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown. 
+        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown.
         If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
 
         :param path: path of the YAML file.
@@ -187,9 +187,11 @@ class BasePipeline:
 
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
         if pipeline_config["version"] != __version__:
-            logger.warning(f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
-                            "Issues may occurr during loading. "
-                            "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml()")
+            logger.warning(
+                f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
+                "Issues may occurr during loading. "
+                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml()"
+            )
         return cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
@@ -1045,7 +1047,11 @@ class Pipeline(BasePipeline):
             # create the Pipeline definition with how the Component are connected
             pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
 
-        config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": __version__}
+        config = {
+            "components": list(components.values()),
+            "pipelines": list(pipelines.values()),
+            "version": __version__,
+        }
         return config
 
     def _format_document_answer(self, document_or_answer: dict):
@@ -1298,8 +1304,8 @@ class RayPipeline(Pipeline):
             |        inputs: [MyESRetriever]
             ```
 
-        
-        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown. 
+
+        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown.
         If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
 
         :param path: path of the YAML file.
@@ -1312,9 +1318,11 @@ class RayPipeline(Pipeline):
         """
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
         if pipeline_config["version"] != __version__:
-            logger.warning(f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
-                            "Issues may occurr during loading. "
-                            "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml()")
+            logger.warning(
+                f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
+                "Issues may occurr during loading. "
+                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml()"
+            )
         return RayPipeline.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
