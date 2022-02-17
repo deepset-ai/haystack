@@ -7,6 +7,9 @@ from itertools import islice
 from abc import abstractmethod
 from pathlib import Path
 
+from elasticsearch.helpers import scan
+from tqdm.auto import tqdm
+
 try:
     from typing import Literal
 except ImportError:
@@ -578,3 +581,79 @@ def get_batches_from_generator(iterable, n):
     while x:
         yield x
         x = tuple(islice(it, n))
+
+
+def transform_existing_elasticsearch_index_to_document_store(
+    document_store: BaseDocumentStore,
+    original_index_name: str,
+    original_content_field: str,
+    original_name_field: Optional[str] = None,
+    included_metadata_fields: Optional[List[str]] = None,
+    excluded_metadata_fields: Optional[List[str]] = None,
+    store_original_ids: bool = False,
+    preprocessor: Optional[PreProcessor] = None,
+    host: Union[str, List[str]] = "localhost",
+    port: Union[int, List[int]] = 9200,
+    username: str = "",
+    password: str = "",
+    api_key_id: Optional[str] = None,
+    api_key: Optional[str] = None,
+    aws4auth=None,
+    scheme: str = "http",
+    ca_certs: Optional[str] = None,
+    verify_certs: bool = True,
+    timeout: int = 30,
+) -> BaseDocumentStore:
+
+    # This import cannot be at the beginning of the file, as this would result in a circular import
+    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+
+    # Initialize ELasticsearch client
+    es_client = ElasticsearchDocumentStore._init_elastic_client(
+        host=host,
+        port=port,
+        username=username,
+        password=password,
+        api_key=api_key,
+        api_key_id=api_key_id,
+        aws4auth=aws4auth,
+        scheme=scheme,
+        ca_certs=ca_certs,
+        verify_certs=verify_certs,
+        timeout=timeout,
+    )
+
+    # Iterate over each individual record
+    records = scan(client=es_client, query={"query": {"match_all": {}}}, index=original_index_name)
+    number_of_records = es_client.count(index=original_index_name)["count"]
+    for record in tqdm(records, total=number_of_records):
+        content = record["_source"].pop(original_content_field, "")
+        if content:
+            record_doc = {"content": content, "meta": {}}
+
+            if original_name_field is not None:
+                if original_name_field in record["_source"]:
+                    record_doc["meta"]["name"] = record["_source"].pop(original_name_field)
+            # Only add selected metadata fields
+            if included_metadata_fields is not None:
+                for metadata_field in included_metadata_fields:
+                    if metadata_field in record["_source"]:
+                        record_doc["meta"][metadata_field] = record["_source"][metadata_field]
+            # Add all metadata fields except for those in excluded_metadata_fields
+            else:
+                if excluded_metadata_fields is not None:
+                    for metadata_field in excluded_metadata_fields:
+                        record["_source"].pop(metadata_field, None)
+                record_doc["meta"].update(record["_source"])
+
+            if store_original_ids:
+                record_doc["meta"]["original_es_id"] = record["_id"]
+
+            # Apply preprocessor if provided
+            record_doc = preprocessor.process(record_doc) if preprocessor is not None else [record_doc]
+
+            docs = [Document.from_dict(doc) for doc in record_doc]
+
+            document_store.write_documents(docs)
+    
+

@@ -238,8 +238,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
 
+    @classmethod
     def _init_elastic_client(
-        self,
+        cls,
         host: Union[str, List[str]],
         port: Union[int, List[int]],
         username: str,
@@ -253,7 +254,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         timeout: int,
     ) -> Elasticsearch:
 
-        hosts = self._prepare_hosts(host, port)
+        hosts = cls._prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
@@ -312,7 +313,8 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             )
         return client
 
-    def _prepare_hosts(self, host, port):
+    @staticmethod
+    def _prepare_hosts(host, port):
         # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
         if isinstance(host, list):
             if isinstance(port, list):
