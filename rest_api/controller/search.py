@@ -1,3 +1,5 @@
+from typing import Dict, Any
+
 import logging
 import time
 import json
@@ -65,7 +67,7 @@ def query(request: QueryRequest):
         return result
 
 
-def _process_request(pipeline, request) -> QueryResponse:
+def _process_request(pipeline, request) -> Dict[str, Any]:
     start_time = time.time()
 
     params = request.params or {}
@@ -75,22 +77,26 @@ def _process_request(pipeline, request) -> QueryResponse:
         params["filters"] = _format_filters(params["filters"])
 
     # format targeted node filters (e.g. "params": {"Retriever": {"filters": {"value"}}})
-    for key, value in params.items():
+    for key in params.keys():
         if "filters" in params[key].keys():
             params[key]["filters"] = _format_filters(params[key]["filters"])
 
     result = pipeline.run(query=request.query, params=params, debug=request.debug)
 
+    # Ensure answers and documents exist, even if they're empty lists
+    if not "documents" in result:
+        result["documents"] = []
+    if not "answers" in result:
+        result["answers"] = []
+
     # if any of the documents contains an embedding as an ndarray the latter needs to be converted to list of float
-    for document in result["documents"] or []:
+    for document in result["documents"]:
         if isinstance(document.embedding, ndarray):
             document.embedding = document.embedding.tolist()
 
-    end_time = time.time()
     logger.info(
-        json.dumps({"request": request, "response": result, "time": f"{(end_time - start_time):.2f}"}, default=str)
+        json.dumps({"request": request, "response": result, "time": f"{(time.time() - start_time):.2f}"}, default=str)
     )
-
     return result
 
 

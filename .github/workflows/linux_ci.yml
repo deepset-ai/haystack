@@ -3,17 +3,59 @@ name: Linux CI
 on:
   # Activate this workflow manually
   workflow_dispatch:
-  # Activate this workflow on every update of a PR
+  # Activate this workflow when the PR is opened and code is added to it
+  # Note: using pull_request instead of push to keep the CI workflows 
+  # running on our repo, not the contributor's. See autoformat.yml
   pull_request:
     types:
       - opened
       - synchronize
-  # Activate this workflow on every push to master
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.png'
+      - '**/*.gif'
+  # Activate this workflow on every push of code changes on master
   push:
     branches:
       - master
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.png'
+      - '**/*.gif'
 
 jobs:
+
+  build-cache:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Cache
+        id: cache-python-env
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          # The cache will be rebuild every day and at every change of the dependency files
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install dependencies
+        if: steps.cache-python-env.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          echo "=== pip freeze ==="
+          pip freeze
+
 
   type-check:
     runs-on: ubuntu-20.04
@@ -51,119 +93,7 @@ jobs:
           mypy ui --exclude=ui/build/ --exclude=ui/test/
 
 
-  build-cache:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      - name: Cache
-        id: cache-python-env
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          # The cache will be rebuild every day and at every change of the dependency files
-          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
-
-      - name: Install dependencies
-        if: steps.cache-python-env.outputs.cache-hit != 'true'
-        run: |
-          pip install --upgrade pip
-          pip install .[test]
-          pip install rest_api/
-          pip install ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
-          echo "=== pip freeze ==="
-          pip freeze
-
-
-  code-and-docs-updates:
-    needs: build-cache
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name }} != "push"
-
-    steps:
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-          ref: ${{github.event.pull_request.head.ref}}
-      
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-
-      - name: Cache Python
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
-
-      - name: Install Dependencies (on cache miss only)
-        # The cache might miss during the execution of an action: there should always be a fallback step to
-        # rebuild it in case it goes missing
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          pip install --upgrade pip
-          pip install .[test]
-          pip install rest_api/
-          pip install ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
-          echo "=== pip freeze ==="
-          pip freeze
-          
-      # Apply Black on the entire codebase
-      - name: Blacken
-        run: black .
-
-      # Convert the Jupyter notebooks into markdown tutorials
-      - name: Generate Tutorials
-        run: |
-          cd docs/_src/tutorials/tutorials/
-          python3 convert_ipynb.py
-
-      # Generate markdown files from the docstrings with pydoc-markdown
-      - name: Generate Docstrings
-        run: |
-          set -e   # Fails on any error in the following loop
-          cd docs/_src/api/api/
-          for file in ../pydoc/* ; do
-            echo "Processing" $file
-            pydoc-markdown "$file"
-          done
-
-      # Generates the OpenAPI specs file to be used on the documentation website
-      - name: Generate OpenAPI Specs
-        run: |
-          pip install rest_api/
-          cd docs/_src/api/openapi/
-          python generate_openapi_specs.py
-
-      # Generates a new JSON schema for the pipeline YAML validation
-      - name: Generate JSON schema for pipelines
-        run: python ./.github/utils/generate_json_schema.py
-      
-      # Commit the files to GitHub
-      - name: Commit files
-        run: |
-          git status
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-
-          git add .
-          git commit -m "Update Documentation & Code Style" -a || echo "No changes to commit"
-          git status
-          git push
-
-
   linter:
-    needs: code-and-docs-updates
     runs-on: ubuntu-20.04
     steps:
 
@@ -197,6 +127,94 @@ jobs:
           pylint -ry haystack/
           pylint -ry rest_api/
           pylint -ry ui/
+
+  
+  code-and-docs-check:
+    needs: build-cache
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name }} != "push"
+
+    steps:
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.head_ref }}
+      
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Cache Python
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install Dependencies (on cache miss only)
+        # The cache might miss during the execution of an action: there should always be a fallback step to
+        # rebuild it in case it goes missing
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          echo "=== pip freeze ==="
+          pip freeze
+          
+      # Get any additional commit that might have been pushed in the meantime
+      - name: Pull changes (if any)
+        run: git pull origin ${{ github.head_ref }}
+
+      # Apply Black on the entire codebase
+      - name: Blacken
+        run: black .
+
+      # Convert the Jupyter notebooks into markdown tutorials
+      - name: Generate Tutorials
+        run: |
+          cd docs/_src/tutorials/tutorials/
+          python3 convert_ipynb.py
+
+      # Generate markdown files from the docstrings with pydoc-markdown
+      - name: Generate Docstrings
+        run: |
+          set -e   # Fails on any error in the following loop
+          cd docs/_src/api/api/
+          for file in ../pydoc/* ; do
+            echo "Processing" $file
+            pydoc-markdown "$file"
+          done
+
+      # Generates the OpenAPI specs file to be used on the documentation website
+      - name: Generate OpenAPI Specs
+        run: |
+          pip install rest_api/
+          cd docs/_src/api/openapi/
+          python generate_openapi_specs.py
+
+      # Generates a new JSON schema for the pipeline YAML validation
+      - name: Generate JSON schema for pipelines
+        run: python ./.github/utils/generate_json_schema.py
+      
+      # If there is anything to commit, fail
+      # Note: this CI action mirrors autoformat.yml, with the difference that it
+      # runs on Haystack's end. If the contributor hasn't run autoformat.yml, then this
+      # check will fail.
+      - name: Check git status
+        run: |
+          if [[ `git status --porcelain` ]]; then
+            git status
+            echo ""
+            echo "This means that the `autoformat.yml` action didn't run on the fork."
+            echo "Please enable GitHub Action on your fork to pass this check!"
+            exit 1
+          fi
 
 
   prepare-matrix:
