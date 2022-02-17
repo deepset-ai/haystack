@@ -152,7 +152,7 @@ class LogicalFilterClause(ABC):
         return conditions
 
     @abstractmethod
-    def invert(self) -> "LogicalFilterClause":
+    def invert(self) -> Union["LogicalFilterClause", "ComparisonOperation"]:
         """
         Inverts the LogicalOperation instance.
         Necessary for Weaviate as Weaviate doesn't seem to support the 'Not' operator anymore.
@@ -290,9 +290,6 @@ class AndOperation(LogicalFilterClause):
     Handles conversion of logical 'AND' operations.
     """
 
-    def invert(self) -> "OrOperation":
-        return OrOperation([condition.invert() for condition in self.conditions])
-
     def convert_to_elasticsearch(self) -> Dict[str, Dict]:
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
@@ -301,6 +298,9 @@ class AndOperation(LogicalFilterClause):
     def convert_to_weaviate(self) -> Dict[str, Union[str, List[Dict]]]:
         conditions = [condition.convert_to_weaviate() for condition in self.conditions]
         return {"operator": "And", "operands": conditions}
+
+    def invert(self) -> "OrOperation":
+        return OrOperation([condition.invert() for condition in self.conditions])
 
 
 class OrOperation(LogicalFilterClause):
