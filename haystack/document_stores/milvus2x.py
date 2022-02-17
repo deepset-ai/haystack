@@ -153,9 +153,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
             custom_fields=custom_fields,
             isolation_level=isolation_level,
         )
-
-        logger.warning("Milvus2DocumentStore is in experimental state until Milvus 2.0 is released")
-
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
 
