@@ -41,6 +41,8 @@ logger = logging.getLogger(__name__)
 
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
 CAMEL_CASE_TO_SNAKE_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
+MODULE_NOT_FOUND = "MODULE_NOT_FOUND"
+CODE_GEN_ALLOWED_IMPORTS = ["haystack.document_stores", "haystack.nodes"]
 
 
 class RootNode(BaseComponent):
@@ -443,19 +445,26 @@ class BasePipeline:
     @classmethod
     def _generate_imports_code(cls, types_to_import: List[str]) -> str:
         code_lines = []
-        allowed_imports = ["haystack.nodes", "haystack.document_stores"]
         importable_classes = {
             name: mod
-            for mod in allowed_imports
+            for mod in CODE_GEN_ALLOWED_IMPORTS
             for name, obj in inspect.getmembers(sys.modules[mod])
             if inspect.isclass(obj)
         }
 
+        imports_by_module: Dict[str, List[str]] = {}
         for t in types_to_import:
-            if t in importable_classes:
-                code_lines.append(f"from {importable_classes[t]} import {t}")
+            mod = importable_classes.get(t, MODULE_NOT_FOUND)
+            if mod in imports_by_module:
+                imports_by_module[mod].append(t)
             else:
-                code_lines.append(f"# from MODULE_NOT_FOUND import {t}")
+                imports_by_module[mod] = [t]
+
+        for mod in sorted(imports_by_module.keys()):
+            sorted_types = sorted(set(imports_by_module[mod]))
+            import_types = ", ".join(sorted_types)
+            line_prefix = "# " if mod == MODULE_NOT_FOUND else ""
+            code_lines.append(f"{line_prefix}from {mod} import {import_types}")
 
         code = "\n".join(code_lines)
         return code
