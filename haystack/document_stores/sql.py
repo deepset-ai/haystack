@@ -119,18 +119,21 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
 
-        :param url: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
-        :param index: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
-                      This parameter sets the default value for document index.
+        :param url: URL for SQL database as expected by SQLAlchemy.
+            More info here: [https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls](https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls)
+        :param index: The documents are scoped to an index attribute that can be used when writing, querying, or
+            deleting documents. This parameter sets the default value for document index.
         :param label_index: The default value of index attribute for the labels.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
-        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :param check_same_thread: Set to `False` to mitigate multithreading issues in older SQLite versions
+            (see [https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior](https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior))
+        :param isolation_level: See SQLAlchemy's `isolation_level` parameter for `create_engine()`
+            ([https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level](https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level))
         """
 
         # save init parameters to enable export of component config as YAML
@@ -166,7 +169,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def get_document_by_id(
         self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ) -> Optional[Document]:
-        """Fetch a document by specifying its text id string"""
+        """Fetch a document by specifying its text id string."""
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
 
@@ -181,7 +184,7 @@ class SQLDocumentStore(BaseDocumentStore):
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
-        """Fetch documents by specifying a list of text id strings"""
+        """Fetch documents by specifying a list of text id strings."""
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
 
@@ -198,7 +201,7 @@ class SQLDocumentStore(BaseDocumentStore):
         return documents
 
     def get_documents_by_vector_ids(self, vector_ids: List[str], index: Optional[str] = None, batch_size: int = 10_000):
-        """Fetch documents by specifying a list of text vector id strings"""
+        """Fetch documents by specifying a list of text vector id strings."""
         index = index or self.index
 
         documents = []
@@ -243,10 +246,10 @@ class SQLDocumentStore(BaseDocumentStore):
         document store and yielded as individual documents. This method can be used to iteratively process
         a large number of documents without having to load all documents in memory.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -264,7 +267,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def _create_document_field_map(self) -> Dict:
         """
-        There is no field mapping required
+        There is no field mapping required.
         """
         return {}
 
@@ -277,12 +280,12 @@ class SQLDocumentStore(BaseDocumentStore):
         batch_size: int = 10_000,
     ):
         """
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         :param vector_ids: List of vector_id strings to filter the documents by.
-        :param only_documents_without_embedding: return only documents without an embedding.
+        :param only_documents_without_embedding: Whether to return only documents without an embedding.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         index = index or self.index
@@ -339,7 +342,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None):
         """
-        Return all labels in the document store
+        Return all labels in the document store,
         """
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
@@ -362,22 +365,20 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         Indexes documents for later queries.
 
-        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                          Optionally: Include meta data via {"text": "<the-actual-text>",
-                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-                          It can be used for filtering and is accessible in the responses of the Finder.
-        :param index: add an optional index attribute to documents. It can be later used for filtering. For instance,
-                      documents for evaluation can be indexed in a separate index than the documents for search.
+        :param documents: A list of Python dictionaries or a list of Haystack Document objects.
+            For documents as dictionaries, the format is `{"content": "<the-actual-text>"}`. Optionally: Include meta
+            data via `{"content": "<the-actual-text>", "meta":{"name": "<some-document-name>,
+            "author": "somebody", ...}}`
+            It can be used for filtering and is accessible in the responses of the Finder.
+        :param index: Add an optional index attribute to documents. It can be later used for filtering. For instance,
+            documents for evaluation can be indexed in a separate index than the documents for search.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
 
-        :return: None
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists..
         """
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
@@ -475,8 +476,8 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         Update vector_ids for given document_ids.
 
-        :param vector_id_map: dict containing mapping of document_id -> vector_id.
-        :param index: filter documents by the optional index attribute for documents in database.
+        :param vector_id_map: Dict containing mapping of document_id -> vector_id.
+        :param index: Filter documents by the optional index attribute for documents in database.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         index = index or self.index
@@ -499,7 +500,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def reset_vector_ids(self, index: Optional[str] = None):
         """
-        Set vector IDs for all documents as None
+        Set vector IDs for all documents as `None`.
         """
         index = index or self.index
         self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: null()})
@@ -507,7 +508,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
         """
-        Update the metadata dictionary of a document by specifying its string id
+        Update the metadata dictionary of a document by specifying its string id.
         """
         if not index:
             index = self.index
@@ -550,7 +551,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """
-        Return the number of labels in the document store
+        Return the number of labels in the document store.
         """
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
@@ -617,7 +618,6 @@ class SQLDocumentStore(BaseDocumentStore):
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
-        :return: None
         """
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
@@ -640,15 +640,14 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the document from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Index name to delete the document from. If `None`, the DocumentStore's default index (self.index)
+            will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            Example filters: `{"name": ["some", "more"], "category": ["only_one"]}`.
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
-        :return: None
         """
         index = index or self.index
         if not filters and not ids:
@@ -680,12 +679,12 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         Delete labels from the document store. All labels are deleted if no filters are passed.
 
-        :param index: Index name to delete the labels from. If None, the
-                      DocumentStore's default label index (self.label_index) will be used.
+        :param index: Index name to delete the labels from. If `None`, the DocumentStore's default label index
+            (self.label_index) will be used.
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
-                        Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
-        :return: None
+            Example filters: `{"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]}`
+            or `{"query": ["question2"]}`
         """
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
@@ -753,7 +752,7 @@ class SQLDocumentStore(BaseDocumentStore):
             yield int_for_range(start, end)
 
     def _windowed_query(self, q, column, windowsize):
-        """ "Break a Query into windows on a given column."""
+        """Break a Query into windows on a given column."""
 
         for whereclause in self._column_windows(q.session, column, windowsize):
             for row in q.filter(whereclause).order_by(column):

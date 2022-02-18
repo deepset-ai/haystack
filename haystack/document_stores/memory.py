@@ -9,7 +9,6 @@ import numpy as np
 import torch
 from copy import deepcopy
 from collections import defaultdict
-from scipy.spatial.distance import cosine
 from tqdm import tqdm
 
 from haystack.schema import Document, Label
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class InMemoryDocumentStore(BaseDocumentStore):
     """
-    In-memory document store
+    In-memory document store.
     """
 
     def __init__(
@@ -42,28 +41,29 @@ class InMemoryDocumentStore(BaseDocumentStore):
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
-                      or deleting documents. This parameter sets the default value for document index.
+            or deleting documents. This parameter sets the default value for document index.
         :param label_index: The default value of index attribute for the labels.
-        :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever
+            (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
         :param embedding_dim: The size of the embedding vector.
-        :param return_embedding: To return document embedding
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
-                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param return_embedding: Whether to return document embeddings.
+        :param similarity: The similarity function used to compare document vectors. `"dot_product"` is the default
+            since it is more performant with DPR embeddings. `"cosine"` is recommended if you are using a Sentence BERT
+            model.
         :param progress_bar: Whether to show a tqdm progress bar or not.
-                             Can be helpful to disable in production deployments to keep the logs clean.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
+            Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents: Handle duplicate document based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
         :param use_gpu: Whether to use a GPU or the CPU for calculating embedding similarity.
-                        Falls back to CPU if no GPU is available.
-        :param scoring_batch_size: Batch size of documents to calculate similarity for. Very small batch sizes are inefficent.
-                                   Very large batch sizes can overrun GPU memory. In general you want to make sure
-                                   you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
-                                   Since the data is originally stored in CPU memory there is little risk of overruning memory
-                                   when running on CPU.
+            Falls back to CPU if no GPU is available.
+        :param scoring_batch_size: Batch size of documents to calculate similarity for. Very small batch sizes are
+            inefficent. Very large batch sizes can overrun GPU memory. In general you want to make sure you have at
+            least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory. Since the data is originally
+            stored in CPU memory there is little risk of overruning memory when running on CPU.
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(
@@ -101,24 +101,23 @@ class InMemoryDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ):
         """
-         Indexes documents for later queries.
+        Indexes documents for later queries.
 
 
-        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                           Optionally: Include meta data via {"text": "<the-actual-text>",
-                           "meta": {"name": "<some-document-name>, "author": "somebody", ...}}
-                           It can be used for filtering and is accessible in the responses of the Finder.
-         :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
-                       separate index than the documents for search.
-         :param duplicate_documents: Handle duplicates document based on parameter options.
-                                     Parameter options : ( 'skip','overwrite','fail')
-                                     skip: Ignore the duplicates documents
-                                     overwrite: Update any existing documents with the same ID when adding documents.
-                                     fail: an error is raised if the document ID of the document being added already
-                                     exists.
-         :raises DuplicateDocumentError: Exception trigger on duplicate document
-         :return: None
+        :param documents: A list of Python dictionaries or a list of Haystack Document objects.
+            For documents as dictionaries, the format is `{"content": "<the-actual-text>"}`.
+            Optionally: Include meta data via `{"content": "<the-actual-text>", "meta": {"name": "<some-document-name>,
+            "author": "somebody", ...}}`
+            It can be used for filtering and is accessible in the responses of Document returning nodes.
+        :param index: Write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
+            separate index than the documents for search.
+        :param duplicate_documents: Handle duplicate document based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :raises DuplicateDocumentError: Exception trigger on duplicate document.
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
@@ -213,7 +212,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         Calculate similarity scores between query embedding and a list of documents using torch.
 
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param query_emb: Embedding of the query (e.g. gathered from DPR).
         :param document_to_search: List of documents to compare `query_emb` against.
         """
         query_emb = torch.tensor(query_emb, dtype=torch.float).to(self.main_device)
@@ -254,7 +253,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         Calculate similarity scores between query embedding and a list of documents using numpy.
 
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param query_emb: Embedding of the query (e.g. gathered from DPR).
         :param document_to_search: List of documents to compare `query_emb` against.
         """
         if len(query_emb.shape) == 1:
@@ -300,11 +299,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param query_emb: Embedding of the query (e.g. gathered from DPR).
         :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :param top_k: How many documents to return
-        :param index: Index name for storing the docs and metadata
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
+        :param top_k: How many documents to return.
+        :param index: The name of the index from which to retrieve documents.
         :param return_embedding: To return document embedding
         :return:
         """
@@ -343,16 +342,17 @@ class InMemoryDocumentStore(BaseDocumentStore):
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
-        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever
+        config).
 
-        :param retriever: Retriever to use to get embeddings for text
-        :param index: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
-        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
-                                           only documents without embeddings are processed. This mode can be used for
-                                           incremental updating of embeddings, wherein, only newly indexed documents
-                                           get processed.
+        :param retriever: Retriever to use to get embeddings for text.
+        :param index: Index name for which embeddings are to be updated. If set to `None`, the default self.index is
+            used.
+        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to `False`,
+            only documents without embeddings are processed. This mode can be used for incremental updating of
+            embeddings, wherein, only newly indexed documents get processed.
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
@@ -472,10 +472,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         Get all documents from the document store as a list.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index (
+            self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
@@ -499,10 +499,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         Get all documents from the document store. The methods returns a Python Generator that yields individual
         documents.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
@@ -552,7 +552,6 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         :param index: Index name to delete the document from.
         :param filters: Optional filters to narrow down the documents to be deleted.
-        :return: None
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
@@ -575,16 +574,14 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Index name to delete the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            Example filters: `{"name": ["some", "more"], "category": ["only_one"]}`.
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
-
-        :return: None
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
@@ -609,12 +606,12 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         Delete labels in an index. All labels are deleted if no filters are passed.
 
-        :param index: Index name to delete the labels from. If None, the
-                      DocumentStore's default label index (self.label_index) will be used.
+        :param index: Index name to delete the labels from. If `None`, the DocumentStore's default label index
+            (self.label_index) will be used.
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
         :param filters: Optional filters to narrow down the labels to be deleted.
-                        Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
-        :return: None
+            Example filters: `{"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]}`
+            or `{"query": ["question2"]}`
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")

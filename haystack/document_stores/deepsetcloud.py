@@ -27,25 +27,26 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
-        Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
+        Thus, you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
 
-        DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
-        See https://haystack.deepset.ai/components/document-store for more information.
+        DeepsetCloudDocumentStore is not intended for use in production-like scenarios. See
+        [https://haystack.deepset.ai/components/document-store](https://haystack.deepset.ai/components/document-store)
+        for more information.
 
         :param api_key: Secret value of the API key.
-                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param workspace: workspace in Deepset Cloud
-        :param index: index to access within the Deepset Cloud workspace
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
+            If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param workspace: Workspace in Deepset Cloud.
+        :param index: Index to access within the Deepset Cloud workspace.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
         :param api_endpoint: The URL of the Deepset Cloud API.
-                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+            If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since
+            it is more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
         :param return_embedding: To return document embedding.
 
         """
@@ -85,37 +86,38 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         Get documents from the document store.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
 
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
-                                }
-                            }
-                            ```
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: Number of documents that are passed to bulk function at a time.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
         """
         logging.warning(
             "`get_all_documents()` can get very slow and resource-heavy since all documents must be loaded from Deepset Cloud. "
@@ -140,37 +142,40 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         document store and yielded as individual documents. This method can be used to iteratively process
         a large number of documents without having to load all documents in memory.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If None, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
 
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
-                                }
-                            }
-                            ```
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                ```
+
         :param return_embedding: Whether to return the document embeddings.
-        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param batch_size: Number of documents that are processed one at a time. When working with large number of
+            documents, batching can help reduce memory footprint.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication)
         """
         if batch_size != 10_000:
             raise ValueError("DeepsetCloudDocumentStore does not support batching")
@@ -241,75 +246,75 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param query_emb: Embedding of the query (e.g. gathered from DPR).
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
 
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                    "rating": {"$gte": 3},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
+
+                To use the same logical operator multiple times on the same level, logical operators take
+                optionally a list of dictionaries as value.
+
+                __Example__:
+                ```python
+                filters = {
+                    "$or": [
+                        {
+                            "$and": {
+                                "Type": "News Paper",
+                                "Date": {
+                                    "$lt": "2019-01-01"
                                 }
                             }
-                            # or simpler using default operators
-                            filters = {
-                                "type": "article",
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": ["economy", "politics"],
-                                    "publisher": "nytimes"
+                        },
+                        {
+                            "$and": {
+                                "Type": "Blog Post",
+                                "Date": {
+                                    "$gte": "2019-01-01"
                                 }
                             }
-                            ```
-
-                            To use the same logical operator multiple times on the same level, logical operators take
-                            optionally a list of dictionaries as value.
-
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$or": [
-                                    {
-                                        "$and": {
-                                            "Type": "News Paper",
-                                            "Date": {
-                                                "$lt": "2019-01-01"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "$and": {
-                                            "Type": "Blog Post",
-                                            "Date": {
-                                                "$gte": "2019-01-01"
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                            ```
-        :param top_k: How many documents to return
-        :param index: Index name for storing the docs and metadata
-        :param return_embedding: To return document embedding
-        :param headers: Custom HTTP headers to pass to requests
-        :return:
+                        }
+                    ]
+                }
+                ```
+        :param top_k: How many documents to return.
+        :param index: Name of the index to get the documents from. If None, the DocumentStore's default index
+            (self.index) will be used.
+        :param return_embedding: Whether to return  the document embeddings.
+        :param headers: Custom HTTP headers to pass to requests.
         """
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -336,77 +341,77 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through documents in DocumentStore and return a small number of documents
         that are most relevant to the query as defined by the BM25 algorithm.
 
         :param query: The query
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
 
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                    "rating": {"$gte": 3},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
+
+                To use the same logical operator multiple times on the same level, logical operators take
+                optionally a list of dictionaries as value.
+
+                __Example__:
+                ```python
+                filters = {
+                    "$or": [
+                        {
+                            "$and": {
+                                "Type": "News Paper",
+                                "Date": {
+                                    "$lt": "2019-01-01"
                                 }
                             }
-                            # or simpler using default operators
-                            filters = {
-                                "type": "article",
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": ["economy", "politics"],
-                                    "publisher": "nytimes"
+                        },
+                        {
+                            "$and": {
+                                "Type": "Blog Post",
+                                "Date": {
+                                    "$gte": "2019-01-01"
                                 }
                             }
-                            ```
-
-                            To use the same logical operator multiple times on the same level, logical operators take
-                            optionally a list of dictionaries as value.
-
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$or": [
-                                    {
-                                        "$and": {
-                                            "Type": "News Paper",
-                                            "Date": {
-                                                "$lt": "2019-01-01"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "$and": {
-                                            "Type": "Blog Post",
-                                            "Date": {
-                                                "$gte": "2019-01-01"
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                            ```
+                        }
+                    ]
+                }
+                ```
         :param top_k: How many documents to return per query.
         :param custom_query: Custom query to be executed.
-        :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param headers: Custom HTTP headers to pass to requests
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param headers: Custom HTTP headers to pass to requests.
         """
         doc_dicts = self.client.query(
             query=query, filters=filters, top_k=top_k, custom_query=custom_query, index=index, headers=headers
@@ -428,21 +433,22 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         Indexes documents for later queries.
 
-        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                          Optionally: Include meta data via {"text": "<the-actual-text>",
-                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-                          It can be used for filtering and is accessible in the responses of the Finder.
-        :param index: Optional name of index where the documents shall be written to.
-                      If None, the DocumentStore's default index (self.index) will be used.
-        :param batch_size: Number of documents that are passed to bulk function at a time.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param documents: A list of Python dictionaries or a list of Haystack Document objects.
+            For documents as dictionaries, the format is `{"content": "<the-actual-text>"}`.
+            Optionally: Include meta data via `{"content": "<the-actual-text>", "meta": {"name": "<some-document-name>,
+            "author": "somebody", ...}}`.
+            It can be used for filtering and is accessible in the responses of Document returning nodes.
+        :param index: Optional name of index where the documents shall be written to. If `None`, the DocumentStore's
+            default index (self.index) will be used.
+        :param batch_size: Number of documents that are processed at a time.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents (default).
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
 
         :return: None
         """

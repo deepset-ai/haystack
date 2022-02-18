@@ -35,21 +35,24 @@ class Milvus2DocumentStore(SQLDocumentStore):
     If you want to use a stable version, we recommend using `MilvusDocumentStore` with a Milvus 1.x version **
 
     Limitations:
-    Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
-    Therefore, delete_documents() and update_embeddings() won't work yet.
+    Milvus 2.0 so far doesn't support the deletion of documents
+    ([https://github.com/milvus-io/milvus/issues/7130](https://github.com/milvus-io/milvus/issues/7130)).
+    Therefore, `delete_documents()` and `update_embeddings()` won't work yet.
 
     Differences to 1.x:
-    Besides big architectural changes that impact performance and reliability 2.0 supports the filtering by scalar data types.
-    For Haystack users this means you can now run a query using vector similarity and filter for some meta data at the same time!
-    (See https://milvus.io/docs/v2.0.0/comparison.md for more details)
+    Besides big architectural changes that impact performance and reliability 2.0 supports the filtering by scalar data
+    types. For Haystack users this means you can now run a query using vector similarity and filter for some meta data
+    at the same time!
+    (See [https://milvus.io/docs/v2.0.0/comparison.md](https://milvus.io/docs/v2.0.0/comparison.md) for more details.)
 
     Usage:
-    1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
+    1. Start a Milvus service via docker (see [https://milvus.io/docs/v2.0.0/install_standalone-docker.md](https://milvus.io/docs/v2.0.0/install_standalone-docker.md))
     2. Run pip install pymilvus===2.0.0rc6
     3. Init a Milvus2DocumentStore() in Haystack
 
     Overview:
-    Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
+    Milvus ([https://milvus.io/](https://milvus.io/)) is a highly reliable, scalable Document Store specialized on
+    storing and processing vectors.
     Therefore, it is particularly suited for Haystack users that work with dense retrieval methods (like DPR).
 
     In contrast to FAISS, Milvus ...
@@ -85,50 +88,60 @@ class Milvus2DocumentStore(SQLDocumentStore):
         isolation_level: str = None,
     ):
         """
-        :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
-                        deployment, Postgres is recommended. If using MySQL then same server can also be used for
-                        Milvus metadata. For more details see https://milvus.io/docs/v1.0.0/data_manage.md.
-        :param milvus_url: Milvus server connection URL for storing and processing vectors.
-                           Protocol, host and port will automatically be inferred from the URL.
-                           See https://milvus.io/docs/v1.0.0/install_milvus.md for instructions to start a Milvus instance.
-        :param connection_pool: Connection pool type to connect with Milvus server. Default: "SingletonThread".
+        :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based
+            SQLite DB. For large scale deployment, Postgres is recommended. If using MySQL then same server can also be
+            used for Milvus metadata. For more details see
+            [https://milvus.io/docs/v1.0.0/data_manage.md](https://milvus.io/docs/v1.0.0/data_manage.md).
+        :param milvus_url: Milvus server connection URL for storing and processing vectors. Protocol, host and port will
+            automatically be inferred from the URL.
+            See [https://milvus.io/docs/v1.0.0/install_milvus.md](https://milvus.io/docs/v1.0.0/install_milvus.md) for
+            instructions to start a Milvus instance.
+        :param connection_pool: Connection pool type to connect with Milvus server. Default: `"SingletonThread"`.
         :param index: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
         :param vector_dim: Deprecated. Use embedding_dim instead.
         :param embedding_dim: The embedding vector size. Default: 768.
-        :param index_file_size: Specifies the size of each segment file that is stored by Milvus and its default value is 1024 MB.
-         When the size of newly inserted vectors reaches the specified volume, Milvus packs these vectors into a new segment.
-         Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
-         As a rule of thumb, we would see a 30% ~ 50% increase in the search performance after changing the value of index_file_size from 1024 to 2048.
-         Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
-         (From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
-                           'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
-                           However, you can normalize your embeddings and use `dot_product` to get the same results.
-                           See https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)#floating.
-        :param index_type: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
-                           Some popular options:
-                           - FLAT (default): Exact method, slow
-                           - IVF_FLAT, inverted file based heuristic, fast
-                           - HSNW: Graph based, fast
-                           - ANNOY: Tree based, fast
-                           See: https://milvus.io/docs/v1.0.0/index.md
-        :param index_param: Configuration parameters for the chose index_type needed at indexing time.
-                            For example: {"nlist": 16384} as the number of cluster units to create for index_type IVF_FLAT.
-                            See https://milvus.io/docs/v1.0.0/index.md
-        :param search_param: Configuration parameters for the chose index_type needed at query time
-                             For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
-                             See https://milvus.io/docs/v1.0.0/index.md
-        :param return_embedding: To return document embedding.
+        :param index_file_size: Specifies the size of each segment file that is stored by Milvus. Its default value
+            is 1024 MB. When the size of newly inserted vectors reaches the specified volume, Milvus packs these vectors
+            into a new segment. Milvus creates one index file for each segment. When conducting a vector search, Milvus
+            searches all index files one by one. As a rule of thumb, we would see a 30% ~ 50% increase in the search
+            performance after changing the value of index_file_size from 1024 to 2048. Note that an overly large
+            index_file_size value may cause failure to load a segment into the memory or graphics memory.
+            (From [https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size](https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size))
+        :param similarity: The similarity function used to compare document vectors. `"dot_product"` is the default and
+            recommended for DPR embeddings. `"cosine"` is recommended for Sentence Transformers, but is not directly
+            supported by Milvus. However, you can normalize your embeddings and use `"dot_product"` to get the same
+            results.
+            See [https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)#floating](https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)#floating).
+        :param index_type: Type of approximate nearest neighbour (ANN) index used. The choice here determines your
+            tradeoff between speed and accuracy.\
+
+                Some popular options:
+                    - FLAT (default): Exact method, slow
+                    - IVF_FLAT, inverted file based heuristic, fast
+                    - HSNW: Graph based, fast
+                    - ANNOY: Tree based, fast
+
+                See: [https://milvus.io/docs/v1.0.0/index.md](https://milvus.io/docs/v1.0.0/index.md)
+        :param index_param: Configuration parameters for the chosen index_type needed at indexing time.
+            For example: `{"nlist": 16384}` as the number of cluster units to create for index_type IVF_FLAT.
+
+                See [https://milvus.io/docs/v1.0.0/index.md](https://milvus.io/docs/v1.0.0/index.md)
+        :param search_param: Configuration parameters for the chosen index_type needed at query time.
+            For example: `{"nprobe": 10}` as the number of cluster units to query for index_type IVF_FLAT.
+
+                See [https://milvus.io/docs/v1.0.0/index.md](https://milvus.io/docs/v1.0.0/index.md)
+        :param return_embedding: Whether to return document embeddings.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
-                             Can be helpful to disable in production deployments to keep the logs clean.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+            Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :param isolation_level: See SQLAlchemy's `isolation_level` parameter for `create_engine()`
+            ([https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level](https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level))
         """
 
         # save init parameters to enable export of component config as YAML
@@ -258,17 +271,16 @@ class Milvus2DocumentStore(SQLDocumentStore):
         Add new documents to the DocumentStore.
 
         :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
-                                  them right away in Milvus. If not, you can later call update_embeddings() to create & index them.
-        :param index: (SQL) index name for storing the docs and metadata
+            them right away in Milvus. If not, you can later call `update_embeddings()` to create & index them.
+        :param index: (SQL) index name for storing the docs and metadata.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :raises DuplicateDocumentError: Exception trigger on duplicate document
-        :return:
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :raises DuplicateDocumentError: Exception trigger on duplicate document.
         """
         if headers:
             raise NotImplementedError("Milvus2DocumentStore does not support headers.")
@@ -379,18 +391,20 @@ class Milvus2DocumentStore(SQLDocumentStore):
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
-        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever
+        config).
 
-        :param retriever: Retriever to use to get embeddings for text
-        :param index: (SQL) index name for storing the docs and metadata
+        :param retriever: Retriever to use to get embeddings for text.
+        :param index: (SQL) index name for storing the docs and metadata.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
-                                           only documents without embeddings are processed. This mode can be used for
-                                           incremental updating of embeddings, wherein, only newly indexed documents
-                                           get processed.
+        :param update_existing_embeddings: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :return: None
+                        Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         """
         index = index or self.index
         self._create_collection_and_index_if_not_exist(index)
@@ -466,13 +480,12 @@ class Milvus2DocumentStore(SQLDocumentStore):
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param query_emb: Embedding of the query (e.g. gathered from DPR).
         :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :param top_k: How many documents to return
-        :param index: (SQL) index name for storing the docs and metadata
-        :param return_embedding: To return document embedding
-        :return:
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
+        :param top_k: How many documents to return.
+        :param index: (SQL) index name for storing the docs and metadata.
+        :param return_embedding: To return document embedding.
         """
         if headers:
             raise NotImplementedError("Milvus2DocumentStore does not support headers.")
@@ -542,11 +555,16 @@ class Milvus2DocumentStore(SQLDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ):
         """
-        Delete all documents (from SQL AND Milvus).
-        :param index: (SQL) index name for storing the docs and metadata
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :return: None
+        Delete documents in an index. All documents are deleted if no filters are passed.
+
+        :param index: Index name to delete the document from. If `None`, the DocumentStore's default index (self.index)
+            will be used.
+        :param ids: Optional list of IDs to narrow down the documents to be deleted.
+        :param filters: Optional filters to narrow down the documents to be deleted.
+            Example filters: `{"name": ["some", "more"], "category": ["only_one"]}`.
+            If filters are provided along with a list of IDs, this method deletes the
+            intersection of the two query results (documents that match the filters and
+            have their ID in the list).
         """
         if headers:
             raise NotImplementedError("Milvus2DocumentStore does not support headers.")
@@ -581,10 +599,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
         document store and yielded as individual documents. This method can be used to iteratively process
         a large number of documents without having to load all documents in memory.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -612,10 +630,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
         """
         Get documents from the document store (optionally using filter criteria).
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -633,11 +651,11 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ) -> Optional[Document]:
         """
-        Fetch a document by specifying its text id string
+        Fetch a document by specifying its text id string.
 
-        :param id: ID of the document
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param id: ID of the document.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         """
         if headers:
             raise NotImplementedError("Milvus2DocumentStore does not support headers.")
@@ -656,9 +674,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         """
         Fetch multiple documents by specifying their IDs (strings)
 
-        :param ids: List of IDs of the documents
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param ids: List of IDs of the documents.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:

@@ -31,12 +31,13 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         Init the knowledge graph by defining the settings to connect with a GraphDB instance
 
-        :param host: address of server where the GraphDB instance is running
-        :param port: port where the GraphDB instance is running
-        :param username: username to login to the GraphDB instance (if any)
-        :param password: password to login to the GraphDB instance (if any)
-        :param index: name of the index (also called repository) stored in the GraphDB instance
-        :param prefixes: definitions of namespaces with a new line after each namespace, e.g., PREFIX hp: <https://deepset.ai/harry_potter/>
+        :param host: Address of server where the GraphDB instance is running.
+        :param port: Port where the GraphDB instance is running.
+        :param username: Username to login to the GraphDB instance (if any).
+        :param password: Password to login to the GraphDB instance (if any).
+        :param index: Name of the index (also called repository) stored in the GraphDB instance.
+        :param prefixes: Sefinitions of namespaces with a new line after each namespace, e.g.,
+            `PREFIX hp: <https://deepset.ai/harry_potter/>`
         """
         # save init parameters to enable export of component config as YAML
         self.set_config(host=host, port=port, username=username, password=password, index=index, prefixes=prefixes)
@@ -49,11 +50,11 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
 
     def create_index(self, config_path: Path, headers: Optional[Dict[str, str]] = None):
         """
-        Create a new index (also called repository) stored in the GraphDB instance
+        Create a new index (also called repository) stored in the GraphDB instance.
 
-        :param config_path: path to a .ttl file with configuration settings, details:
-        :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-        https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically
+        :param config_path: Path to a .ttl file with configuration settings.
+            Details: [https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically](https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically)
+        :param headers: Custom HTTP headers to pass to http client (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}`)
         """
         url = f"{self.url}/rest/repositories"
         files = {"config": open(config_path, "r", encoding="utf-8")}
@@ -64,7 +65,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
     def delete_index(self, headers: Optional[Dict[str, str]] = None):
         """
         Delete the index that GraphDBKnowledgeGraph is connected to. This method deletes all data stored in the index.
-        :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to http client (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}`)
         """
         url = f"{self.url}/rest/repositories/{self.index}"
         response = requests.delete(url, headers=headers)
@@ -75,9 +76,10 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         Load an existing knowledge graph represented in the form of triples of subject, predicate, and object from a .ttl file into an index of GraphDB
 
-        :param index: name of the index (also called repository) in the GraphDB instance where the imported triples shall be stored
-        :param path: path to a .ttl containing a knowledge graph
-        :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param index: Name of the index (also called repository) in the GraphDB instance where the imported triples
+            shall be stored.
+        :param path: Path to a .ttl containing a knowledge graph.
+        :param headers: Custom HTTP headers to pass to http client (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}`)
         """
         url = f"{self.url}/repositories/{index}/statements"
         headers = (
@@ -98,9 +100,9 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         Query the given index in the GraphDB instance for all its stored triples. Duplicates are not filtered.
 
-        :param index: name of the index (also called repository) in the GraphDB instance
-        :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-        :return: all triples stored in the index
+        :param index: Name of the index (also called repository) in the GraphDB instance.
+        :param headers: Custom HTTP headers to pass to http client (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}`)
+        :return: All triples stored in the index.
         """
         sparql_query = "SELECT * WHERE { ?s ?p ?o. }"
         results = self.query(sparql_query=sparql_query, index=index, headers=headers)
@@ -110,9 +112,9 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         Query the given index in the GraphDB instance for all its stored subjects. Duplicates are not filtered.
 
-        :param index: name of the index (also called repository) in the GraphDB instance
-        :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-        :return: all subjects stored in the index
+        :param index: Name of the index (also called repository) in the GraphDB instance.
+        :param headers: Custom HTTP headers to pass to http client (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}`)
+        :return: All subjects stored in the index.
         """
         sparql_query = "SELECT ?s WHERE { ?s ?p ?o. }"
         results = self.query(sparql_query=sparql_query, index=index, headers=headers)
@@ -122,9 +124,9 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         Query the given index in the GraphDB instance for all its stored predicates. Duplicates are not filtered.
 
-        :param index: name of the index (also called repository) in the GraphDB instance
-        :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-        :return: all predicates stored in the index
+        :param index: Name of the index (also called repository) in the GraphDB instance.
+        :param headers: Custom HTTP headers to pass to http client (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}`)
+        :return: All predicates stored in the index.
         """
         sparql_query = "SELECT ?p WHERE { ?s ?p ?o. }"
         results = self.query(sparql_query=sparql_query, index=index, headers=headers)
@@ -132,7 +134,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
 
     def _create_document_field_map(self) -> Dict:
         """
-        There is no field mapping required
+        There is no field mapping required.
         """
         return {}
 
@@ -140,9 +142,9 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         Query the given index in the GraphDB instance for all its stored objects. Duplicates are not filtered.
 
-        :param index: name of the index (also called repository) in the GraphDB instance
-        :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-        :return: all objects stored in the index
+        :param index: Name of the index (also called repository) in the GraphDB instance.
+        :param headers: Custom HTTP headers to pass to http client (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}`)
+        :return: All objects stored in the index
         """
         sparql_query = "SELECT ?o WHERE { ?s ?p ?o. }"
         results = self.query(sparql_query=sparql_query, index=index, headers=headers)
@@ -150,12 +152,12 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
 
     def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
-        Execute a SPARQL query on the given index in the GraphDB instance
+        Execute a SPARQL query on the given index in the GraphDB instance.
 
-        :param sparql_query: SPARQL query that shall be executed
-        :param index: name of the index (also called repository) in the GraphDB instance
-        :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-        :return: query result
+        :param sparql_query: SPARQL query that shall be executed.
+        :param index: Name of the index (also called repository) in the GraphDB instance.
+        :param headers: Custom HTTP headers to pass to http client (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}`)
+        :return: Query result.
         """
         if self.index is None and index is None:
             raise Exception("Index name is required")

@@ -18,9 +18,11 @@ def eval_data_from_json(
     Read Documents + Labels from a SQuAD-style file.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
 
-    :param filename: Path to file in SQuAD format
-    :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
-    :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
+    :param filename: Path to file in SQuAD format.
+    :param max_docs: This sets the number of documents that will be loaded. By default, this is set to `None`,
+        thus reading in all available eval documents.
+    :param open_domain: Set this to `True` if your file is an open domain dataset where two different answers to the
+        same question might be found in different contexts.
     """
     docs: List[Document] = []
     labels = []
@@ -61,13 +63,15 @@ def eval_data_from_jsonl(
     Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
     Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
 
-    This is a generator which will yield one tuple per iteration containing a list
-    of batch_size documents and a list with the documents' labels.
-    If batch_size is set to None, this method will yield all documents and labels.
+    This is a generator which will yield one tuple per iteration containing a list of batch_size documents and a list
+    with the documents' labels.
+    If batch_size is set to `None`, this method will yield all documents and labels.
 
-    :param filename: Path to file in SQuAD format
-    :param max_docs: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
-    :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
+    :param filename: Path to file in SQuAD format.
+    :param max_docs: This sets the number of documents that will be loaded. By default, this is set to `None`,
+        thus reading in all available eval documents.
+    :param open_domain: Set this to `True` if your file is an open domain dataset where two different answers to the
+        same question might be found in different contexts.
     """
     docs: List[Document] = []
     labels = []
@@ -107,7 +111,7 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
     Converts a SQuAD-json-file into jsonl format with one document per line.
 
     :param squad_file: SQuAD-file in json format.
-    :param output_file: Name of output file (SQuAD in jsonl format)
+    :param output_file: Name of output file (SQuAD in jsonl format).
     """
     with open(squad_file, encoding="utf-8") as json_file, open(output_file, "w", encoding="utf-8") as jsonl_file:
         squad_json = json.load(json_file)
@@ -121,7 +125,7 @@ def _extract_docs_and_labels_from_dict(
     document_dict: Dict, preprocessor: PreProcessor = None, open_domain: bool = False
 ):
     """
-    Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)
+    Set open_domain to `True` if you are trying to load open_domain labels (i.e. labels without doc id or start idx).
     """
     docs = []
     labels = []
@@ -261,8 +265,8 @@ def convert_date_to_rfc3339(date: str) -> str:
     If the provided date string does not contain a time and/or timezone, we use 00:00 as default time
     and UTC as default time zone.
 
-    This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
-    and filter_utils.py.
+    This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between `weaviate.py`
+    and `filter_utils.py`.
     """
     parsed_datetime = datetime.fromisoformat(date)
     if parsed_datetime.utcoffset() is None:

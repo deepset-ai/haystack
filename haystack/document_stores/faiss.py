@@ -34,7 +34,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     """
     Document store for very large scale embedding based dense retrievers like the DPR.
 
-    It implements the FAISS library(https://github.com/facebookresearch/faiss)
+    It implements the FAISS library ([https://github.com/facebookresearch/faiss](https://github.com/facebookresearch/faiss))
     to perform similarity search on vectors.
 
     The document text and meta-data (for filtering) are stored using the SQLDocumentStore, while
@@ -61,47 +61,50 @@ class FAISSDocumentStore(SQLDocumentStore):
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
-                        deployment, Postgres is recommended.
+            deployment, Postgres is recommended.
         :param vector_dim: Deprecated. Use embedding_dim instead.
         :param embedding_dim: The embedding vector size. Default: 768.
         :param faiss_index_factory_str: Create a new FAISS index of the specified type.
-                                        The type is determined from the given string following the conventions
-                                        of the original FAISS index factory.
-                                        Recommended options:
-                                        - "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
-                                        - "HNSW": Graph-based heuristic. If not further specified,
-                                                  we use the following config:
-                                                  HNSW64, efConstruction=80 and efSearch=20
-                                        - "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
-                                                          Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
-                                        For more details see:
-                                        - Overview of indices https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
-                                        - Guideline for choosing an index https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
-                                        - FAISS Index factory https://github.com/facebookresearch/faiss/wiki/The-index-factory
-                                        Benchmarks: XXX
+            The type is determined from the given string following the conventions of the original FAISS index factory.\
+
+                Recommended options:
+                - `"Flat"`: Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs. (default)
+                - `"HNSW"`: Graph-based heuristic. If not further specified, we use the following config:
+                            HNSW64, efConstruction=80 and efSearch=20
+                - `"IVFx,Flat"`: Inverted Index. Replace x with the number of centroids aka nlist.
+                                 Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
+
+                For more details see:
+                - Overview of indices: [https://github.com/facebookresearch/faiss/wiki/Faiss-indexes](https://github.com/facebookresearch/faiss/wiki/Faiss-indexes)
+                - Guideline for choosing an index: [https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index](https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index)
+                - FAISS Index factory: [https://github.com/facebookresearch/faiss/wiki/The-index-factory](https://github.com/facebookresearch/faiss/wiki/The-index-factory)
+                - Benchmarks: XXX
         :param faiss_index: Pass an existing FAISS Index, i.e. an empty one that you configured manually
-                            or one with docs that you used in Haystack before and want to load again.
-        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
+            or one with docs that you used in Haystack before and want to load again.
+        :param return_embedding: Whether to return document embeddings. Unlike other document stores,
+            FAISS will return normalized embeddings
         :param index: Name of index in document store to use.
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
-                   In both cases, the returned values in Document.score are normalized to be in range [0,1]:
-                   For `dot_product`: expit(np.asarray(raw_score / 100))
-                   FOr `cosine`: (raw_score + 1) / 2
+        :param similarity: The similarity function used to compare document vectors. `"dot_product"` is the default
+            since it is more performant with DPR embeddings. `"cosine"` is recommended if you are using a
+            Sentence-Transformer model.
+            In both cases, the returned values in `Document.score` are normalized to be in range [0,1]:
+                - For `"dot_product"`: `expit(np.asarray(raw_score / 100))`
+                = For `"cosine"`: `(raw_score + 1) / 2`
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
-                             Can be helpful to disable in production deployments to keep the logs clean.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
+            Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
         :param faiss_index_path: Stored FAISS index file. Can be created via calling `save()`.
             If specified no other params besides faiss_config_path must be specified.
         :param faiss_config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
-        :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+        :param isolation_level: See SQLAlchemy's `isolation_level` parameter for `create_engine()`.
+            ([https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level](https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level))
         """
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again
@@ -224,17 +227,17 @@ class FAISSDocumentStore(SQLDocumentStore):
         Add new documents to the DocumentStore.
 
         :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
-                          them right away in FAISS. If not, you can later call update_embeddings() to create & index them.
-        :param index: (SQL) index name for storing the docs and metadata
-        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
+            them right away in FAISS. If not, you can later call `update_embeddings()` to create & index them.
+        :param index: (SQL) index name for storing the docs and metadata.
+        :param batch_size: Number of documents to process at a time.
+            When working with large number of documents, batching can help reduce memory footprint.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
-        :return: None
         """
         if headers:
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
@@ -313,16 +316,16 @@ class FAISSDocumentStore(SQLDocumentStore):
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
-        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+        This can be useful if want to add or change the embeddings for your documents
+        (e.g. after changing the retriever config).
 
-        :param retriever: Retriever to use to get embeddings for text
+        :param retriever: Retriever to use to get embeddings for text.
         :param index: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
-        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
-                                           only documents without embeddings are processed. This mode can be used for
-                                           incremental updating of embeddings, wherein, only newly indexed documents
-                                           get processed.
+        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to `False`,
+            only documents without embeddings are processed. This mode can be used for incremental updating of
+            embeddings, wherein, only newly indexed documents get processed.
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
@@ -406,11 +409,12 @@ class FAISSDocumentStore(SQLDocumentStore):
         document store and yielded as individual documents. This method can be used to iteratively process
         a large number of documents without having to load all documents in memory.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If `None`, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :param return_embedding: Whether to return the document embeddings. Unlike other document stores, FAISS will return normalized embeddings
+            Example: `{"name": ["some", "more"], "category": ["only_one"]}`
+        :param return_embedding: Whether to return the document embeddings. Unlike other document stores, FAISS will
+            return normalized embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:
@@ -463,14 +467,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
     ):
         """
-        Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
-        The train vectors should come from the same distribution as your final ones.
-        You can pass either documents (incl. embeddings) or just the plain embeddings that the index shall be trained on.
+        Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final
+        vectors. The train vectors should come from the same distribution as your final ones.
+        You can pass either documents (incl. embeddings) or just the plain embeddings that the index shall be
+        trained on.
 
-        :param documents: Documents (incl. the embeddings)
-        :param embeddings: Plain embeddings
-        :param index: Name of the index to train. If None, the DocumentStore's default index (self.index) will be used.
-        :return: None
+        :param documents: Documents (incl. the embeddings).
+        :param embeddings: Plain embeddings.
+        :param index: Name of the index to train. If `None`, the DocumentStore's default index (self.index) will be
+            used.
         """
         index = index or self.index
         if embeddings and documents:
@@ -513,15 +518,14 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         Delete documents from the document store. All documents are deleted if no filters are passed.
 
-        :param index: Index name to delete the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Index name to delete the documents from. If `None`, the DocumentStore's default index (self.index)
+            will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
         :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
+            Example filters: `{"name": ["some", "more"], "category": ["only_one"]}`.
             If filters are provided along with a list of IDs, this method deletes the
             intersection of the two query results (documents that match the filters and
             have their ID in the list).
-        :return: None
         """
         if headers:
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
@@ -555,13 +559,13 @@ class FAISSDocumentStore(SQLDocumentStore):
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param query_emb: Embedding of the query (e.g. gathered from DPR).
         :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :param top_k: How many documents to return
+                        Example: `{"name": ["some", "more"], "category": ["only_one"]}`
+        :param top_k: How many documents to return.
         :param index: Index name to query the document from.
-        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
-        :return:
+        :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return
+            normalized embeddings.
         """
         if headers:
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
@@ -609,7 +613,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             This file contains all the parameters passed to FAISSDocumentStore()
             at creation time (for example the SQL path, embedding_dim, etc), and will be
             used by the `load` method to restore the index with the appropriate configuration.
-        :return: None
         """
         if not config_path:
             index_path = Path(index_path)
@@ -652,8 +655,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         Note: In order to have a correct mapping from FAISS to SQL,
               make sure to use the same SQL DB that you used when calling `save()`.
 
-        :param index_path: Stored FAISS index file. Can be created via calling `save()`
+        :param index_path: Stored FAISS index file. Can be created via calling `save()`.
         :param config_path: Stored FAISS initial configuration parameters.
-            Can be created via calling `save()`
+            Can be created via calling `save()`.
         """
         return cls(faiss_index_path=index_path, faiss_config_path=config_path)

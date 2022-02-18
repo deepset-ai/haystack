@@ -74,23 +74,22 @@ class BaseDocumentStore(BaseComponent):
         """
         Indexes documents for later queries.
 
-        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                          For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                          Optionally: Include meta data via {"text": "<the-actual-text>",
-                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-                          It can be used for filtering and is accessible in the responses of the Finder.
+        :param documents: A list of Python dictionaries or a list of Haystack Document objects.
+            For documents as dictionaries, the format is `{"content": "<the-actual-text>"}`.
+            Optionally: Include meta data via `{"content": "<the-actual-text>", "meta": {"name": "<some-document-name>",
+            "author": "somebody", ...}}`
+            It can be used for filtering and is accessible in the responses of Document returning nodes.
         :param index: Optional name of index where the documents shall be written to.
-                      If None, the DocumentStore's default index (self.index) will be used.
-        :param batch_size: Number of documents that are passed to bulk function at a time.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+            If None, the DocumentStore's default index (self.index) will be used.
+        :param batch_size: Number of documents that are processed one at a time.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
 
-        :return: None
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
         """
         pass
 
@@ -106,38 +105,39 @@ class BaseDocumentStore(BaseComponent):
         """
         Get documents from the document store.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If None, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
 
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
-                                }
-                            }
-                            ```
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                ```
 
         :param return_embedding: Whether to return the document embeddings.
-        :param batch_size: Number of documents that are passed to bulk function at a time.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param batch_size: Number of documents that are processed one at a time.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
         """
         pass
 
@@ -155,38 +155,40 @@ class BaseDocumentStore(BaseComponent):
         document store and yielded as individual documents. This method can be used to iteratively process
         a large number of documents without having to load all documents in memory.
 
-        :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the documents from. If None, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
 
-                        __Example__:
-                        ```python
-                        filters = {
-                            "$and": {
-                                "type": {"$eq": "article"},
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": {"$in": ["economy", "politics"]},
-                                    "publisher": {"$eq": "nytimes"}
-                                }
-                            }
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
                         }
-                        ```
+                    }
+                }
+                ```
 
         :param return_embedding: Whether to return the document embeddings.
-        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param batch_size: Number of documents that are processed one at a time. When working with large number of
+            documents, batching can help reduce memory footprint.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
         """
         pass
 
@@ -228,49 +230,54 @@ class BaseDocumentStore(BaseComponent):
         This aggregation step helps, for example, if you collected multiple possible answers for one question and you
         want now all answers bundled together in one place for evaluation.
         How they are aggregated is defined by the open_domain and aggregate_by_meta parameters.
-        If the questions are being asked to a single document (i.e. SQuAD style), you should set open_domain=False to aggregate by question and document.
-        If the questions are being asked to your full collection of documents, you should set open_domain=True to aggregate just by question.
+        If the questions are being asked to a single document (i.e. SQuAD style), you should set `open_domain=False`
+        to aggregate by question and document.
+        If the questions are being asked to your full collection of documents, you should set `open_domain=True`
+        to aggregate just by question.
         If the questions are being asked to a subslice of your document set (e.g. product review use cases),
-        you should set open_domain=True and populate aggregate_by_meta with the names of Label meta fields to aggregate by question and your custom meta fields.
-        For example, in a product review use case, you might set aggregate_by_meta=["product_id"] so that Labels
-        with the same question but different answers from different documents are aggregated into the one MultiLabel
-        object, provided that they have the same product_id (to be found in Label.meta["product_id"])
+        you should set `open_domain=True` and populate aggregate_by_meta with the names of Label meta fields to
+        aggregate by question and your custom meta fields.
+        For example, in a product review use case, you might set `aggregate_by_meta=["product_id"]` so that Labels
+        with the same question but different answers from different documents are aggregated into one MultiLabel
+        object, provided that they have the same product_id (to be found in `Label.meta["product_id"]`).
 
-        :param index: Name of the index to get the labels from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Name of the index to get the labels from. If None, the DocumentStore's default index
+            (self.index) will be used.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
 
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
-                                }
-                            }
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
                             ```
 
-        :param open_domain: When True, labels are aggregated purely based on the question text alone.
-                            When False, labels are aggregated in a closed domain fashion based on the question text
-                            and also the id of the document that the label is tied to. In this setting, this function
-                            might return multiple MultiLabel objects with the same question string.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-        :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
+        :param open_domain: When `True`, labels are aggregated purely based on the question text alone.
+            When `False`, labels are aggregated in a closed domain fashion based on the question text and also the id
+            of the document that the label is tied to. In this setting, this function might return multiple MultiLabel
+            objects with the same question string.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
+        :param aggregate_by_meta: The names of the Label meta fields by which to aggregate.
+            For example: `["product_id"]`
         TODO drop params
         """
         if aggregate_by_meta:
@@ -408,23 +415,24 @@ class BaseDocumentStore(BaseComponent):
     ):
         """
         Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
-        If a jsonl file and a batch_size is passed to the function, documents are loaded batchwise
+        If a jsonl-file and a batch_size is passed to the function, documents are loaded batchwise
         from disk and also indexed batchwise to the DocumentStore in order to prevent out of memory errors.
 
-        :param filename: Name of the file containing evaluation data (json or jsonl)
-        :param doc_index: Elasticsearch index where evaluation documents should be stored
-        :param label_index: Elasticsearch index where labeled questions should be stored
-        :param batch_size: Optional number of documents that are loaded and processed at a time.
-                           When set to None (default) all documents are processed at once.
+        :param filename: Name of the file containing evaluation data (json or jsonl).
+        :param doc_index: Elasticsearch index where evaluation documents should be stored.
+        :param label_index: Elasticsearch index where labeled questions should be stored.
+        :param batch_size: Optional number of documents that are loaded and processed at a time. When set to
+            `None` (default) all documents are processed at once.
         :param preprocessor: Optional PreProcessor to preprocess evaluation documents.
-                             It can be used for splitting documents into passages (and assigning labels to corresponding passages).
-                             Currently the PreProcessor does not support split_by sentence, cleaning nor split_overlap != 0.
-                             When set to None (default) preprocessing is disabled.
-        :param max_docs: Optional number of documents that will be loaded.
-                         When set to None (default) all available eval documents are used.
-        :param open_domain: Set this to True if your file is an open domain dataset where two different answers to the
-                            same question might be found in different contexts.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+            It can be used for splitting documents into passages (and assigning labels to corresponding passages).
+            Currently the PreProcessor does not support `split_by="sentence"`, cleaning nor split_overlap != 0.
+            When set to `None` (default), preprocessing is disabled.
+        :param max_docs: Optional number of documents that will be loaded. When set to `None` (default),
+            all available eval documents are used.
+        :param open_domain: Set this to `True` if your file is an open domain dataset where two different answers to the
+            same question might be found in different contexts.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
 
         """
         # TODO improve support for PreProcessor when adding eval data
@@ -519,16 +527,17 @@ class BaseDocumentStore(BaseComponent):
 
     def run(self, documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None):  # type: ignore
         """
-        Run requests of document stores
+        Run requests of document stores.
 
-        Comment: We will gradually introduce the primitives. The doument stores also accept dicts and parse them to documents.
-        In the future, however, only documents themselves will be accepted. Parsing the dictionaries in the run function
-        is therefore only an interim solution until the run function also accepts documents.
+        Comment: We will gradually introduce the primitives. The document stores also accept dicts and
+        parse them to documents. In the future, however, only documents themselves will be accepted. Parsing the
+        dictionaries in the run function is therefore only an interim solution until the run function also accepts
+        documents.
 
         :param documents: A list of dicts that are documents.
         :param headers: A list of headers.
-        :param index: Optional name of index where the documents shall be written to.
-                      If None, the DocumentStore's default index (self.index) will be used.
+        :param index: Optional name of index where the documents shall be written to. If `None`, the DocumentStore's
+            default index (self.index) will be used.
         :param id_hash_keys: List of the fields that the hashes of the ids are generated from.
         """
 
@@ -549,10 +558,9 @@ class BaseDocumentStore(BaseComponent):
 
     def _drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
         """
-        Drop duplicates documents based on same hash ID
+        Drop duplicate documents based on same hash ID.
 
         :param documents: A list of Haystack Document objects.
-        :return: A list of Haystack Document objects.
         """
         _hash_ids: Set = set([])
         _documents: List[Document] = []
@@ -574,20 +582,20 @@ class BaseDocumentStore(BaseComponent):
         index: Optional[str] = None,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-    ):
+    ) -> List[Document]:
         """
         Checks whether any of the passed documents is already existing in the chosen index and returns a list of
         documents that are not in the index yet.
 
         :param documents: A list of Haystack Document objects.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip (default option): Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-        :return: A list of Haystack Document objects.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents (default).
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
         """
 
         index = index or self.index
@@ -609,11 +617,12 @@ class BaseDocumentStore(BaseComponent):
         self, labels: list, index: str = None, headers: Optional[Dict[str, str]] = None
     ) -> List[Label]:
         """
-        Return all duplicate labels
-        :param labels: List of Label objects
-        :param index: add an optional index attribute to labels. It can be later used for filtering.
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-        :return: List of labels
+        Return all duplicate labels.
+
+        :param labels: List of Label objects.
+        :param index: Add an optional index attribute to labels. It can be later used for filtering.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
         """
         index = index or self.label_index
         new_ids: List[str] = [label.id for label in labels]
@@ -646,78 +655,79 @@ class KeywordDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents
+        Scan through documents in DocumentStore and return a small number of documents
         that are most relevant to the query as defined by keyword matching algorithms like BM25.
 
-        :param query: The query
+        :param query: The query.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
 
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                    "rating": {"$gte": 3},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
+
+                To use the same logical operator multiple times on the same level, logical operators take
+                optionally a list of dictionaries as value.
+
+                __Example__:
+                ```python
+                filters = {
+                    "$or": [
+                        {
+                            "$and": {
+                                "Type": "News Paper",
+                                "Date": {
+                                    "$lt": "2019-01-01"
                                 }
                             }
-                            # or simpler using default operators
-                            filters = {
-                                "type": "article",
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": ["economy", "politics"],
-                                    "publisher": "nytimes"
+                        },
+                        {
+                            "$and": {
+                                "Type": "Blog Post",
+                                "Date": {
+                                    "$gte": "2019-01-01"
                                 }
                             }
-                            ```
-
-                            To use the same logical operator multiple times on the same level, logical operators take
-                            optionally a list of dictionaries as value.
-
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$or": [
-                                    {
-                                        "$and": {
-                                            "Type": "News Paper",
-                                            "Date": {
-                                                "$lt": "2019-01-01"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "$and": {
-                                            "Type": "Blog Post",
-                                            "Date": {
-                                                "$gte": "2019-01-01"
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                            ```
+                        }
+                    ]
+                }
+                ```
 
         :param top_k: How many documents to return per query.
         :param custom_query: Custom query to be executed.
-        :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+            (e.g. `{"Authorization": "Basic YWRtaW46cm9vdA=="}` for basic authentication).
         """
 
 
