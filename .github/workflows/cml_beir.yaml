@@ -22,7 +22,7 @@ jobs:
           cml runner \
               --cloud=aws \
               --cloud-region=us-east-1 \
-              --cloud-type=t3.xlarge \
+              --cloud-type=p3.2xlarge \
               --labels=cml-runner \
               --idle-timeout=2400 \
               --reuse
@@ -36,13 +36,10 @@ jobs:
         env:
           repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: |
-          apt-get update -y
-          apt-get install python3-dev -y
           pip install . 
           pip install beir>=0.2.3
           cd test/benchmarks/beir
           python run_beir_haystack_evaluation.py
-          #echo "Some test from CML" >> report.md
           cml send-comment report.md
 
 

@@ -136,7 +136,7 @@ def evaluate_ensembled_pipeline(
     )
     metrics = result.calculate_metrics()
     print(metrics)
-
+    return metrics
 
 if __name__ == "__main__":
     dataset_name = "scifact"
@@ -148,16 +148,22 @@ if __name__ == "__main__":
     emb_dim = 768
     recreate_index = True
 
-    # evaluate_ensembled_pipeline(
-    #     dataset_name=dataset_name,
-    #     dataset_path=dataset_path,
-    #     retriever_name=model_name,
-    #     top_k=top_k,
-    #     max_seq_len=max_seq_len,
-    #     es_launch=es_launch,
-    #     emb_dim=emb_dim,
-    #     recreate_index=recreate_index
-    # )
+    params = {"dataset": dataset_name,
+              "top_k": top_k,
+              "model_name": model_name,
+              "max_seq_len": max_seq_len}
+
+
+    metrics = evaluate_ensembled_pipeline(
+        dataset_name=dataset_name,
+        dataset_path=dataset_path,
+        retriever_name=model_name,
+        top_k=top_k,
+        max_seq_len=max_seq_len,
+        es_launch=es_launch,
+        emb_dim=emb_dim,
+        recreate_index=recreate_index
+    )
 
     with open("report.md", "w") as text_file:
-        text_file.write("Some sample results from beir")
+        text_file.write(f"# BEIR Evaluation\n Params:\n {params} \nMetrics: \n {metrics}")
