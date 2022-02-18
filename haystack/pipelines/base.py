@@ -174,7 +174,7 @@ class BasePipeline:
             |        inputs: [MyESRetriever]
             ```
 
-        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown.
+        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
         If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
 
         :param path: path of the YAML file.
@@ -189,8 +189,10 @@ class BasePipeline:
         if pipeline_config["version"] != __version__:
             logger.warning(
                 f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
-                "Issues may occurr during loading. "
-                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml()"
+                "Issues may occur during loading. "
+                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml(), "
+                "check out our migration guide at https://haystack.deepset.ai/overview/migration "
+                f"or downgrade to haystack version {__version__}."
             )
         return cls.load_from_config(
             pipeline_config=pipeline_config,
@@ -1305,7 +1307,7 @@ class RayPipeline(Pipeline):
             ```
 
 
-        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown.
+        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
         If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
 
         :param path: path of the YAML file.
@@ -1320,8 +1322,10 @@ class RayPipeline(Pipeline):
         if pipeline_config["version"] != __version__:
             logger.warning(
                 f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
-                "Issues may occurr during loading. "
-                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml()"
+                "Issues may occur during loading. "
+                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml(), "
+                "check out our migration guide at https://haystack.deepset.ai/overview/migration "
+                f"or downgrade to haystack version {__version__}.""
             )
         return RayPipeline.load_from_config(
             pipeline_config=pipeline_config,
