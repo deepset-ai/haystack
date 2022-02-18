@@ -190,6 +190,7 @@ def test_load_from_deepset_cloud_query():
     document_store = retriever.document_store
     assert isinstance(retriever, ElasticsearchRetriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
+    assert document_store == query_pipeline.get_document_store()
 
     prediction = query_pipeline.run(query="man on horse", params={})
 

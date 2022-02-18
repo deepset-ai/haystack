@@ -405,8 +405,7 @@ def test_existing_faiss_document_store():
         SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
     )
 
-    retriever = pipeline.get_node("DPRRetriever")
-    existing_document_store = retriever.document_store
+    existing_document_store = pipeline.get_document_store()
     faiss_index = existing_document_store.faiss_indexes["document"]
     assert faiss_index.ntotal == 2
 

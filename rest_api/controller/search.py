@@ -27,9 +27,7 @@ router = APIRouter()
 
 
 PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
-# TODO make this generic for other pipelines with different naming
-RETRIEVER = PIPELINE.get_node(name="Retriever")
-DOCUMENT_STORE = RETRIEVER.document_store if RETRIEVER else None
+DOCUMENT_STORE = PIPELINE.get_document_store()
 logging.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
 
 concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
