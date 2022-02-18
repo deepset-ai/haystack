@@ -5,9 +5,10 @@ on:
   pull_request:
     types:
     - labeled
+    - synchronize
 jobs:
   deploy-runner:
-    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'action:benchmark_beir') || github.event.action == 'workflow_dispatch' }}
+    #if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'action:benchmark_beir') || github.event.action == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: iterative/setup-cml@v1
