@@ -21,7 +21,7 @@ jobs:
           cml runner \
               --cloud=aws \
               --cloud-region=us-east-1 \
-              --cloud-type=p2.xlarge \
+              --cloud-type=t3.xlarge \
               --labels=cml-gpu
   run-beir-benchmark:
     needs: deploy-runner
