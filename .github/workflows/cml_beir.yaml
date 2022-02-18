@@ -25,23 +25,17 @@ jobs:
               --cloud-type=t3.xlarge \
               --labels=cml-gpu \
               --idle-timeout=1200
-#
-#  run-beir-benchmark:
-#    needs: deploy-runner
-#    runs-on: [ self-hosted, cml-gpu ]
-#    timeout-minutes: 60
-#    container:
-#      image: docker://iterativeai/cml:0-dvc2-base1-gpu
-#      options: --gpus all
-#    steps:
-#      - uses: actions/checkout@v2
-#      - name: Run benchmark
-#        env:
-#          REPO_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-#        run: |
-#          # Create CML report
-#          pip install .[elasticsearch,dev]
-#          echo "Some test from CML" >> report.md
-#          cml send-comment report.md
-#
-#
+  run-beir-benchmark:
+    needs: deploy-runner
+    runs-on: [ self-hosted,cml-runner ]
+    container: docker://iterativeai/cml:0-dvc2-base1
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run benchmark
+        env:
+          repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          echo "Some test from CML" >> report.md
+          cml send-comment report.md
+
+
