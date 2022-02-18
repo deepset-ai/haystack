@@ -23,7 +23,7 @@ jobs:
               --cloud-region=us-east-1 \
               --cloud-type=p2.xlarge \
               --labels=cml-gpu \
-              --cloud-aws-subnet=subnet-07b7a46b564450513
+              --cloud-aws-subnet=arn:aws:ec2:us-east-1:467229605384:subnet/subnet-07b7a46b564450513
   run-beir-benchmark:
     needs: deploy-runner
     runs-on: [ self-hosted, cml-gpu ]
