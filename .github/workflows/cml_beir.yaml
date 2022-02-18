@@ -35,7 +35,13 @@ jobs:
         env:
           repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: |
-          echo "Some test from CML" >> report.md
+          apt-get update -y
+          apt-get install python3-dev -y
+          pip install . [elasticsearch,dev]
+          pip install beir>=0.2.3
+          cd test/benchmarks/beir
+          python run_beir_haystack_evaluation.py
+          #echo "Some test from CML" >> report.md
           cml send-comment report.md
 
 
