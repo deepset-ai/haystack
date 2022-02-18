@@ -10,6 +10,7 @@ class Doc2QueryExpander(BaseComponent):
     This node may be used if you want to implement a doc2query-type pipeline.
     See: https://cs.uwaterloo.ca/~jimmylin/publications/Nogueira_Lin_2019_docTTTTTquery-v2.pdf
     """
+
     outgoing_edges = 1
 
     def __init__(self, target_field: str):

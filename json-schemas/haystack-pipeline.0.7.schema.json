@@ -27,6 +27,9 @@
             "$ref": "#/definitions/DensePassageRetrieverComponent"
           },
           {
+            "$ref": "#/definitions/Doc2QueryExpanderComponent"
+          },
+          {
             "$ref": "#/definitions/Docs2AnswersComponent"
           },
           {
@@ -457,6 +460,42 @@
           },
           "required": [
             "document_store"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Doc2QueryExpanderComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Doc2QueryExpander"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "target_field": {
+              "title": "Target Field",
+              "type": "string"
+            }
+          },
+          "required": [
+            "target_field"
           ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
