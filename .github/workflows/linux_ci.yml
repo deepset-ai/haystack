@@ -6,15 +6,16 @@ on:
   # Activate this workflow when the PR is opened and code is added to it
   # Note: using pull_request instead of push to keep the CI workflows 
   # running on our repo, not the contributor's. See autoformat.yml
-  pull_request:
-    types:
-      - opened
-      - synchronize
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.png'
-      - '**/*.gif'
+# TODO: Only disable temporarily in the PR. Activate again before merge to master
+#  pull_request:
+#    types:
+#      - opened
+#      - synchronize
+#    paths-ignore:
+#      - '**/*.md'
+#      - '**/*.txt'
+#      - '**/*.png'
+#      - '**/*.gif'
   # Activate this workflow on every push of code changes on master
   push:
     branches:
