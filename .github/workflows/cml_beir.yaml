@@ -23,7 +23,7 @@ jobs:
               --cloud=aws \
               --cloud-region=us-east-1 \
               --cloud-type=t3.xlarge \
-              --labels=cml-gpu \
+              --labels=cml-runner \
               --idle-timeout=1200
   run-beir-benchmark:
     needs: deploy-runner
