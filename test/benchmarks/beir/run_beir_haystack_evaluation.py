@@ -138,6 +138,7 @@ def evaluate_ensembled_pipeline(
     print(metrics)
     return metrics
 
+
 if __name__ == "__main__":
     dataset_name = "scifact"
     dataset_path = os.path.join(os.getcwd(), "../data")
@@ -148,6 +149,7 @@ if __name__ == "__main__":
     emb_dim = 768
     recreate_index = True
 
+<<<<<<< HEAD
     params = {"dataset": dataset_name,
               "top_k": top_k,
               "model_name": model_name,
@@ -163,6 +165,9 @@ if __name__ == "__main__":
     )
     # wait until ES has started
     time.sleep(30)
+=======
+    params = {"dataset": dataset_name, "top_k": top_k, "model_name": model_name, "max_seq_len": max_seq_len}
+>>>>>>> 05f3cf6d482f8d3dbf0caddb32ad4f50f4b4443e
 
     metrics = evaluate_ensembled_pipeline(
         dataset_name=dataset_name,
@@ -172,7 +177,7 @@ if __name__ == "__main__":
         max_seq_len=max_seq_len,
         es_launch=es_launch,
         emb_dim=emb_dim,
-        recreate_index=recreate_index
+        recreate_index=recreate_index,
     )
 
     with open("report.md", "w") as text_file:
