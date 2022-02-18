@@ -24,7 +24,8 @@ jobs:
               --cloud-region=us-east-1 \
               --cloud-type=t3.xlarge \
               --labels=cml-runner \
-              --idle-timeout=1200
+              --idle-timeout=2400 \
+              --reuse
   run-beir-benchmark:
     needs: deploy-runner
     runs-on: [ self-hosted,cml-runner ]
@@ -37,7 +38,7 @@ jobs:
         run: |
           apt-get update -y
           apt-get install python3-dev -y
-          pip install . [elasticsearch,dev]
+          pip install . 
           pip install beir>=0.2.3
           cd test/benchmarks/beir
           python run_beir_haystack_evaluation.py
