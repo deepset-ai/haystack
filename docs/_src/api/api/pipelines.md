@@ -137,7 +137,7 @@ Here's a sample configuration:
     |        inputs: [MyESRetriever]
     ```
 
-Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown.
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
 If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
 
 **Arguments**:
@@ -609,7 +609,7 @@ Here's a sample configuration:
     ```
 
 
-Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be thrown.
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
 If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
 
 **Arguments**:
