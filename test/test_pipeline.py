@@ -162,6 +162,24 @@ def test_load_tfidfretriever_yaml(tmp_path):
     assert prediction["answers"][0].answer == "haystack"
 
 
+@pytest.mark.elasticsearch
+def test_to_code():
+    index_pipeline = Pipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
+    )
+    query_pipeline = Pipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline"
+    )
+    query_pipeline_code = query_pipeline.to_code(pipeline_variable_name="query_pipeline_from_code")
+    index_pipeline_code = index_pipeline.to_code(pipeline_variable_name="index_pipeline_from_code")
+    exec(query_pipeline_code)
+    exec(index_pipeline_code)
+    assert locals()["query_pipeline_from_code"] is not None
+    assert locals()["index_pipeline_from_code"] is not None
+    assert query_pipeline.get_config() == locals()["query_pipeline_from_code"].get_config()
+    assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
+
+
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
 def test_load_from_deepset_cloud_query():
