@@ -1325,7 +1325,7 @@ class RayPipeline(Pipeline):
                 "Issues may occur during loading. "
                 "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml(), "
                 "check out our migration guide at https://haystack.deepset.ai/overview/migration "
-                f"or downgrade to haystack version {__version__}.""
+                f"or downgrade to haystack version {__version__}."
             )
         return RayPipeline.load_from_config(
             pipeline_config=pipeline_config,
