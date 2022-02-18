@@ -29,7 +29,10 @@ jobs:
   run-beir-benchmark:
     needs: deploy-runner
     runs-on: [ self-hosted,cml-runner ]
-    container: docker://iterativeai/cml:0-dvc2-base1
+#    container: docker://iterativeai/cml:0-dvc2-base1
+    container:
+      image: docker://iterativeai/cml:0-dvc2-base1-gpu
+      options: --gpus all
     steps:
       - uses: actions/checkout@v2
       - name: Run benchmark
