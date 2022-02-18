@@ -153,6 +153,16 @@ if __name__ == "__main__":
               "model_name": model_name,
               "max_seq_len": max_seq_len}
 
+    import os
+    from subprocess import Popen, PIPE, STDOUT
+    import time
+
+    es_server = Popen(
+        ["elasticsearch-7.9.2/bin/elasticsearch"], stdout=PIPE, stderr=STDOUT, preexec_fn=lambda: os.setuid(1)
+        # as daemon
+    )
+    # wait until ES has started
+    time.sleep(30)
 
     metrics = evaluate_ensembled_pipeline(
         dataset_name=dataset_name,

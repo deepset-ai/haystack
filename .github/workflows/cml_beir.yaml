@@ -5,10 +5,9 @@ on:
   pull_request:
     types:
     - labeled
-    - synchronize
 jobs:
   deploy-runner:
-    #if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'action:benchmark_beir') || github.event.action == 'workflow_dispatch' }}
+    if: ${{ (github.event.action == 'labeled' && github.event.label.name == 'action:benchmark_beir') || github.event.action == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: iterative/setup-cml@v1
@@ -41,6 +40,11 @@ jobs:
         run: |
           pip install . 
           pip install beir>=0.2.3
+          # install ES
+          wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.9.2-linux-x86_64.tar.gz -q
+          tar -xzf elasticsearch-7.9.2-linux-x86_64.tar.gz
+          chown -R daemon:daemon elasticsearch-7.9.2
+          # Run benchmarks
           cd test/benchmarks/beir
           python run_beir_haystack_evaluation.py
           cml send-comment report.md
