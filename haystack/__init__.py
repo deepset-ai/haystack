@@ -7,7 +7,7 @@ except ModuleNotFoundError:
     # Python <= 3.7
     import importlib_metadata as metadata  # type: ignore
 
-__version__ = str(metadata.version("farm-haystack"))
+__version__: str = str(metadata.version("farm-haystack"))
 
 
 # This configuration must be done before any import to apply to all submodules
