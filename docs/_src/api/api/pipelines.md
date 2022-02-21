@@ -55,7 +55,7 @@ Here's a sample configuration:
 
     ```python
     |   {
-    |       "version": "0.9",
+    |       "version": "1.0",
     |       "components": [
     |           {  # define all the building-blocks for Pipeline
     |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
@@ -110,7 +110,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.9'
+    |   version: '1.0'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -136,6 +136,9 @@ Here's a sample configuration:
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
 
 **Arguments**:
 
@@ -215,13 +218,13 @@ Returns:
                 'pending_file_count': 3,
                 'total_file_count': 31}}]
 
-<a id="base.BasePipeline.save_to_deepset_could"></a>
+<a id="base.BasePipeline.save_to_deepset_cloud"></a>
 
-#### save\_to\_deepset\_could
+#### save\_to\_deepset\_cloud
 
 ```python
 @classmethod
-def save_to_deepset_could(cls, query_pipeline: BasePipeline, index_pipeline: BasePipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
+def save_to_deepset_cloud(cls, query_pipeline: BasePipeline, index_pipeline: BasePipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
 ```
 
 Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
@@ -604,6 +607,10 @@ Here's a sample configuration:
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
+
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
 
 **Arguments**:
 

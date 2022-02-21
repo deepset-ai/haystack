@@ -84,14 +84,17 @@ def upload_file(
 ):
     """
     You can use this endpoint to upload a file for indexing
-    (see [http://localhost:3000/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store]).
+    (see https://haystack.deepset.ai/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store).
     """
     if not INDEXING_PIPELINE:
         raise HTTPException(status_code=501, detail="Indexing Pipeline is not configured.")
 
     file_paths: list = []
     file_metas: list = []
-    meta_form = json.loads(meta)  # type: ignore
+
+    meta_form = json.loads(meta) or {}  # type: ignore
+    if not isinstance(meta_form, dict):
+        raise HTTPException(status_code=500, detail=f"The meta field must be a dict or None, not {type(meta_form)}")
 
     for file in files:
         try:
