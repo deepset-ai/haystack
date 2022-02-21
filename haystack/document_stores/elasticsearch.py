@@ -233,8 +233,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             self.delete_index(label_index)
             self._create_document_index(index)
             self._create_label_index(index)
-
-        if create_index:
+        elif create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
 
@@ -1928,6 +1927,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
             if self.embedding_field:
                 mapping["settings"]["index"] = {"knn": True}
+                if self.index_type == "hnsw":
+                    mapping["settings"]["index"]["knn.algo_param.ef_search"] = 20
                 mapping["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
                     similarity=self.similarity
                 )
@@ -1950,7 +1951,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             # use default parameters
             pass
         elif self.index_type == "hnsw":
-            method["parameters"] = {"ef_construction": 80, "m": 64, "ef_search": 20}
+            method["parameters"] = {"ef_construction": 80, "m": 64}
         else:
             logger.error("Please set index_type to either 'flat' or 'hnsw'")
 
