@@ -124,7 +124,7 @@ class BaseRetriever(BaseComponent):
         """
 
         # Extract all questions for evaluation
-        filters = {"origin": [label_origin]}
+        filters: Dict = {"origin": [label_origin]}
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 

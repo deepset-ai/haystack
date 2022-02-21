@@ -873,7 +873,7 @@ class FARMReader(BaseReader):
             )
 
         # extract all questions for evaluation
-        filters = {"origin": [label_origin]}
+        filters: Dict = {"origin": [label_origin]}
 
         labels = document_store.get_all_labels(index=label_index, filters=filters)
 
