@@ -1837,13 +1837,13 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
             index_info = self.client.indices.get(index_name, headers=headers)[index_name]
-            mapping = index_info["mappings"]
-            settings = index_info["settings"]["index"]
+            mappings = index_info["mappings"]
+            index_settings = index_info["settings"]["index"]
             if self.search_fields:
                 for search_field in self.search_fields:
-                    if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+                    if search_field in mappings["properties"] and mappings["properties"][search_field]["type"] != "text":
                         raise Exception(
-                            f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
+                            f"The search_field '{search_field}' of index '{index_name}' with type '{mappings['properties'][search_field]['type']}' "
                             f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
                             f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
                             f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
@@ -1851,27 +1851,27 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         )
 
             # embedding field will be created
-            if self.embedding_field not in mapping["properties"]:
-                mapping["properties"][self.embedding_field] = self._get_embedding_field_mapping(
+            if self.embedding_field not in mappings["properties"]:
+                mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping(
                     similarity=self.similarity
                 )
-                self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
+                self.client.indices.put_mapping(index=self.index, body=mappings, headers=headers)
                 self.embeddings_field_supports_similarity = True
             else:
                 # bad embedding field
-                if mapping["properties"][self.embedding_field]["type"] != "knn_vector":
+                if mappings["properties"][self.embedding_field]["type"] != "knn_vector":
                     raise Exception(
                         f"The '{index_name}' index in OpenSearch already has a field called '{self.embedding_field}'"
-                        f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
+                        f" with the type '{mappings['properties'][self.embedding_field]['type']}'. Please update the "
                         f"document_store to use a different name for the embedding_field parameter."
                     )
                 else:
                     # embedding field with global space_type setting
-                    if "method" not in mapping["properties"][self.embedding_field]:
-                        embedding_field_space_type = settings["knn.space_type"]
+                    if "method" not in mappings["properties"][self.embedding_field]:
+                        embedding_field_space_type = index_settings["knn.space_type"]
                     # embedding field with local space_type setting
                     else:
-                        embedding_field_space_type = mapping["properties"][self.embedding_field]["method"]["space_type"]
+                        embedding_field_space_type = mappings["properties"][self.embedding_field]["method"]["space_type"]
 
                     embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
                     if embedding_field_similarity == self.similarity:
@@ -1885,12 +1885,21 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
                         )
 
+            # Adjust global ef_search setting. If not set, default is 512.
+            ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)
+            if self.index_type == "hnsw" and ef_search != 20:
+                body = {"knn.algo_param.ef_search": 20}
+                self.client.indices.put_settings(index=self.index, body=body, headers=headers)
+            elif self.index_type == "flat" and ef_search != 512:
+                body = {"knn.algo_param.ef_search": 512}
+                self.client.indices.put_settings(index=self.index, body=body, headers=headers)
+            
             return
 
         if self.custom_mapping:
-            mapping = self.custom_mapping
+            index_definition = self.custom_mapping
         else:
-            mapping = {
+            index_definition = {
                 "mappings": {
                     "properties": {self.name_field: {"type": "keyword"}, self.content_field: {"type": "text"}},
                     "dynamic_templates": [
@@ -1910,31 +1919,31 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
             if self.synonyms:
                 for field in self.search_fields:
-                    mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
-                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+                    index_definition["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
+                index_definition["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
 
-                mapping["settings"]["analysis"]["analyzer"]["synonym"] = {
+                index_definition["settings"]["analysis"]["analyzer"]["synonym"] = {
                     "tokenizer": "whitespace",
                     "filter": ["lowercase", "synonym"],
                 }
-                mapping["settings"]["analysis"]["filter"] = {
+                index_definition["settings"]["analysis"]["filter"] = {
                     "synonym": {"type": self.synonym_type, "synonyms": self.synonyms}
                 }
 
             else:
                 for field in self.search_fields:
-                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
+                    index_definition["mappings"]["properties"].update({field: {"type": "text"}})
 
             if self.embedding_field:
-                mapping["settings"]["index"] = {"knn": True}
+                index_definition["settings"]["index"] = {"knn": True}
                 if self.index_type == "hnsw":
-                    mapping["settings"]["index"]["knn.algo_param.ef_search"] = 20
-                mapping["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
+                    index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
+                index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
                     similarity=self.similarity
                 )
 
         try:
-            self.client.indices.create(index=index_name, body=mapping, headers=headers)
+            self.client.indices.create(index=index_name, body=index_definition, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
