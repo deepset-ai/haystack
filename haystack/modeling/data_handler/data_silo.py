@@ -735,6 +735,8 @@ class DataSiloForCrossVal:
                     else:
                         neg_answer_idx = random.sample(neg_answer_idx, n_neg_answers_per_question)
                         train_samples.extend(
+                            # For some reason pylint seems to be just wrong here. It's therefore silenced.
+                            # Check if the issue persists in case of a future refactoring.
                             [sample_list[idx] for idx in neg_answer_idx]  # pylint: disable=invalid-sequence-index
                         )
 
