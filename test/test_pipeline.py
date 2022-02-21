@@ -553,6 +553,7 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
     output = pipeline.run(query="test")
     assert output["output"] == "ACABEABD"
 
+
 def test_pipeline_components():
     class Node(RootNode):
         def run(self):
@@ -585,7 +586,7 @@ def test_pipeline_get_document_store_from_components():
     doc_store = DummyDocumentStore()
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=doc_store, inputs=["File"])
-    
+
     assert doc_store == pipeline.get_document_store()
 
 
@@ -607,6 +608,7 @@ def test_pipeline_get_document_store_from_retriever():
     class DummyRetriever(BaseRetriever):
         def __init__(self, document_store):
             self.document_store = document_store
+
         def run(self):
             test = "test"
             return {"test": test}, "output_1"
@@ -626,6 +628,7 @@ def test_pipeline_get_document_store_from_dual_retriever():
     class DummyRetriever(BaseRetriever):
         def __init__(self, document_store):
             self.document_store = document_store
+
         def run(self):
             test = "test"
             return {"test": test}, "output_1"
@@ -656,6 +659,7 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
     class DummyRetriever(BaseRetriever):
         def __init__(self, document_store):
             self.document_store = document_store
+
         def run(self):
             test = "test"
             return {"test": test}, "output_1"
