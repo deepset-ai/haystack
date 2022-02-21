@@ -847,7 +847,11 @@ class Pipeline(BasePipeline):
         :return: List of components that are an instance the requested class
         """
 
-        matches = [component for component in self.components.values() if isinstance(component, class_type)]
+        matches = [
+            self.graph.nodes.get(node)["component"]
+            for node in self.graph.nodes
+            if isinstance(self.graph.nodes.get(node)["component"], class_type)
+        ]
         return matches
 
     def get_document_store(self) -> Optional[BaseDocumentStore]:
