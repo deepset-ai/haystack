@@ -335,9 +335,8 @@ class BasePipeline:
                     raise ValueError(
                         f"Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config '{pipeline_config_name}' first."
                     )
-                else:
-                    client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
-                    logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
+                client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
+                logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
             else:
                 raise ValueError(
                     f"Pipeline config '{pipeline_config_name}' already exists. Set `overwrite=True` to overwrite pipeline config."
@@ -867,7 +866,7 @@ class Pipeline(BasePipeline):
         matches = self.get_nodes_by_class(class_type=BaseDocumentStore)
         if len(matches) > 1:
             raise Exception(f"Multiple Document Stores found in Pipeline: {matches}")
-        elif len(matches) == 0:
+        if len(matches) == 0:
             return None
         else:
             return matches[0]
