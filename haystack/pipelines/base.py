@@ -80,7 +80,8 @@ class BasePipeline:
         if not isinstance(schema, dict):
             return schema
 
-        new_schema = {}
+        schema: Dict[str, Any]
+        new_schema: Dict[str, Any] = {}
         for key, value in schema.items():
             if key != key_to_remove:
                 if isinstance(value, dict):
