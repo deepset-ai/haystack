@@ -215,7 +215,7 @@ def get_json_schema():
 
 def list_indexed_versions(index):
     """
-    Given the schema index as a parsed JSON, 
+    Given the schema index as a parsed JSON,
     return a list of all the versions it contains.
     """
     indexed_versions = []
@@ -228,7 +228,7 @@ def list_indexed_versions(index):
 
 def cleanup_rc_versions(index):
     """
-    Given the schema index as a parsed JSON, 
+    Given the schema index as a parsed JSON,
     removes any existing (unstable) rc version from it.
     """
     new_versions_list = []
@@ -241,13 +241,20 @@ def cleanup_rc_versions(index):
     index["oneOf"] = new_versions_list
     return index
 
+
 def new_version_entry(version):
     """
     Returns a new entry for the version index JSON schema.
     """
-    return {"allOf": [{"properties": {"version": {"const": version}}},
-                      {"$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/json-schemas/"
-                              f"haystack-pipeline-{version}.schema.json"}]}
+    return {
+        "allOf": [
+            {"properties": {"version": {"const": version}}},
+            {
+                "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/json-schemas/"
+                f"haystack-pipeline-{version}.schema.json"
+            },
+        ]
+    }
 
 
 def generate_json_schema():
