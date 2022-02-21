@@ -6,7 +6,7 @@ import subprocess
 logger = logging.getLogger(__name__)
 ELASTICSEARCH_CONTAINER_NAME = "elasticsearch"
 OPENSEARCH_CONTAINER_NAME = "opensearch"
-MILVUS1_CONTAINER_NAME ="milvus1"
+MILVUS1_CONTAINER_NAME = "milvus1"
 WEAVIATE_CONTAINER_NAME = "weaviate"
 
 
@@ -17,7 +17,10 @@ def launch_es(sleep=15, delete_existing=False):
     if delete_existing:
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
-        [f'docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'], shell=True
+        [
+            f'docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'
+        ],
+        shell=True,
     )
     if status.returncode:
         logger.warning(

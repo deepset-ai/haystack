@@ -1841,7 +1841,10 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             index_settings = index_info["settings"]["index"]
             if self.search_fields:
                 for search_field in self.search_fields:
-                    if search_field in mappings["properties"] and mappings["properties"][search_field]["type"] != "text":
+                    if (
+                        search_field in mappings["properties"]
+                        and mappings["properties"][search_field]["type"] != "text"
+                    ):
                         raise Exception(
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mappings['properties'][search_field]['type']}' "
                             f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
@@ -1871,7 +1874,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         embedding_field_space_type = index_settings["knn.space_type"]
                     # embedding field with local space_type setting
                     else:
-                        embedding_field_space_type = mappings["properties"][self.embedding_field]["method"]["space_type"]
+                        embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
+                            "space_type"
+                        ]
 
                     embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
                     if embedding_field_similarity == self.similarity:
@@ -1893,7 +1898,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             elif self.index_type == "flat" and ef_search != 512:
                 body = {"knn.algo_param.ef_search": 512}
                 self.client.indices.put_settings(index=self.index, body=body, headers=headers)
-            
+
             return
 
         if self.custom_mapping:
