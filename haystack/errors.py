@@ -37,7 +37,7 @@ class PipelineValidationError(PipelineError):
     See [https://python-jsonschema.readthedocs.io/en/latest/errors/]
     for details about the information it carries.
     """
-
+    
     def __init__(self, source:ValidationError = None):
         self.source = source
 
