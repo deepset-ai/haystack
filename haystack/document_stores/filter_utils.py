@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import reduce
 
-from haystack.utils.import_utils import safe_import
 from haystack.document_stores.sql import MetaDocumentORM
 from sqlalchemy.sql import select
 from sqlalchemy import and_, or_
