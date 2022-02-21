@@ -16,9 +16,18 @@ jobs:
         include:
           - dockerfile: Dockerfile
             repository: deepset/haystack-cpu
+            tagprefix: ''
+            default: true
 
           - dockerfile: Dockerfile-GPU
             repository: deepset/haystack-gpu
+            tagprefix: 'demo-'
+            default: true
+
+          - dockerfile: Dockerfile-GPU-minimal
+            repository: deepset/haystack-gpu
+            tagprefix: 'minimal-'
+            default: false
 
     steps:
       - name: Checkout
@@ -30,11 +39,12 @@ jobs:
         with:
           images: |
             ${{ matrix.repository }}
-          flavor: |
-            latest=true
           tags: |
-            type=ref,event=tag
-            type=sha,format=long,prefix=
+            type=ref,event=tag,prefix=${{ matrix.tagprefix }}                     
+            type=sha,format=long,prefix=${{ matrix.tagprefix }}
+            type=sha,format=long,prefix=,enable=${{ matrix.default }}
+            type=raw,value=latest,prefix=${{ matrix.tagprefix }}
+            type=raw,value=latest,prefix=,enable=${{ matrix.default }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1

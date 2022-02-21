@@ -1,19 +1,18 @@
 from modulefinder import Module
-from typing import List, Optional, Union, Dict, Any, Generator
+from typing import List, Optional, Type, Union, Dict, Any, Generator
 
 import json
 import logging
 import time
 from copy import deepcopy
 from string import Template
-from collections import defaultdict
 
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
 
 try:
-    from elasticsearch import Elasticsearch, RequestsHttpConnection
+    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
 except (ImportError, ModuleNotFoundError) as ie:
@@ -65,6 +64,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
+        use_system_proxy: bool = False,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -137,6 +137,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param synonym_type: Synonym filter type can be passed.
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+        :param use_system_proxy: Whether to use system proxy.
 
         """
         # save init parameters to enable export of component config as YAML
@@ -172,6 +173,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
+            use_system_proxy=use_system_proxy,
         )
 
         self.client = self._init_elastic_client(
@@ -186,6 +188,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             ca_certs=ca_certs,
             verify_certs=verify_certs,
             timeout=timeout,
+            use_system_proxy=use_system_proxy,
         )
 
         # configure mappings to ES fields that will be used for querying / displaying results
@@ -251,12 +254,17 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         ca_certs: Optional[str],
         verify_certs: bool,
         timeout: int,
+        use_system_proxy: bool,
     ) -> Elasticsearch:
 
         hosts = self._prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
+
+        connection_class: Type[Connection] = Urllib3HttpConnection
+        if use_system_proxy:
+            connection_class = RequestsHttpConnection
 
         if api_key:
             # api key authentication
@@ -267,6 +275,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 ca_certs=ca_certs,
                 verify_certs=verify_certs,
                 timeout=timeout,
+                connection_class=connection_class,
             )
         elif aws4auth:
             # aws elasticsearch with IAM
@@ -288,11 +297,17 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 ca_certs=ca_certs,
                 verify_certs=verify_certs,
                 timeout=timeout,
+                connection_class=connection_class,
             )
         else:
             # there is no authentication for this elasticsearch instance
             client = Elasticsearch(
-                hosts=hosts, scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout
+                hosts=hosts,
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
             )
 
         # Test connection
@@ -478,7 +493,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self,
         key: str,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[dict]:
@@ -499,7 +514,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -705,7 +720,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -736,7 +751,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def get_embedding_count(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> int:
         """
@@ -756,7 +771,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -777,7 +792,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -805,7 +820,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -828,7 +843,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -862,7 +877,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000,
     ) -> List[Label]:
@@ -879,7 +894,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: str,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -901,7 +916,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -924,7 +939,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -949,10 +964,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
 
-                        To use the same logical operator multiple times on the same level, logical operators take
-                        optionally a list of dictionaries as value.
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$or": [
@@ -1105,7 +1120,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1127,7 +1142,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1152,10 +1167,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
 
-                        To use the same logical operator multiple times on the same level, logical operators take
-                        optionally a list of dictionaries as value.
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$or": [
@@ -1348,7 +1363,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self,
         retriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -1374,7 +1389,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1449,7 +1464,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1467,7 +1482,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1497,7 +1512,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1517,7 +1532,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1532,9 +1547,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
 
-                        If filters are provided along with a list of IDs, this method deletes the
-                        intersection of the two query results (documents that match the filters and
-                        have their ID in the list).
+                            If filters are provided along with a list of IDs, this method deletes the
+                            intersection of the two query results (documents that match the filters and
+                            have their ID in the list).
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
@@ -1560,7 +1575,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1580,7 +1595,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1695,7 +1710,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1717,7 +1732,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
                         operation.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$and": {
@@ -1742,10 +1757,10 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             }
                             ```
 
-                        To use the same logical operator multiple times on the same level, logical operators take
-                        optionally a list of dictionaries as value.
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
 
-                        Example:
+                            __Example__:
                             ```python
                             filters = {
                                 "$or": [
