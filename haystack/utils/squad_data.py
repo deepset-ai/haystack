@@ -83,7 +83,7 @@ class SquadData:
         documents = [Document(content=rd["context"], id=rd["title"]) for rd in record_dicts]
         return documents
 
-    # TODO refactor to new Label objects
+    # FIXME currently broken! Refactor to new Label objects
     def to_label_objs(self):
         """
         Export all labels stored in this object to haystack.Label objects.
@@ -91,7 +91,7 @@ class SquadData:
         df_labels = self.df[["id", "question", "answer_text", "answer_start"]]
         record_dicts = df_labels.to_dict("records")
         labels = [
-            Label(
+            Label(  # pylint: disable=no-value-for-parameter
                 query=rd["question"],
                 answer=rd["answer_text"],
                 is_correct_answer=True,

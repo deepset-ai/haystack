@@ -143,9 +143,9 @@ class RAGenerator(BaseGenerator):
             # TODO: Enable when transformers have it. Refer https://github.com/huggingface/transformers/issues/7905
             # Also refer refer https://github.com/huggingface/transformers/issues/7829
             # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
-        else:
-            self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version)
-            self.model.to(str(self.devices[0]))
+
+        self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version)
+        self.model.to(str(self.devices[0]))
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
     # Refer section 2.3 of https://arxiv.org/abs/2005.11401
@@ -336,7 +336,7 @@ class Seq2SeqGenerator(BaseGenerator):
     ```
     """
 
-    _model_input_converters: Dict[str, Callable] = dict()
+    _model_input_converters: Dict[str, Callable] = {}
 
     def __init__(
         self,

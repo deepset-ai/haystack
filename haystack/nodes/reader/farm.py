@@ -909,48 +909,47 @@ class FARMReader(BaseReader):
                             f"Label.answer.offsets_in_document was None, but Span object was expected: {label} "
                         )
                         continue
+                    # add to existing answers
+                    # TODO offsets (whole block)
+                    if aggregation_key in aggregated_per_question.keys():
+                        if label.no_answer:
+                            continue
+
+                        # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
+                        if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
+                            logger.warning(
+                                f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})"
+                            )
+                            continue
+                        aggregated_per_question[aggregation_key]["answers"].append(
+                            {
+                                "text": label.answer.answer,
+                                "answer_start": label.answer.offsets_in_document[0].start,
+                            }
+                        )
+                        aggregated_per_question[aggregation_key]["is_impossible"] = False
+                    # create new one
                     else:
-                        # add to existing answers
-                        # TODO offsets (whole block)
-                        if aggregation_key in aggregated_per_question.keys():
-                            if label.no_answer:
-                                continue
-                            else:
-                                # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
-                                if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
-                                    logger.warning(
-                                        f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})"
-                                    )
-                                    continue
-                                aggregated_per_question[aggregation_key]["answers"].append(
+                        # We don't need to create an answer dict if is_impossible / no_answer
+                        if label.no_answer == True:
+                            aggregated_per_question[aggregation_key] = {
+                                "id": str(hash(str(doc_id) + label.query)),
+                                "question": label.query,
+                                "answers": [],
+                                "is_impossible": True,
+                            }
+                        else:
+                            aggregated_per_question[aggregation_key] = {
+                                "id": str(hash(str(doc_id) + label.query)),
+                                "question": label.query,
+                                "answers": [
                                     {
                                         "text": label.answer.answer,
                                         "answer_start": label.answer.offsets_in_document[0].start,
                                     }
-                                )
-                                aggregated_per_question[aggregation_key]["is_impossible"] = False
-                        # create new one
-                        else:
-                            # We don't need to create an answer dict if is_impossible / no_answer
-                            if label.no_answer == True:
-                                aggregated_per_question[aggregation_key] = {
-                                    "id": str(hash(str(doc_id) + label.query)),
-                                    "question": label.query,
-                                    "answers": [],
-                                    "is_impossible": True,
-                                }
-                            else:
-                                aggregated_per_question[aggregation_key] = {
-                                    "id": str(hash(str(doc_id) + label.query)),
-                                    "question": label.query,
-                                    "answers": [
-                                        {
-                                            "text": label.answer.answer,
-                                            "answer_start": label.answer.offsets_in_document[0].start,
-                                        }
-                                    ],
-                                    "is_impossible": False,
-                                }
+                                ],
+                                "is_impossible": False,
+                            }
 
             # Get rid of the question key again (after we aggregated we don't need it anymore)
             d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
@@ -1070,10 +1069,7 @@ class FARMReader(BaseReader):
                 logger.error(
                     "Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'"
                 )
-        if c.answer == "no_answer":
-            return True
-        else:
-            return False
+        return c.answer == "no_answer"
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         """
