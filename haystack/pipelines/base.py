@@ -29,6 +29,7 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
+from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore
@@ -81,7 +82,7 @@ class BasePipeline:
 
             ```python
             |   {
-            |       "version": "0.9",
+            |       "version": "1.0",
             |       "components": [
             |           {  # define all the building-blocks for Pipeline
             |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
@@ -146,7 +147,7 @@ class BasePipeline:
         Here's a sample configuration:
 
             ```yaml
-            |   version: '0.9'
+            |   version: '1.0'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -173,6 +174,9 @@ class BasePipeline:
             |        inputs: [MyESRetriever]
             ```
 
+        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+        If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
+
         :param path: path of the YAML file.
         :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
         :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
@@ -182,6 +186,14 @@ class BasePipeline:
         """
 
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
+        if pipeline_config["version"] != __version__:
+            logger.warning(
+                f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
+                "Issues may occur during loading. "
+                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml(), "
+                "check out our migration guide at https://haystack.deepset.ai/overview/migration "
+                f"or downgrade to haystack version {__version__}."
+            )
         return cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
@@ -1037,7 +1049,11 @@ class Pipeline(BasePipeline):
             # create the Pipeline definition with how the Component are connected
             pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
 
-        config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
+        config = {
+            "components": list(components.values()),
+            "pipelines": list(pipelines.values()),
+            "version": __version__,
+        }
         return config
 
     def _format_document_answer(self, document_or_answer: dict):
@@ -1290,6 +1306,10 @@ class RayPipeline(Pipeline):
             |        inputs: [MyESRetriever]
             ```
 
+
+        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+        If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
+
         :param path: path of the YAML file.
         :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
         :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
@@ -1299,6 +1319,14 @@ class RayPipeline(Pipeline):
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         """
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
+        if pipeline_config["version"] != __version__:
+            logger.warning(
+                f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
+                "Issues may occur during loading. "
+                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml(), "
+                "check out our migration guide at https://haystack.deepset.ai/overview/migration "
+                f"or downgrade to haystack version {__version__}."
+            )
         return RayPipeline.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
