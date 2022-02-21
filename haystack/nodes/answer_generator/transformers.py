@@ -30,44 +30,46 @@ class RAGeneratorType(Enum):
 
 class RAGenerator(BaseGenerator):
     """
-    Implementation of Facebook's Retrieval-Augmented Generator (https://arxiv.org/abs/2005.11401) based on
-    HuggingFace's transformers (https://huggingface.co/transformers/model_doc/rag.html).
+    Implementation of Facebook's Retrieval-Augmented Generator (related [paper](https://arxiv.org/abs/2005.11401))
+    based on HuggingFace's transformers
+    ([https://huggingface.co/transformers/model_doc/rag.html](https://huggingface.co/transformers/model_doc/rag.html)).
 
     Instead of "finding" the answer within a document, these models **generate** the answer.
     In that sense, RAG follows a similar approach as GPT-3 but it comes with two huge advantages
     for real-world applications:
-    a) it has a manageable model size
-    b) the answer generation is conditioned on retrieved documents,
+
+        a) it has a manageable model size
+        b) the answer generation is conditioned on retrieved documents,
     i.e. the model can easily adjust to domain documents even after training has finished
     (in contrast: GPT-3 relies on the web data seen during training)
 
-    **Example**
+    __Example__
 
     ```python
-    |     query = "who got the first nobel prize in physics?"
-    |
-    |     # Retrieve related documents from retriever
-    |     retrieved_docs = retriever.retrieve(query=query)
-    |
-    |     # Now generate answer from query and retrieved documents
-    |     generator.predict(
-    |        query=query,
-    |        documents=retrieved_docs,
-    |        top_k=1
-    |     )
-    |
-    |     # Answer
-    |
-    |     {'query': 'who got the first nobel prize in physics',
-    |      'answers':
-    |          [{'query': 'who got the first nobel prize in physics',
-    |            'answer': ' albert einstein',
-    |            'meta': { 'doc_ids': [...],
-    |                      'doc_scores': [80.42758 ...],
-    |                      'doc_probabilities': [40.71379089355469, ...
-    |                      'content': ['Albert Einstein was a ...]
-    |                      'titles': ['"Albert Einstein"', ...]
-    |      }}]}
+    query = "who got the first nobel prize in physics?"
+
+    # Retrieve related documents from retriever
+    retrieved_docs = retriever.retrieve(query=query)
+
+    # Now generate answer from query and retrieved documents
+    generator.predict(
+      query=query,
+      documents=retrieved_docs,
+      top_k=1
+    )
+
+    # Answer
+
+    {'query': 'who got the first nobel prize in physics',
+     'answers': [{
+         'query': 'who got the first nobel prize in physics',
+         'answer': 'albert einstein',
+         'meta': {'doc_ids': [...],
+                  'doc_scores': [80.42758, ...],
+                  'doc_probabilities': [40.71379089355469, ...],
+                  'content': ['Albert Einstein was a ...', ...],
+                  'titles': ['"Albert Einstein"', ...]
+    }}]}
     ```
     """
 
@@ -87,19 +89,24 @@ class RAGenerator(BaseGenerator):
     ):
         """
         Load a RAG model from Transformers along with passage_embedding_model.
-        See https://huggingface.co/transformers/model_doc/rag.html for more details
+        See [https://huggingface.co/transformers/model_doc/rag.html](https://huggingface.co/transformers/model_doc/rag.html)
+        for more details.
 
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
-                                   'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
-                                   See https://huggingface.co/models for full list of available models.
-        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param retriever: `DensePassageRetriever` used to embedded passages for the docs passed to `predict()`. This is optional and is only needed if the docs you pass don't already contain embeddings in `Document.embedding`.
-        :param generator_type: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
-        :param top_k: Number of independently generated text to return
-        :param max_length: Maximum length of generated text
-        :param min_length: Minimum length of generated text
+            `"facebook/rag-token-nq"`, `"facebook/rag-sequence-nq"`.
+            See [https://huggingface.co/models](https://huggingface.co/models) for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
+            or commit hash.
+        :param retriever: `DensePassageRetriever` used to embedded passages for the docs passed to `predict()`.
+            This is optional and is only needed if the docs you pass don't already contain embeddings in
+            `Document.embedding`.
+        :param generator_type: Which RAG generator implementation to use? `RAGeneratorType.TOKEN` or
+            `RAGeneratorType.SEQUENCE`
+        :param top_k: Number of independently generated texts to return.
+        :param max_length: Maximum length of generated text.
+        :param min_length: Minimum length of generated text.
         :param num_beams: Number of beams for beam search. 1 means no beam search.
-        :param embed_title: Embedded the title of passage while generating embedding
+        :param embed_title: Whether to embed the title of a passage while generating embedding.
         :param prefix: The prefix used by the generator's tokenizer.
         :param use_gpu: Whether to use GPU. Falls back on CPU if no GPU is available.
         """
@@ -211,22 +218,22 @@ class RAGenerator(BaseGenerator):
         Generate the answer to the input query. The generation will be conditioned on the supplied documents.
         These document can for example be retrieved via the Retriever.
 
-        :param query: Query
+        :param query: Query.
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param top_k: Number of returned answers
+        :param top_k: Number of returned answers.
         :return: Generated answers plus additional infos in a dict like this:
 
         ```python
-        |     {'query': 'who got the first nobel prize in physics',
-        |      'answers':
-        |          [{'query': 'who got the first nobel prize in physics',
-        |            'answer': ' albert einstein',
-        |            'meta': { 'doc_ids': [...],
-        |                      'doc_scores': [80.42758 ...],
-        |                      'doc_probabilities': [40.71379089355469, ...
-        |                      'content': ['Albert Einstein was a ...]
-        |                      'titles': ['"Albert Einstein"', ...]
-        |      }}]}
+        {'query': 'who got the first nobel prize in physics',
+         'answers': [{
+             'query': 'who got the first nobel prize in physics',
+             'answer': 'albert einstein',
+             'meta': {'doc_ids': [...],
+                      'doc_scores': [80.42758 ,...],
+                      'doc_probabilities': [40.71379089355469, ...],
+                      'content': ['Albert Einstein was a ...', ...],
+                      'titles': ['"Albert Einstein"', ...]
+        }}]}
         ```
         """
         torch.set_grad_enabled(False)
@@ -301,38 +308,37 @@ class Seq2SeqGenerator(BaseGenerator):
     For mode details on custom model input converters refer to _BartEli5Converter
 
 
-    See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
-    as well as https://huggingface.co/blog/how-to-generate
+    See [https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin](https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin)
+    as well as [https://huggingface.co/blog/how-to-generate](https://huggingface.co/blog/how-to-generate)
 
-    For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text-generation
+    For a list of all text-generation models see [https://huggingface.co/models?pipeline_tag=text-generation](https://huggingface.co/models?pipeline_tag=text-generation).
 
     **Example**
 
     ```python
-    |     query = "Why is Dothraki language important?"
-    |
-    |     # Retrieve related documents from retriever
-    |     retrieved_docs = retriever.retrieve(query=query)
-    |
-    |     # Now generate answer from query and retrieved documents
-    |     generator.predict(
-    |        query=query,
-    |        documents=retrieved_docs,
-    |        top_k=1
-    |     )
-    |
-    |     # Answer
-    |
-    |     {'query': 'who got the first nobel prize in physics',
-    |      'answers':
-    |          [{'query': 'who got the first nobel prize in physics',
-    |            'answer': ' albert einstein',
-    |            'meta': { 'doc_ids': [...],
-    |                      'doc_scores': [80.42758 ...],
-    |                      'doc_probabilities': [40.71379089355469, ...
-    |                      'content': ['Albert Einstein was a ...]
-    |                      'titles': ['"Albert Einstein"', ...]
-    |      }}]}
+    query = "Why is Dothraki language important?"
+
+    # Retrieve related documents from retriever
+    retrieved_docs = retriever.retrieve(query=query)
+
+    # Now generate answer from query and retrieved documents
+    generator.predict(
+       query=query,
+       documents=retrieved_docs,
+       top_k=1
+    )
+
+    # Answer
+    {'query': 'who got the first nobel prize in physics',
+         'answers': [{
+             'query': 'who got the first nobel prize in physics',
+             'answer': 'albert einstein',
+             'meta': {'doc_ids': [...],
+                      'doc_scores': [80.42758 ,...],
+                      'doc_probabilities': [40.71379089355469, ...],
+                      'content': ['Albert Einstein was a ...', ...],
+                      'titles': ['"Albert Einstein"', ...]
+    }}]}
     ```
     """
 
@@ -349,15 +355,19 @@ class Seq2SeqGenerator(BaseGenerator):
         use_gpu: bool = True,
     ):
         """
-        :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
-        :param input_converter: an optional Callable to prepare model input for the underlying language model
-                                specified in model_name_or_path parameter. The required __call__ method signature for
-                                the Callable is:
-                                __call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
-                                top_k: Optional[int] = None) -> BatchEncoding:
-        :param top_k: Number of independently generated text to return
-        :param max_length: Maximum length of generated text
-        :param min_length: Minimum length of generated text
+        :param model_name_or_path: A Huggingface model name for auto-regressive language model like GPT2, XLNet, XLM,
+            Bart, T5 etc.
+        :param input_converter: An optional Callable to prepare model input for the underlying language model
+            specified in `model_name_or_path` parameter. The required __call__ method signature for
+
+                The Callable is:
+                ```python
+                __call__(tokenizer: PreTrainedTokenizer, query: str, documents: List[Document],
+                         top_k: Optional[int] = None) -> BatchEncoding:
+                ```
+        :param top_k: Number of independently generated texts to return.
+        :param max_length: Maximum length of generated text.
+        :param min_length: Minimum length of generated text.
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
@@ -401,9 +411,9 @@ class Seq2SeqGenerator(BaseGenerator):
         Generate the answer to the input query. The generation will be conditioned on the supplied documents.
         These document can be retrieved via the Retriever or supplied directly via predict method.
 
-        :param query: Query
+        :param query: Query.
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param top_k: Number of returned answers
+        :param top_k: Number of returned answers.
         :return: Generated answers
 
         """

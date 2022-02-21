@@ -18,7 +18,7 @@ class FileTypeClassifier(BaseComponent):
         """
         Node that sends out files on a different output edge depending on their extension.
 
-        :param supported_types: the file types that this node can distinguish.
+        :param supported_types: The file types that this node can distinguish.
             Note that it's limited to a maximum of 10 outgoing edges, which
             correspond each to a file extension. Such extension are, by default
             `txt`, `pdf`, `md`, `docx`, `html`. Lists containing more than 10
@@ -54,7 +54,7 @@ class FileTypeClassifier(BaseComponent):
         """
         Sends out files on a different output edge depending on their extension.
 
-        :param file_paths: paths to route on different edges.
+        :param file_paths: Paths to route on different edges.
         """
         if not isinstance(file_paths, list):
             file_paths = [file_paths]

@@ -19,23 +19,24 @@ class EvalDocuments(BaseComponent):
     """
     This is a pipeline node that should be placed after a node that returns a List of Document, e.g., Retriever or
     Ranker, in order to assess its performance. Performance metrics are stored in this class and updated as each
-    sample passes through it. To view the results of the evaluation, call EvalDocuments.print(). Note that results
-    from this Node may differ from that when calling Retriever.eval() since that is a closed domain evaluation. Have
-    a look at our evaluation tutorial for more info about open vs closed domain eval (
-    https://haystack.deepset.ai/tutorials/evaluation).
+    sample passes through it. To view the results of the evaluation, call `EvalDocuments.print()`. Note that results
+    from this Node may differ from that when calling `Retriever.eval()` since that is a closed domain evaluation. Have
+    a look at our evaluation tutorial for more info about open vs closed domain eval
+    ([https://haystack.deepset.ai/tutorials/evaluation](https://haystack.deepset.ai/tutorials/evaluation)).
 
-    EvalDocuments node is deprecated and will be removed in a future version.
-    Please use pipeline.eval() instead.
+    `EvalDocuments` node is deprecated and will be removed in a future version.
+    Please use `pipeline.eval()` instead.
     """
 
     outgoing_edges = 1
 
     def __init__(self, debug: bool = False, open_domain: bool = True, top_k: int = 10):
         """
-        :param open_domain: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
-                            When False, correct retrieval is evaluated based on document_id.
-        :param debug: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
-        :param top_k: calculate eval metrics for top k results, e.g., recall@k
+        :param open_domain: When `True`, a document is considered correctly retrieved so long as the answer string can
+            be found within it.
+            When `False`, correct retrieval is evaluated based on document_id.
+        :param debug: When `True`, a record of each sample and its evaluation will be stored in `EvalDocuments.log`
+        :param top_k: Calculate eval metrics for top k results, e.g., recall@k.
         """
         logger.warning(
             "EvalDocuments node is deprecated and will be removed in a future version. "
@@ -64,7 +65,7 @@ class EvalDocuments(BaseComponent):
         self.has_answer_reciprocal_rank_sum = 0.0
 
     def run(self, documents: List[Document], labels: List[Label], top_k: Optional[int] = None):  # type: ignore
-        """Run this node on one sample and its labels"""
+        """Run this node on one sample and its labels."""
         self.query_count += 1
         retriever_labels = get_label(labels, self.name)
         if not top_k:
@@ -170,13 +171,15 @@ class EvalAnswers(BaseComponent):
     """
     This is a pipeline node that should be placed after a Reader in order to assess the performance of the Reader
     individually or to assess the extractive QA performance of the whole pipeline. Performance metrics are stored in
-    this class and updated as each sample passes through it. To view the results of the evaluation, call EvalAnswers.print().
-    Note that results from this Node may differ from that when calling Reader.eval()
+    this class and updated as each sample passes through it. To view the results of the evaluation, call
+    `EvalAnswers.print().`
+    Note that results from this Node may differ from that when calling `Reader.eval()`
     since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
-    open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
+    open vs closed domain eval
+    ([https://haystack.deepset.ai/tutorials/evaluation](https://haystack.deepset.ai/tutorials/evaluation)).
 
-    EvalAnswers node is deprecated and will be removed in a future version.
-    Please use pipeline.eval() instead.
+    `EvalAnswers` node is deprecated and will be removed in a future version.
+    Please use `pipeline.eval()` instead.
     """
 
     outgoing_edges = 1
@@ -189,20 +192,27 @@ class EvalAnswers(BaseComponent):
         debug: bool = False,
     ):
         """
-        :param skip_incorrect_retrieval: When set to True, this eval will ignore the cases where the retriever returned no correct documents
-        :param open_domain: When True, extracted answers are evaluated purely on string similarity rather than the position of the extracted answer
-        :param sas_model: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
-                          The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
-                          Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
-                          More info in the paper: https://arxiv.org/abs/2108.06130
-                          Models:
-                          - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
-                            Not all cross encoders can be used because of different return types.
-                            If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
-                          - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-                          - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
-                          - Large model for German only: "deepset/gbert-large-sts"
-        :param debug: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
+        :param skip_incorrect_retrieval: When set to `True`, this eval will ignore the cases where the retriever
+            returned no correct documents
+        :param open_domain: When `True`, extracted answers are evaluated purely on string similarity rather than the
+            position of the extracted answer
+        :param sas_model: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used
+            to calculate similarity between predictions and labels and generate the SAS metric.
+            The SAS metric correlates better with human judgement of correct answers as it does not rely on string
+            overlaps.
+            Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both
+            being 0, while SAS paints a more realistic picture.
+            More info in the paper: [https://arxiv.org/abs/2108.06130](https://arxiv.org/abs/2108.06130)
+
+                Models:
+                - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual
+                Similarity (STS) data. Not all cross encoders can be used because of different return types.
+                If you use custom cross encoders please make sure they work with `sentence_transformers.CrossEncoder`
+                class.
+                - Good default for multiple languages: `"sentence-transformers/paraphrase-multilingual-mpnet-base-v2"`
+                - Large, powerful, but slow model for English only: `"cross-encoder/stsb-roberta-large"`
+                - Large model for German only: `"deepset/gbert-large-sts"`
+        :param debug: When `True`, a record of each sample and its evaluation will be stored in `EvalAnswers.log`
         """
         logger.warning(
             "EvalAnswers node is deprecated and will be removed in a future version. "
@@ -396,14 +406,17 @@ def semantic_answer_similarity(
     sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
 ) -> Tuple[List[float], List[float]]:
     """
-    Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
-    Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
-                        b) the highest similarity of all predictions to gold labels
+    Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM
+    or F1.
 
-    :param predictions: Predicted answers as list of multiple preds per question
-    :param gold_labels: Labels as list of multiple possible answers per question
+    Returns per QA pair
+    - the similarity of the most likely prediction (top 1) to all available gold labels
+    - the highest similarity of all predictions to gold labels
+
+    :param predictions: Predicted answers as list of multiple preds per question.
+    :param gold_labels: Labels as list of multiple possible answers per question.
     :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model, should be path or string
-                                     pointing to downloadable models.
+        pointing to downloadable models.
     :return: top_1_sas, top_k_sas
     """
     assert len(predictions) == len(gold_labels)

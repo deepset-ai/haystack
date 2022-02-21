@@ -7,7 +7,7 @@ from haystack.nodes.base import BaseComponent
 
 class BaseGenerator(BaseComponent):
     """
-    Abstract class for Generators
+    Abstract class for Generators.
     """
 
     outgoing_edges = 1
@@ -17,10 +17,10 @@ class BaseGenerator(BaseComponent):
         """
         Abstract method to generate answers.
 
-        :param query: Query
+        :param query: Query.
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param top_k: Number of returned answers
-        :return: Generated answers plus additional infos in a dict
+        :param top_k: Number of returned answers.
+        :return: Generated answers plus additional infos in a dict.
         """
         pass
 

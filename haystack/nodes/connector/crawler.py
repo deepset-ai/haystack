@@ -23,16 +23,16 @@ logger = logging.getLogger(__name__)
 
 class Crawler(BaseComponent):
     """
-    Crawl texts from a website so that we can use them later in Haystack as a corpus for search / question answering etc.
+    Crawl texts from a website so that we can use them later in Haystack as a corpus for search, question answering etc.
 
     **Example:**
     ```python
-    |    from haystack.nodes.connector import Crawler
-    |
-    |    crawler = Crawler(output_dir="crawled_files")
-    |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
-    |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
-    |                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
+    from haystack.nodes.connector import Crawler
+
+    crawler = Crawler(output_dir="crawled_files")
+    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
+    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
+                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
     ```
     """
 
@@ -47,16 +47,18 @@ class Crawler(BaseComponent):
         overwrite_existing_files=True,
     ):
         """
-        Init object with basic params for crawling (can be overwritten later).
+        Init object with basic parameters for crawling (can be overwritten later).
 
-        :param output_dir: Path for the directory to store files
-        :param urls: List of http(s) address(es) (can also be supplied later when calling crawl())
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-            0: Only initial list of urls
-            1: Follow links found on the initial URLs (but no further)
+        :param output_dir: Path for the directory to store files.
+        :param urls: List of http(s) address(es) (can also be supplied later when calling `crawl()`).
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs.
+
+            Current options:
+                - 0: Only initial list of urls
+                - 1: Follow links found on the initial URLs (but no further)
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
             All URLs not matching at least one of the regular expressions will be dropped.
-        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
+        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content.
         """
         IN_COLAB = "google.colab" in sys.modules
 
@@ -98,18 +100,21 @@ class Crawler(BaseComponent):
         file per URL, including text and basic meta data).
         You can optionally specify via `filter_urls` to only crawl URLs that match a certain pattern.
         All parameters are optional here and only meant to overwrite instance attributes at runtime.
-        If no parameters are provided to this method, the instance attributes that were passed during __init__ will be used.
+        If no parameters are provided to this method, the instance attributes that were passed during `__init__`
+        will be used.
 
-        :param output_dir: Path for the directory to store files
-        :param urls: List of http addresses or single http address
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
+        :param output_dir: Path for the directory to store files.
+        :param urls: List of http addresses or single http address.
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs.
+
+            Current options:
+                - 0: Only initial list of urls
+                - 1: Follow links found on the initial URLs (but no further)
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
-                           All URLs not matching at least one of the regular expressions will be dropped.
-        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
+            All URLs not matching at least one of the regular expressions will be dropped.
+        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content.
 
-        :return: List of paths where the crawled webpages got stored
+        :return: List of paths where the crawled webpages got stored.
         """
         # use passed params or fallback to instance attributes
         urls = urls or self.urls
@@ -181,22 +186,24 @@ class Crawler(BaseComponent):
         crawler_depth: Optional[int] = None,
         filter_urls: Optional[List] = None,
         overwrite_existing_files: Optional[bool] = None,
-        return_documents: Optional[bool] = False,
+        return_documents: bool = False,
     ) -> Tuple[Dict, str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
-        :param output_dir: Path for the directory to store files
-        :param urls: List of http addresses or single http address
-        :param crawler_depth: How many sublinks to follow from the initial list of URLs. Current options:
-                              0: Only initial list of urls
-                              1: Follow links found on the initial URLs (but no further)
+        :param output_dir: Path for the directory to store files.
+        :param urls: List of http addresses or single http address.
+        :param crawler_depth: How many sublinks to follow from the initial list of URLs.
+
+            Current options:
+                - 0: Only initial list of urls
+                - 1: Follow links found on the initial URLs (but no further)
         :param filter_urls: Optional list of regular expressions that the crawled URLs must comply with.
                            All URLs not matching at least one of the regular expressions will be dropped.
-        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
-        :param return_documents:  Return json files content
+        :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content.
+        :param return_documents:  Return json files content.
 
-        :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
+        :return: `Tuple({"paths": List of filepaths, ...}, Name of output edge)`
         """
 
         file_paths = self.crawl(
