@@ -284,7 +284,7 @@ class BasePipeline:
         return pipeline_config_infos
 
     @classmethod
-    def save_to_deepset_could(
+    def save_to_deepset_cloud(
         cls,
         query_pipeline: BasePipeline,
         index_pipeline: BasePipeline,

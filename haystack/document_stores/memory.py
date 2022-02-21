@@ -292,7 +292,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -396,7 +396,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self,
         retriever: "BaseRetriever",
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
     ):
@@ -471,7 +471,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -508,7 +508,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def _query(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         return_embedding: Optional[bool] = None,
         only_documents_without_embedding: bool = False,
     ):
@@ -535,7 +535,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -583,7 +583,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -627,7 +627,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         yield from result
 
     def get_all_labels(
-        self, index: str = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None
+        self,
+        index: str = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """
         Return all labels in the document store.
@@ -656,7 +659,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -704,7 +707,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -756,7 +759,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
