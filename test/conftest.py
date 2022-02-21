@@ -119,7 +119,7 @@ def pytest_collection_modifyitems(config, items):
         document_store_types_to_run = document_store_types_to_run.split(",")
         keywords = []
 
-        if "milvus" in document_store_types_to_run and os.getenv("MILVUS2_ENABLED"):
+        if "milvus" in document_store_types_to_run and not os.getenv("MILVUS1_ENABLED"):
             document_store_types_to_run.remove("milvus")
             document_store_types_to_run.append("milvus2")
             if not milvus2:
