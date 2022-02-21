@@ -55,7 +55,6 @@ from haystack.nodes.question_generator import QuestionGenerator
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
 
-
 SAMPLES_PATH = Path(__file__).parent / "samples"
 
 # to run tests against Deepset Cloud set MOCK_DC to False and set the following params
@@ -63,28 +62,6 @@ DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
-
-
-def pytest_addoption(parser):
-    parser.addoption("--document_store_type", action="store", default="elasticsearch, faiss, memory, milvus, weaviate")
-
-
-def pytest_generate_tests(metafunc):
-    # Get selected docstores from CLI arg
-    document_store_type = metafunc.config.option.document_store_type
-    selected_doc_stores = [item.strip() for item in document_store_type.split(",")]
-
-    # parametrize document_store fixture if it's in the test function argument list
-    # but does not have an explicit parametrize annotation e.g
-    # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
-    found_mark_parametrize_document_store = False
-    for marker in metafunc.definition.iter_markers("parametrize"):
-        if "document_store" in marker.args[0]:
-            found_mark_parametrize_document_store = True
-            break
-    # for all others that don't have explicit parametrization, we add the ones from the CLI arg
-    if "document_store" in metafunc.fixturenames and not found_mark_parametrize_document_store:
-        metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
 
 
 def _sql_session_rollback(self, attr):
@@ -142,14 +119,6 @@ def pytest_collection_modifyitems(config, items):
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
                 )
                 item.add_marker(skip_docstore)
-
-
-@pytest.fixture
-def tmpdir(tmpdir):
-    """
-    Makes pytest's tmpdir fixture fully compatible with pathlib
-    """
-    return Path(tmpdir)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -344,12 +313,30 @@ def de_to_en_translator():
 def test_docs_xs():
     return [
         # current "dict" format for a document
-        {"content": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
+        {
+            "content": "My name is Carla and I live in Berlin",
+            "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
+        },
         # metafield at the top level for backward compatibility
-        {"content": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
+        {
+            "content": "My name is Paul and I live in New York",
+            "meta_field": "test2",
+            "name": "filename2",
+            "date_field": "2019-10-01",
+            "numeric_field": 5.0,
+        },
         # Document object for a doc
         Document(
-            content="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"}
+            content="My name is Christelle and I live in Paris",
+            meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
+        ),
+        Document(
+            content="My name is Camila and I live in Madrid",
+            meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
+        ),
+        Document(
+            content="My name is Matteo and I live in Rome",
+            meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
         ),
     ]
 

@@ -1,4 +1,5 @@
 import pytest
+import sys
 from pathlib import Path
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
@@ -24,6 +25,7 @@ from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabe
 from conftest import SAMPLES_PATH
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_generativeqa_calculate_metrics(
@@ -43,12 +45,13 @@ def test_generativeqa_calculate_metrics(
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
     assert metrics["Generator"]["exact_match"] == 0.0
     assert metrics["Generator"]["f1"] == 1.0 / 3
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_summarizer_calculate_metrics(
@@ -70,13 +73,13 @@ def test_summarizer_calculate_metrics(
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
     assert metrics["Summarizer"]["mrr"] == 0.5
     assert metrics["Summarizer"]["map"] == 0.5
     assert metrics["Summarizer"]["recall_multi_hit"] == 0.5
     assert metrics["Summarizer"]["recall_single_hit"] == 0.5
-    assert metrics["Summarizer"]["precision"] == 1.0 / 6
+    assert metrics["Summarizer"]["precision"] == 0.1
     assert metrics["Summarizer"]["ndcg"] == 0.5
 
 
@@ -325,7 +328,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     assert metrics["Retriever"]["mrr"] == 1.0
     assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
-    assert metrics["Retriever"]["precision"] == 1.0 / 3
+    assert metrics["Retriever"]["precision"] == 0.2
     assert metrics["Retriever"]["map"] == 1.0
     assert metrics["Retriever"]["ndcg"] == 1.0
 
@@ -346,7 +349,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     assert metrics["Retriever"]["mrr"] == 1.0
     assert metrics["Retriever"]["recall_multi_hit"] == 1.0
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
-    assert metrics["Retriever"]["precision"] == 1.0 / 3
+    assert metrics["Retriever"]["precision"] == 0.2
     assert metrics["Retriever"]["map"] == 1.0
     assert metrics["Retriever"]["ndcg"] == 1.0
 
@@ -390,7 +393,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
 
     eval_result.save(tmp_path)
@@ -419,8 +422,80 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path):
+    labels = [
+        # MultiLabel with filter that selects only the document about Carla
+        MultiLabel(
+            labels=[
+                Label(
+                    query="What's her name?",
+                    answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
+                    document=Document(
+                        id="a0747b83aea0b60c4b114b15476dd32d",
+                        content_type="text",
+                        content="My name is Carla and I live in Berlin",
+                    ),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="gold-label",
+                    filters={"name": ["filename1"]},
+                )
+            ]
+        ),
+        # MultiLabel with filter that selects only the document about Christelle
+        MultiLabel(
+            labels=[
+                Label(
+                    query="What's her name?",
+                    answer=Answer(answer="Christelle", offsets_in_context=[Span(11, 20)]),
+                    document=Document(
+                        id="4fa3938bef1d83e4d927669666d0b705",
+                        content_type="text",
+                        content="My name is Christelle and I live in Paris",
+                    ),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="gold-label",
+                    filters={"name": ["filename3"]},
+                )
+            ]
+        ),
+    ]
+
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result = pipeline.eval(
+        labels=labels,
+        params={"Retriever": {"top_k": 5}},
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    reader_result = eval_result["Reader"]
+    retriever_result = eval_result["Retriever"]
+
+    # The same query but with two different filters and thus two different answers is answered correctly in both cases.
+    assert (
+        reader_result[reader_result["rank"] == 1]["answer"].iloc[0]
+        in reader_result[reader_result["rank"] == 1]["gold_answers"].iloc[0]
+    )
+    assert (
+        retriever_result[retriever_result["rank"] == 1]["document_id"].iloc[0]
+        in retriever_result[retriever_result["rank"] == 1]["gold_document_ids"].iloc[0]
+    )
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["ndcg"] == 1.0
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -441,10 +516,25 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
     assert "sas" in metrics["Reader"]
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
+
+
+def test_reader_eval_in_pipeline(reader):
+    pipeline = Pipeline()
+    pipeline.add_node(component=reader, name="Reader", inputs=["Query"])
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS,
+        documents=[[label.document for label in multilabel.labels] for multilabel in EVAL_LABELS],
+        params={},
+    )
+
+    metrics = eval_result.calculate_metrics()
+
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -462,7 +552,7 @@ def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
     assert metrics["Retriever"]["map"] == 0.75
     assert metrics["Retriever"]["recall_multi_hit"] == 0.75
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
-    assert metrics["Retriever"]["precision"] == 1.0 / 3
+    assert metrics["Retriever"]["precision"] == 0.2
     assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
 
 
@@ -485,7 +575,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_1["Retriever"]["precision"] == 1.0 / 6
+    assert metrics_top_1["Retriever"]["precision"] == 0.1
     assert metrics_top_1["Retriever"]["ndcg"] == 0.5
 
     metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=2)
@@ -497,19 +587,19 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_2["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_2["Retriever"]["precision"] == 1.0 / 6
+    assert metrics_top_2["Retriever"]["precision"] == 0.1
     assert metrics_top_2["Retriever"]["ndcg"] == 0.5
 
     metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=3)
 
     assert metrics_top_3["Reader"]["exact_match"] == 1.0
     assert metrics_top_3["Reader"]["f1"] == 1.0
-    assert metrics_top_3["Reader"]["sas"] == pytest.approx(1.0)
+    assert metrics_top_3["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
     assert metrics_top_3["Retriever"]["mrr"] == 0.5
     assert metrics_top_3["Retriever"]["map"] == 0.5
     assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_3["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_3["Retriever"]["precision"] == 1.0 / 6
+    assert metrics_top_3["Retriever"]["precision"] == 0.1
     assert metrics_top_3["Retriever"]["ndcg"] == 0.5
 
 
@@ -527,7 +617,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     assert metrics_top_10["Retriever"]["map"] == 0.5
     assert metrics_top_10["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_10["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_10["Retriever"]["precision"] == 1.0 / 6
+    assert metrics_top_10["Retriever"]["precision"] == 0.1
     assert metrics_top_10["Retriever"]["ndcg"] == 0.5
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_retriever=1)
@@ -578,13 +668,14 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_10["Retriever"]["map"] == 0.5
     assert metrics_top_10["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_10["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_10["Retriever"]["precision"] == 1.0 / 6
+    assert metrics_top_10["Retriever"]["precision"] == 0.1
     assert metrics_top_10["Retriever"]["ndcg"] == 0.5
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=1)
 
-    assert metrics_top_1["Reader"]["exact_match"] == 0.5
-    assert metrics_top_1["Reader"]["f1"] == 0.5
+    assert metrics_top_1["Reader"]["exact_match"] == 1.0
+    assert metrics_top_1["Reader"]["f1"] == 1.0
+
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
@@ -634,7 +725,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics_top_1["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_1["Retriever"]["precision"] == 1.0 / 6
+    assert metrics_top_1["Retriever"]["precision"] == 1.0 / 10
     assert metrics_top_1["Retriever"]["ndcg"] == 0.5
 
     metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, eval_mode="isolated")
@@ -768,7 +859,7 @@ def test_document_search_calculate_metrics(retriever_with_docs):
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
 
 
@@ -788,7 +879,7 @@ def test_faq_calculate_metrics(retriever_with_docs):
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
     assert metrics["Docs2Answers"]["exact_match"] == 0.0
     assert metrics["Docs2Answers"]["f1"] == 0.0
@@ -816,7 +907,7 @@ def test_extractive_qa_eval_translation(reader, retriever_with_docs, de_to_en_tr
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
 
     assert metrics["OutputTranslator"]["exact_match"] == 1.0
@@ -825,7 +916,7 @@ def test_extractive_qa_eval_translation(reader, retriever_with_docs, de_to_en_tr
     assert metrics["OutputTranslator"]["map"] == 0.5
     assert metrics["OutputTranslator"]["recall_multi_hit"] == 0.5
     assert metrics["OutputTranslator"]["recall_single_hit"] == 0.5
-    assert metrics["OutputTranslator"]["precision"] == 1.0 / 6
+    assert metrics["OutputTranslator"]["precision"] == 0.1
     assert metrics["OutputTranslator"]["ndcg"] == 0.5
 
 
@@ -846,14 +937,14 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
     assert metrics["Retriever"]["map"] == 0.5
     assert metrics["Retriever"]["recall_multi_hit"] == 0.5
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics["Retriever"]["precision"] == 1.0 / 6
+    assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
 
     assert metrics["Question Generator"]["mrr"] == 0.5
     assert metrics["Question Generator"]["map"] == 0.5
     assert metrics["Question Generator"]["recall_multi_hit"] == 0.5
     assert metrics["Question Generator"]["recall_single_hit"] == 0.5
-    assert metrics["Question Generator"]["precision"] == 1.0 / 6
+    assert metrics["Question Generator"]["precision"] == 0.1
     assert metrics["Question Generator"]["ndcg"] == 0.5
 
 
@@ -907,14 +998,14 @@ def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
     assert metrics["DPRRetriever"]["map"] == 0.5
     assert metrics["DPRRetriever"]["recall_multi_hit"] == 0.5
     assert metrics["DPRRetriever"]["recall_single_hit"] == 0.5
-    assert metrics["DPRRetriever"]["precision"] == 1.0 / 6
+    assert metrics["DPRRetriever"]["precision"] == 0.1
     assert metrics["DPRRetriever"]["ndcg"] == 0.5
 
     assert metrics["ESRetriever"]["mrr"] == 1.0
     assert metrics["ESRetriever"]["map"] == 1.0
     assert metrics["ESRetriever"]["recall_multi_hit"] == 1.0
     assert metrics["ESRetriever"]["recall_single_hit"] == 1.0
-    assert metrics["ESRetriever"]["precision"] == 1.0 / 3
+    assert metrics["ESRetriever"]["precision"] == 0.2
     assert metrics["ESRetriever"]["ndcg"] == 1.0
 
     assert metrics["QAReader"]["exact_match"] == 1.0
@@ -969,14 +1060,14 @@ def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
     assert metrics["DPRRetriever"]["map"] == 0.5
     assert metrics["DPRRetriever"]["recall_multi_hit"] == 0.5
     assert metrics["DPRRetriever"]["recall_single_hit"] == 0.5
-    assert metrics["DPRRetriever"]["precision"] == 1.0 / 6
+    assert metrics["DPRRetriever"]["precision"] == 0.1
     assert metrics["DPRRetriever"]["ndcg"] == 0.5
 
     assert metrics["ESRetriever"]["mrr"] == 1.0
     assert metrics["ESRetriever"]["map"] == 1.0
     assert metrics["ESRetriever"]["recall_multi_hit"] == 1.0
     assert metrics["ESRetriever"]["recall_single_hit"] == 1.0
-    assert metrics["ESRetriever"]["precision"] == 1.0 / 3
+    assert metrics["ESRetriever"]["precision"] == 0.2
     assert metrics["ESRetriever"]["ndcg"] == 1.0
 
 
@@ -1031,14 +1122,14 @@ def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_do
     assert metrics["DPRRetriever"]["map"] == 0.5
     assert metrics["DPRRetriever"]["recall_multi_hit"] == 0.5
     assert metrics["DPRRetriever"]["recall_single_hit"] == 0.5
-    assert metrics["DPRRetriever"]["precision"] == 1.0 / 6
+    assert metrics["DPRRetriever"]["precision"] == 0.1
     assert metrics["DPRRetriever"]["ndcg"] == 0.5
 
     assert metrics["ESRetriever"]["mrr"] == 1.0
     assert metrics["ESRetriever"]["map"] == 1.0
     assert metrics["ESRetriever"]["recall_multi_hit"] == 1.0
     assert metrics["ESRetriever"]["recall_single_hit"] == 1.0
-    assert metrics["ESRetriever"]["precision"] == 1.0 / 3
+    assert metrics["ESRetriever"]["precision"] == 0.2
     assert metrics["ESRetriever"]["ndcg"] == 1.0
 
     assert metrics["QAReader"]["exact_match"] == 1.0

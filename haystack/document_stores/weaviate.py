@@ -2,6 +2,7 @@ import hashlib
 import re
 import uuid
 from typing import Dict, Generator, List, Optional, Union
+from datetime import datetime
 
 import logging
 import json
@@ -11,6 +12,8 @@ from tqdm import tqdm
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.document_stores.utils import convert_date_to_rfc3339
 
 try:
     from weaviate import client, AuthClientPassword
@@ -88,7 +91,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
         :param custom_schema: Allows to create custom schema in Weaviate, for more details
                            See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
-        :param module_name : Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
+        :param module_name: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
                             For more details, See https://www.semi.technology/developers/weaviate/current/modules/
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
@@ -225,8 +228,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
             content = json.loads(str(props.get(self.content_field)))
 
         content_type = None
-        if props.get("contenttype") is not None:
-            content_type = str(props.pop("contenttype"))
+        if props.get("content_type") is not None:
+            content_type = str(props.pop("content_type"))
 
         # Weaviate creates "_additional" key for semantic search
         if "_additional" in props:
@@ -337,29 +340,60 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         return cur_properties
 
-    def _build_filter_clause(self, filters: Dict[str, List[str]]) -> dict:
+    def _get_date_properties(self, index: Optional[str] = None) -> List[str]:
         """
-        Transform Haystack filter conditions to Weaviate where filter clauses.
+        Get all existing properties of type 'date' in the schema.
         """
-        weaviate_filters = []
-        weaviate_filter = {}
-        for key, values in filters.items():
-            for value in values:
-                weaviate_filter = {"path": [key], "operator": "Equal", "valueString": value}
-                weaviate_filters.append(weaviate_filter)
-        if len(weaviate_filters) > 1:
-            filter_dict = {"operator": "Or", "operands": weaviate_filters}
-            return filter_dict
-        else:
-            return weaviate_filter
+        index = self._sanitize_index_name(index) or self.index
+        cur_properties = []
+        for class_item in self.weaviate_client.schema.get()["classes"]:
+            if class_item["class"] == index:
+                cur_properties = [item["name"] for item in class_item["properties"] if item["dataType"][0] == "date"]
 
-    def _update_schema(self, new_prop: str, index: Optional[str] = None):
+        return cur_properties
+
+    def _update_schema(
+        self, new_prop: str, property_value: Union[List, str, int, float, bool], index: Optional[str] = None
+    ):
         """
         Updates the schema with a new property.
         """
         index = self._sanitize_index_name(index) or self.index
-        property_dict = {"dataType": ["string"], "description": f"dynamic property {new_prop}", "name": new_prop}
+        data_type = self._get_weaviate_type_of_value(property_value)
+
+        property_dict = {"dataType": [data_type], "description": f"dynamic property {new_prop}", "name": new_prop}
         self.weaviate_client.schema.property.create(index, property_dict)
+
+    @staticmethod
+    def _get_weaviate_type_of_value(value: Union[List, str, int, float, bool]) -> str:
+        """
+        Infers corresponding Weaviate data type for a value.
+        """
+        data_type = ""
+        list_of_values = False
+        if isinstance(value, list):
+            list_of_values = True
+            value = value[0]
+
+        if isinstance(value, str):
+            # If the value is parsable by datetime, it is a date
+            try:
+                convert_date_to_rfc3339(value)
+                data_type = "date"
+            # Otherwise, the value is a string
+            except ValueError:
+                data_type = "string"
+        elif isinstance(value, int):
+            data_type = "int"
+        elif isinstance(value, float):
+            data_type = "number"
+        elif isinstance(value, bool):
+            data_type = "boolean"
+
+        if list_of_values:
+            data_type += "[]"
+
+        return data_type
 
     def _check_document(self, cur_props: List[str], doc: dict) -> List[str]:
         """
@@ -458,9 +492,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     if self.similarity == "cosine":
                         self.normalize_embedding(vector)
 
-                    # rename as weaviate doesn't like "_" in field names
-                    _doc["contenttype"] = _doc.pop("content_type")
-
                     # Converting content to JSON-string as Weaviate doesn't allow other nested list for tables
                     _doc["content"] = json.dumps(_doc["content"])
 
@@ -469,12 +500,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     missing_props = self._check_document(current_properties, _doc)
                     if missing_props:
                         for property in missing_props:
-                            self._update_schema(property, index)
+                            self._update_schema(property, _doc[property], index)
                             current_properties.append(property)
 
-                    self.weaviate_client.batch.add_data_object(
-                        _doc, class_name=index, uuid=doc_id, vector=vector
-                    )  # docs_batch
+                    # Weaviate requires dates to be in RFC3339 format
+                    date_fields = self._get_date_properties(index)
+                    for date_field in date_fields:
+                        _doc[date_field] = convert_date_to_rfc3339(_doc[date_field])
+
+                    docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
 
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create_objects()
@@ -491,23 +525,43 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 progress_bar.update(batch_size)
         progress_bar.close()
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, Union[List, str, int, float, bool]], index: str = None):
         """
         Update the metadata dictionary of a document by specifying its string id.
+        Overwrites only the specified fields, the unspecified ones remain unchanged.
         """
         if not index:
             index = self.index
+
+        current_properties = self._get_current_properties(index)
+
+        # Check if the new metadata contains additional properties and append them to the schema
+        missing_props = self._check_document(current_properties, meta)
+        if missing_props:
+            for property in missing_props:
+                self._update_schema(property, meta[property], index)
+                current_properties.append(property)
+
+        # Weaviate requires dates to be in RFC3339 format
+        date_fields = self._get_date_properties(index)
+        for date_field in date_fields:
+            if isinstance(meta[date_field], str):
+                meta[date_field] = convert_date_to_rfc3339(str(meta[date_field]))
+
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
-    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_embedding_count(
+        self, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None
+    ) -> int:
         """
-        Return the number of embeddings in the document store, which is the same as the number of documents since every document has a default embedding
+        Return the number of embeddings in the document store, which is the same as the number of documents since
+        every document has a default embedding.
         """
         return self.get_document_count(filters=filters, index=index)
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -524,7 +578,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index) or self.index
         doc_count = 0
         if filters:
-            filter_dict = self._build_filter_clause(filters=filters)
+            filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
             result = (
                 self.weaviate_client.query.aggregate(index).with_fields("meta { count }").with_where(filter_dict).do()
             )
@@ -541,7 +595,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -567,8 +621,32 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -585,7 +663,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: Optional[str],
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
     ) -> Generator[dict, None, None]:
@@ -598,8 +676,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
         properties = self._get_current_properties(index)
         properties.append("_additional {id, certainty, vector}")
 
-        num_of_documents = self.get_document_count(index=index, filters=filters)
-        all_docs: List[Dict] = []
+        if filters:
+            filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+            result = (
+                self.weaviate_client.query.get(class_name=index, properties=properties).with_where(filter_dict).do()
+            )
+        else:
+            result = self.weaviate_client.query.get(class_name=index, properties=properties).do()
 
         # Inherent Weaviate limitation to 100 elements forces us to loop here:
         #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.data.html?highlight=100#weaviate.data.DataObject.get
@@ -629,7 +712,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -657,8 +740,32 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
@@ -678,7 +785,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -688,7 +795,69 @@ class WeaviateDocumentStore(BaseDocumentStore):
         that are most relevant to the query as defined by Weaviate semantic search.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return per query.
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
                             https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
@@ -703,7 +872,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if custom_query:
             query_output = self.weaviate_client.query.raw(custom_query)
         elif filters:
-            filter_dict = self._build_filter_clause(filters)
+            filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
             query_output = (
                 self.weaviate_client.query.get(class_name=index, properties=properties)
                 .with_where(filter_dict)
@@ -732,7 +901,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[dict] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -742,8 +911,69 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return
         :param index: index name for storing the docs and metadata
         :param return_embedding: To return document embedding
@@ -767,7 +997,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         query_string = {"vector": query_emb}
         if filters:
-            filter_dict = self._build_filter_clause(filters)
+            filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
             query_output = (
                 self.weaviate_client.query.get(class_name=index, properties=properties)
                 .with_where(filter_dict)
@@ -799,7 +1029,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         retriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
     ):
@@ -811,8 +1041,32 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param index: Index name to update
         :param update_existing_embeddings: Weaviate mandates an embedding while creating the document itself.
         This option must be always true for weaviate and it will update the embeddings for all the documents.
-        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
@@ -856,13 +1110,38 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
         :param index: Index name to delete the document from.
-        :param filters: Optional filters to narrow down the documents to be deleted.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :return: None
         """
         if headers:
@@ -880,7 +1159,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -889,11 +1168,35 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param index: Index name to delete the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
-        :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
-            If filters are provided along with a list of IDs, this method deletes the
-            intersection of the two query results (documents that match the filters and
-            have their ID in the list).
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
+                            If filters are provided along with a list of IDs, this method deletes the
+                            intersection of the two query results (documents that match the filters and
+                            have their ID in the list).
         :return: None
         """
         if headers:
