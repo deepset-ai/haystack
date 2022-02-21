@@ -5,8 +5,9 @@ import json
 from unittest.mock import Mock
 import pytest
 import responses
-from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 
+from haystack import __version__
+from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import (
@@ -44,7 +45,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
     pipeline.save_to_yaml(tmp_path / "test.yaml")
     with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
         saved_yaml = stream.read()
-    expected_yaml = """
+    expected_yaml = f"""
         components:
         - name: ESRetriever
           params:
@@ -71,7 +72,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
             - ESRetriever
             name: Reader
           type: Pipeline
-        version: '0.8'
+        version: {__version__}
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
@@ -104,7 +105,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
     pipeline.save_to_yaml(tmp_path / "test.yaml")
     with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
         saved_yaml = stream.read()
-    expected_yaml = """
+    expected_yaml = f"""
         components:
         - name: ESRetriever
           params:
@@ -131,7 +132,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
             - ESRetriever
             name: Reader
           type: Pipeline
-        version: '0.8'
+        version: {__version__}
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
