@@ -216,7 +216,7 @@ class ComparisonOperation(ABC):
         pass
 
     @abstractmethod
-    def convert_to_sql(self):
+    def convert_to_sql(self, meta_document_orm):
         """
         Converts the ComparisonOperation instance to an SQL filter.
         """
