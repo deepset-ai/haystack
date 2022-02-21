@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional, Set, Tuple
 
+from haystack import __version__
 import haystack.document_stores
 import haystack.nodes
 import pydantic.schema
@@ -15,8 +16,8 @@ from pydantic.schema import field_singleton_schema as _field_singleton_schema
 from pydantic.typing import is_callable_type
 from pydantic.utils import lenient_issubclass
 
-schema_version = "0.7"
-filename = f"haystack-pipeline.{schema_version}.schema.json"
+schema_version = __version__
+filename = f"haystack-pipeline-{schema_version}.schema.json"
 destination_path = Path(__file__).parent.parent.parent / "json-schemas" / filename
 
 
