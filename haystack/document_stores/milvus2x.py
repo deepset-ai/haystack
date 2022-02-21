@@ -479,6 +479,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         ids: Optional[List[str]] = None,
         filters: Optional[Dict[str, List[str]]] = None,
         headers: Optional[Dict[str, str]] = None,
+        batch_size: int = 10_000,
     ):
         """
         Delete all documents (from SQL AND Milvus).
@@ -493,8 +494,13 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if ids:
             self._delete_vector_ids_from_milvus(ids=ids, index=index)
         elif filters:
-            existing_docs = super().get_all_documents(filters=filters, index=index)
-            self._delete_vector_ids_from_milvus(documents=existing_docs, index=index)
+            batch = []
+            for existing_docs in super().get_all_documents_generator(filters=filters, index=index, batch_size=batch_size):
+                batch.append(existing_docs)
+                if len(batch) == batch_size:
+                    self._delete_vector_ids_from_milvus(documents=batch, index=index)
+            if len(batch) != 0:
+                self._delete_vector_ids_from_milvus(documents=batch, index=index)
         else:
             self.collection.drop()
             self.collection = self._create_collection_and_index_if_not_exist(self.index)
