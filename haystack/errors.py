@@ -29,13 +29,13 @@ class PipelineError(HaystackError):
 
 
 class PipelineValidationError(PipelineError, ValidationError):
+    """ 
+    Exception for issues that occur while loading a pipeline 
+    
+    `PipelineValidationError` is quite informative, as it 
+    inherit from `jsonschema.exceptions.ValidationError`. 
+    See [https://python-jsonschema.readthedocs.io/en/latest/errors/]
+    for details about the information it carries.
     """
-    Exception for issues that occur while loading a pipeline
-
-    `PipelineValidationErrors` are quite informative, as they
-    inherit from `jsonschema.exceptions.ValidationError`.
-    See https://python-jsonschema.readthedocs.io/en/latest/errors/
-    form details of the information they carry.
-    """
-
+    
     pass
