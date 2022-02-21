@@ -82,7 +82,7 @@ class BasePipeline:
 
         new_schema = {}
         for key, value in schema.items():
-            if key != key_to_remove:    
+            if key != key_to_remove:
                 if isinstance(value, dict):
                     new_schema[key] = cls._remove_nested_keys_from_json_schema(value, key_to_remove)
                 elif isinstance(value, list):
@@ -101,7 +101,9 @@ class BasePipeline:
         :return: None if validation is successful
         :raise: `PipelineValidationError` in case of issues.
         """
-        with open(Path(__file__).parent / "json-schemas" / f"haystack-pipeline-{version}.schema.json", "r") as schema_file:
+        with open(
+            Path(__file__).parent / "json-schemas" / f"haystack-pipeline-{version}.schema.json", "r"
+        ) as schema_file:
             schema = json.load(schema_file)
             schema = cls._remove_nested_keys_from_json_schema(schema=schema, key_to_remove="additionalProperties")
 
