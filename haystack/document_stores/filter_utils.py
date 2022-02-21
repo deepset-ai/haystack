@@ -321,7 +321,7 @@ class OrOperation(LogicalFilterClause):
     """
     Handles conversion of logical 'OR' operations.
     """
-    
+
     def evaluate(self, fields) -> Optional[bool]:
         return any(condition.evaluate(fields) for condition in self.conditions)
 
@@ -400,7 +400,7 @@ class NeOperation(ComparisonOperation):
         if self.field_name not in fields:
             return False
         return fields[self.field_name] != self.comparison_value
-      
+
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Dict[str, Union[str, int, float, bool]]]]]:
         assert not isinstance(self.comparison_value, list), "Use '$nin' operation for lists as comparison values."
         return {"bool": {"must_not": {"term": {self.field_name: self.comparison_value}}}}
@@ -453,7 +453,7 @@ class GtOperation(ComparisonOperation):
         if self.field_name not in fields:
             return False
         return fields[self.field_name] > self.comparison_value
-      
+
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$gt' operation must not be a list."
         return {"range": {self.field_name: {"gt": self.comparison_value}}}
