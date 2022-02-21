@@ -64,7 +64,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
-        use_system_proxy: bool = False
+        use_system_proxy: bool = False,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -173,7 +173,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
-            use_system_proxy=use_system_proxy
+            use_system_proxy=use_system_proxy,
         )
 
         self.client = self._init_elastic_client(
@@ -188,7 +188,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             ca_certs=ca_certs,
             verify_certs=verify_certs,
             timeout=timeout,
-            use_system_proxy=use_system_proxy
+            use_system_proxy=use_system_proxy,
         )
 
         # configure mappings to ES fields that will be used for querying / displaying results
@@ -254,7 +254,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         ca_certs: Optional[str],
         verify_certs: bool,
         timeout: int,
-        use_system_proxy: bool
+        use_system_proxy: bool,
     ) -> Elasticsearch:
 
         hosts = self._prepare_hosts(host, port)
