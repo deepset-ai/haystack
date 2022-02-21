@@ -350,4 +350,4 @@ jobs:
     - name: Run Milvus2 tests
       run: |
         export MILVUS2_ENABLED=1
-        pytest -s test/test_document_store.py test/test_eval.py test/test_faiss_and_milvus.py test/test_pipeline.py test/test_retriever.py test/test_standard_pipelines.py --document_store_type="milvus"
+        pytest -s test/test_document_store.py test/test_eval.py test/test_faiss_and_milvus.py test/test_pipeline.py test/test_retriever.py test/test_standard_pipelines.py --document_store_type="milvus2"
