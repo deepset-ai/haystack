@@ -103,16 +103,19 @@ def stop_service(document_store):
     else:
         logger.warning(f"No support yet for auto stopping the service behind a {ds_class}")
 
+
 def launch_milvus(sleep=15):
     # Start a Milvus server via docker
 
     logger.debug("Starting Milvus ...")
 
-    milvus_dir = Path.home()/"milvus"
+    milvus_dir = Path.home() / "milvus"
     milvus_dir.mkdir(exist_ok=True)
 
-    request = requests.get("https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml")
-    with open(milvus_dir/"docker-compose.yml", "wb") as f:
+    request = requests.get(
+        "https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml"
+    )
+    with open(milvus_dir / "docker-compose.yml", "wb") as f:
         f.write(request.content)
 
     status = subprocess.run(["cd /home/$USER/milvus/ && docker-compose up -d"], shell=True)
@@ -124,7 +127,6 @@ def launch_milvus(sleep=15):
         )
     else:
         time.sleep(sleep)
-
 
 
 def launch_milvus1(sleep=15):
