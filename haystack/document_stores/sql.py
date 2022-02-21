@@ -34,7 +34,6 @@ from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 
-
 logger = logging.getLogger(__name__)
 Base = declarative_base()  # type: Any
 
@@ -107,6 +106,7 @@ class MetaLabelORM(ORMBase):
         ),
         {},
     )  # type: ignore
+
 
 class SQLDocumentStore(BaseDocumentStore):
     def __init__(
