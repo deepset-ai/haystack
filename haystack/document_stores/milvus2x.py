@@ -495,7 +495,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self._delete_vector_ids_from_milvus(ids=ids, index=index)
         elif filters:
             batch = []
-            for existing_docs in super().get_all_documents_generator(filters=filters, index=index, batch_size=batch_size):
+            for existing_docs in super().get_all_documents_generator(
+                filters=filters, index=index, batch_size=batch_size
+            ):
                 batch.append(existing_docs)
                 if len(batch) == batch_size:
                     self._delete_vector_ids_from_milvus(documents=batch, index=index)
