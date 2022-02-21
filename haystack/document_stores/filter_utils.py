@@ -282,11 +282,18 @@ class NotOperation(LogicalFilterClause):
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
         return {"bool": {"must_not": conditions}}
+<<<<<<< HEAD
     
     def convert_to_sql(self, meta_document_orm):
         conditions = [meta_document_orm.document_id.in_(condition.convert_to_sql(meta_document_orm)) for condition in self.conditions]
         return select(meta_document_orm.document_id).filter(~or_(*conditions))
     
+=======
+
+    def convert_to_sql(self):
+        conditions = [MetaDocumentORM.document_id.in_(condition.convert_to_sql()) for condition in self.conditions]
+        return select(MetaDocumentORM.document_id).filter(~or_(*conditions))
+>>>>>>> 9e300c21d58c5acdbebbb37a3f265592fed514ba
 
     def convert_to_weaviate(self) -> Dict[str, Union[str, int, float, bool, List[Dict]]]:
         conditions = [condition.invert().convert_to_weaviate() for condition in self.conditions]
