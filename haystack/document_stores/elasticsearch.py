@@ -3,11 +3,9 @@ from typing import List, Optional, Type, Union, Dict, Any, Generator
 
 import json
 import logging
-import os
 import time
 from copy import deepcopy
 from string import Template
-import elasticsearch
 
 import numpy as np
 from scipy.special import expit
