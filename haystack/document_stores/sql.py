@@ -31,6 +31,8 @@ except (ImportError, ModuleNotFoundError) as ie:
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore
 
+from haystack.document_stores.filter_utils import LogicalFilterClause
+
 
 logger = logging.getLogger(__name__)
 Base = declarative_base()  # type: Any
@@ -294,11 +296,9 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
-            for key, values in filters.items():
-                documents_query = documents_query.join(MetaDocumentORM, aliased=True).filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
-                )
+            parsed_filter = LogicalFilterClause.parse(filters)
+            select_ids = parsed_filter.convert_to_sql(MetaDocumentORM)
+            documents_query = documents_query.filter(DocumentORM.id.in_(select_ids))
 
         if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
