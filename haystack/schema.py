@@ -9,6 +9,8 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+# We are using Pydantic dataclasses instead of vanilla Python's
+# See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
 
 if typing.TYPE_CHECKING:
