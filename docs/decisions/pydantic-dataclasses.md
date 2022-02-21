@@ -8,7 +8,7 @@ Technical Story: https://github.com/deepset-ai/haystack/pull/1598
 
 ## Context and Problem Statement
 
-Originally we implemented Haystack's primitive based on Python's vanilla `dataclasses`.
+Originally we implemented Haystack's primitive based on Python's vanilla `dataclasses`. However, shortly after we realized this causes issues with FastAPI, which uses Pydantic's implementation. We need to decide which version (vanilla Python's or Pydantic's) to use in our codebase.
 
 ## Decision Drivers 
 
