@@ -232,7 +232,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             self.delete_index(index)
             self.delete_index(label_index)
             self._create_document_index(index)
-            self._create_label_index(index)
+            self._create_label_index(label_index)
         elif create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
