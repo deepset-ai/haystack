@@ -28,14 +28,18 @@ class PipelineError(HaystackError):
     pass
 
 
-class PipelineValidationError(PipelineError, ValidationError):
+class PipelineValidationError(PipelineError):
     """ 
     Exception for issues that occur while loading a pipeline 
     
     `PipelineValidationError` is quite informative, as it 
-    inherit from `jsonschema.exceptions.ValidationError`. 
+    wraps a `jsonschema.exceptions.ValidationError`. 
     See [https://python-jsonschema.readthedocs.io/en/latest/errors/]
     for details about the information it carries.
     """
-    
-    pass
+
+    def __init__(self, source:ValidationError = None):
+        self.source = source
+
+    def __getattr__(self, attr):
+        return getattr(self.source, attr)

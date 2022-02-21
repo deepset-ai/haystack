@@ -110,6 +110,8 @@ class BasePipeline:
         try:
             validator = Draft7Validator(schema)
             validator.validate(instance=pipeline_config)
+            logging.debug("Pipeline's config validated successfully.")
+            
         except ValidationError as validation_error:
             raise PipelineValidationError(validation_error)
 
