@@ -68,6 +68,7 @@ else:
 
 ## Links <!-- optional -->
 
+* https://pydantic-docs.helpmanual.io/usage/dataclasses/
 * https://github.com/deepset-ai/haystack/pull/1598
 * https://github.com/deepset-ai/haystack/issues/1593
 * https://github.com/deepset-ai/haystack/issues/1582
