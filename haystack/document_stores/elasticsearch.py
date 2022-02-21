@@ -1,19 +1,18 @@
 from modulefinder import Module
-from typing import List, Optional, Union, Dict, Any, Generator
+from typing import List, Optional, Type, Union, Dict, Any, Generator
 
 import json
 import logging
 import time
 from copy import deepcopy
 from string import Template
-from collections import defaultdict
 
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
 
 try:
-    from elasticsearch import Elasticsearch, RequestsHttpConnection
+    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
 except (ImportError, ModuleNotFoundError) as ie:
@@ -65,6 +64,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
+        use_system_proxy: bool = False,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -137,6 +137,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param synonym_type: Synonym filter type can be passed.
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+        :param use_system_proxy: Whether to use system proxy.
 
         """
         # save init parameters to enable export of component config as YAML
@@ -172,6 +173,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
+            use_system_proxy=use_system_proxy,
         )
 
         self.client = self._init_elastic_client(
@@ -186,6 +188,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             ca_certs=ca_certs,
             verify_certs=verify_certs,
             timeout=timeout,
+            use_system_proxy=use_system_proxy,
         )
 
         # configure mappings to ES fields that will be used for querying / displaying results
@@ -251,12 +254,17 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         ca_certs: Optional[str],
         verify_certs: bool,
         timeout: int,
+        use_system_proxy: bool,
     ) -> Elasticsearch:
 
         hosts = self._prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
+
+        connection_class: Type[Connection] = Urllib3HttpConnection
+        if use_system_proxy:
+            connection_class = RequestsHttpConnection
 
         if api_key:
             # api key authentication
@@ -267,6 +275,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 ca_certs=ca_certs,
                 verify_certs=verify_certs,
                 timeout=timeout,
+                connection_class=connection_class,
             )
         elif aws4auth:
             # aws elasticsearch with IAM
@@ -288,11 +297,17 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 ca_certs=ca_certs,
                 verify_certs=verify_certs,
                 timeout=timeout,
+                connection_class=connection_class,
             )
         else:
             # there is no authentication for this elasticsearch instance
             client = Elasticsearch(
-                hosts=hosts, scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout
+                hosts=hosts,
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
             )
 
         # Test connection
