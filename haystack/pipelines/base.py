@@ -42,7 +42,8 @@ logger = logging.getLogger(__name__)
 
 
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
-CAMEL_CASE_TO_SNAKE_CASE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
+CAMEL_CASE_TO_SNAKE_CASE_REGEX = re.compile(r"(?<=[a-z])(?=[A-Z0-9])")
+VALID_CODE_GEN_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/.]+$")
 MODULE_NOT_FOUND = "MODULE_NOT_FOUND"
 CODE_GEN_ALLOWED_IMPORTS = ["haystack.document_stores", "haystack.nodes"]
 CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
@@ -1077,13 +1078,11 @@ class Pipeline(BasePipeline):
 
         :param return_defaults: whether to output parameters that have the default values.
         """
-        nodes = self.graph.nodes
-
         pipeline_name = ROOT_NODE_TO_PIPELINE_NAME[self.root_node.lower()]
         pipelines: dict = {pipeline_name: {"name": pipeline_name, "type": self.__class__.__name__, "nodes": []}}
 
         components = {}
-        for node in nodes:
+        for node in self.graph.nodes:
             if node == self.root_node:
                 continue
             component_instance = self.graph.nodes.get(node)["component"]
@@ -1096,25 +1095,37 @@ class Pipeline(BasePipeline):
             for component_parent in component_parent_classes:
                 component_signature = {**component_signature, **inspect.signature(component_parent).parameters}
 
-            for key, value in component_params.items():
+            for param_key, param_value in component_params.items():
                 # A parameter for a Component could be another Component. For instance, a Retriever has
                 # the DocumentStore as a parameter.
                 # Component configs must be a dict with a "type" key. The "type" keys distinguishes between
                 # other parameters like "custom_mapping" that are dicts.
                 # This currently only checks for the case single-level nesting case, wherein, "a Component has another
                 # Component as a parameter". For deeper nesting cases, this function should be made recursive.
-                if isinstance(value, dict) and "type" in value.keys():  # the parameter is a Component
-                    components[node]["params"][key] = value["type"]
-                    sub_component_signature = inspect.signature(BaseComponent.subclasses[value["type"]]).parameters
-                    params = {
+                if isinstance(param_value, dict) and "type" in param_value.keys():  # the parameter is a Component
+                    sub_component = param_value
+                    sub_component_type_name = sub_component["type"]
+                    sub_component_signature = inspect.signature(
+                        BaseComponent.subclasses[sub_component_type_name]
+                    ).parameters
+                    sub_component_params = {
                         k: v
-                        for k, v in value["params"].items()
+                        for k, v in sub_component["params"].items()
                         if sub_component_signature[k].default != v or return_defaults is True
                     }
-                    components[value["type"]] = {"name": value["type"], "type": value["type"], "params": params}
+
+                    sub_component_name = self._generate_component_name(
+                        type_name=sub_component_type_name, params=sub_component_params, existing_components=components
+                    )
+                    components[sub_component_name] = {
+                        "name": sub_component_name,
+                        "type": sub_component_type_name,
+                        "params": sub_component_params,
+                    }
+                    components[node]["params"][param_key] = sub_component_name
                 else:
-                    if component_signature[key].default != value or return_defaults is True:
-                        components[node]["params"][key] = value
+                    if component_signature[param_key].default != param_value or return_defaults is True:
+                        components[node]["params"][param_key] = param_value
 
             # create the Pipeline definition with how the Component are connected
             pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
@@ -1125,6 +1136,22 @@ class Pipeline(BasePipeline):
             "version": __version__,
         }
         return config
+
+    def _generate_component_name(
+        self,
+        type_name: str,
+        params: Dict[str, Any],
+        existing_components: Dict[str, Any],
+    ):
+        component_name: str = type_name
+        # add number if there are multiple distinct ones of the same type
+        while component_name in existing_components and params != existing_components[component_name]["params"]:
+            occupied_num = 1
+            if len(component_name) > len(type_name):
+                occupied_num = int(component_name[len(type_name) + 1 :])
+            new_num = occupied_num + 1
+            component_name = f"{type_name}_{new_num}"
+        return component_name
 
     def print_eval_report(
         self,
@@ -1447,6 +1474,27 @@ class _PipelineCodeGen:
         return CAMEL_CASE_TO_SNAKE_CASE_REGEX.sub("_", input).lower()
 
     @classmethod
+    def _validate_user_input(cls, input: str):
+        if isinstance(input, str) and not VALID_CODE_GEN_INPUT_REGEX.match(input):
+            raise ValueError(f"'{input}' is not a valid code gen variable name. Use word characters only.")
+
+    @classmethod
+    def _validate_config(cls, pipeline_config: Dict[str, Any]):
+        for component in pipeline_config["components"]:
+            cls._validate_user_input(component["name"])
+            cls._validate_user_input(component["type"])
+            for k, v in component.get("params", {}).items():
+                cls._validate_user_input(k)
+                cls._validate_user_input(v)
+        for pipeline in pipeline_config["pipelines"]:
+            cls._validate_user_input(pipeline["name"])
+            cls._validate_user_input(pipeline["type"])
+            for node in pipeline["nodes"]:
+                cls._validate_user_input(node["name"])
+                for input in node["inputs"]:
+                    cls._validate_user_input(input)
+
+    @classmethod
     def generate_code(
         cls,
         pipeline: BasePipeline,
@@ -1455,6 +1503,8 @@ class _PipelineCodeGen:
         comment: Optional[str] = None,
     ) -> str:
         pipeline_config = pipeline.get_config()
+        cls._validate_config(pipeline_config)
+
         component_definitions = pipeline._get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=False
         )
