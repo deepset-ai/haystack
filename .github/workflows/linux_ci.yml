@@ -115,7 +115,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
-          pip install .[test]
+          pip install .[all]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
@@ -160,7 +160,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
-          pip install .[test]
+          pip install .[all]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html

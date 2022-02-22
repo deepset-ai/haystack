@@ -18,16 +18,15 @@ from haystack.errors import DuplicateDocumentError
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
+logger = logging.getLogger(__name__)
 
 try:
-    from numba import njit
-except:
+    from numba import njit  # pylint: disable=import-error
+except (ImportError, ModuleNotFoundError):
+    logger.info("Numba not found, replacing njit() with no-op implementation. " "Enable it with 'pip install numba'.")
 
     def njit(f):
         return f
-
-
-logger = logging.getLogger(__name__)
 
 
 @njit  # (fastmath=True)
@@ -198,11 +197,10 @@ class BaseDocumentStore(BaseComponent):
     def __next__(self):
         if len(self.ids_iterator) == 0:
             raise StopIteration
-        else:
-            curr_id = self.ids_iterator[0]
-            ret = self.get_document_by_id(curr_id)
-            self.ids_iterator = self.ids_iterator[1:]
-            return ret
+        curr_id = self.ids_iterator[0]
+        ret = self.get_document_by_id(curr_id)
+        self.ids_iterator = self.ids_iterator[1:]
+        return ret
 
     @abstractmethod
     def get_all_labels(
