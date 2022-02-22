@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "haystack.fullname" . }}
+  labels:
+    {{- include "haystack.labels" . | nindent 4 }}
+data:
+{{ (.Files.Glob "pipelines/*").AsConfig | indent 2 }}

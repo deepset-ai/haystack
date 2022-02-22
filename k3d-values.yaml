@@ -1,0 +1,10 @@
+# create cluster with the following command to expose ui port 8501
+# k3d cluster edit k3s-default --port-add "8501:80@loadbalancer"
+ingress:
+  enabled: true
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix

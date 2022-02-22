@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "haystack.fullname" . }}
+  labels:
+    {{- include "haystack.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "haystack.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "haystack.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "haystack.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}-api
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.api.repository }}:{{ .Values.image.api.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          ports:
+            - name: api
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            httpGet:
+              path: /docs
+              port: api              
+          readinessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            httpGet:
+              path: /docs
+              port: api              
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: DOCUMENTSTORE_PARAMS_HOST
+              value: elasticsearch-master
+            - name: PIPELINE_YAML_PATH
+              value: /etc/config/my_pipelines.yaml
+          command: ["/bin/bash", "-c", "sleep 10 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 8 --timeout 180"]
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+        - name: {{ .Chart.Name }}-ui
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.ui.repository }}:{{ .Values.image.ui.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.ui.pullPolicy }}
+          ports:
+            - name: ui
+              containerPort: 8501
+              protocol: TCP
+          livenessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: /
+              port: ui
+          readinessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: /
+              port: ui
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: API_ENDPOINT
+              value: "http://{{ include "haystack.fullname" . }}:{{ .Values.service.port }}"
+          command: ["/bin/bash", "-c", "sleep 15 && python -m streamlit run ui/webapp.py"]
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            # Provide the name of the ConfigMap containing the files you want
+            # to add to the container
+            name: {{ include "haystack.fullname" . }}
