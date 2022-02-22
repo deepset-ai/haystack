@@ -8,13 +8,16 @@ import responses
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import (
     Pipeline,
     DocumentSearchPipeline,
     RootNode,
+    ExtractiveQAPipeline
 )
-from haystack.pipelines import ExtractiveQAPipeline
+from haystack.pipelines.base import _PipelineCodeGen
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 
 from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
@@ -178,6 +181,117 @@ def test_to_code():
     assert locals()["index_pipeline_from_code"] is not None
     assert query_pipeline.get_config() == locals()["query_pipeline_from_code"].get_config()
     assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_simple_dense_pipeline():
+    doc_store = InMemoryDocumentStore(index="my-index")
+    retriever = EmbeddingRetriever(document_store=doc_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever, name="retri", inputs=["Query"])
+
+    code = _PipelineCodeGen.generate_code(pipeline=pipeline, pipeline_variable_name="p", generate_imports=False)
+    assert code == ("in_memory_document_store = InMemoryDocumentStore(index=\"my-index\")\n"
+                   "retri = EmbeddingRetriever(document_store=in_memory_document_store, embedding_model=\"sentence-transformers/all-MiniLM-L6-v2\")\n"
+                   "\n"
+                   "p = Pipeline()\n"
+                   "p.add_node(component=retri, name=\"retri\", inputs=[\"Query\"])")
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_simple_sparse_pipeline():
+    doc_store = ElasticsearchDocumentStore(index="my-index")
+    retriever = ElasticsearchRetriever(document_store=doc_store, top_k=20)
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever, name="retri", inputs=["Query"])
+
+    code = _PipelineCodeGen.generate_code(pipeline=pipeline, pipeline_variable_name="p", generate_imports=False)
+    assert code == ("elasticsearch_document_store = ElasticsearchDocumentStore(index=\"my-index\")\n"
+                   "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+                   "\n"
+                   "p = Pipeline()\n"
+                   "p.add_node(component=retri, name=\"retri\", inputs=[\"Query\"])")
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_dual_retriever_pipeline():
+    es_doc_store = ElasticsearchDocumentStore(index="my-index")
+    es_retriever = ElasticsearchRetriever(document_store=es_doc_store, top_k=20)
+    dense_doc_store = InMemoryDocumentStore(index="my-index")
+    emb_retriever = EmbeddingRetriever(document_store=dense_doc_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])
+    p_ensemble.add_node(component=emb_retriever, name="EmbeddingRetriever", inputs=["Query"])
+    p_ensemble.add_node(
+        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"]
+    )
+
+    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
+    assert code == ("elasticsearch_document_store = ElasticsearchDocumentStore(index=\"my-index\")\n"
+                    "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"                  
+                    "in_memory_document_store = InMemoryDocumentStore(index=\"my-index\")\n" 
+                    "embedding_retriever = EmbeddingRetriever(document_store=in_memory_document_store, embedding_model=\"sentence-transformers/all-MiniLM-L6-v2\")\n"
+                    "join_results = JoinDocuments(join_mode=\"merge\")\n"
+                    "\n"
+                    "p = Pipeline()\n"
+                    "p.add_node(component=es_retriever, name=\"EsRetriever\", inputs=[\"Query\"])\n"
+                    "p.add_node(component=embedding_retriever, name=\"EmbeddingRetriever\", inputs=[\"Query\"])\n"
+                    "p.add_node(component=join_results, name=\"JoinResults\", inputs=[\"EsRetriever\", \"EmbeddingRetriever\"])")
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_dual_retriever_pipeline_same_docstore():
+    es_doc_store = ElasticsearchDocumentStore(index="my-index")
+    es_retriever = ElasticsearchRetriever(document_store=es_doc_store, top_k=20)
+    emb_retriever = EmbeddingRetriever(document_store=es_retriever, embedding_model="sentence-transformers/all-MiniLM-L6-v2")
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])
+    p_ensemble.add_node(component=emb_retriever, name="EmbeddingRetriever", inputs=["Query"])
+    p_ensemble.add_node(
+        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"]
+    )
+
+    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
+    assert code == ("elasticsearch_document_store = ElasticsearchDocumentStore(index=\"my-index\")\n"
+                    "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"                  
+                    "embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store, embedding_model=\"sentence-transformers/all-MiniLM-L6-v2\")\n"
+                    "join_results = JoinDocuments(join_mode=\"merge\")\n"
+                    "\n"
+                    "p = Pipeline()\n"
+                    "p.add_node(component=es_retriever, name=\"EsRetriever\", inputs=[\"Query\"])\n"
+                    "p.add_node(component=embedding_retriever, name=\"EmbeddingRetriever\", inputs=[\"Query\"])\n"
+                    "p.add_node(component=join_results, name=\"JoinResults\", inputs=[\"EsRetriever\", \"EmbeddingRetriever\"])")
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_imports():
+    doc_store = ElasticsearchDocumentStore(index="my-index")
+    retriever = ElasticsearchRetriever(document_store=doc_store, top_k=20)
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever, name="retri", inputs=["Query"])
+
+    code = _PipelineCodeGen.generate_code(pipeline=pipeline, pipeline_variable_name="p", generate_imports=True)
+    assert code == ("from haystack.document_stores import ElasticsearchDocumentStore\n"
+                    "from haystack.nodes import ElasticsearchRetriever\n"
+                    "\n"
+                    "elasticsearch_document_store = ElasticsearchDocumentStore(index=\"my-index\")\n"
+                   "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+                   "\n"
+                   "p = Pipeline()\n"
+                   "p.add_node(component=retri, name=\"retri\", inputs=[\"Query\"])")
+
+
+def test_PipelineCodeGen_order_components():
+    dependency_map = {
+        "a": ["aa", "ab"],
+        "aa": [],
+        "ab": ["aba"],
+        "aba": [],
+        "b": ["a", "c"],
+        "c": ["a"]
+    }
+    ordered = _PipelineCodeGen._order_components(dependency_map=dependency_map)
+    assert ordered == ["aa", "aba", "ab", "a", "c", "b"]
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
