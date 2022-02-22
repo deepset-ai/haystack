@@ -1714,6 +1714,10 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     original_documents = document_store_with_docs.get_all_documents(index="haystack_test")
     transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support")
     assert len(original_documents) == len(transferred_documents)
+    assert all("name" in doc.meta for doc in transferred_documents)
+    assert all("date_field" in doc.meta for doc in transferred_documents)
+    assert all("meta_field" not in doc.meta for doc in transferred_documents)
+    assert all("numeric_field" not in doc.meta for doc in transferred_documents)
 
     original_content = set([doc.content for doc in original_documents])
     transferred_content = set([doc.content for doc in transferred_documents])
@@ -1724,11 +1728,14 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
         document_store=new_document_store,
         original_index_name="haystack_test",
         original_content_field="content",
-        original_name_field="name",
-        included_metadata_fields=["date_field"],
+        excluded_metadata_fields=["date_field"],
         index="test_brownfield_support_2",
         preprocessor=PreProcessor(split_length=1, split_respect_sentence_boundary=False)
     )
     transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support_2")
+    assert all("date_field" not in doc.meta for doc in transferred_documents)
+    assert all("name" in doc.meta for doc in transferred_documents)
+    assert all("meta_field" in doc.meta for doc in transferred_documents)
+    assert all("numeric_field" in doc.meta for doc in transferred_documents)
     # Check if number of transferred_documents is equal to number of unique words.
     assert len(transferred_documents) == len(set(" ".join(original_content).split()))
