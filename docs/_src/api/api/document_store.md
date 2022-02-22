@@ -1327,8 +1327,66 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 **Arguments**:
 
 - `query_emb`: Embedding of the query (e.g. gathered from DPR)
-- `filters`: Optional filters to narrow down the search space.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+To use the same logical operator multiple times on the same level, logical operators take
+optionally a list of dictionaries as value.
+Example:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
@@ -1353,8 +1411,30 @@ This can be useful if want to add or change the embeddings for your documents (e
 only documents without embeddings are processed. This mode can be used for
 incremental updating of embeddings, wherein, only newly indexed documents
 get processed.
-- `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
@@ -1405,8 +1485,30 @@ Get all documents from the document store as a list.
 
 - `index`: Name of the index to get the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
-- `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 - `return_embedding`: Whether to return the document embeddings.
 
 <a id="memory.InMemoryDocumentStore.get_all_documents_generator"></a>
@@ -1425,8 +1527,30 @@ documents.
 
 - `index`: Name of the index to get the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
-- `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 - `return_embedding`: Whether to return the document embeddings.
 
 <a id="memory.InMemoryDocumentStore.get_all_labels"></a>
@@ -1452,7 +1576,30 @@ Delete documents in an index. All documents are deleted if no filters are passed
 **Arguments**:
 
 - `index`: Index name to delete the document from.
-- `filters`: Optional filters to narrow down the documents to be deleted.
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 
 **Returns**:
 
@@ -1473,11 +1620,30 @@ Delete documents in an index. All documents are deleted if no filters are passed
 - `index`: Index name to delete the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
-- `filters`: Optional filters to narrow down the documents to be deleted.
-Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
-If filters are provided along with a list of IDs, this method deletes the
-intersection of the two query results (documents that match the filters and
-have their ID in the list).
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 
 **Returns**:
 
@@ -1498,8 +1664,30 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 - `index`: Index name to delete the labels from. If None, the
 DocumentStore's default label index (self.label_index) will be used.
 - `ids`: Optional list of IDs to narrow down the labels to be deleted.
-- `filters`: Optional filters to narrow down the labels to be deleted.
-Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 
 **Returns**:
 
