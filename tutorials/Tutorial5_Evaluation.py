@@ -194,6 +194,7 @@ def tutorial5_evaluation():
     ## Isolated Evaluation Mode
     # The isolated node evaluation uses labels as input to the Reader node instead of the output of the preceeding retriever node.
     # Thereby, we can additionally calculate the upper bounds of the evaluation metrics of the Reader.
+    # Note that even with isolated evaluation enabled, integrated evaluation will still be running.
     eval_result_with_upper_bounds = pipeline.eval(
         labels=eval_labels,
         params={"Retriever": {"top_k": 1}},
