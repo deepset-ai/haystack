@@ -1865,8 +1865,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         f"document_store to use a different name for the embedding_field parameter."
                     )
                 # embedding field with global space_type setting
-                if "method" not in mapping["properties"][self.embedding_field]:
-                    embedding_field_space_type = settings["knn.space_type"]
+                if "method" not in mappings["properties"][self.embedding_field]:
+                    embedding_field_space_type = index_settings["knn.space_type"]
                 # embedding field with local space_type setting
                 else:
                     # embedding field with global space_type setting
