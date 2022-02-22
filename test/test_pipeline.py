@@ -5,8 +5,9 @@ import json
 from unittest.mock import Mock
 import pytest
 import responses
-from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 
+from haystack import __version__
+from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import (
@@ -44,7 +45,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
     pipeline.save_to_yaml(tmp_path / "test.yaml")
     with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
         saved_yaml = stream.read()
-    expected_yaml = """
+    expected_yaml = f"""
         components:
         - name: ESRetriever
           params:
@@ -71,7 +72,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
             - ESRetriever
             name: Reader
           type: Pipeline
-        version: '0.8'
+        version: {__version__}
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
@@ -104,7 +105,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
     pipeline.save_to_yaml(tmp_path / "test.yaml")
     with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
         saved_yaml = stream.read()
-    expected_yaml = """
+    expected_yaml = f"""
         components:
         - name: ESRetriever
           params:
@@ -131,7 +132,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
             - ESRetriever
             name: Reader
           type: Pipeline
-        version: '0.8'
+        version: {__version__}
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
@@ -252,6 +253,129 @@ def test_list_pipelines_on_deepset_cloud():
     pipelines = Pipeline.list_pipelines_on_deepset_cloud(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     assert len(pipelines) == 1
     assert pipelines[0]["name"] == "test_pipeline_config"
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_save_to_deepset_cloud():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_pipeline_config",
+            json={
+                "name": "test_pipeline_config",
+                "pipeline_id": "2184e9c1-c6ec-40a1-9b28-5d2768e5efa2",
+                "status": "UNDEPLOYED",
+                "created_at": "2022-02-01T09:57:03.803991+00:00",
+                "deleted": False,
+                "is_default": False,
+                "indexing": {"status": "IN_PROGRESS", "pending_file_count": 4, "total_file_count": 33},
+            },
+            status=200,
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_pipeline_config_deployed",
+            json={
+                "name": "test_pipeline_config_deployed",
+                "pipeline_id": "8184e0c1-c6ec-40a1-9b28-5d2768e5efa3",
+                "status": "DEPLOYED",
+                "created_at": "2022-02-09T09:57:03.803991+00:00",
+                "deleted": False,
+                "is_default": False,
+                "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 33},
+            },
+            status=200,
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_pipeline_config_copy",
+            json={"errors": ["Pipeline with the name test_pipeline_config_copy does not exists."]},
+            status=404,
+        )
+
+        with open(SAMPLES_PATH / "dc" / "pipeline_config.json", "r") as f:
+            pipeline_config_yaml_response = json.load(f)
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/{DC_TEST_INDEX}/json",
+            json=pipeline_config_yaml_response,
+            status=200,
+        )
+
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            json={"name": "test_pipeline_config_copy"},
+            status=200,
+        )
+
+        responses.add(
+            method=responses.PUT,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_pipeline_config/yaml",
+            json={"name": "test_pipeline_config"},
+            status=200,
+        )
+
+        responses.add(
+            method=responses.PUT,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_pipeline_config_deployed/yaml",
+            json={"errors": ["Updating the pipeline yaml is not allowed for pipelines with status: 'DEPLOYED'"]},
+            status=406,
+        )
+
+    query_pipeline = Pipeline.load_from_deepset_cloud(
+        pipeline_config_name=DC_TEST_INDEX, api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+    index_pipeline = Pipeline.load_from_deepset_cloud(
+        pipeline_config_name=DC_TEST_INDEX, api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, pipeline_name="indexing"
+    )
+
+    Pipeline.save_to_deepset_cloud(
+        query_pipeline=query_pipeline,
+        index_pipeline=index_pipeline,
+        pipeline_config_name="test_pipeline_config_copy",
+        api_endpoint=DC_API_ENDPOINT,
+        api_key=DC_API_KEY,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Pipeline config 'test_pipeline_config' already exists. Set `overwrite=True` to overwrite pipeline config",
+    ):
+        Pipeline.save_to_deepset_cloud(
+            query_pipeline=query_pipeline,
+            index_pipeline=index_pipeline,
+            pipeline_config_name="test_pipeline_config",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+        )
+
+    Pipeline.save_to_deepset_cloud(
+        query_pipeline=query_pipeline,
+        index_pipeline=index_pipeline,
+        pipeline_config_name="test_pipeline_config",
+        api_endpoint=DC_API_ENDPOINT,
+        api_key=DC_API_KEY,
+        overwrite=True,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config 'test_pipeline_config_deployed' first",
+    ):
+        Pipeline.save_to_deepset_cloud(
+            query_pipeline=query_pipeline,
+            index_pipeline=index_pipeline,
+            pipeline_config_name="test_pipeline_config_deployed",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+            overwrite=True,
+        )
 
 
 # @pytest.mark.slow
