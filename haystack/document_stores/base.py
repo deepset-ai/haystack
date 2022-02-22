@@ -10,6 +10,8 @@ from pathlib import Path
 from elasticsearch.helpers import scan
 from tqdm.auto import tqdm
 
+from haystack.document_stores.filter_utils import LogicalFilterClause
+
 try:
     from typing import Literal
 except ImportError:
@@ -591,7 +593,9 @@ def transform_existing_elasticsearch_index_to_document_store(
     included_metadata_fields: Optional[List[str]] = None,
     excluded_metadata_fields: Optional[List[str]] = None,
     store_original_ids: bool = False,
+    index: Optional[str] = None,
     preprocessor: Optional[PreProcessor] = None,
+    batch_size: int = 10_000,
     host: Union[str, List[str]] = "localhost",
     port: Union[int, List[int]] = 9200,
     username: str = "",
@@ -604,11 +608,52 @@ def transform_existing_elasticsearch_index_to_document_store(
     verify_certs: bool = True,
     timeout: int = 30,
 ) -> BaseDocumentStore:
+    """
+    This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
+    the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
+    on a regular basis in order to add new records of the Elasticsearch index to the `DocumentStore`.
+
+    :param document_store: The haystack `DocumentStore` to write the converted `Document` objects to.
+    :param original_index_name: Elasticsearch index containing the records to be converted.
+    :param original_content_field: Elasticsearch field containing the text to be put in the `content` field of the
+        resulting haystack `Document` objects.
+    :param original_name_field: Optional Elasticsearch field containing the title title of the Document.
+    :param included_metadata_fields: List of Elasticsearch fields that shall be stored in the `meta` field of the
+        resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+        all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
+        `included_metadata_fields` and `excluded_metadata_fields` parameters.
+    :param excluded_metadata_fields: List of Elasticsearch fields that shall be excluded from the `meta` field of the
+        resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+        all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
+        `included_metadata_fields` and `excluded_metadata_fields` parameters.
+    :param store_original_ids: Whether to store the ID a record had in the original Elasticsearch index at the
+        `"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
+        if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
+        parameter was set to `False` on the first call of `transform_existing_elasticsearch_index_to_document_store`,
+        all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
+    :param index: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
+    :param preprocessor: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
+        record.
+    :param batch_size: Number of records to process at once.
+    :param host: URL(s) of Elasticsearch nodes.
+    :param port: Ports(s) of Elasticsearch nodes.
+    :param username: Username (standard authentication via http_auth).
+    :param password: Password (standard authentication via http_auth).
+    :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
+    :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
+    :param aws4auth: Authentication for usage with AWS Elasticsearch
+        (can be generated with the requests-aws4auth package).
+    :param scheme: `"https"` or `"http"`, protocol used to connect to your Elasticsearch instance.
+    :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
+        You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
+    :param verify_certs: Whether to be strict about ca certificates.
+    :param timeout: Number of seconds after which an Elasticsearch request times out.
+    """
 
     # This import cannot be at the beginning of the file, as this would result in a circular import
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 
-    # Initialize ELasticsearch client
+    # Initialize Elasticsearch client
     es_client = ElasticsearchDocumentStore._init_elastic_client(
         host=host,
         port=port,
@@ -623,10 +668,25 @@ def transform_existing_elasticsearch_index_to_document_store(
         timeout=timeout,
     )
 
+    # Get existing original ES IDs inside DocumentStore in order to not reindex the corresponding records
+    existing_ids = [doc.meta["_original_es_id"] for doc in document_store.get_all_documents_generator(index=index)
+                    if "_original_es_id" in doc.meta]
+
     # Iterate over each individual record
-    records = scan(client=es_client, query={"query": {"match_all": {}}}, index=original_index_name)
-    number_of_records = es_client.count(index=original_index_name)["count"]
-    for record in tqdm(records, total=number_of_records):
+    query = {"query": {"bool": {"must": [{"match_all": {}}]}}}
+    if existing_ids:
+        filters = LogicalFilterClause.parse({"_id": {"$nin": existing_ids}}).convert_to_elasticsearch()
+        query["query"]["bool"]["filter"] = filters
+    records = scan(client=es_client, query=query, index=original_index_name)
+    number_of_records = es_client.count(index=original_index_name, body=query)["count"]
+    haystack_documents = []
+    for idx, record in enumerate(tqdm(records, total=number_of_records, desc="Converting ES Records")):
+        # Write batch_size number of documents to haystack DocumentStore
+        if (idx + 1) % batch_size == 0:
+            document_store.write_documents(haystack_documents, index=index)
+            haystack_documents = []
+
+        # Get content and metadata of current record
         content = record["_source"].pop(original_content_field, "")
         if content:
             record_doc = {"content": content, "meta": {}}
@@ -647,13 +707,16 @@ def transform_existing_elasticsearch_index_to_document_store(
                 record_doc["meta"].update(record["_source"])
 
             if store_original_ids:
-                record_doc["meta"]["original_es_id"] = record["_id"]
+                record_doc["meta"]["_original_es_id"] = record["_id"]
 
             # Apply preprocessor if provided
             record_doc = preprocessor.process(record_doc) if preprocessor is not None else [record_doc]
 
-            docs = [Document.from_dict(doc) for doc in record_doc]
+            haystack_documents.extend(record_doc)
 
-            document_store.write_documents(docs)
+    if haystack_documents:
+        document_store.write_documents(haystack_documents, index=index)
+
+    return document_store
     
 
