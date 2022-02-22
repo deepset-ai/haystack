@@ -1708,7 +1708,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
         original_content_field="content",
         original_name_field="name",
         included_metadata_fields=["date_field"],
-        index="test_brownfield_support"
+        index="test_brownfield_support",
     )
 
     original_documents = document_store_with_docs.get_all_documents(index="haystack_test")
@@ -1730,7 +1730,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
         original_content_field="content",
         excluded_metadata_fields=["date_field"],
         index="test_brownfield_support_2",
-        preprocessor=PreProcessor(split_length=1, split_respect_sentence_boundary=False)
+        preprocessor=PreProcessor(split_length=1, split_respect_sentence_boundary=False),
     )
     transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support_2")
     assert all("date_field" not in doc.meta for doc in transferred_documents)

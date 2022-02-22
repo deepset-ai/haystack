@@ -376,58 +376,6 @@ def get_batches_from_generator(iterable, n)
 
 Batch elements of an iterable into fixed-length chunks or blocks.
 
-<a id="base.transform_existing_elasticsearch_index_to_document_store"></a>
-
-#### transform\_existing\_elasticsearch\_index\_to\_document\_store
-
-```python
-def transform_existing_elasticsearch_index_to_document_store(document_store: BaseDocumentStore, original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = False, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> BaseDocumentStore
-```
-
-This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
-
-the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
-on a regular basis in order to add new records of the Elasticsearch index to the `DocumentStore`.
-
-**Arguments**:
-
-- `document_store`: The haystack `DocumentStore` to write the converted `Document` objects to.
-- `original_index_name`: Elasticsearch index containing the records to be converted.
-- `original_content_field`: Elasticsearch field containing the text to be put in the `content` field of the
-resulting haystack `Document` objects.
-- `original_name_field`: Optional Elasticsearch field containing the title title of the Document.
-- `included_metadata_fields`: List of Elasticsearch fields that shall be stored in the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `excluded_metadata_fields`: List of Elasticsearch fields that shall be excluded from the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `store_original_ids`: Whether to store the ID a record had in the original Elasticsearch index at the
-`"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
-if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
-parameter was set to `False` on the first call of `transform_existing_elasticsearch_index_to_document_store`,
-all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
-- `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
-- `preprocessor`: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
-record.
-- `batch_size`: Number of records to process at once.
-- `host`: URL(s) of Elasticsearch nodes.
-- `port`: Ports(s) of Elasticsearch nodes.
-- `username`: Username (standard authentication via http_auth).
-- `password`: Password (standard authentication via http_auth).
-- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth).
-- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth).
-- `aws4auth`: Authentication for usage with AWS Elasticsearch
-(can be generated with the requests-aws4auth package).
-- `scheme`: `"https"` or `"http"`, protocol used to connect to your Elasticsearch instance.
-- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
-You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
-- `verify_certs`: Whether to be strict about ca certificates.
-- `timeout`: Number of seconds after which an Elasticsearch request times out.
-- `use_system_proxy`: Whether to use system proxy.
-
 <a id="elasticsearch"></a>
 
 # Module elasticsearch
