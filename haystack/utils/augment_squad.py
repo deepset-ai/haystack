@@ -119,8 +119,7 @@ def get_replacements(
 
     # masks words which were not split into subwords by the tokenizer
     inputs = []
-    for word_index in word_subword_mapping:
-        subword_index = word_subword_mapping[word_index]
+    for subword_index in word_subword_mapping.values():
         input_ids_ = copy(input_ids)
         input_ids_[subword_index] = tokenizer.mask_token_id
         inputs.append((input_ids_, subword_index))

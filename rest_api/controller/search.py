@@ -119,7 +119,8 @@ def _format_filters(filters):
                     f"Remove null values from filters to be compliant with future versions"
                 )
                 continue
-            elif not isinstance(values, list):
+
+            if not isinstance(values, list):
                 logger.warning(
                     f"Request with deprecated filter format ('{key}': {values}). "
                     f"Change to '{key}':[{values}]' to be compliant with future versions"

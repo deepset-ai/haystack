@@ -1207,55 +1207,52 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
-        else:
-            # +1 in similarity to avoid negative numbers (for cosine sim)
-            body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-            if filters:
-                body["query"]["script_score"]["query"] = {
-                    "bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}
-                }
 
-            excluded_meta_data: Optional[list] = None
+        # +1 in similarity to avoid negative numbers (for cosine sim)
+        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            body["query"]["script_score"]["query"] = {
+                "bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}
+            }
 
-            if self.excluded_meta_data:
-                excluded_meta_data = deepcopy(self.excluded_meta_data)
+        excluded_meta_data: Optional[list] = None
 
-                if return_embedding is True and self.embedding_field in excluded_meta_data:
-                    excluded_meta_data.remove(self.embedding_field)
-                elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                    excluded_meta_data.append(self.embedding_field)
-            elif return_embedding is False:
-                excluded_meta_data = [self.embedding_field]
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
 
-            if excluded_meta_data:
-                body["_source"] = {"excludes": excluded_meta_data}
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
 
-            logger.debug(f"Retriever query: {body}")
-            try:
-                result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"][
-                    "hits"
-                ]
-                if len(result) == 0:
-                    count_embeddings = self.get_embedding_count(index=index, headers=headers)
-                    if count_embeddings == 0:
-                        raise RequestError(
-                            400, "search_phase_execution_exception", {"error": "No documents with embeddings."}
-                        )
-            except RequestError as e:
-                if e.error == "search_phase_execution_exception":
-                    error_message: str = (
-                        "search_phase_execution_exception: Likely some of your stored documents don't have embeddings."
-                        " Run the document store's update_embeddings() method."
+        if excluded_meta_data:
+            body["_source"] = {"excludes": excluded_meta_data}
+
+        logger.debug(f"Retriever query: {body}")
+        try:
+            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+            if len(result) == 0:
+                count_embeddings = self.get_embedding_count(index=index, headers=headers)
+                if count_embeddings == 0:
+                    raise RequestError(
+                        400, "search_phase_execution_exception", {"error": "No documents with embeddings."}
                     )
-                    raise RequestError(e.status_code, error_message, e.info)
-                else:
-                    raise e
+        except RequestError as e:
+            if e.error == "search_phase_execution_exception":
+                error_message: str = (
+                    "search_phase_execution_exception: Likely some of your stored documents don't have embeddings."
+                    " Run the document store's update_embeddings() method."
+                )
+                raise RequestError(e.status_code, error_message, e.info)
+            raise e
 
-            documents = [
-                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
-                for hit in result
-            ]
-            return documents
+        documents = [
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+            for hit in result
+        ]
+        return documents
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
@@ -1797,38 +1794,37 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
-        else:
-            # +1 in similarity to avoid negative numbers (for cosine sim)
-            body: Dict[str, Any] = {
-                "size": top_k,
-                "query": self._get_vector_similarity_query(query_emb, top_k),
-            }
-            if filters:
-                body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+        # +1 in similarity to avoid negative numbers (for cosine sim)
+        body: Dict[str, Any] = {
+            "size": top_k,
+            "query": self._get_vector_similarity_query(query_emb, top_k),
+        }
+        if filters:
+            body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-            excluded_meta_data: Optional[list] = None
+        excluded_meta_data: Optional[list] = None
 
-            if self.excluded_meta_data:
-                excluded_meta_data = deepcopy(self.excluded_meta_data)
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
 
-                if return_embedding is True and self.embedding_field in excluded_meta_data:
-                    excluded_meta_data.remove(self.embedding_field)
-                elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                    excluded_meta_data.append(self.embedding_field)
-            elif return_embedding is False:
-                excluded_meta_data = [self.embedding_field]
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
 
-            if excluded_meta_data:
-                body["_source"] = {"excludes": excluded_meta_data}
+        if excluded_meta_data:
+            body["_source"] = {"excludes": excluded_meta_data}
 
-            logger.debug(f"Retriever query: {body}")
-            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+        logger.debug(f"Retriever query: {body}")
+        result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
-            documents = [
-                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
-                for hit in result
-            ]
-            return documents
+        documents = [
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+            for hit in result
+        ]
+        return documents
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
@@ -1868,6 +1864,10 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         f" with the type '{mappings['properties'][self.embedding_field]['type']}'. Please update the "
                         f"document_store to use a different name for the embedding_field parameter."
                     )
+                # embedding field with global space_type setting
+                if "method" not in mapping["properties"][self.embedding_field]:
+                    embedding_field_space_type = settings["knn.space_type"]
+                # embedding field with local space_type setting
                 else:
                     # embedding field with global space_type setting
                     if "method" not in mappings["properties"][self.embedding_field]:

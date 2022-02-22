@@ -109,7 +109,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             sig = signature(self.__class__.__init__)
             self._validate_params_load_from_disk(sig, locals(), kwargs)
             init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
-            self.__class__.__init__(self, **init_params)
+            self.__class__.__init__(self, **init_params)  # pylint: disable=non-parent-init-called
             return
 
         # save init parameters to enable export of component config as YAML
@@ -344,7 +344,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        vector_id = sum([self.faiss_indexes[index].ntotal for index in self.faiss_indexes.keys()])
+        vector_id = sum([index.ntotal for index in self.faiss_indexes.values()])
 
         result = self._query(
             index=index,
