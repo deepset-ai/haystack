@@ -90,6 +90,10 @@ class LogicalFilterClause(ABC):
     def __init__(self, conditions: List[Union["LogicalFilterClause", "ComparisonOperation"]]):
         self.conditions = conditions
 
+    @abstractmethod
+    def evaluate(self, fields) -> bool:
+        pass
+
     @classmethod
     def parse(cls, filter_term: Union[dict, List[dict]]) -> Union["LogicalFilterClause", "ComparisonOperation"]:
         """
@@ -175,6 +179,10 @@ class ComparisonOperation(ABC):
     def __init__(self, field_name: str, comparison_value: Union[str, int, float, bool, List]):
         self.field_name = field_name
         self.comparison_value = comparison_value
+
+    @abstractmethod
+    def evaluate(self, fields) -> bool:
+        pass
 
     @classmethod
     def parse(cls, field_name, comparison_clause: Union[Dict, List, str, float]) -> List["ComparisonOperation"]:
@@ -278,6 +286,9 @@ class NotOperation(LogicalFilterClause):
     Handles conversion of logical 'NOT' operations.
     """
 
+    def evaluate(self, fields) -> bool:
+        return not any(condition.evaluate(fields) for condition in self.conditions)
+
     def convert_to_elasticsearch(self) -> Dict[str, Dict]:
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
@@ -314,6 +325,9 @@ class AndOperation(LogicalFilterClause):
     Handles conversion of logical 'AND' operations.
     """
 
+    def evaluate(self, fields) -> bool:
+        return all(condition.evaluate(fields) for condition in self.conditions)
+
     def convert_to_elasticsearch(self) -> Dict[str, Dict]:
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
         conditions = self._merge_es_range_queries(conditions)
@@ -338,6 +352,9 @@ class OrOperation(LogicalFilterClause):
     """
     Handles conversion of logical 'OR' operations.
     """
+
+    def evaluate(self, fields) -> bool:
+        return any(condition.evaluate(fields) for condition in self.conditions)
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict]:
         conditions = [condition.convert_to_elasticsearch() for condition in self.conditions]
@@ -364,6 +381,11 @@ class EqOperation(ComparisonOperation):
     Handles conversion of the '$eq' comparison operation.
     """
 
+    def evaluate(self, fields) -> bool:
+        if self.field_name not in fields:
+            return False
+        return fields[self.field_name] == self.comparison_value
+
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Union[str, int, float, bool]]]:
         assert not isinstance(self.comparison_value, list), "Use '$in' operation for lists as comparison values."
         return {"term": {self.field_name: self.comparison_value}}
@@ -385,6 +407,12 @@ class InOperation(ComparisonOperation):
     """
     Handles conversion of the '$in' comparison operation.
     """
+
+    def evaluate(self, fields) -> bool:
+        if self.field_name not in fields:
+            return False
+        return fields[self.field_name] in self.comparison_value  # type: ignore
+        # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, List]]:
         assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
@@ -416,6 +444,11 @@ class NeOperation(ComparisonOperation):
     Handles conversion of the '$ne' comparison operation.
     """
 
+    def evaluate(self, fields) -> bool:
+        if self.field_name not in fields:
+            return False
+        return fields[self.field_name] != self.comparison_value
+
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Dict[str, Union[str, int, float, bool]]]]]:
         assert not isinstance(self.comparison_value, list), "Use '$nin' operation for lists as comparison values."
         return {"bool": {"must_not": {"term": {self.field_name: self.comparison_value}}}}
@@ -437,6 +470,12 @@ class NinOperation(ComparisonOperation):
     """
     Handles conversion of the '$nin' comparison operation.
     """
+
+    def evaluate(self, fields) -> bool:
+        if self.field_name not in fields:
+            return False
+        return fields[self.field_name] not in self.comparison_value  # type: ignore
+        # is only initialized with lists, but changing the type annotation would mean duplicating __init__
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Dict[str, List]]]]:
         assert isinstance(self.comparison_value, list), "'$nin' operation requires comparison value to be a list."
@@ -468,6 +507,11 @@ class GtOperation(ComparisonOperation):
     Handles conversion of the '$gt' comparison operation.
     """
 
+    def evaluate(self, fields) -> bool:
+        if self.field_name not in fields:
+            return False
+        return fields[self.field_name] > self.comparison_value
+
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$gt' operation must not be a list."
         return {"range": {self.field_name: {"gt": self.comparison_value}}}
@@ -490,6 +534,11 @@ class GteOperation(ComparisonOperation):
     """
     Handles conversion of the '$gte' comparison operation.
     """
+
+    def evaluate(self, fields) -> bool:
+        if self.field_name not in fields:
+            return False
+        return fields[self.field_name] >= self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$gte' operation must not be a list."
@@ -514,6 +563,11 @@ class LtOperation(ComparisonOperation):
     Handles conversion of the '$lt' comparison operation.
     """
 
+    def evaluate(self, fields) -> bool:
+        if self.field_name not in fields:
+            return False
+        return fields[self.field_name] < self.comparison_value
+
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$lt' operation must not be a list."
         return {"range": {self.field_name: {"lt": self.comparison_value}}}
@@ -536,6 +590,11 @@ class LteOperation(ComparisonOperation):
     """
     Handles conversion of the '$lte' comparison operation.
     """
+
+    def evaluate(self, fields) -> bool:
+        if self.field_name not in fields:
+            return False
+        return fields[self.field_name] <= self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Dict[str, Union[str, float, int]]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$lte' operation must not be a list."
