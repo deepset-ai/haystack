@@ -90,9 +90,8 @@ class BasePipeline:
         :param add_comment: Whether to add a preceding comment that this code has been generated.
                             Default value is False.
         """
-        pipeline_config = self.get_config()
-        code = self._generate_code(
-            pipeline_config=pipeline_config,
+        code = _PipelineCodeGen.generate_code(
+            pipeline=self,
             pipeline_variable_name=pipeline_variable_name,
             generate_imports=generate_imports,
             comment=CODE_GEN_DEFAULT_COMMENT if add_comment else None,
@@ -390,115 +389,6 @@ class BasePipeline:
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
 
     @classmethod
-    def _camel_to_snake_case(cls, input: str) -> str:
-        return CAMEL_CASE_TO_SNAKE_CASE_REGEX.sub("_", input).lower()
-
-    @classmethod
-    def _generate_code(
-        cls,
-        pipeline_config: dict,
-        pipeline_variable_name: str = "pipeline",
-        generate_imports: bool = True,
-        comment: Optional[str] = None,
-    ) -> str:
-        component_definitions = cls._get_component_definitions(
-            pipeline_config=pipeline_config, overwrite_with_env_variables=False
-        )
-        component_variable_names = {name: cls._camel_to_snake_case(name) for name in component_definitions.keys()}
-        pipeline_definition = cls._get_pipeline_definition(pipeline_config=pipeline_config)
-
-        code_parts = []
-        if generate_imports:
-            types_to_import = [component["type"] for component in component_definitions.values()]
-            imports_code = cls._generate_imports_code(types_to_import=types_to_import)
-            code_parts.append(imports_code)
-
-        components_code = cls._generate_components_code(
-            component_definitions=component_definitions, component_variable_names=component_variable_names
-        )
-        pipeline_code = cls._generate_pipeline_code(
-            pipeline_definition=pipeline_definition,
-            component_variable_names=component_variable_names,
-            pipeline_variable_name=pipeline_variable_name,
-        )
-
-        code_parts.append(components_code)
-        code_parts.append(pipeline_code)
-        code = "\n\n".join(code_parts)
-
-        if comment:
-            comment = re.sub(r"^(#\s)?", "# ", comment, flags=re.MULTILINE)
-            code = "\n".join([comment, code])
-
-        return code
-
-    @classmethod
-    def _generate_pipeline_code(
-        cls, pipeline_definition: dict, component_variable_names: Dict[str, str], pipeline_variable_name: str
-    ) -> str:
-        code_lines = [f"{pipeline_variable_name} = Pipeline()"]
-        for node in pipeline_definition["nodes"]:
-            node_name = node["name"]
-            component_variable_name = component_variable_names[node_name]
-            inputs = ", ".join(f'"{name}"' for name in node["inputs"])
-            code_lines.append(
-                f'{pipeline_variable_name}.add_node(component={component_variable_name}, name="{node_name}", inputs=[{inputs}])'
-            )
-
-        code = "\n".join(code_lines)
-        return code
-
-    @classmethod
-    def _generate_components_code(cls, component_definitions: dict, component_variable_names: Dict[str, str]) -> str:
-        code = ""
-        declarations = {}
-        dependency_map = {}
-        for name, definition in component_definitions.items():
-            variable_name = component_variable_names[name]
-            class_name = definition["type"]
-            param_value_dict = {
-                key: component_variable_names.get(value, f'"{value}"') if type(value) == str else value
-                for key, value in definition["params"].items()
-            }
-            init_args = ", ".join(f"{key}={value}" for key, value in param_value_dict.items())
-            declarations[name] = f"{variable_name} = {class_name}({init_args})"
-            dependency_map[name] = [
-                param_value for param_value in definition["params"].values() if param_value in component_variable_names
-            ]
-
-        ordered_components = cls._order_components(dependency_map=dependency_map)
-        ordered_declarations = [declarations[component] for component in ordered_components]
-        code = "\n".join(ordered_declarations)
-        return code
-
-    @classmethod
-    def _generate_imports_code(cls, types_to_import: List[str]) -> str:
-        code_lines = []
-        importable_classes = {
-            name: mod
-            for mod in CODE_GEN_ALLOWED_IMPORTS
-            for name, obj in inspect.getmembers(sys.modules[mod])
-            if inspect.isclass(obj)
-        }
-
-        imports_by_module: Dict[str, List[str]] = {}
-        for t in types_to_import:
-            mod = importable_classes.get(t, MODULE_NOT_FOUND)
-            if mod in imports_by_module:
-                imports_by_module[mod].append(t)
-            else:
-                imports_by_module[mod] = [t]
-
-        for mod in sorted(imports_by_module.keys()):
-            sorted_types = sorted(set(imports_by_module[mod]))
-            import_types = ", ".join(sorted_types)
-            line_prefix = "# " if mod == MODULE_NOT_FOUND else ""
-            code_lines.append(f"{line_prefix}from {mod} import {import_types}")
-
-        code = "\n".join(code_lines)
-        return code
-
-    @classmethod
     def _get_pipeline_definition(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None) -> dict:
         """
         Get the definition of Pipeline from a given pipeline config. If the config contains more than one Pipeline,
@@ -540,23 +430,6 @@ class BasePipeline:
             component_definitions[name] = component_definition
 
         return component_definitions
-
-    @classmethod
-    def _order_components(
-        cls, dependency_map: Dict[str, List[str]], components_to_order: Optional[List[str]] = None
-    ) -> List[str]:
-        ordered_components = []
-        if components_to_order is None:
-            components_to_order = list(dependency_map.keys())
-        for component in components_to_order:
-            dependencies = dependency_map[component]
-            ordered_dependencies = cls._order_components(
-                dependency_map=dependency_map, components_to_order=dependencies
-            )
-            ordered_components += [d for d in ordered_dependencies if d not in ordered_components]
-            if component not in ordered_components:
-                ordered_components.append(component)
-        return ordered_components
 
     @classmethod
     def _overwrite_with_env_variables(cls, definition: dict):
@@ -1221,85 +1094,6 @@ class Pipeline(BasePipeline):
         config = {"components": list(components.values()), "pipelines": list(pipelines.values()), "version": "0.8"}
         return config
 
-    def _format_document_answer(self, document_or_answer: dict):
-        return "\n \t".join([f"{name}: {value}" for name, value in document_or_answer.items()])
-
-    def _format_wrong_sample(self, query: dict):
-        metrics = "\n \t".join([f"{name}: {value}" for name, value in query["metrics"].items()])
-        documents = "\n\n \t".join([self._format_document_answer(doc) for doc in query.get("documents", [])])
-        documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
-        answers = "\n\n \t".join([self._format_document_answer(answer) for answer in query.get("answers", [])])
-        answers = f"Answers: \n \t{answers}\n" if len(answers) > 0 else ""
-        gold_document_ids = "\n \t".join(query["gold_document_ids"])
-        gold_answers = "\n \t".join(query.get("gold_answers", []))
-        gold_answers = f"Gold Answers: \n \t{gold_answers}\n" if len(gold_answers) > 0 else ""
-        s = (
-            f"Query: \n \t{query['query']}\n"
-            f"{gold_answers}"
-            f"Gold Document Ids: \n \t{gold_document_ids}\n"
-            f"Metrics: \n \t{metrics}\n"
-            f"{answers}"
-            f"{documents}"
-            f"_______________________________________________________"
-        )
-        return s
-
-    def _format_wrong_samples_node(self, node_name: str, wrong_samples_formatted: str):
-        s = (
-            f"                Wrong {node_name} Examples\n"
-            f"=======================================================\n"
-            f"{wrong_samples_formatted}\n"
-            f"=======================================================\n"
-        )
-        return s
-
-    def _format_wrong_samples_report(self, eval_result: EvaluationResult, n_wrong_examples: int = 3):
-        examples = {
-            node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
-            for node in eval_result.node_results.keys()
-        }
-        examples_formatted = {
-            node: "\n".join([self._format_wrong_sample(example) for example in examples])
-            for node, examples in examples.items()
-        }
-
-        return "\n".join(
-            [self._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()]
-        )
-
-    def _format_pipeline_node(self, node: str, calculated_metrics: dict):
-        node_metrics: dict = {}
-        for metric_mode in calculated_metrics:
-            for metric, value in calculated_metrics[metric_mode].get(node, {}).items():
-                node_metrics[f"{metric}{metric_mode}"] = value
-
-        node_metrics_formatted = "\n".join(
-            sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()])
-        )
-        node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""
-        s = (
-            f"                      {node}\n"
-            f"                        |\n"
-            f"{node_metrics_formatted}"
-            f"                        |"
-        )
-        return s
-
-    def _format_pipeline_overview(self, calculated_metrics: dict):
-        pipeline_overview = "\n".join(
-            [self._format_pipeline_node(node, calculated_metrics) for node in self.graph.nodes]
-        )
-        s = (
-            f"================== Evaluation Report ==================\n"
-            f"=======================================================\n"
-            f"                   Pipeline Overview\n"
-            f"=======================================================\n"
-            f"{pipeline_overview}\n"
-            f"                      Output\n"
-            f"=======================================================\n"
-        )
-        return s
-
     def print_eval_report(
         self,
         eval_result: EvaluationResult,
@@ -1313,35 +1107,9 @@ class Pipeline(BasePipeline):
         :param n_wrong_examples: The number of worst queries to show.
         :param metrics_filter: The metrics to show per node. If None all metrics will be shown.
         """
-        if any(degree > 1 for node, degree in self.graph.out_degree):
-            logger.warning("Pipelines with junctions are currently not supported.")
-            return
-
-        calculated_metrics = {
-            "": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match"),
-            "_top_1": eval_result.calculate_metrics(
-                doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1
-            ),
-            " upper bound": eval_result.calculate_metrics(
-                doc_relevance_col="gold_id_or_answer_match", eval_mode="isolated"
-            ),
-        }
-
-        if metrics_filter is not None:
-            for metric_mode in calculated_metrics:
-                calculated_metrics[metric_mode] = {
-                    node: metrics
-                    if node not in metrics_filter
-                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]}
-                    for node, metrics in calculated_metrics[metric_mode].items()
-                }
-
-        pipeline_overview = self._format_pipeline_overview(calculated_metrics)
-        wrong_samples_report = self._format_wrong_samples_report(
-            eval_result=eval_result, n_wrong_examples=n_wrong_examples
+        _PipelineEvalReportGen.print_eval_report(
+            eval_result=eval_result, pipeline=self, n_wrong_examples=n_wrong_examples, metrics_filter=metrics_filter
         )
-
-        print(f"{pipeline_overview}\n" f"{wrong_samples_report}")
 
 
 class RayPipeline(Pipeline):
@@ -1627,3 +1395,257 @@ class _RayDeploymentWrapper:
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
         return self.node._dispatch_run(*args, **kwargs)
+
+
+class _PipelineCodeGen:
+    @classmethod
+    def _camel_to_snake_case(cls, input: str) -> str:
+        return CAMEL_CASE_TO_SNAKE_CASE_REGEX.sub("_", input).lower()
+
+    @classmethod
+    def generate_code(
+        cls,
+        pipeline: BasePipeline,
+        pipeline_variable_name: str = "pipeline",
+        generate_imports: bool = True,
+        comment: Optional[str] = None,
+    ) -> str:
+        pipeline_config = pipeline.get_config()
+        component_definitions = pipeline._get_component_definitions(
+            pipeline_config=pipeline_config, overwrite_with_env_variables=False
+        )
+        component_variable_names = {name: cls._camel_to_snake_case(name) for name in component_definitions.keys()}
+        pipeline_definition = pipeline._get_pipeline_definition(pipeline_config=pipeline_config)
+
+        code_parts = []
+        if generate_imports:
+            types_to_import = [component["type"] for component in component_definitions.values()]
+            imports_code = cls._generate_imports_code(types_to_import=types_to_import)
+            code_parts.append(imports_code)
+
+        components_code = cls._generate_components_code(
+            component_definitions=component_definitions, component_variable_names=component_variable_names
+        )
+        pipeline_code = cls._generate_pipeline_code(
+            pipeline_definition=pipeline_definition,
+            component_variable_names=component_variable_names,
+            pipeline_variable_name=pipeline_variable_name,
+        )
+
+        code_parts.append(components_code)
+        code_parts.append(pipeline_code)
+        code = "\n\n".join(code_parts)
+
+        if comment:
+            comment = re.sub(r"^(#\s)?", "# ", comment, flags=re.MULTILINE)
+            code = "\n".join([comment, code])
+
+        return code
+
+    @classmethod
+    def _generate_pipeline_code(
+        cls, pipeline_definition: dict, component_variable_names: Dict[str, str], pipeline_variable_name: str
+    ) -> str:
+        code_lines = [f"{pipeline_variable_name} = Pipeline()"]
+        for node in pipeline_definition["nodes"]:
+            node_name = node["name"]
+            component_variable_name = component_variable_names[node_name]
+            inputs = ", ".join(f'"{name}"' for name in node["inputs"])
+            code_lines.append(
+                f'{pipeline_variable_name}.add_node(component={component_variable_name}, name="{node_name}", inputs=[{inputs}])'
+            )
+
+        code = "\n".join(code_lines)
+        return code
+
+    @classmethod
+    def _generate_components_code(cls, component_definitions: dict, component_variable_names: Dict[str, str]) -> str:
+        code = ""
+        declarations = {}
+        dependency_map = {}
+        for name, definition in component_definitions.items():
+            variable_name = component_variable_names[name]
+            class_name = definition["type"]
+            param_value_dict = {
+                key: component_variable_names.get(value, f'"{value}"') if type(value) == str else value
+                for key, value in definition["params"].items()
+            }
+            init_args = ", ".join(f"{key}={value}" for key, value in param_value_dict.items())
+            declarations[name] = f"{variable_name} = {class_name}({init_args})"
+            dependency_map[name] = [
+                param_value for param_value in definition["params"].values() if param_value in component_variable_names
+            ]
+
+        ordered_components = cls._order_components(dependency_map=dependency_map)
+        ordered_declarations = [declarations[component] for component in ordered_components]
+        code = "\n".join(ordered_declarations)
+        return code
+
+    @classmethod
+    def _generate_imports_code(cls, types_to_import: List[str]) -> str:
+        code_lines = []
+        importable_classes = {
+            name: mod
+            for mod in CODE_GEN_ALLOWED_IMPORTS
+            for name, obj in inspect.getmembers(sys.modules[mod])
+            if inspect.isclass(obj)
+        }
+
+        imports_by_module: Dict[str, List[str]] = {}
+        for t in types_to_import:
+            mod = importable_classes.get(t, MODULE_NOT_FOUND)
+            if mod in imports_by_module:
+                imports_by_module[mod].append(t)
+            else:
+                imports_by_module[mod] = [t]
+
+        for mod in sorted(imports_by_module.keys()):
+            sorted_types = sorted(set(imports_by_module[mod]))
+            import_types = ", ".join(sorted_types)
+            line_prefix = "# " if mod == MODULE_NOT_FOUND else ""
+            code_lines.append(f"{line_prefix}from {mod} import {import_types}")
+
+        code = "\n".join(code_lines)
+        return code
+
+    @classmethod
+    def _order_components(
+        cls, dependency_map: Dict[str, List[str]], components_to_order: Optional[List[str]] = None
+    ) -> List[str]:
+        ordered_components = []
+        if components_to_order is None:
+            components_to_order = list(dependency_map.keys())
+        for component in components_to_order:
+            dependencies = dependency_map[component]
+            ordered_dependencies = cls._order_components(
+                dependency_map=dependency_map, components_to_order=dependencies
+            )
+            ordered_components += [d for d in ordered_dependencies if d not in ordered_components]
+            if component not in ordered_components:
+                ordered_components.append(component)
+        return ordered_components
+
+
+class _PipelineEvalReportGen:
+    @classmethod
+    def print_eval_report(
+        cls,
+        eval_result: EvaluationResult,
+        pipeline: Pipeline,
+        n_wrong_examples: int = 3,
+        metrics_filter: Optional[Dict[str, List[str]]] = None,
+    ):
+        if any(degree > 1 for node, degree in pipeline.graph.out_degree):
+            logger.warning("Pipelines with junctions are currently not supported.")
+            return
+
+        calculated_metrics = {
+            "": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match"),
+            "_top_1": eval_result.calculate_metrics(
+                doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1
+            ),
+            " upper bound": eval_result.calculate_metrics(
+                doc_relevance_col="gold_id_or_answer_match", eval_mode="isolated"
+            ),
+        }
+
+        if metrics_filter is not None:
+            for metric_mode in calculated_metrics:
+                calculated_metrics[metric_mode] = {
+                    node: metrics
+                    if node not in metrics_filter
+                    else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]}
+                    for node, metrics in calculated_metrics[metric_mode].items()
+                }
+
+        pipeline_overview = cls._format_pipeline_overview(calculated_metrics=calculated_metrics, pipeline=pipeline)
+        wrong_samples_report = cls._format_wrong_samples_report(
+            eval_result=eval_result, n_wrong_examples=n_wrong_examples
+        )
+
+        print(f"{pipeline_overview}\n" f"{wrong_samples_report}")
+
+    @classmethod
+    def _format_document_answer(cls, document_or_answer: dict):
+        return "\n \t".join([f"{name}: {value}" for name, value in document_or_answer.items()])
+
+    @classmethod
+    def _format_wrong_sample(cls, query: dict):
+        metrics = "\n \t".join([f"{name}: {value}" for name, value in query["metrics"].items()])
+        documents = "\n\n \t".join([cls._format_document_answer(doc) for doc in query.get("documents", [])])
+        documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
+        answers = "\n\n \t".join([cls._format_document_answer(answer) for answer in query.get("answers", [])])
+        answers = f"Answers: \n \t{answers}\n" if len(answers) > 0 else ""
+        gold_document_ids = "\n \t".join(query["gold_document_ids"])
+        gold_answers = "\n \t".join(query.get("gold_answers", []))
+        gold_answers = f"Gold Answers: \n \t{gold_answers}\n" if len(gold_answers) > 0 else ""
+        s = (
+            f"Query: \n \t{query['query']}\n"
+            f"{gold_answers}"
+            f"Gold Document Ids: \n \t{gold_document_ids}\n"
+            f"Metrics: \n \t{metrics}\n"
+            f"{answers}"
+            f"{documents}"
+            f"_______________________________________________________"
+        )
+        return s
+
+    @classmethod
+    def _format_wrong_samples_node(cls, node_name: str, wrong_samples_formatted: str):
+        s = (
+            f"                Wrong {node_name} Examples\n"
+            f"=======================================================\n"
+            f"{wrong_samples_formatted}\n"
+            f"=======================================================\n"
+        )
+        return s
+
+    @classmethod
+    def _format_wrong_samples_report(cls, eval_result: EvaluationResult, n_wrong_examples: int = 3):
+        examples = {
+            node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
+            for node in eval_result.node_results.keys()
+        }
+        examples_formatted = {
+            node: "\n".join([cls._format_wrong_sample(example) for example in examples])
+            for node, examples in examples.items()
+        }
+
+        return "\n".join(
+            [cls._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()]
+        )
+
+    @classmethod
+    def _format_pipeline_node(cls, node: str, calculated_metrics: dict):
+        node_metrics: dict = {}
+        for metric_mode in calculated_metrics:
+            for metric, value in calculated_metrics[metric_mode].get(node, {}).items():
+                node_metrics[f"{metric}{metric_mode}"] = value
+
+        node_metrics_formatted = "\n".join(
+            sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()])
+        )
+        node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""
+        s = (
+            f"                      {node}\n"
+            f"                        |\n"
+            f"{node_metrics_formatted}"
+            f"                        |"
+        )
+        return s
+
+    @classmethod
+    def _format_pipeline_overview(cls, calculated_metrics: dict, pipeline: Pipeline):
+        pipeline_overview = "\n".join(
+            [cls._format_pipeline_node(node, calculated_metrics) for node in pipeline.graph.nodes]
+        )
+        s = (
+            f"================== Evaluation Report ==================\n"
+            f"=======================================================\n"
+            f"                   Pipeline Overview\n"
+            f"=======================================================\n"
+            f"{pipeline_overview}\n"
+            f"                      Output\n"
+            f"=======================================================\n"
+        )
+        return s
