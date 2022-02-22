@@ -401,7 +401,7 @@ class BasePipeline:
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
 
     @classmethod
-    def _get_pipeline_definition(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None) -> dict:
+    def _get_pipeline_definition(cls, pipeline_config: Dict[str, Any], pipeline_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Get the definition of Pipeline from a given pipeline config. If the config contains more than one Pipeline,
         then the pipeline_name must be supplied.
@@ -423,7 +423,7 @@ class BasePipeline:
         return pipeline_definition
 
     @classmethod
-    def _get_component_definitions(cls, pipeline_config: Dict, overwrite_with_env_variables: bool) -> dict:
+    def _get_component_definitions(cls, pipeline_config: Dict[str, Any], overwrite_with_env_variables: bool) -> Dict[str, Any]:
         """
         Returns the definitions of all components from a given pipeline config.
 
@@ -444,7 +444,7 @@ class BasePipeline:
         return component_definitions
 
     @classmethod
-    def _overwrite_with_env_variables(cls, definition: dict):
+    def _overwrite_with_env_variables(cls, definition: Dict[str, Any]):
         """
         Overwrite the pipeline config with environment variables. For example, to change index name param for an
         ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
@@ -1484,7 +1484,7 @@ class _PipelineCodeGen:
 
     @classmethod
     def _generate_pipeline_code(
-        cls, pipeline_definition: dict, component_variable_names: Dict[str, str], pipeline_variable_name: str
+        cls, pipeline_definition: Dict[str, Any], component_variable_names: Dict[str, str], pipeline_variable_name: str
     ) -> str:
         code_lines = [f"{pipeline_variable_name} = Pipeline()"]
         for node in pipeline_definition["nodes"]:
@@ -1499,7 +1499,7 @@ class _PipelineCodeGen:
         return code
 
     @classmethod
-    def _generate_components_code(cls, component_definitions: dict, component_variable_names: Dict[str, str]) -> str:
+    def _generate_components_code(cls, component_definitions: Dict[str, Any], component_variable_names: Dict[str, str]) -> str:
         code = ""
         declarations = {}
         dependency_map = {}
