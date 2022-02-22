@@ -673,13 +673,13 @@ def transform_existing_elasticsearch_index_to_document_store(
                     if "_original_es_id" in doc.meta]
 
     # Iterate over each individual record
-    query = {"query": {"bool": {"must": [{"match_all": {}}]}}}
+    query: Dict[str, Dict] = {"query": {"bool": {"must": [{"match_all": {}}]}}}
     if existing_ids:
         filters = LogicalFilterClause.parse({"_id": {"$nin": existing_ids}}).convert_to_elasticsearch()
         query["query"]["bool"]["filter"] = filters
     records = scan(client=es_client, query=query, index=original_index_name)
     number_of_records = es_client.count(index=original_index_name, body=query)["count"]
-    haystack_documents = []
+    haystack_documents: List[Dict] = []
     for idx, record in enumerate(tqdm(records, total=number_of_records, desc="Converting ES Records")):
         # Write batch_size number of documents to haystack DocumentStore
         if (idx + 1) % batch_size == 0:
@@ -710,9 +710,9 @@ def transform_existing_elasticsearch_index_to_document_store(
                 record_doc["meta"]["_original_es_id"] = record["_id"]
 
             # Apply preprocessor if provided
-            record_doc = preprocessor.process(record_doc) if preprocessor is not None else [record_doc]
+            preprocessed_docs = preprocessor.process(record_doc) if preprocessor is not None else [record_doc]
 
-            haystack_documents.extend(record_doc)
+            haystack_documents.extend(preprocessed_docs)
 
     if haystack_documents:
         document_store.write_documents(haystack_documents, index=index)
