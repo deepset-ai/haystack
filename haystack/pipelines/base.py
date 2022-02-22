@@ -401,7 +401,9 @@ class BasePipeline:
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
 
     @classmethod
-    def _get_pipeline_definition(cls, pipeline_config: Dict[str, Any], pipeline_name: Optional[str] = None) -> Dict[str, Any]:
+    def _get_pipeline_definition(
+        cls, pipeline_config: Dict[str, Any], pipeline_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get the definition of Pipeline from a given pipeline config. If the config contains more than one Pipeline,
         then the pipeline_name must be supplied.
@@ -423,7 +425,9 @@ class BasePipeline:
         return pipeline_definition
 
     @classmethod
-    def _get_component_definitions(cls, pipeline_config: Dict[str, Any], overwrite_with_env_variables: bool) -> Dict[str, Any]:
+    def _get_component_definitions(
+        cls, pipeline_config: Dict[str, Any], overwrite_with_env_variables: bool
+    ) -> Dict[str, Any]:
         """
         Returns the definitions of all components from a given pipeline config.
 
@@ -1499,7 +1503,9 @@ class _PipelineCodeGen:
         return code
 
     @classmethod
-    def _generate_components_code(cls, component_definitions: Dict[str, Any], component_variable_names: Dict[str, str]) -> str:
+    def _generate_components_code(
+        cls, component_definitions: Dict[str, Any], component_variable_names: Dict[str, str]
+    ) -> str:
         code = ""
         declarations = {}
         dependency_map = {}
