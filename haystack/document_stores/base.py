@@ -821,8 +821,11 @@ def transform_existing_elasticsearch_index_to_document_store(
     )
 
     # Get existing original ES IDs inside DocumentStore in order to not reindex the corresponding records
-    existing_ids = [doc.meta["_original_es_id"] for doc in document_store.get_all_documents_generator(index=index)
-                    if "_original_es_id" in doc.meta]
+    existing_ids = [
+        doc.meta["_original_es_id"]
+        for doc in document_store.get_all_documents_generator(index=index)
+        if "_original_es_id" in doc.meta
+    ]
 
     # Iterate over each individual record
     query: Dict[str, Dict] = {"query": {"bool": {"must": [{"match_all": {}}]}}}
@@ -870,5 +873,3 @@ def transform_existing_elasticsearch_index_to_document_store(
         document_store.write_documents(haystack_documents, index=index)
 
     return document_store
-    
-
