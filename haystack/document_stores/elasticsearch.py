@@ -1212,9 +1212,11 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         # +1 in similarity to avoid negative numbers (for cosine sim)
         body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
-            body["query"]["script_score"]["query"] = {
-                "bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}
-            }
+            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
+            if body["query"]["script_score"]["query"] == {"match_all": {}}:
+                body["query"]["script_score"]["query"] = filter_
+            else:
+                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
 
         excluded_meta_data: Optional[list] = None
 
