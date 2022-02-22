@@ -559,6 +559,7 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
 def test_pipeline_components():
     class Node(BaseComponent):
         outgoing_edges = 1
+
         def run(self):
             test = "test"
             return {"test": test}, "output_1"
