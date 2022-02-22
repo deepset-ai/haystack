@@ -1269,10 +1269,13 @@ def test_elasticsearch_delete_index():
     index_exists = client.indices.exists(index=index_name)
     assert not index_exists
 
+
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store):
     document_store.write_documents(DOCUMENTS)
-    document_without_embedding = Document(content="Doc without embedding", meta={"name": "name_7", "year": "2021", "month": "04"})
+    document_without_embedding = Document(
+        content="Doc without embedding", meta={"name": "name_7", "year": "2021", "month": "04"}
+    )
     document_store.write_documents([document_without_embedding])
     filters = {"year": "2021"}
     document_store.skip_missing_embeddings = False
@@ -1282,6 +1285,7 @@ def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store)
     document_store.skip_missing_embeddings = True
     documents = document_store.query_by_embedding(np.random.rand(768), filters=filters)
     assert len(documents) == 3
+
 
 @pytest.mark.elasticsearch
 def test_get_document_count_only_documents_without_embedding_arg():
