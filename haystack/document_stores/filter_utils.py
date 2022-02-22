@@ -6,7 +6,7 @@ from functools import reduce
 from sqlalchemy.sql import select
 from sqlalchemy import and_, or_
 
-import haystack.document_stores.utils as utils
+from haystack.document_stores import utils
 
 
 def nested_defaultdict() -> defaultdict:
