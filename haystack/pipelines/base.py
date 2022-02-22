@@ -874,7 +874,7 @@ class Pipeline(BasePipeline):
         matches = self.get_nodes_by_class(class_type=BaseDocumentStore)
         if len(matches) == 0:
             matches = list(
-                set([retriever.document_store for retriever in self.get_nodes_by_class(class_type=BaseRetriever)])
+                set(retriever.document_store for retriever in self.get_nodes_by_class(class_type=BaseRetriever))
             )
 
         if len(matches) > 1:
