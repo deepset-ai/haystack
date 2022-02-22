@@ -10,6 +10,7 @@ from tqdm.auto import tqdm
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.schema import Document, Label, Answer, Span
 from haystack.nodes.preprocessor import PreProcessor
+
 if typing.TYPE_CHECKING:
     # This results in a circular import if we don't use typing.TYPE_CHECKING
     from haystack.document_stores.base import BaseDocumentStore
