@@ -141,19 +141,16 @@ def tika_convert_files_to_dicts(
                         para = para.strip()
                         if not para:
                             continue
+
+                        # this paragraph is less than 10 characters or 2 words
+                        para_is_short = len(para) < 10 or len(re.findall(r"\s+", para)) < 2
+                        # this paragraph starts with a lower case and last paragraph does not end with a punctuation
+                        para_is_lowercase = (
+                            para and para[0].islower() and last_para and last_para[-1] not in r'.?!"\'\]\)'
+                        )
+
                         # merge paragraphs to improve qa
-                        # merge this paragraph if less than 10 characters or 2 words
-                        # or this paragraph starts with a lower case and last paragraph does not end with a punctuation
-                        if (
-                            merge_short
-                            and len(para) < 10
-                            or len(re.findall(r"\s+", para)) < 2
-                            or merge_lowercase
-                            and para
-                            and para[0].islower()
-                            and last_para
-                            and last_para[-1] not in r'.?!"\'\]\)'
-                        ):
+                        if (merge_short and para_is_short) or (merge_lowercase and para_is_lowercase):
                             last_para += " " + para
                         else:
                             if last_para:

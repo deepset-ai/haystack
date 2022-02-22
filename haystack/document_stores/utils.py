@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Tuple, Union, Generator
 
 import json
 import logging
+from datetime import datetime
 
 from haystack.schema import Document, Label, Answer, Span
 from haystack.nodes.preprocessor import PreProcessor
@@ -250,3 +251,23 @@ def _extract_docs_and_labels_from_dict(
                     labels.append(label)
 
     return docs, labels, problematic_ids
+
+
+def convert_date_to_rfc3339(date: str) -> str:
+    """
+    Converts a date to RFC3339 format, as Weaviate requires dates to be in RFC3339 format including the time and
+    timezone.
+
+    If the provided date string does not contain a time and/or timezone, we use 00:00 as default time
+    and UTC as default time zone.
+
+    This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
+    and filter_utils.py.
+    """
+    parsed_datetime = datetime.fromisoformat(date)
+    if parsed_datetime.utcoffset() is None:
+        converted_date = parsed_datetime.isoformat() + "Z"
+    else:
+        converted_date = parsed_datetime.isoformat()
+
+    return converted_date

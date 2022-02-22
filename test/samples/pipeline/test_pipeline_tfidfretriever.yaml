@@ -1,4 +1,4 @@
-version: '0.9'
+version: '1.1.0'
 
 components:
   - name: Reader

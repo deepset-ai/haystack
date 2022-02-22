@@ -93,7 +93,7 @@ Here's a sample configuration:
 
     ```python
     |   {
-    |       "version": "0.9",
+    |       "version": "1.0",
     |       "components": [
     |           {  # define all the building-blocks for Pipeline
     |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
@@ -148,7 +148,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.9'
+    |   version: '1.0'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -174,6 +174,9 @@ Here's a sample configuration:
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
 
 **Arguments**:
 
@@ -642,6 +645,10 @@ Here's a sample configuration:
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
+
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
 
 **Arguments**:
 
