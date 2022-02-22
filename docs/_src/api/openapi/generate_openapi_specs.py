@@ -24,7 +24,7 @@ with open("openapi.json", "w") as f:
 
 # Remove rc versions of the specs from the folder
 for specs_file in os.listdir():
-    if os.path.isfile(specs_file) and "rc" in specs_file and specs_file.endswith(".json"):
+    if os.path.isfile(specs_file) and "rc" in specs_file and Path(specs_file).suffix == ".json":
         os.remove(specs_file)
 
 # Add versioned copy
