@@ -10,6 +10,7 @@ from haystack import __version__
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import (
@@ -556,7 +557,9 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
 
 
 def test_pipeline_components():
-    class Node(RootNode):
+    class Node(BaseComponent):
+        outgoing_edges = 1
+
         def run(self):
             test = "test"
             return {"test": test}, "output_1"
