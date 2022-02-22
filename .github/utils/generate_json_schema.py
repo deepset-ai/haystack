@@ -69,6 +69,9 @@ class Config(BaseConfig):
 
 
 def get_json_schema():
+    """
+    Generate JSON schema for Haystack pipelines.
+    """
     schema_definitions = {}
     additional_definitions = {}
 
@@ -210,10 +213,68 @@ def get_json_schema():
     return pipeline_schema
 
 
+def list_indexed_versions(index):
+    """
+    Given the schema index as a parsed JSON,
+    return a list of all the versions it contains.
+    """
+    indexed_versions = []
+    for version_entry in index["oneOf"]:
+        for property_entry in version_entry["allOf"]:
+            if "properties" in property_entry.keys():
+                indexed_versions.append(property_entry["properties"]["version"]["const"])
+    return indexed_versions
+
+
+def cleanup_rc_versions(index):
+    """
+    Given the schema index as a parsed JSON,
+    removes any existing (unstable) rc version from it.
+    """
+    new_versions_list = []
+    for version_entry in index["oneOf"]:
+        for property_entry in version_entry["allOf"]:
+            if "properties" in property_entry.keys():
+                if "rc" not in property_entry["properties"]["version"]["const"]:
+                    new_versions_list.append(version_entry)
+                    break
+    index["oneOf"] = new_versions_list
+    return index
+
+
+def new_version_entry(version):
+    """
+    Returns a new entry for the version index JSON schema.
+    """
+    return {
+        "allOf": [
+            {"properties": {"version": {"const": version}}},
+            {
+                "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/json-schemas/"
+                f"haystack-pipeline-{version}.schema.json"
+            },
+        ]
+    }
+
+
 def generate_json_schema():
+    # Create new schema file
     pipeline_schema = get_json_schema()
     destination_path.parent.mkdir(parents=True, exist_ok=True)
     destination_path.write_text(json.dumps(pipeline_schema, indent=2))
+
+    # Update schema index
+    index = []
+    index_path = Path(__file__).parent.parent.parent / "json-schemas" / "haystack-pipeline.schema.json"
+    with open(index_path, "r") as index_file:
+        index = json.load(index_file)
+    if index:
+        index = cleanup_rc_versions(index)
+        indexed_versions = list_indexed_versions(index)
+        if not any(version == schema_version for version in indexed_versions):
+            index["oneOf"].append(new_version_entry(schema_version))
+            with open(index_path, "w") as index_file:
+                json.dump(index, index_file, indent=4)
 
 
 def main():
