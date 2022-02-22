@@ -6,7 +6,7 @@ from functools import reduce
 from sqlalchemy.sql import select
 from sqlalchemy import and_, or_
 
-from haystack.document_stores.utils import convert_date_to_rfc3339
+from haystack.document_stores import utils
 
 
 def nested_defaultdict() -> defaultdict:
@@ -261,7 +261,7 @@ class ComparisonOperation(ABC):
         if isinstance(value, str):
             # Check if comparison value is a date
             try:
-                value = convert_date_to_rfc3339(value)
+                value = utils.convert_date_to_rfc3339(value)
                 data_type = "valueDate"
             # Comparison value is a plain string
             except ValueError:
