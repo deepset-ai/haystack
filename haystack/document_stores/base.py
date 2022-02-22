@@ -756,6 +756,7 @@ def transform_existing_elasticsearch_index_to_document_store(
     ca_certs: Optional[str] = None,
     verify_certs: bool = True,
     timeout: int = 30,
+    use_system_proxy: bool = False,
 ) -> BaseDocumentStore:
     """
     This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
@@ -797,6 +798,7 @@ def transform_existing_elasticsearch_index_to_document_store(
         You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
     :param verify_certs: Whether to be strict about ca certificates.
     :param timeout: Number of seconds after which an Elasticsearch request times out.
+    :param use_system_proxy: Whether to use system proxy.
     """
 
     # This import cannot be at the beginning of the file, as this would result in a circular import
@@ -815,6 +817,7 @@ def transform_existing_elasticsearch_index_to_document_store(
         ca_certs=ca_certs,
         verify_certs=verify_certs,
         timeout=timeout,
+        use_system_proxy=use_system_proxy,
     )
 
     # Get existing original ES IDs inside DocumentStore in order to not reindex the corresponding records
