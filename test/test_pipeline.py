@@ -7,8 +7,10 @@ import pytest
 import responses
 
 from haystack import __version__
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import (
     Pipeline,
@@ -191,6 +193,7 @@ def test_load_from_deepset_cloud_query():
     document_store = retriever.document_store
     assert isinstance(retriever, ElasticsearchRetriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
+    assert document_store == query_pipeline.get_document_store()
 
     prediction = query_pipeline.run(query="man on horse", params={})
 
@@ -550,6 +553,140 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
     pipeline.add_node(name="F", component=JoinNode(), inputs=["D", "E", "C"])
     output = pipeline.run(query="test")
     assert output["output"] == "ACABEABD"
+
+
+def test_pipeline_components():
+    class Node(RootNode):
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    a = Node()
+    b = Node()
+    c = Node()
+    d = Node()
+    e = Node()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=a, inputs=["Query"])
+    pipeline.add_node(name="B", component=b, inputs=["A"])
+    pipeline.add_node(name="C", component=c, inputs=["B"])
+    pipeline.add_node(name="D", component=d, inputs=["C"])
+    pipeline.add_node(name="E", component=e, inputs=["D"])
+    assert len(pipeline.components) == 5
+    assert pipeline.components["A"] == a
+    assert pipeline.components["B"] == b
+    assert pipeline.components["C"] == c
+    assert pipeline.components["D"] == d
+    assert pipeline.components["E"] == e
+
+
+def test_pipeline_get_document_store_from_components():
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    doc_store = DummyDocumentStore()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=doc_store, inputs=["File"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_components_multiple_doc_stores():
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    doc_store_a = DummyDocumentStore()
+    doc_store_b = DummyDocumentStore()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=doc_store_a, inputs=["File"])
+    pipeline.add_node(name="B", component=doc_store_b, inputs=["File"])
+
+    with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
+        pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_retriever():
+    class DummyRetriever(BaseRetriever):
+        def __init__(self, document_store):
+            self.document_store = document_store
+
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    doc_store = DummyDocumentStore()
+    retriever = DummyRetriever(document_store=doc_store)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever, inputs=["Query"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_dual_retriever():
+    class DummyRetriever(BaseRetriever):
+        def __init__(self, document_store):
+            self.document_store = document_store
+
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    class JoinNode(RootNode):
+        def run(self, output=None, inputs=None):
+            if inputs:
+                output = ""
+                for input_dict in inputs:
+                    output += input_dict["output"]
+            return {"output": output}, "output_1"
+
+    doc_store = DummyDocumentStore()
+    retriever_a = DummyRetriever(document_store=doc_store)
+    retriever_b = DummyRetriever(document_store=doc_store)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever_a, inputs=["Query"])
+    pipeline.add_node(name="B", component=retriever_b, inputs=["Query"])
+    pipeline.add_node(name="C", component=JoinNode(), inputs=["A", "B"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
+    class DummyRetriever(BaseRetriever):
+        def __init__(self, document_store):
+            self.document_store = document_store
+
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    class JoinNode(RootNode):
+        def run(self, output=None, inputs=None):
+            if inputs:
+                output = ""
+                for input_dict in inputs:
+                    output += input_dict["output"]
+            return {"output": output}, "output_1"
+
+    doc_store_a = DummyDocumentStore()
+    doc_store_b = DummyDocumentStore()
+    retriever_a = DummyRetriever(document_store=doc_store_a)
+    retriever_b = DummyRetriever(document_store=doc_store_b)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever_a, inputs=["Query"])
+    pipeline.add_node(name="B", component=retriever_b, inputs=["Query"])
+    pipeline.add_node(name="C", component=JoinNode(), inputs=["A", "B"])
+
+    with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
+        pipeline.get_document_store()
 
 
 def test_existing_faiss_document_store():

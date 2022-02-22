@@ -32,6 +32,7 @@ except:
 from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.nodes.base import BaseComponent
+from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 
 
@@ -421,7 +422,14 @@ class Pipeline(BasePipeline):
     def __init__(self):
         self.graph = DiGraph()
         self.root_node = None
-        self.components: dict = {}
+
+    @property
+    def components(self):
+        return {
+            name: attributes["component"]
+            for name, attributes in self.graph.nodes.items()
+            if not isinstance(attributes["component"], RootNode)
+        }
 
     def add_node(self, component, name: str, inputs: List[str]):
         """
@@ -864,6 +872,11 @@ class Pipeline(BasePipeline):
         :return: Instance of DocumentStore or None
         """
         matches = self.get_nodes_by_class(class_type=BaseDocumentStore)
+        if len(matches) == 0:
+            matches = list(
+                set([retriever.document_store for retriever in self.get_nodes_by_class(class_type=BaseRetriever)])
+            )
+
         if len(matches) > 1:
             raise Exception(f"Multiple Document Stores found in Pipeline: {matches}")
         if len(matches) == 0:
