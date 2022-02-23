@@ -100,7 +100,9 @@ def tutorial5_evaluation():
     # pipeline = DocumentSearchPipeline(retriever=retriever)
 
     # We can load evaluation labels from the document store
+    # We are also opting to filter out no_answer samples
     eval_labels = document_store.get_all_labels_aggregated(drop_negative_labels=True, drop_no_answers=False)
+    eval_labels = [label for label in eval_labels if not label.no_answer]
 
     ## Alternative: Define queries and labels directly
     # eval_labels = [
@@ -196,7 +198,6 @@ def tutorial5_evaluation():
     # The isolated node evaluation uses labels as input to the Reader node instead of the output of the preceeding retriever node.
     # Thereby, we can additionally calculate the upper bounds of the evaluation metrics of the Reader.
     # Note that even with isolated evaluation enabled, integrated evaluation will still be running.
-    eval_labels = [label for label in eval_labels if not label.no_answer] # filter out no_answer cases
     eval_result_with_upper_bounds = pipeline.eval(
         labels=eval_labels,
         params={"Retriever": {"top_k": 5}},
@@ -224,7 +225,8 @@ def tutorial5_evaluation():
     print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
 
     # Just as a sanity check, we can compare the recall from `retriever.eval()`
-    # with the multi hit recall from `pipeline.eval(add_isolated_node_eval=True)`
+    # with the multi hit recall from `pipeline.eval(add_isolated_node_eval=True)`.
+    # These two recall metrics are only comparable since we chose to filter out no_answer samples when generating eval_labels.
     metrics = eval_result_with_upper_bounds.calculate_metrics()
     print(metrics["Retriever"]["recall_multi_hit"])
 
