@@ -12,7 +12,7 @@ We are open for contributions to our documentation. Please make sure to check ou
 
 ## Tutorials
 
-The Tutorials live in the folder `tutorials`. They are created as colab notebooks which can be used by users to explore new haystack features. To include tutorials into the docs website, markdowns files need to be generated from the notebook. This can be done by running the script `/docs/_src/tutorials/tutorials/convert_ipynb.py`. Just run `python convert_ipynb.py` and the script will update all existing notebooks. Furthermore, plaese make sure to update the `headers.py` file with headers for the new tutorials. These headers are important for the docs website workflow. After the markdown files are generated successfully, you can raise a PR. We will review it and as soons as the markdown file is merged to master, it can be added to our website. Please follow the steps described [here](https://github.com/deepset-ai/haystack-website/tree/source) under `Tutorial & Reference Docs`. 
+The Tutorials live in the folder `tutorials`. They are created as colab notebooks which can be used by users to explore new haystack features. To include tutorials into the docs website, markdowns files need to be generated from the notebook. This can be done by running the script `/docs/_src/tutorials/tutorials/convert_ipynb.py`. Just run `python convert_ipynb.py` and the script will update all existing notebooks. Furthermore, plaese make sure to update the `headers.py` file with headers for the new tutorials. These headers are important for the docs website workflow. After the markdown files are generated successfully, you can raise a PR. We will review it and as soon as the markdown file is merged to master, it can be added to our website. Please follow the steps described [here](https://github.com/deepset-ai/haystack-website/tree/source) under `Tutorial & Reference Docs`. 
 
 ## API Reference 
 
@@ -22,15 +22,15 @@ We use Pydoc-Markdown to create markdown files from the docstrings in our code.
 
 Execute the following commands in `/haystack/docs/_src/api/api`:
 ```
-pip install 'pydoc-markdown==3.11.0'
+pip install pydoc-markdown
 ./generate_docstrings.sh
 ```
 
-If you want to generate a new markdown file for a new haystack module, please create a `.yml` which is inline with the following configuration and a a new line to `generate_docstrings.sh` for the module. After you ran the generate_docstrings.sh again, there should be a new markdown file for the module. To include it into the docs website, push it to master and follow the steps described [here](https://github.com/deepset-ai/haystack-website/tree/source) under `Tutorial & Reference Docs`. 
+If you want to generate a new markdown file for a new haystack module, please create a `.yml` which is inline with the following configuration and add a new line to `generate_docstrings.sh` for the module. After you ran the generate_docstrings.sh again, there should be a new markdown file. To include it into the docs website, push it to master and follow the steps described [here](https://github.com/deepset-ai/haystack-website/tree/source) under `Tutorial & Reference Docs`. 
 
 ### Configuration
 
-Pydoc will read the configuration from a `.yml` file which is located in the current working directory. Our files contains three main sections:
+Pydoc will read the configuration from a `.yml` file which is located under `/haystack/docs/_src/api/pydoc`. Our files contains three main sections:
 
 - **loader**: A list of plugins that load API objects from python source files.
     - **type**: Loader for python source files
