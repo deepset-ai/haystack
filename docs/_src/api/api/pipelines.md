@@ -37,6 +37,44 @@ Returns a configuration for the Pipeline that can be used with `BasePipeline.loa
 
 - `return_defaults`: whether to output parameters that have the default values.
 
+<a id="base.BasePipeline.to_code"></a>
+
+#### to\_code
+
+```python
+def to_code(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False) -> str
+```
+
+Returns the code to create this pipeline as string.
+
+**Arguments**:
+
+- `pipeline_variable_name`: The variable name of the generated pipeline.
+Default value is 'pipeline'.
+- `generate_imports`: Whether to include the required import statements into the code.
+Default value is True.
+- `add_comment`: Whether to add a preceding comment that this code has been generated.
+Default value is False.
+
+<a id="base.BasePipeline.to_notebook_cell"></a>
+
+#### to\_notebook\_cell
+
+```python
+def to_notebook_cell(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True)
+```
+
+Creates a new notebook cell with the code to create this pipeline.
+
+**Arguments**:
+
+- `pipeline_variable_name`: The variable name of the generated pipeline.
+Default value is 'pipeline'.
+- `generate_imports`: Whether to include the required import statements into the code.
+Default value is True.
+- `add_comment`: Whether to add a preceding comment that this code has been generated.
+Default value is True.
+
 <a id="base.BasePipeline.load_from_config"></a>
 
 #### load\_from\_config
