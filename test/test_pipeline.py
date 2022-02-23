@@ -338,15 +338,14 @@ def test_PipelineCodeGen_order_components():
     assert ordered == ["aa", "aba", "ab", "a", "c", "b"]
 
 
-@pytest.mark.parametrize("input", ["\btest", " test", "\ttest", "\ntest"])
+@pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
 def test_PipelineCodeGen_validate_user_input_invalid(input):
     with pytest.raises(ValueError):
         _PipelineCodeGen._validate_user_input(input)
 
 
 @pytest.mark.parametrize(
-    "input",
-    ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path?param=value#anchor"],
+    "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path"]
 )
 def test_PipelineCodeGen_validate_user_input_valid(input):
     _PipelineCodeGen._validate_user_input(input)
