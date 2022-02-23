@@ -45,7 +45,7 @@ from transformers import (
     BigBirdTokenizer,
     BigBirdTokenizerFast,
     DebertaV2Tokenizer,
-    DebertaV2TokenizerFast
+    DebertaV2TokenizerFast,
 )
 from transformers import AutoConfig
 
