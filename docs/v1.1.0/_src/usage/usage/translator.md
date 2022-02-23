@@ -29,7 +29,7 @@ from haystack.translator import TransformersTranslator
 
 DOCS = [
         Document(
-            content="""Heinz von Foerster was an Austrian American scientist 
+            text="""Heinz von Foerster was an Austrian American scientist 
                   combining physics and philosophy, and widely attributed 
                   as the originator of Second-order cybernetics."""
         )
