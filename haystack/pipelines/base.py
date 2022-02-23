@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
 CAMEL_CASE_TO_SNAKE_CASE_REGEX = re.compile(r"(?<=[a-z])(?=[A-Z0-9])")
-VALID_CODE_GEN_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/.]+$")
+VALID_CODE_GEN_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/.?=:%&$§#@,;()+/*~]+$")
 MODULE_NOT_FOUND = "MODULE_NOT_FOUND"
 CODE_GEN_ALLOWED_IMPORTS = ["haystack.document_stores", "haystack.nodes"]
 CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
