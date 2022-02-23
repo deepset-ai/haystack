@@ -45,7 +45,7 @@ def tutorial12_lfqa():
     retriever = DensePassageRetriever(
         document_store=document_store,
         query_embedding_model="vblagoje/dpr-question_encoder-single-lfqa-wiki",
-        passage_embedding_model="vblagoje/dpr-ctx_encoder-single-lfqa-wiki"
+        passage_embedding_model="vblagoje/dpr-ctx_encoder-single-lfqa-wiki",
     )
 
     document_store.update_embeddings(retriever)
