@@ -45,6 +45,7 @@ from transformers import (
     BigBirdTokenizer,
     BigBirdTokenizerFast,
     DebertaV2Tokenizer,
+    DebertaV2TokenizerFast
 )
 from transformers import AutoConfig
 
@@ -200,10 +201,13 @@ class Tokenizer:
                 )
         elif "DebertaV2Tokenizer" in tokenizer_class:
             if use_fast:
-                logger.warning("DebertaV2 does not support fast tokenizers")
-            ret = DebertaV2Tokenizer.from_pretrained(
-                pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-            )
+                ret = DebertaV2TokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
+            else:
+                ret = DebertaV2Tokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         if ret is None:
             raise Exception("Unable to load tokenizer")
         else:
