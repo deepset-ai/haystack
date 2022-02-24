@@ -162,6 +162,8 @@ class LanguageModel(nn.Module):
         """
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
+        if language_model_class == 'XLMRoberta':
+            n_added_tokens = 3
         kwargs["revision"] = kwargs.get("revision", None)
         logger.info("LOADING MODEL")
         logger.info("=============")
@@ -494,11 +496,11 @@ class Bert(LanguageModel):
             # Haystack style
             bert_config = BertConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            bert.model = BertModel.from_pretrained(haystack_lm_model, config=bert_config, **kwargs)
+            bert.model = BertModel.from_pretrained(haystack_lm_model, ignore_mismatched_sizes=True, config=bert_config, **kwargs)
             bert.language = bert.model.config.language
         else:
             # Pytorch-transformer Style
-            bert.model = BertModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            bert.model = BertModel.from_pretrained(str(pretrained_model_name_or_path), ignore_mismatched_sizes=True, **kwargs)
             bert.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         return bert
 
