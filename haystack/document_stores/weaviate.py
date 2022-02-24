@@ -214,6 +214,18 @@ class WeaviateDocumentStore(BaseDocumentStore):
         score = None
         content = ""
 
+        # Sample result dict from a get method:
+        # {
+        #     'class': 'Document',
+        #     'creationTimeUnix': 1621075584724,
+        #     'id': '1bad51b7-bd77-485d-8871-21c50fab248f',
+        #     'properties': {
+        #         'meta': "{'key1':'value1'}",
+        #         'name': 'name_5',
+        #         'content': 'text_5'
+        #     },
+        #     'vector': []
+        # }
         id = result.get("id")
         embedding = result.get("vector")
 
@@ -266,14 +278,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ) -> Optional[Document]:
         """Fetch a document by specifying its uuid string"""
-        # Sample result dict from a get method
-        """{'class': 'Document',
-         'creationTimeUnix': 1621075584724,
-         'id': '1bad51b7-bd77-485d-8871-21c50fab248f',
-         'properties': {'meta': "{'key1':'value1'}",
-          'name': 'name_5',
-          'content': 'text_5'},
-         'vector': []}"""
         if headers:
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 

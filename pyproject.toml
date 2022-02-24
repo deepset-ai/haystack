@@ -13,11 +13,20 @@ line-length = 120
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
 disable = [
+
+  # Warnings
+  "fixme",
+
+  # Info
+  "c-extension-no-member",
+
+
+
+
   "missing-docstring",
   "unused-argument",
   "no-member",
   "line-too-long",
-  "fixme",
   "protected-access",
   "too-few-public-methods",
   "raise-missing-from",
@@ -59,7 +68,6 @@ disable = [
   "unnecessary-comprehension",
   "subprocess-run-check",
   "singleton-comparison",
-  "no-else-raise",
   "import-outside-toplevel",
   "consider-iterating-dictionary",
   "too-many-nested-blocks",
@@ -72,41 +80,7 @@ disable = [
   "simplifiable-if-expression",
   "use-list-literal",
   "reimported",
-  "no-else-continue",
   "deprecated-method",
-  "consider-using-dict-items",
-  "use-a-generator",
-  "simplifiable-if-statement",
-  "import-error",
-  "consider-using-from-import",
-  "useless-object-inheritance",
-  "use-dict-literal",
-  "unsubscriptable-object",
-  "too-many-return-statements",
-  "superfluous-parens",
-  "no-value-for-parameter",
-  "no-else-break",
-  "inconsistent-return-statements",
-  "consider-using-set-comprehension",
-  "c-extension-no-member",
-  "useless-super-delegation",
-  "useless-else-on-loop",
-  "used-before-assignment",
-  "unsupported-membership-test",
-  "unneeded-not",
-  "unnecessary-lambda",
-  "trailing-newlines",
-  "too-many-boolean-expressions",
-  "super-init-not-called",
-  "pointless-string-statement",
-  "non-parent-init-called",
-  "invalid-sequence-index",
-  "import-self",
-  "deprecated-argument",
-  "access-member-before-definition",
-
-  "invalid-envvar-default",
-  "logging-too-many-args",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
