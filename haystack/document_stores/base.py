@@ -4,7 +4,7 @@ import logging
 import collections
 import numpy as np
 from itertools import islice
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 try:
@@ -35,7 +35,7 @@ def expit(x: float) -> float:
     return 1 / (1 + np.exp(-x))
 
 
-class BaseKnowledgeGraph(BaseComponent):
+class BaseKnowledgeGraph(BaseComponent, ABC):
     """
     Base class for implementing Knowledge Graphs.
     """
@@ -51,7 +51,7 @@ class BaseKnowledgeGraph(BaseComponent):
         raise NotImplementedError
 
 
-class BaseDocumentStore(BaseComponent):
+class BaseDocumentStore(BaseComponent, ABC):
     """
     Base class for implementing Document Stores.
     """
@@ -629,7 +629,7 @@ class BaseDocumentStore(BaseComponent):
         return [label for label in labels if label.id in duplicate_ids]
 
 
-class KeywordDocumentStore(BaseDocumentStore):
+class KeywordDocumentStore(BaseDocumentStore, ABC):
     """
     Base class for implementing Document Stores that support keyword searches.
     """
