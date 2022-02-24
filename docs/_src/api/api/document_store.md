@@ -2431,9 +2431,6 @@ Return the count of embeddings in the document store.
 class Milvus2DocumentStore(SQLDocumentStore)
 ```
 
-** Note: This implementation supports the upcoming Milvus 2.0 release and is in experimental stage.
-If you want to use a stable version, we recommend using `MilvusDocumentStore` with a Milvus 1.x version **
-
 Limitations:
 Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
 Therefore, delete_documents() and update_embeddings() won't work yet.
@@ -2446,16 +2443,16 @@ For Haystack users this means you can now run a query using vector similarity an
 Usage:
 1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
 2. Run pip install farm-haystack[milvus]
-3. Init a Milvus2DocumentStore() in Haystack
+3. Init a MilvusDocumentStore() in Haystack
 
 Overview:
 Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
 Therefore, it is particularly suited for Haystack users that work with dense retrieval methods (like DPR).
 
 In contrast to FAISS, Milvus ...
-- runs as a separate service (e.g. a Docker container) and can scale easily in a distributed environment
-- allows dynamic data management (i.e. you can insert/delete vectors without recreating the whole index)
-- encapsulates multiple ANN libraries (FAISS, ANNOY ...)
+ - runs as a separate service (e.g. a Docker container) and can scale easily in a distributed environment
+ - allows dynamic data management (i.e. you can insert/delete vectors without recreating the whole index)
+ - encapsulates multiple ANN libraries (FAISS, ANNOY ...)
 
 This class uses Milvus for all vector related storage, processing and querying.
 The meta-data (e.g. for filtering) and the document text are however stored in a separate SQL Database as Milvus
@@ -2474,7 +2471,7 @@ Add new documents to the DocumentStore.
 **Arguments**:
 
 - `documents`: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
-them right away in Milvus. If not, you can later call update_embeddings() to create & index them.
+them right away in Milvus. If not, you can later call `update_embeddings()` to create & index them.
 - `index`: (SQL) index name for storing the docs and metadata
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `duplicate_documents`: Handle duplicates document based on parameter options.
