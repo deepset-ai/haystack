@@ -84,10 +84,7 @@ class BaseConverter(BaseComponent):
         except langdetect.lang_detect_exception.LangDetectException:
             lang = None
 
-        if lang in valid_languages:
-            return True
-        else:
-            return False
+        return lang in valid_languages
 
     def run(  # type: ignore
         self,

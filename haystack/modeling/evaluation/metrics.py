@@ -81,27 +81,21 @@ def compute_metrics(metric: str, preds, labels):
     :param labels: list of target labels
     :return: a dictionary mapping metric names to values.
     """
+    FUNCTION_FOR_METRIC = {
+        "mcc": lambda preds, labels: {"mcc": matthews_corrcoef(labels, preds)},
+        "acc": simple_accuracy,
+        "acc_f1": acc_and_f1,
+        "pear_spear": pearson_and_spearman,
+        "f1_macro": f1_macro,
+        "squad": squad,
+        "mse": lambda preds, labels: {"mse": mean_squared_error(preds, labels)},
+        "r2": lambda preds, labels: {"r2": r2_score(preds, labels)},
+        "top_n_accuracy": lambda preds, labels: {"top_n_accuracy": top_n_accuracy(preds, labels)},
+        "text_similarity_metric": text_similarity_metric,
+    }
     assert len(preds) == len(labels)
-    if metric == "mcc":
-        return {"mcc": matthews_corrcoef(labels, preds)}
-    elif metric == "acc":
-        return simple_accuracy(preds, labels)
-    elif metric == "acc_f1":
-        return acc_and_f1(preds, labels)
-    elif metric == "pear_spear":
-        return pearson_and_spearman(preds, labels)
-    elif metric == "f1_macro":
-        return f1_macro(preds, labels)
-    elif metric == "squad":
-        return squad(preds, labels)
-    elif metric == "mse":
-        return {"mse": mean_squared_error(preds, labels)}
-    elif metric == "r2":
-        return {"r2": r2_score(preds, labels)}
-    elif metric == "top_n_accuracy":
-        return {"top_n_accuracy": top_n_accuracy(preds, labels)}
-    elif metric == "text_similarity_metric":
-        return text_similarity_metric(preds, labels)
+    if metric in FUNCTION_FOR_METRIC.keys():
+        return FUNCTION_FOR_METRIC[metric](preds, labels)
     elif isinstance(metric, list):
         ret = {}
         for m in metric:
