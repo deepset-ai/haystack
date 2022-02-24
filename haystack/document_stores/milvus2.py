@@ -29,10 +29,6 @@ logger = logging.getLogger(__name__)
 
 class Milvus2DocumentStore(SQLDocumentStore):
     """
-
-    ** Note: This implementation supports the upcoming Milvus 2.0 release and is in experimental stage.
-    If you want to use a stable version, we recommend using `MilvusDocumentStore` with a Milvus 1.x version **
-
     Limitations:
     Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
     Therefore, delete_documents() and update_embeddings() won't work yet.
@@ -45,7 +41,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     Usage:
     1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
     2. Run pip install farm-haystack[milvus]
-    3. Init a Milvus2DocumentStore() in Haystack
+    3. Init a MilvusDocumentStore() in Haystack
 
     Overview:
     Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
@@ -87,10 +83,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
                         deployment, Postgres is recommended. If using MySQL then same server can also be used for
-                        Milvus metadata. For more details see https://milvus.io/docs/v1.0.0/data_manage.md.
+                        Milvus metadata. For more details see https://milvus.io/docs/v2.0.0/data_manage.md.
         :param milvus_url: Milvus server connection URL for storing and processing vectors.
                            Protocol, host and port will automatically be inferred from the URL.
-                           See https://milvus.io/docs/v1.0.0/install_milvus.md for instructions to start a Milvus instance.
+                           See https://milvus.io/docs/v2.0.0/install_milvus.md for instructions to start a Milvus instance.
         :param connection_pool: Connection pool type to connect with Milvus server. Default: "SingletonThread".
         :param index: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
         :param vector_dim: Deprecated. Use embedding_dim instead.
@@ -100,24 +96,24 @@ class Milvus2DocumentStore(SQLDocumentStore):
          Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
          As a rule of thumb, we would see a 30% ~ 50% increase in the search performance after changing the value of index_file_size from 1024 to 2048.
          Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
-         (From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
+         (From https://milvus.io/docs/v2.0.0/performance_faq.md)
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
                            'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
                            However, you can normalize your embeddings and use `dot_product` to get the same results.
-                           See https://milvus.io/docs/v1.0.0/metric.md?Inner-product-(IP)#floating.
+                           See https://milvus.io/docs/v2.0.0/metric.md.
         :param index_type: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
                            Some popular options:
                            - FLAT (default): Exact method, slow
                            - IVF_FLAT, inverted file based heuristic, fast
                            - HSNW: Graph based, fast
                            - ANNOY: Tree based, fast
-                           See: https://milvus.io/docs/v1.0.0/index.md
+                           See: https://milvus.io/docs/v2.0.0/index.md
         :param index_param: Configuration parameters for the chose index_type needed at indexing time.
                             For example: {"nlist": 16384} as the number of cluster units to create for index_type IVF_FLAT.
-                            See https://milvus.io/docs/v1.0.0/index.md
+                            See https://milvus.io/docs/v2.0.0/index.md
         :param search_param: Configuration parameters for the chose index_type needed at query time
                              For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
-                             See https://milvus.io/docs/v1.0.0/index.md
+                             See https://milvus.io/docs/v2.0.0/index.md
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
@@ -261,7 +257,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         Add new documents to the DocumentStore.
 
         :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
-                                  them right away in Milvus. If not, you can later call update_embeddings() to create & index them.
+                                  them right away in Milvus. If not, you can later call `update_embeddings()` to create & index them.
         :param index: (SQL) index name for storing the docs and metadata
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param duplicate_documents: Handle duplicates document based on parameter options.
