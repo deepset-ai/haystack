@@ -2,8 +2,8 @@ from typing import Union
 from types import ModuleType
 
 try:
-    import importlib.metadata as metadata
-except ModuleNotFoundError:
+    from importlib import metadata
+except (ModuleNotFoundError, ImportError):
     # Python <= 3.7
     import importlib_metadata as metadata  # type: ignore
 
@@ -40,7 +40,7 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
     Return a wrapped object that warns about deprecated accesses at import
     """
 
-    class DeprecationWrapper(object):
+    class DeprecationWrapper:
         warned = []
 
         def __getattr__(self, attr):
@@ -60,7 +60,9 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
 
 
 # All modules to be aliased need to be imported here
-import haystack
+
+# This self-import is used to monkey-patch, keep for now
+import haystack  # pylint: disable=import-self
 from haystack.nodes import (
     connector,
     document_classifier,
@@ -103,9 +105,9 @@ from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogg
 from haystack.nodes.other import JoinDocuments, Docs2Answers
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.file_classifier import FileTypeClassifier
-import haystack.utils.preprocessing as preprocessing
+from haystack.utils import preprocessing
 import haystack.modeling.utils as modeling_utils
-import haystack.utils.cleaning as cleaning
+from haystack.utils import cleaning
 
 # For the alias to work as an importable module (like `from haystack import reader`),
 # modules need to be set as attributes of their parent model.

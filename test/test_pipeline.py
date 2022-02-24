@@ -5,16 +5,18 @@ import json
 from unittest.mock import Mock
 import pytest
 import responses
-from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 
+from haystack import __version__
+from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
+from haystack.nodes.other.join_docs import JoinDocuments
+from haystack.nodes.base import BaseComponent
+from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
-from haystack.pipelines import (
-    Pipeline,
-    DocumentSearchPipeline,
-    RootNode,
-)
-from haystack.pipelines import ExtractiveQAPipeline
+from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode, ExtractiveQAPipeline
+from haystack.pipelines.base import _PipelineCodeGen
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 
 from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
@@ -44,7 +46,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
     pipeline.save_to_yaml(tmp_path / "test.yaml")
     with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
         saved_yaml = stream.read()
-    expected_yaml = """
+    expected_yaml = f"""
         components:
         - name: ESRetriever
           params:
@@ -71,7 +73,7 @@ def test_load_and_save_yaml(document_store, tmp_path):
             - ESRetriever
             name: Reader
           type: Pipeline
-        version: '0.8'
+        version: {__version__}
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
@@ -104,7 +106,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
     pipeline.save_to_yaml(tmp_path / "test.yaml")
     with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
         saved_yaml = stream.read()
-    expected_yaml = """
+    expected_yaml = f"""
         components:
         - name: ESRetriever
           params:
@@ -131,7 +133,7 @@ def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
             - ESRetriever
             name: Reader
           type: Pipeline
-        version: '0.8'
+        version: {__version__}
     """
     assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
 
@@ -162,6 +164,278 @@ def test_load_tfidfretriever_yaml(tmp_path):
     assert prediction["answers"][0].answer == "haystack"
 
 
+@pytest.mark.elasticsearch
+def test_to_code():
+    index_pipeline = Pipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
+    )
+    query_pipeline = Pipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline"
+    )
+    query_pipeline_code = query_pipeline.to_code(pipeline_variable_name="query_pipeline_from_code")
+    index_pipeline_code = index_pipeline.to_code(pipeline_variable_name="index_pipeline_from_code")
+    exec(query_pipeline_code)
+    exec(index_pipeline_code)
+    assert locals()["query_pipeline_from_code"] is not None
+    assert locals()["index_pipeline_from_code"] is not None
+    assert query_pipeline.get_config() == locals()["query_pipeline_from_code"].get_config()
+    assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_simple_sparse_pipeline():
+    doc_store = ElasticsearchDocumentStore(index="my-index")
+    retriever = ElasticsearchRetriever(document_store=doc_store, top_k=20)
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever, name="retri", inputs=["Query"])
+
+    code = _PipelineCodeGen.generate_code(pipeline=pipeline, pipeline_variable_name="p", generate_imports=False)
+    assert code == (
+        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
+        "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=retri, name="retri", inputs=["Query"])'
+    )
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_dual_retriever_pipeline():
+    es_doc_store = ElasticsearchDocumentStore(index="my-index")
+    es_retriever = ElasticsearchRetriever(document_store=es_doc_store, top_k=20)
+    dense_doc_store = InMemoryDocumentStore(index="my-index")
+    emb_retriever = EmbeddingRetriever(
+        document_store=dense_doc_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+    )
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])
+    p_ensemble.add_node(component=emb_retriever, name="EmbeddingRetriever", inputs=["Query"])
+    p_ensemble.add_node(
+        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"]
+    )
+
+    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
+    assert code == (
+        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
+        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        'in_memory_document_store = InMemoryDocumentStore(index="my-index")\n'
+        'embedding_retriever = EmbeddingRetriever(document_store=in_memory_document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
+        'join_results = JoinDocuments(join_mode="merge")\n'
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])\n'
+        'p.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])\n'
+        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"])'
+    )
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_dual_retriever_pipeline_same_docstore():
+    es_doc_store = ElasticsearchDocumentStore(index="my-index")
+    es_retriever = ElasticsearchRetriever(document_store=es_doc_store, top_k=20)
+    emb_retriever = EmbeddingRetriever(
+        document_store=es_doc_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+    )
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])
+    p_ensemble.add_node(component=emb_retriever, name="EmbeddingRetriever", inputs=["Query"])
+    p_ensemble.add_node(
+        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"]
+    )
+
+    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
+    assert code == (
+        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
+        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        'embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
+        'join_results = JoinDocuments(join_mode="merge")\n'
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])\n'
+        'p.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])\n'
+        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"])'
+    )
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_dual_retriever_pipeline_different_docstore():
+    es_doc_store_a = ElasticsearchDocumentStore(index="my-index-a")
+    es_doc_store_b = ElasticsearchDocumentStore(index="my-index-b")
+    es_retriever = ElasticsearchRetriever(document_store=es_doc_store_a, top_k=20)
+    emb_retriever = EmbeddingRetriever(
+        document_store=es_doc_store_b, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+    )
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])
+    p_ensemble.add_node(component=emb_retriever, name="EmbeddingRetriever", inputs=["Query"])
+    p_ensemble.add_node(
+        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"]
+    )
+
+    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
+    assert code == (
+        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index-a")\n'
+        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        'elasticsearch_document_store_2 = ElasticsearchDocumentStore(index="my-index-b")\n'
+        'embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store_2, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
+        'join_results = JoinDocuments(join_mode="merge")\n'
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])\n'
+        'p.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])\n'
+        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"])'
+    )
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_dual_retriever_pipeline_same_type():
+    es_doc_store = ElasticsearchDocumentStore(index="my-index")
+    es_retriever_1 = ElasticsearchRetriever(document_store=es_doc_store, top_k=20)
+    es_retriever_2 = ElasticsearchRetriever(document_store=es_doc_store, top_k=10)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=es_retriever_1, name="EsRetriever1", inputs=["Query"])
+    p_ensemble.add_node(component=es_retriever_2, name="EsRetriever2", inputs=["Query"])
+    p_ensemble.add_node(
+        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever1", "EsRetriever2"]
+    )
+
+    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
+    assert code == (
+        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
+        "es_retriever_1 = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        "es_retriever_2 = ElasticsearchRetriever(document_store=elasticsearch_document_store)\n"
+        'join_results = JoinDocuments(join_mode="merge")\n'
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=es_retriever_1, name="EsRetriever1", inputs=["Query"])\n'
+        'p.add_node(component=es_retriever_2, name="EsRetriever2", inputs=["Query"])\n'
+        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever1", "EsRetriever2"])'
+    )
+
+
+@pytest.mark.elasticsearch
+def test_PipelineCodeGen_imports():
+    doc_store = ElasticsearchDocumentStore(index="my-index")
+    retriever = ElasticsearchRetriever(document_store=doc_store, top_k=20)
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever, name="retri", inputs=["Query"])
+
+    code = _PipelineCodeGen.generate_code(pipeline=pipeline, pipeline_variable_name="p", generate_imports=True)
+    assert code == (
+        "from haystack.document_stores import ElasticsearchDocumentStore\n"
+        "from haystack.nodes import ElasticsearchRetriever\n"
+        "\n"
+        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
+        "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=retri, name="retri", inputs=["Query"])'
+    )
+
+
+def test_PipelineCodeGen_order_components():
+    dependency_map = {"a": ["aa", "ab"], "aa": [], "ab": ["aba"], "aba": [], "b": ["a", "c"], "c": ["a"]}
+    ordered = _PipelineCodeGen._order_components(dependency_map=dependency_map)
+    assert ordered == ["aa", "aba", "ab", "a", "c", "b"]
+
+
+@pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
+def test_PipelineCodeGen_validate_user_input_invalid(input):
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_user_input(input)
+
+
+@pytest.mark.parametrize(
+    "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path"]
+)
+def test_PipelineCodeGen_validate_user_input_valid(input):
+    _PipelineCodeGen._validate_user_input(input)
+
+
+def test_PipelineCodeGen_validate_pipeline_config_invalid_component_name():
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_config({"components": [{"name": "\btest"}]})
+
+
+def test_PipelineCodeGen_validate_pipeline_config_invalid_component_type():
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_config({"components": [{"name": "test", "type": "\btest"}]})
+
+
+def test_PipelineCodeGen_validate_pipeline_config_invalid_component_param():
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_config(
+            {"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]}
+        )
+
+
+def test_PipelineCodeGen_validate_pipeline_config_invalid_component_param_key():
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_config(
+            {"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]}
+        )
+
+
+def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_name():
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_config(
+            {
+                "components": [
+                    {
+                        "name": "test",
+                        "type": "test",
+                    }
+                ],
+                "pipelines": [{"name": "\btest"}],
+            }
+        )
+
+
+def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_type():
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_config(
+            {
+                "components": [
+                    {
+                        "name": "test",
+                        "type": "test",
+                    }
+                ],
+                "pipelines": [{"name": "test", "type": "\btest"}],
+            }
+        )
+
+
+def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_node_name():
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_config(
+            {
+                "components": [
+                    {
+                        "name": "test",
+                        "type": "test",
+                    }
+                ],
+                "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "\btest"}]}],
+            }
+        )
+
+
+def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_node_inputs():
+    with pytest.raises(ValueError):
+        _PipelineCodeGen._validate_config(
+            {
+                "components": [
+                    {
+                        "name": "test",
+                        "type": "test",
+                    }
+                ],
+                "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "test", "inputs": ["\btest"]}]}],
+            }
+        )
+
+
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
 def test_load_from_deepset_cloud_query():
@@ -190,6 +464,7 @@ def test_load_from_deepset_cloud_query():
     document_store = retriever.document_store
     assert isinstance(retriever, ElasticsearchRetriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
+    assert document_store == query_pipeline.get_document_store()
 
     prediction = query_pipeline.run(query="man on horse", params={})
 
@@ -549,6 +824,142 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
     pipeline.add_node(name="F", component=JoinNode(), inputs=["D", "E", "C"])
     output = pipeline.run(query="test")
     assert output["output"] == "ACABEABD"
+
+
+def test_pipeline_components():
+    class Node(BaseComponent):
+        outgoing_edges = 1
+
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    a = Node()
+    b = Node()
+    c = Node()
+    d = Node()
+    e = Node()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=a, inputs=["Query"])
+    pipeline.add_node(name="B", component=b, inputs=["A"])
+    pipeline.add_node(name="C", component=c, inputs=["B"])
+    pipeline.add_node(name="D", component=d, inputs=["C"])
+    pipeline.add_node(name="E", component=e, inputs=["D"])
+    assert len(pipeline.components) == 5
+    assert pipeline.components["A"] == a
+    assert pipeline.components["B"] == b
+    assert pipeline.components["C"] == c
+    assert pipeline.components["D"] == d
+    assert pipeline.components["E"] == e
+
+
+def test_pipeline_get_document_store_from_components():
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    doc_store = DummyDocumentStore()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=doc_store, inputs=["File"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_components_multiple_doc_stores():
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    doc_store_a = DummyDocumentStore()
+    doc_store_b = DummyDocumentStore()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=doc_store_a, inputs=["File"])
+    pipeline.add_node(name="B", component=doc_store_b, inputs=["File"])
+
+    with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
+        pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_retriever():
+    class DummyRetriever(BaseRetriever):
+        def __init__(self, document_store):
+            self.document_store = document_store
+
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    doc_store = DummyDocumentStore()
+    retriever = DummyRetriever(document_store=doc_store)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever, inputs=["Query"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_dual_retriever():
+    class DummyRetriever(BaseRetriever):
+        def __init__(self, document_store):
+            self.document_store = document_store
+
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    class JoinNode(RootNode):
+        def run(self, output=None, inputs=None):
+            if inputs:
+                output = ""
+                for input_dict in inputs:
+                    output += input_dict["output"]
+            return {"output": output}, "output_1"
+
+    doc_store = DummyDocumentStore()
+    retriever_a = DummyRetriever(document_store=doc_store)
+    retriever_b = DummyRetriever(document_store=doc_store)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever_a, inputs=["Query"])
+    pipeline.add_node(name="B", component=retriever_b, inputs=["Query"])
+    pipeline.add_node(name="C", component=JoinNode(), inputs=["A", "B"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
+    class DummyRetriever(BaseRetriever):
+        def __init__(self, document_store):
+            self.document_store = document_store
+
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    class DummyDocumentStore(BaseDocumentStore):
+        pass
+
+    class JoinNode(RootNode):
+        def run(self, output=None, inputs=None):
+            if inputs:
+                output = ""
+                for input_dict in inputs:
+                    output += input_dict["output"]
+            return {"output": output}, "output_1"
+
+    doc_store_a = DummyDocumentStore()
+    doc_store_b = DummyDocumentStore()
+    retriever_a = DummyRetriever(document_store=doc_store_a)
+    retriever_b = DummyRetriever(document_store=doc_store_b)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever_a, inputs=["Query"])
+    pipeline.add_node(name="B", component=retriever_b, inputs=["Query"])
+    pipeline.add_node(name="C", component=JoinNode(), inputs=["A", "B"])
+
+    with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
+        pipeline.get_document_store()
 
 
 def test_existing_faiss_document_store():

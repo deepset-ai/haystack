@@ -193,8 +193,7 @@ class LanguageModel(nn.Module):
                 f"Ensure that the model class name can be inferred from the directory name when loading a "
                 f"Transformers' model."
             )
-        else:
-            logger.info(f"Loaded {pretrained_model_name_or_path}")
+        logger.info(f"Loaded {pretrained_model_name_or_path}")
 
         # resize embeddings in case of custom vocab
         if n_added_tokens != 0:
@@ -268,8 +267,7 @@ class LanguageModel(nn.Module):
         elif "codebert" in model_name_or_path.lower():
             if "mlm" in model_name_or_path.lower():
                 raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
-            else:
-                language_model_class = "Roberta"
+            language_model_class = "Roberta"
         elif "camembert" in model_name_or_path.lower() or "umberto" in model_name_or_path.lower():
             language_model_class = "Camembert"
         elif "albert" in model_name_or_path.lower():
@@ -300,8 +298,7 @@ class LanguageModel(nn.Module):
         for odn in OUTPUT_DIM_NAMES:
             if odn in dir(config):
                 return getattr(config, odn)
-        else:
-            raise Exception("Could not infer the output dimensions of the language model")
+        raise Exception("Could not infer the output dimensions of the language model")
 
     def freeze(self, layers):
         """To be implemented"""
