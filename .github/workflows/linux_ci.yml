@@ -211,7 +211,7 @@ jobs:
           if [[ `git status --porcelain` ]]; then
             git status
             echo ""
-            echo "This means that the `autoformat.yml` action didn't run on the fork."
+            echo "This means that the 'autoformat.yml' action didn't run."
             echo "Please enable GitHub Action on your fork to pass this check!"
             exit 1
           fi
@@ -257,7 +257,10 @@ jobs:
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
     - name: Run Milvus
-      run: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
+      run: |
+        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
+        sudo docker-compose up -d
+        sudo docker-compose ps
 
     - name: Run Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.2
@@ -270,9 +273,6 @@ jobs:
 
     - name: Run Parsr
       run: docker run -d -p 3001:3001 axarev/parsr:v1.2.2
-
-#    - name: Run Ray
-#      run: RAY_DISABLE_MEMORY_MONITOR=1 ray start --head
 
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
@@ -290,8 +290,6 @@ jobs:
         pip install rest_api/
         pip install ui/
         pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
-        echo "=== pip freeze ==="
-        pip freeze
 
     # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
     # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
@@ -303,3 +301,50 @@ jobs:
 
     - name: Run tests
       run: pytest -s ${{ matrix.test-path }}
+
+
+  test-milvus1:
+    needs: build-cache
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+
+    - name: Cache Python
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+    - name: Run Milvus 1
+      run: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
+
+    - name: Install pdftotext
+      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
+
+    - name: Install Dependencies (on cache miss only)
+      # The cache might miss during the execution of an action: there should always be a fallback step to
+      # rebuild it in case it goes missing
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        pip install --upgrade pip
+        pip install .[test]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+
+    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
+    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
+    - name: Reinstall Haystack
+      run: |
+        pip install .[test]
+        pip install .[milvus1]
+
+    - name: Run Milvus1 tests
+      run: |
+        export MILVUS1_ENABLED=1
+        pytest -s test/test_document_store.py test/test_eval.py test/test_faiss_and_milvus.py test/test_pipeline.py test/test_retriever.py test/test_standard_pipelines.py --document_store_type="milvus1"

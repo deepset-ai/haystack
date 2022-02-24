@@ -125,7 +125,7 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate"], indirect=True)
 def test_write_with_duplicate_doc_ids_custom_index(document_store):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -151,6 +151,7 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
+    print("hey!")
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
     assert len(documents) == 5
@@ -691,10 +692,15 @@ def test_delete_documents_with_filters(document_store_with_docs):
 
 
 def test_delete_documents_by_id(document_store_with_docs):
+    import logging
+
+    logging.info(len(document_store_with_docs.get_all_documents()))
     docs_to_delete = document_store_with_docs.get_all_documents(
         filters={"meta_field": ["test1", "test2", "test4", "test5"]}
     )
+    logging.info(len(docs_to_delete))
     docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test3"]})
+    logging.info(len(docs_not_to_delete))
 
     document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete])
     all_docs_left = document_store_with_docs.get_all_documents()
@@ -720,7 +726,7 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_labels(document_store):
     label = Label(
         query="question1",
@@ -808,7 +814,7 @@ def test_labels(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_multilabel(document_store):
     labels = [
         Label(
@@ -924,7 +930,7 @@ def test_multilabel(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_multilabel_no_answer(document_store):
     labels = [
         Label(
@@ -1179,7 +1185,7 @@ def test_multilabel_meta_aggregations(document_store):
             assert multi_label.filters == l.filters
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus", "weaviate"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
@@ -1395,7 +1401,7 @@ def test_elasticsearch_synonyms():
 
 
 @pytest.mark.parametrize(
-    "document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True
+    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score(document_store_with_docs):
@@ -1412,7 +1418,7 @@ def test_similarity_score(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus", "elasticsearch"], indirect=True
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product(document_store_dot_product_with_docs):
