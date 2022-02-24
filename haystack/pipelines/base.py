@@ -35,7 +35,7 @@ except:
 
 from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
-from haystack.errors import PipelineError, PipelineValidationError
+from haystack.errors import PipelineError, PipelineValidationError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -454,11 +454,11 @@ class BasePipeline:
             if len(pipeline_config["pipelines"]) == 1:
                 pipeline_definition = pipeline_config["pipelines"][0]
             else:
-                raise Exception("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
+                raise PipelineConfigError("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
         else:
             pipelines_in_definitions = list(filter(lambda p: p["name"] == pipeline_name, pipeline_config["pipelines"]))
             if not pipelines_in_definitions:
-                raise KeyError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+                raise PipelineConfigError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
             pipeline_definition = pipelines_in_definitions[0]
 
         return pipeline_definition
@@ -503,17 +503,15 @@ class BasePipeline:
 
     @classmethod
     def _read_pipeline_config_from_yaml(cls, path: Path):
-        if not path.exists:
-            raise PipelineError(f"'{path.absolute()}' does not exist.")
-        if not path.is_file:
-            raise PipelineError(f"'{path.absolute()}' is not a file.")
         try:
             with open(path, "r", encoding="utf-8") as stream:
-                return yaml.safe_load(stream)
+                loaded_config = yaml.safe_load(stream)
+                cls.validate_config(loaded_config)
+
         except IOError as ioe:
-            raise PipelineError(f"Failed to load '{path.absolute()}' for IOError. Check your permissions.") from ioe
+            raise PipelineConfigError(source=ioe)
         except yaml.YAMLError as ye:
-            raise PipelineError(f"Failed to load '{path.absolute()}' for YAMLError. Check its syntax.") from ye
+            raise PipelineConfigError(source=ye)
 
 
 class Pipeline(BasePipeline):
