@@ -47,12 +47,12 @@ class Evaluator:
         model.eval()
 
         # init empty lists per prediction head
-        loss_all = [0 for _ in model.prediction_heads]  # type: List
-        preds_all = [[] for _ in model.prediction_heads]  # type: List
-        label_all = [[] for _ in model.prediction_heads]  # type: List
-        ids_all = [[] for _ in model.prediction_heads]  # type: List
-        passage_start_t_all = [[] for _ in model.prediction_heads]  # type: List
-        logits_all = [[] for _ in model.prediction_heads]  # type: List
+        loss_all: List = [0 for _ in model.prediction_heads]
+        preds_all: List = [[] for _ in model.prediction_heads]
+        label_all: List = [[] for _ in model.prediction_heads]
+        ids_all: List = [[] for _ in model.prediction_heads]
+        passage_start_t_all: List = [[] for _ in model.prediction_heads]
+        logits_all: List = [[] for _ in model.prediction_heads]
 
         for step, batch in enumerate(tqdm(self.data_loader, desc="Evaluating", mininterval=10)):
             batch = {key: batch[key].to(self.device) for key in batch}

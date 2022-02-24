@@ -22,7 +22,7 @@ def flatten_rename(encoded_batch: BatchEncoding, keys: List[str] = None, renamed
     assert len(keys) == len(
         renamed_keys
     ), f"keys and renamed_keys have different size {len(keys)} != {len(renamed_keys)}"
-    assert any([key in encoded_batch for key in keys]), f"one of the keys {keys} is not in batch {encoded_batch.keys()}"
+    assert any(key in encoded_batch for key in keys), f"one of the keys {keys} is not in batch {encoded_batch.keys()}"
     features_flat = []
     for item in range(len(encoded_batch[keys[0]])):
         feat_dict = {k: v for k, v in zip(renamed_keys, [encoded_batch[k][item] for k in keys])}
@@ -87,9 +87,6 @@ class ConcatTensorDataset(ConcatDataset):
     Args:
         datasets (sequence): List of datasets to be concatenated
     """
-
-    def __init__(self, datasets: Iterable[Dataset]) -> None:
-        super(ConcatTensorDataset, self).__init__(datasets)
 
     def __getitem__(self, idx):
         if isinstance(idx, slice):

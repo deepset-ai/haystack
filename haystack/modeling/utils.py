@@ -236,7 +236,6 @@ def grouper(iterable, n: int, worker_id: int = 0, total_workers: int = 1):
             else:
                 if y != 1:
                     y -= 1
-                    continue
                 else:
                     x = n
                     y = (total_workers - 1) * n

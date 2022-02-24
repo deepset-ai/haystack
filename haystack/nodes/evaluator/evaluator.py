@@ -129,9 +129,6 @@ class EvalDocuments(BaseComponent):
             )
         return {"correct_retrieval": correct_retrieval}, "output_1"
 
-    def is_correctly_retrieved(self, retriever_labels, predictions):
-        return self.reciprocal_rank_retrieved(retriever_labels, predictions) > 0
-
     def reciprocal_rank_retrieved(self, retriever_labels, predictions, top_k_eval_documents):
         if self.open_domain:
             for answer in retriever_labels.answers:
@@ -411,7 +408,7 @@ def semantic_answer_similarity(
     config = AutoConfig.from_pretrained(sas_model_name_or_path)
     cross_encoder_used = False
     if config.architectures is not None:
-        cross_encoder_used = any([arch.endswith("ForSequenceClassification") for arch in config.architectures])
+        cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
 
     # Compute similarities
     top_1_sas = []

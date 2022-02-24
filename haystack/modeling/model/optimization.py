@@ -9,25 +9,34 @@ import torch
 from torch.nn import DataParallel
 from torch.nn.parallel import DistributedDataParallel
 
+logger = logging.getLogger(__name__)
+
 try:
-    from apex import amp
+    from apex import amp  # pylint: disable=import-error
+
+    logger.info("apex is available.")
 
     try:
-        from apex.parallel import convert_syncbn_model
+        from apex.parallel import convert_syncbn_model  # pylint: disable=import-error
 
         APEX_PARALLEL_AVAILABLE = True
+
+        logger.info("apex.parallel is available.")
+
     except AttributeError:
         APEX_PARALLEL_AVAILABLE = False
+        logger.info("apex.parallel not found, won't use it." "See https://nvidia.github.io/apex/parallel.html")
+
     AMP_AVAILABLE = True
+
 except ImportError:
     AMP_AVAILABLE = False
     APEX_PARALLEL_AVAILABLE = False
+    logger.info("apex not found, won't use it. " "See https://nvidia.github.io/apex/")
+
 
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.logger import MLFlowLogger as MlLogger
-
-
-logger = logging.getLogger(__name__)
 
 
 class WrappedDataParallel(DataParallel):
