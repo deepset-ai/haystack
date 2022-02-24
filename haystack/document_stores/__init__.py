@@ -24,4 +24,9 @@ GraphDBKnowledgeGraph = safe_import("haystack.document_stores.graphdb", "GraphDB
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
-from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
+from haystack.document_stores.utils import (
+    eval_data_from_json,
+    eval_data_from_jsonl,
+    squad_json_to_jsonl,
+    es_index_to_document_store,
+)

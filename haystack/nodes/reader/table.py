@@ -366,27 +366,28 @@ class TableReader(BaseReader):
         # Parse answer cells in order to aggregate numerical values
         parsed_answer_cells = [parser.parse(cell) for cell in answer_cells]
         # Check if all cells contain at least one numerical value and that all values share the same unit
-        if all(parsed_answer_cells) and all(
-            cell[0].unit.name == parsed_answer_cells[0][0].unit.name for cell in parsed_answer_cells
-        ):
-            numerical_values = [cell[0].value for cell in parsed_answer_cells]
-            unit = parsed_answer_cells[0][0].unit.symbols[0] if parsed_answer_cells[0][0].unit.symbols else ""
+        try:
+            if all(parsed_answer_cells) and all(
+                cell[0].unit.name == parsed_answer_cells[0][0].unit.name for cell in parsed_answer_cells
+            ):
+                numerical_values = [cell[0].value for cell in parsed_answer_cells]
+                unit = parsed_answer_cells[0][0].unit.symbols[0] if parsed_answer_cells[0][0].unit.symbols else ""
 
-            if agg_operator == "SUM":
-                answer_value = sum(numerical_values)
-            elif agg_operator == "AVERAGE":
-                answer_value = mean(numerical_values)
-            else:
-                return f"{agg_operator} > {', '.join(answer_cells)}"
+                if agg_operator == "SUM":
+                    answer_value = sum(numerical_values)
+                elif agg_operator == "AVERAGE":
+                    answer_value = mean(numerical_values)
+                else:
+                    raise KeyError("unknown aggregator")
 
-            if unit:
-                return f"{str(answer_value)} {unit}"
-            else:
-                return str(answer_value)
+            return f"{answer_value}{' ' + unit if unit else ''}"
+
+        except KeyError as e:
+            if "unknown aggregator" in str(e):
+                pass
 
         # Not all selected answer cells contain a numerical value or answer cells don't share the same unit
-        else:
-            return f"{agg_operator} > {', '.join(answer_cells)}"
+        return f"{agg_operator} > {', '.join(answer_cells)}"
 
     @staticmethod
     def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:

@@ -1182,7 +1182,7 @@ class EmbeddingRetriever(BaseRetriever):
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
-        if not model_format in _EMBEDDING_ENCODERS.keys():
+        if model_format not in _EMBEDDING_ENCODERS.keys():
             raise ValueError(f"Unknown retriever embedding model format {model_format}")
         self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
 

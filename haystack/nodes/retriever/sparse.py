@@ -292,6 +292,6 @@ class TfidfRetriever(BaseRetriever):
                 return
 
         self.df = pd.DataFrame.from_dict(self.paragraphs)
-        self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))
+        self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))  # pylint: disable=unnecessary-lambda
         self.tfidf_matrix = self.vectorizer.fit_transform(self.df["content"])
         self.document_count = self.document_store.get_document_count()

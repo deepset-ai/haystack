@@ -9,10 +9,12 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+# We are using Pydantic dataclasses instead of vanilla Python's
+# See #1598 for the reasons behind this choice & performance considerations
+from pydantic.dataclasses import dataclass
+
 if typing.TYPE_CHECKING:
-    from dataclasses import dataclass
-else:
-    from pydantic.dataclasses import dataclass
+    from dataclasses import dataclass  # type: ignore
 
 from pydantic.json import pydantic_encoder
 from pathlib import Path
@@ -420,17 +422,15 @@ class Label:
                     )
             else:
                 # Automatically infer no_answer from Answer object
-                if self.answer.answer == "" or self.answer.answer is None:
-                    no_answer = True
-                else:
-                    no_answer = False
+                no_answer = self.answer.answer == "" or self.answer.answer is None
+
         self.no_answer = no_answer
 
         # TODO autofill answer.document_id if Document is provided
 
         self.pipeline_id = pipeline_id
         if not meta:
-            self.meta = dict()
+            self.meta = {}
         else:
             self.meta = meta
         self.filters = filters
@@ -481,11 +481,20 @@ class Label:
         return str(self.to_dict())
 
     def __str__(self):
-        return str(self.to_dict())
+        return f"<Label: {self.to_dict()}>"
 
 
 @dataclass
 class MultiLabel:
+    labels: List[Label]
+    query: str
+    answers: List[str]
+    no_answer: bool
+    document_ids: List[str]
+    document_contents: List[str]
+    gold_offsets_in_contexts: List[Dict]
+    gold_offsets_in_documents: List[Dict]
+
     def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -499,7 +508,6 @@ class MultiLabel:
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
-
         # drop duplicate labels and remove negative labels if needed.
         labels = list(set(labels))
         if drop_negative_labels:
@@ -560,13 +568,12 @@ class MultiLabel:
                 if l.filters not in unique_values:
                     unique_values.append(l.filters)
         else:
-            unique_values = list(set([getattr(l, key) for l in self.labels]))
+            unique_values = list({getattr(l, key) for l in self.labels})
         if must_be_single_value and len(unique_values) > 1:
             raise ValueError(
                 f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}"
             )
-        else:
-            return unique_values
+        return unique_values
 
     def to_dict(self):
         return asdict(self)
@@ -588,7 +595,7 @@ class MultiLabel:
         return str(self.to_dict())
 
     def __str__(self):
-        return str(self.to_dict())
+        return f"<MultiLabel: {self.to_dict()}>"
 
 
 def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
