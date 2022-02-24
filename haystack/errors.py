@@ -39,6 +39,7 @@ class PipelineValidationError(PipelineError):
     """
 
     def __init__(self, source: ValidationError = None):
+        super().__init__()
         self.source = source
 
     def __getattr__(self, attr):
