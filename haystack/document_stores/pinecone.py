@@ -31,8 +31,10 @@ class PineconeDocumentStore(SQLDocumentStore):
     The document text is stored using the SQLDocumentStore, while
     the vector embeddings and metadata (for filtering) are indexed in a Pinecone Index.
     """
+
     top_k_limit = 10_000
     top_k_limit_vectors = 1_000
+
     def __init__(
         self,
         api_key: str,
@@ -47,12 +49,12 @@ class PineconeDocumentStore(SQLDocumentStore):
         shards: int = 1,
         embedding_field: str = "embedding",
         progress_bar: bool = True,
-        duplicate_documents: str = 'overwrite',
+        duplicate_documents: str = "overwrite",
         **kwargs,
     ):
         """
         :param api_key: Pinecone vector database API key (https://app.pinecone.io)
-        :param environment: Pinecone cloud environment uses "us-west1-gcp" by default. Other GCP and AWS regions are supported, 
+        :param environment: Pinecone cloud environment uses "us-west1-gcp" by default. Other GCP and AWS regions are supported,
                             contact Pinecone if required.
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
@@ -62,7 +64,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                    more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
-                   In both cases, the returned values in Document.score are normalized to be in range [0,1]: 
+                   In both cases, the returned values in Document.score are normalized to be in range [0,1]:
                    For `dot_product`: expit(np.asarray(raw_score / 100))
                    For `cosine`: (raw_score + 1) / 2
         :param replicas: The number of replicas. Replicas duplicate your index. They provide higher availability and
@@ -87,8 +89,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         elif similarity in ("l2", "euclidean"):
             self.metric_type = "euclidean"
         else:
-            raise ValueError("The Pinecone document store can currently only support dot_product, cosine and euclidean metrics. "
-                             "Please set similarity to one of the above.")
+            raise ValueError(
+                "The Pinecone document store can currently only support dot_product, cosine and euclidean metrics. "
+                "Please set similarity to one of the above."
+            )
 
         self.index = index
         self.vector_dim = vector_dim
@@ -112,7 +116,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 index=clean_index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
-                shards=self.shards
+                shards=self.shards,
             )
 
         self.return_embedding = return_embedding
@@ -121,18 +125,16 @@ class PineconeDocumentStore(SQLDocumentStore):
         self.progress_bar = progress_bar
 
         super().__init__(
-            url=sql_url,
-            index=index,  # no sanitation for SQL index name
-            duplicate_documents=duplicate_documents
+            url=sql_url, index=index, duplicate_documents=duplicate_documents  # no sanitation for SQL index name
         )
 
         self._validate_index_sync()
-    
+
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
         if index is None:
             return None
         elif "_" in index:
-            return index.replace('_', '-').lower()
+            return index.replace("_", "-").lower()
         else:
             return index.lower()
 
@@ -142,10 +144,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         metric_type: Optional[str] = "cosine",
         replicas: Optional[int] = 1,
-        shards: Optional[int] = 1
+        shards: Optional[int] = 1,
     ):
         """
-        Create a new index for storing documents in case if an 
+        Create a new index for storing documents in case if an
         index with the name doesn't exist already.
         """
         index = index or self.index
@@ -158,27 +160,19 @@ class PineconeDocumentStore(SQLDocumentStore):
             # search pinecone hosted indexes and create if it does not exist
             if index not in pinecone.list_indexes():
                 pinecone.create_index(
-                    name=index,
-                    dimension=vector_dim,
-                    metric=metric_type,
-                    replicas = replicas,
-                    shards = shards
+                    name=index, dimension=vector_dim, metric=metric_type, replicas=replicas, shards=shards
                 )
             index_conn = pinecone.Index(index)
 
         # get index statistics
         stats = index_conn.describe_index_stats()
-        dims = stats['dimension']
-        count = stats['namespaces']['']['vector_count'] if stats['namespaces'].get('') else 0
+        dims = stats["dimension"]
+        count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
         logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
         # return index connection
         return index_conn
 
-    def _convert_pinecone_result_to_document(
-            self,
-            result: dict,
-            return_embedding: bool
-    ) -> Document:
+    def _convert_pinecone_result_to_document(self, result: dict, return_embedding: bool) -> Document:
         """
         Convert Pinecone result dict into haystack document object. This is more involved because
         weaviate search result dict varies between get and query interfaces.
@@ -198,15 +192,17 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
-        
-        document = Document.from_dict({
-            "id": id,
-            "content": content,
-            "content_type":  content_type,
-            "meta": meta,
-            "score": score,
-            "embedding": embedding,
-        })
+
+        document = Document.from_dict(
+            {
+                "id": id,
+                "content": content,
+                "content_type": content_type,
+                "meta": meta,
+                "score": score,
+                "embedding": embedding,
+            }
+        )
         return document
 
     def _validate_params_load_from_disk(self, sig: Signature, locals: dict, kwargs: dict):
@@ -217,25 +213,32 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         for param in sig.parameters.values():
             if param.name not in allowed_params and param.default != locals[param.name]:
-                    invalid_param_set = True
-                    break
-        
+                invalid_param_set = True
+                break
+
         if invalid_param_set or len(kwargs) > 0:
             raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
 
-    def _validate_index_sync(self):        
+    def _validate_index_sync(self):
         # This check ensures the correct document database was loaded.
         # If it fails, make sure you provided the path to the database
         # used when creating the original Pinecone index
         if not self.get_document_count() == self.get_embedding_count():
-            raise ValueError("The number of documents present in the SQL database does not "
-                             "match the number of embeddings in Pinecone. Make sure your Pinecone "
-                             "index aligns to the same database that was used when creating the "
-                             "original index.")
+            raise ValueError(
+                "The number of documents present in the SQL database does not "
+                "match the number of embeddings in Pinecone. Make sure your Pinecone "
+                "index aligns to the same database that was used when creating the "
+                "original index."
+            )
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
-                        headers: Optional[Dict[str, str]] = None) -> None:
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> None:
         """
         Add new documents to the DocumentStore.
 
@@ -254,12 +257,13 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
-        
+
         index = index or self.index
         index = self._sanitize_index_name(index)
         duplicate_documents = duplicate_documents or self.duplicate_documents
-        assert duplicate_documents in self.duplicate_documents_options, \
-            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
+        assert (
+            duplicate_documents in self.duplicate_documents_options
+        ), f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
         if not self.pinecone_indexes.get(index):
             self.pinecone_indexes[index] = self._create_index_if_not_exist(
@@ -267,14 +271,14 @@ class PineconeDocumentStore(SQLDocumentStore):
                 index=index,
                 metric_type=self.metric,
                 replicas=self.replicas,
-                shards=self.shards
+                shards=self.shards,
             )
 
         field_map = self._create_document_field_map()
         document_objects = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
-        document_objects = self._handle_duplicate_documents(documents=document_objects,
-                                                            index=index,
-                                                            duplicate_documents=duplicate_documents)
+        document_objects = self._handle_duplicate_documents(
+            documents=document_objects, index=index, duplicate_documents=duplicate_documents
+        )
         if len(document_objects) > 0:
             add_vectors = False if document_objects[0].embedding is None else True
             # I don't think below is required
@@ -285,32 +289,35 @@ class PineconeDocumentStore(SQLDocumentStore):
                                "Please call `update_embeddings` method to repopulate `faiss_index`")
             """
 
-            with tqdm(total = len(document_objects), disable =not self.progress_bar, position=0,
-                    desc="Writing Documents") as progress_bar:
+            with tqdm(
+                total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
+            ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
-                    ids = [doc.id for doc in document_objects[i: i + batch_size]]
+                    ids = [doc.id for doc in document_objects[i : i + batch_size]]
                     # TODO find way to identify long metadata fields and split these to be stored in SQL
-                    metadata = [doc.meta for doc in document_objects[i: i + batch_size]]
+                    metadata = [doc.meta for doc in document_objects[i : i + batch_size]]
                     if add_vectors:
-                        embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
+                        embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                        if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
+                        if self.similarity == "cosine":
+                            self.normalize_embedding(embeddings_to_index)
                         # TODO not sure if required to convert to list objects (maybe already are)
                         embeddings = [embed.tolist() for embed in embeddings]
                         vectors = zip(ids, embeddings, metadata)
                         self.pinecone_indexes[index].upsert(vectors=vectors)
 
                     docs_to_write_in_sql = []
-                    for doc in document_objects[i: i + batch_size]:
+                    for doc in document_objects[i : i + batch_size]:
                         # TODO I think this is not necessary as we have doc.id, before was required
                         # to map from doc.id to the integer 'vector_id' values used by faiss - but
                         # we do need to use vector_id as this is used by the sql doc store
-                        #if add_vectors:
+                        # if add_vectors:
                         doc.meta["vector_id"] = doc.id
                         docs_to_write_in_sql.append(doc)
-                    super(PineconeDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
-                                                                duplicate_documents=duplicate_documents)
+                    super(PineconeDocumentStore, self).write_documents(
+                        docs_to_write_in_sql, index=index, duplicate_documents=duplicate_documents
+                    )
                     progress_bar.update(batch_size)
             progress_bar.close()
 
@@ -321,11 +328,11 @@ class PineconeDocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: 'BaseRetriever',
+        retriever: "BaseRetriever",
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict] = None,
-        batch_size: int = 10_000
+        batch_size: int = 10_000,
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -358,24 +365,26 @@ class PineconeDocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        
+
         result = self._query(
             index=index,
             vector_ids=None,
             batch_size=batch_size,
             filters=filters,
-            only_documents_without_embedding=not update_existing_embeddings
+            only_documents_without_embedding=not update_existing_embeddings,
         )
         batched_documents = get_batches_from_generator(result, batch_size)
-        with tqdm(total=document_count, disable=not self.progress_bar, position=0, unit=" docs",
-                  desc="Updating Embedding") as progress_bar:
+        with tqdm(
+            total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
+        ) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 assert len(document_batch) == len(embeddings)
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
+                if self.similarity == "cosine":
+                    self.normalize_embedding(embeddings_to_index)
 
                 embeddings = embeddings.tolist()
 
@@ -397,7 +406,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         filters: Optional[Dict] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -417,7 +426,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         filters: Optional[Dict] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -437,7 +446,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         if filters:
             raise Exception("get_all_documents_generator does not support filters.")
         self._limit_check(batch_size)
-        
+
         index = index or self.index
         index = self._sanitize_index_name(index)
         documents = super(PineconeDocumentStore, self).get_all_documents_generator(
@@ -450,20 +459,23 @@ class PineconeDocumentStore(SQLDocumentStore):
             if return_embedding:
                 if doc.meta and doc.meta.get("vector_id") is not None:
                     res = self.pinecone_indexes[index].fetch(ids=[doc.id])
-                    if res['vectors'].get(doc.id):
+                    if res["vectors"].get(doc.id):
                         doc.embedding = self._convert_pinecone_result_to_document(
-                            result=res['vectors'][doc.id],
-                            return_embedding=return_embedding
+                            result=res["vectors"][doc.id], return_embedding=return_embedding
                         ).embedding
             yield doc
 
     def get_documents_by_id(
-        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None
+        self,
+        ids: List[str],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
         self._limit_check(batch_size)
-        
+
         index = index or self.index
         index = self._sanitize_index_name(index)
         # TODO could put this repetative chunk in a _method?
@@ -473,7 +485,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 index=index,
                 metric_type=self.metric,
                 replicas=self.replicas,
-                shards=self.shards
+                shards=self.shards,
             )
         # check there are vectors
         count = self.get_embedding_count(index)
@@ -484,11 +496,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         documents = []
         for id_val in ids:
             # check exists
-            if res['vectors'].get(id_val):
+            if res["vectors"].get(id_val):
                 documents.append(
                     self._convert_pinecone_result_to_document(
-                        result=res['vectors'][id_val],
-                        return_embedding=self.return_embedding
+                        result=res["vectors"][id_val], return_embedding=self.return_embedding
                     )
                 )
         # get content from SQL
@@ -511,12 +522,12 @@ class PineconeDocumentStore(SQLDocumentStore):
                 index=self.index,
                 metric_type=self.metric,
                 replicas=self.replicas,
-                shards=self.shards
+                shards=self.shards,
             )
 
         stats = self.pinecone_indexes[index].describe_index_stats()
         # if no namespace return zero
-        count = stats['namespaces']['']['vector_count'] if stats['namespaces'].get('') else 0
+        count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
         return count
 
     def train_index(
@@ -530,7 +541,13 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         raise NotImplementedError("PineconeDocumentStore does not require training")
 
-    def delete_documents(self, index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict] = None, headers: Optional[Dict[str, str]] = None):
+    def delete_documents(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Delete documents from the document store.
 
@@ -546,7 +563,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
         if filters:
             raise NotImplementedError("PineconeDocumentStore does not support filtering during document deletion.")
-        
+
         index = index or self.index
         index = self._sanitize_index_name(index)
         if not self.pinecone_indexes.get(index):
@@ -555,7 +572,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 index=self.index,
                 metric_type=self.metric,
                 replicas=self.replicas,
-                shards=self.shards
+                shards=self.shards,
             )
         _ = self.pinecone_indexes[index].delete(ids=ids)
         # delete from SQL
@@ -568,7 +585,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -590,35 +607,33 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
 
         if not self.pinecone_indexes.get(index):
-            raise Exception(f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running 'update_embeddings()' to create and populate an index.")
+            raise Exception(
+                f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running 'update_embeddings()' to create and populate an index."
+            )
 
         if return_embedding is None:
             return_embedding = self.return_embedding
 
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
 
-        if self.similarity=="cosine": self.normalize_embedding(query_emb)
+        if self.similarity == "cosine":
+            self.normalize_embedding(query_emb)
 
-        res = self.pinecone_indexes[index].query(
-            query_emb.tolist(),
-            top_k=top_k,
-            include_values=True,
-            filter=filters
-        )
+        res = self.pinecone_indexes[index].query(query_emb.tolist(), top_k=top_k, include_values=True, filter=filters)
 
         score_matrix = []
         vector_id_matrix = []
-        for match in res['results'][0]['matches']:
-            score_matrix.append(match['score'])
-            vector_id_matrix.append(match['id'])
+        for match in res["results"][0]["matches"]:
+            score_matrix.append(match["score"])
+            vector_id_matrix.append(match["id"])
 
         documents = self.get_documents_by_vector_ids(vector_id_matrix, index=index)
 
-        #assign query score to each document
+        # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
         for i, doc in enumerate(documents):
             raw_score = scores_for_vector_ids[doc.id]
-            doc.score = self.finalize_raw_score(raw_score,self.similarity)
+            doc.score = self.finalize_raw_score(raw_score, self.similarity)
 
             if return_embedding is True:
                 # get embedding from Pinecone response
@@ -632,9 +647,11 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         raise NotImplementedError("save method not implemented for PineconeDocumentStore")
 
-    def _load_init_params_from_config(self, index_path: Optional[Union[str, Path]] = None, config_path: Optional[Union[str, Path]] = None):
+    def _load_init_params_from_config(
+        self, index_path: Optional[Union[str, Path]] = None, config_path: Optional[Union[str, Path]] = None
+    ):
         raise NotImplementedError("Load init params from config not implemented for Pinecone")
-    
+
     def _limit_check(self, top_k: str, include_values: Optional[bool] = None):
         """
         Confirms the top_k value does not exceed Pinecone vector database limits.
@@ -643,13 +660,13 @@ class PineconeDocumentStore(SQLDocumentStore):
             if top_k > self.top_k_limit_vectors:
                 raise Exception(
                     f"PineconeDocumentStore allows requests of no more than {self.top_k_limit_vectors} records ",
-                    f"when returning embedding values. This request is attempting to return {top_k} records."
+                    f"when returning embedding values. This request is attempting to return {top_k} records.",
                 )
         else:
             if top_k > self.top_k_limit:
                 raise Exception(
                     f"PineconeDocumentStore allows requests of no more than {self.top_k_limit} records. ",
-                    f"This request is attempting to return {top_k} records."
+                    f"This request is attempting to return {top_k} records.",
                 )
 
     @classmethod
