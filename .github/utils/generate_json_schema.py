@@ -1,12 +1,16 @@
+
+from ast import Return
 import json
 import logging
+
+logging.basicConfig(level=logging.INFO)
+
+import inspect
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional, Set, Tuple
 
-from haystack import __version__
-import haystack.document_stores
-import haystack.nodes
+from haystack import __version__, BaseComponent
 import pydantic.schema
 from fastapi.dependencies.utils import get_typed_signature
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
@@ -14,11 +18,11 @@ from pydantic.fields import ModelField
 from pydantic.schema import SkipField, TypeModelOrEnum, TypeModelSet, encode_default
 from pydantic.schema import field_singleton_schema as _field_singleton_schema
 from pydantic.typing import is_callable_type
-from pydantic.utils import lenient_issubclass
 
 schema_version = __version__
 filename = f"haystack-pipeline-{schema_version}.schema.json"
 destination_path = Path(__file__).parent.parent.parent / "json-schemas" / filename
+
 
 
 class Settings(BaseSettings):
@@ -75,72 +79,63 @@ def get_json_schema():
     schema_definitions = {}
     additional_definitions = {}
 
-    modules_with_nodes = [haystack.nodes, haystack.document_stores]
-    possible_nodes = []
-    for module in modules_with_nodes:
-        for importable_name in dir(module):
-            imported = getattr(module, importable_name)
-            possible_nodes.append((module, imported))
-    # TODO: decide if there's a better way to not include Base classes other than by
-    # the prefix "Base" in the name. Maybe it could make sense to have a list of
-    # all the valid nodes to include in the main source code and then using that here.
-    for module, node in possible_nodes:
-        if lenient_issubclass(node, haystack.nodes.BaseComponent) and not node.__name__.startswith("Base"):
-            logging.info(f"Processing node: {node.__name__}")
-            init_method = getattr(node, "__init__", None)
-            if init_method:
-                signature = get_typed_signature(init_method)
-                param_fields = [
-                    param
-                    for param in signature.parameters.values()
-                    if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
-                ]
-                # Remove self parameter
-                param_fields.pop(0)
-                param_fields_kwargs: Dict[str, Any] = {}
-                for param in param_fields:
-                    logging.info(f"--- processing param: {param.name}")
-                    annotation = Any
-                    if param.annotation != param.empty:
-                        annotation = param.annotation
-                    default = Required
-                    if param.default != param.empty:
-                        default = param.default
-                    param_fields_kwargs[param.name] = (annotation, default)
-                model = create_model(
-                    f"{node.__name__}ComponentParams",
-                    __config__=Config,
-                    **param_fields_kwargs,
-                )
-                model.update_forward_refs(**model.__dict__)
-                params_schema = model.schema()
-                params_schema["title"] = "Parameters"
-                params_schema[
-                    "description"
-                ] = "Each parameter can reference other components defined in the same YAML file."
-                if "definitions" in params_schema:
-                    params_definitions = params_schema.pop("definitions")
-                    additional_definitions.update(params_definitions)
-                component_schema = {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "title": "Name",
-                            "description": "Custom name for the component. Helpful for visualization and debugging.",
-                            "type": "string",
-                        },
-                        "type": {
-                            "title": "Type",
-                            "description": "Haystack Class name for the component.",
-                            "type": "string",
-                            "const": f"{node.__name__}",
-                        },
-                        "params": params_schema,
+    possible_nodes = BaseComponent._find_subclasses_in_modules()
+    for _, node in possible_nodes:
+        logging.info(f"Processing node: {node.__name__}")
+        init_method = getattr(node, "__init__", None)
+        if init_method:
+            signature = get_typed_signature(init_method)
+            param_fields = [
+                param
+                for param in signature.parameters.values()
+                if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
+            ]
+            # Remove self parameter
+            param_fields.pop(0)
+            param_fields_kwargs: Dict[str, Any] = {}
+            for param in param_fields:
+                logging.info(f"--- processing param: {param.name}")
+                annotation = Any
+                if param.annotation != param.empty:
+                    annotation = param.annotation
+                default = Required
+                if param.default != param.empty:
+                    default = param.default
+                param_fields_kwargs[param.name] = (annotation, default)
+            model = create_model(
+                f"{node.__name__}ComponentParams",
+                __config__=Config,
+                **param_fields_kwargs,
+            )
+            model.update_forward_refs(**model.__dict__)
+            params_schema = model.schema()
+            params_schema["title"] = "Parameters"
+            params_schema[
+                "description"
+            ] = "Each parameter can reference other components defined in the same YAML file."
+            if "definitions" in params_schema:
+                params_definitions = params_schema.pop("definitions")
+                additional_definitions.update(params_definitions)
+            component_schema = {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "title": "Name",
+                        "description": "Custom name for the component. Helpful for visualization and debugging.",
+                        "type": "string",
                     },
-                    "required": ["type", "name"],
-                    "additionalProperties": False,
-                }
-                schema_definitions[f"{node.__name__}Component"] = component_schema
+                    "type": {
+                        "title": "Type",
+                        "description": "Haystack Class name for the component.",
+                        "type": "string",
+                        "const": f"{node.__name__}",
+                    },
+                    "params": params_schema,
+                },
+                "required": ["type", "name"],
+                "additionalProperties": False,
+            }
+            schema_definitions[f"{node.__name__}Component"] = component_schema
 
     all_definitions = {**schema_definitions, **additional_definitions}
     component_refs = [{"$ref": f"#/definitions/{name}"} for name in schema_definitions]
