@@ -206,6 +206,7 @@ def get_json_schema():
                             "required": ["name", "nodes"],
                             "additionalProperties": False,
                         },
+                        "additionalProperties": False,
                     },
                     "additionalProperties": False,
                 },
