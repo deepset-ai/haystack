@@ -505,8 +505,9 @@ class BasePipeline:
     def _read_pipeline_config_from_yaml(cls, path: Path):
         try:
             with open(path, "r", encoding="utf-8") as stream:
-                loaded_config = yaml.safe_load(stream)
-                cls.validate_config(loaded_config)
+                config = yaml.safe_load(stream)
+                cls.validate_config(config)
+                return config
 
         except IOError as ioe:
             raise PipelineConfigError(source=ioe)
