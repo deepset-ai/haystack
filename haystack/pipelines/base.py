@@ -503,8 +503,17 @@ class BasePipeline:
 
     @classmethod
     def _read_pipeline_config_from_yaml(cls, path: Path):
-        with open(path, "r", encoding="utf-8") as stream:
-            return yaml.safe_load(stream)
+        if not path.exists:
+            raise PipelineError(f"'{path.absolute()}' does not exist.")
+        if not path.is_file:
+            raise PipelineError(f"'{path.absolute()}' is not a file.")
+        try:
+            with open(path, "r", encoding="utf-8") as stream:
+                return yaml.safe_load(stream)
+        except IOError as ioe:
+            raise PipelineError(f"Failed to load '{path.absolute()}' for IOError. Check your permissions.") from ioe
+        except yaml.YAMLError as ye:
+            raise PipelineError(f"Failed to load '{path.absolute()}' for YAMLError. Check its syntax.") from ye
 
 
 class Pipeline(BasePipeline):
