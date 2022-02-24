@@ -30,7 +30,7 @@ from conftest import SAMPLES_PATH
     [
         ("embedding", "memory"),
         ("embedding", "faiss"),
-        ("embedding", "milvus"),
+        ("embedding", "milvus1"),
         ("embedding", "elasticsearch"),
     ],
     indirect=True,
@@ -102,7 +102,7 @@ def test_document_search_pipeline(retriever, document_store):
     "retriever,document_store",
     [
         ("embedding", "faiss"),
-        ("embedding", "milvus"),
+        ("embedding", "milvus1"),
         ("embedding", "elasticsearch"),
     ],
     indirect=True,

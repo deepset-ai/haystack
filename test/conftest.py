@@ -18,9 +18,9 @@ import requests
 try:
     from milvus import Milvus
 
-    milvus2 = False
+    milvus1 = True
 except ImportError:
-    milvus2 = True
+    milvus1 = False
     from pymilvus import utility
 
 try:
@@ -119,12 +119,12 @@ def pytest_collection_modifyitems(config, items):
         document_store_types_to_run = document_store_types_to_run.split(",")
         keywords = []
 
-        if "milvus" in document_store_types_to_run and not os.getenv("MILVUS1_ENABLED"):
-            document_store_types_to_run.remove("milvus")
-            document_store_types_to_run.append("milvus2")
-            if not milvus2:
+        if "milvus1" in document_store_types_to_run and not os.getenv("MILVUS1_ENABLED"):
+            document_store_types_to_run.remove("milvus1")
+            document_store_types_to_run.append("milvus")
+            if not milvus1:
                 raise Exception(
-                    "Milvus2 is enabled, but your pymilvus version only supports Milvus 1. Please update pymilvus."
+                    "Milvus1 is enabled, but your pymilvus version only supports Milvus 2. Please select the correct pymilvus."
                 )
 
         for i in item.keywords:
@@ -132,7 +132,7 @@ def pytest_collection_modifyitems(config, items):
                 keywords.extend(i.split("-"))
             else:
                 keywords.append(i)
-        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus", "milvus2", "weaviate"]:
+        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate"]:
             if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
@@ -543,7 +543,7 @@ def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
             d["id"] = str(uuid.uuid4())
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "milvus2", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"])
 def document_store_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -574,7 +574,7 @@ def document_store(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "milvus2", "elasticsearch"])
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
 def document_store_dot_product(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -587,7 +587,7 @@ def document_store_dot_product(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "milvus2", "elasticsearch"])
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
 def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -601,7 +601,7 @@ def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1"])
 def document_store_dot_product_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
@@ -614,7 +614,7 @@ def document_store_dot_product_small(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "milvus2", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"])
 def document_store_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
@@ -713,7 +713,7 @@ def get_document_store(
             isolation_level="AUTOCOMMIT",
         )
 
-    elif document_store_type == "milvus":
+    elif document_store_type == "milvus1":
         document_store = MilvusDocumentStore(
             embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
@@ -728,7 +728,7 @@ def get_document_store(
             if collection.startswith(index):
                 document_store.milvus_server.drop_collection(collection)
 
-    elif document_store_type == "milvus2":
+    elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
             embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
