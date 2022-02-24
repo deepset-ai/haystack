@@ -124,7 +124,7 @@ def pytest_collection_modifyitems(config, items):
             document_store_types_to_run.append("milvus")
             if not milvus1:
                 raise Exception(
-                    "Milvus1 is enabled, but your pymilvus version only supports Milvus 2. Please select the correct pymilvus."
+                    "Milvus1 is enabled, but your pymilvus version only supports Milvus 2. Please select the correct pymilvus version."
                 )
 
         for i in item.keywords:
