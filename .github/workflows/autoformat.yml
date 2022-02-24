@@ -12,11 +12,6 @@ on:
   push:
     branches-ignore:    
       - 'master'
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.png'
-      - '**/*.gif'
 
 
 jobs:
