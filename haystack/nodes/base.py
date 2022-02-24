@@ -1,10 +1,9 @@
 from __future__ import annotations
-from typing import Any, Callable, Optional, Dict, List, Tuple, Optional
+from typing import Any, Optional, Dict, List, Tuple, Optional
 
-import io
-from functools import wraps
+import sys
 from copy import deepcopy
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import inspect
 import logging
 
@@ -14,7 +13,7 @@ from haystack.schema import Document, MultiLabel
 logger = logging.getLogger(__name__)
 
 
-class BaseComponent:
+class BaseComponent(ABC):
     """
     A base class for implementing nodes in a Pipeline.
     """
@@ -180,3 +179,23 @@ class BaseComponent:
                     self.pipeline_config["params"][k] = v.pipeline_config
                 elif v is not None:
                     self.pipeline_config["params"][k] = v
+
+    @classmethod
+    def _find_subclasses_in_modules(cls, include_base_classes: bool = False, importable_modules=["haystack.document_stores", "haystack.nodes"]):
+        """
+        This function returns a list `(module, class)` of all the classes that can be imported
+        dynamically, for example from a pipeline YAML definition or to generate documentation.
+
+        By default it won't include Base classes, which should be abstract.
+        """
+        return [
+            (module, clazz)
+            for module in importable_modules
+            for _, clazz in inspect.getmembers(sys.modules[module])
+            if (
+                inspect.isclass(clazz) and 
+                not inspect.isabstract(clazz) and
+                issubclass(clazz, BaseComponent) and 
+                (include_base_classes or not clazz.__name__.startswith("Base"))
+            )
+        ]
