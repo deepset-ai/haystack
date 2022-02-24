@@ -92,6 +92,7 @@ min-similarity-lines=6
 minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
+    "integration: marks integration tests (deselect with '-m \"not integration\"')",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "tika: marks tests which require tika container (deselect with '-m \"not tika\"')",
     "elasticsearch: marks tests which require elasticsearch container (deselect with '-m \"not elasticsearch\"')",
