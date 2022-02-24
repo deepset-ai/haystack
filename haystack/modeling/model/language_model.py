@@ -162,7 +162,9 @@ class LanguageModel(nn.Module):
         """
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
+        print("THE MODEL IS A ", language_model_class)
         if language_model_class == 'XLMRoberta':
+            print("XLM MODEL BEING USED")
             n_added_tokens = 3
         kwargs["revision"] = kwargs.get("revision", None)
         logger.info("LOADING MODEL")
