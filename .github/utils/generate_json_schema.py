@@ -177,6 +177,11 @@ def get_json_schema():
                             "description": "Name of the pipeline.",
                             "type": "string",
                         },
+                        "type": {
+                            "title": "Type",
+                            "description": "Type of pipeline (Query, Indexing, or custom types).",
+                            "type": "string",
+                        },
                         "nodes": {
                             "title": "Nodes",
                             "description": "Nodes to be used by this particular pipeline",
