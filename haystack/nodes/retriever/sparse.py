@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None):
+    def __init__(self, document_store: KeywordDocumentStore, top_k: int = 10, custom_query: Optional[str] = None):
         """
         :param document_store: an instance of an ElasticsearchDocumentStore to retrieve documents from.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
