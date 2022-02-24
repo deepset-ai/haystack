@@ -29,8 +29,8 @@ class ParsrConverter(BaseConverter):
         parsr_url: str = "http://localhost:3001",
         extractor: Literal["pdfminer", "pdfjs"] = "pdfminer",
         table_detection_mode: Literal["lattice", "stream"] = "lattice",
-        preceding_context_len: int = 1,
-        following_context_len: int = 1,
+        preceding_context_len: int = 3,
+        following_context_len: int = 3,
         remove_page_headers: bool = False,
         remove_page_footers: bool = False,
         remove_table_of_contents: bool = False,
@@ -42,9 +42,9 @@ class ParsrConverter(BaseConverter):
         :param table_detection_mode: Parsing method used to detect tables and their cells.
                                      "lattice" detects tables and their cells by demarcated lines between cells.
                                      "stream" detects tables and their cells by looking at whitespace between cells.
-        :param preceding_context_len: Number of paragraphs before a table to extract as preceding context
+        :param preceding_context_len: Number of lines before a table to extract as preceding context
                                       (will be returned as part of meta data).
-        :param following_context_len: Number of paragraphs after a table to extract as preceding context
+        :param following_context_len: Number of lines after a table to extract as preceding context
                                       (will be returned as part of meta data).
         :param remove_page_headers: Whether to remove text that Parsr detected as a page header.
         :param remove_page_footers: Whether to remove text that Parsr detected as a page footer.
@@ -163,15 +163,16 @@ class ParsrConverter(BaseConverter):
         docs = tables + [{"content": text.strip(), "content_type": "text", "meta": meta}]
         return docs
 
-    @staticmethod
-    def _get_paragraph_string(paragraph: Dict[str, Any]) -> str:
+    def _get_paragraph_string(self, paragraph: Dict[str, Any]) -> str:
         current_lines = []
         for line in paragraph["content"]:
-            current_line = " ".join([word["content"] for word in line["content"]])
-            current_lines.append(current_line)
+            current_lines.append(self._get_line_string(line))
         current_paragraph = "\n".join(current_lines)
 
         return current_paragraph
+
+    def _get_line_string(self, line: Dict[str, Any]) -> str:
+        return " ".join([word["content"] for word in line["content"]])
 
     def _convert_text_element(self, element: Dict[str, Any]) -> str:
         if self.remove_page_headers and "isHeader" in element["properties"]:
@@ -220,30 +221,35 @@ class ParsrConverter(BaseConverter):
                             table_list[row_idx + r - row_idx_start][col_idx + c] = cell_content
 
         # Get preceding and following elements of table
-        preceding_elements = []
-        following_elements = []
+        preceding_lines = []
+        following_lines = []
         for cur_page_idx, cur_page in enumerate(all_pages):
             for cur_elem_index, elem in enumerate(cur_page["elements"]):
-                if (
-                    (elem["type"] in ["paragraph", "heading"])
-                    and (self.remove_page_headers and "isHeader" not in elem["properties"])
-                    and (self.remove_page_footers and "isFooter" not in elem["properties"])
-                ):
-                    if cur_page_idx < page_idx:
-                        preceding_elements.append(elem)
-                    elif cur_page_idx == page_idx:
-                        if cur_elem_index < elem_idx:
-                            preceding_elements.append(elem)
-                        elif cur_elem_index > elem_idx:
-                            following_elements.append(elem)
-                    elif cur_page_idx > page_idx:
-                        following_elements.append(elem)
+                if elem["type"] in ["paragraph", "heading"]:
+                    if (self.remove_page_headers and "isHeader" in elem["properties"]) or (
+                        self.remove_page_footers and "isFooter" in elem["properties"]
+                    ):
+                        # Skip header and footer elements if remove_page_header/footer is set to True
+                        continue
+                    for line in elem["content"]:
+                        if cur_page_idx < page_idx:
+                            preceding_lines.append(line)
+                        elif cur_page_idx == page_idx:
+                            if cur_elem_index < elem_idx:
+                                preceding_lines.append(line)
+                            elif cur_elem_index > elem_idx:
+                                following_lines.append(line)
+                        elif cur_page_idx > page_idx:
+                            following_lines.append(line)
 
         preceding_context = (
-            "\n\n".join([self._get_paragraph_string(elem) for elem in preceding_elements]) + f"\n\n{caption}"
+            "\n".join([self._get_line_string(line) for line in preceding_lines[-self.preceding_context_len :]])
+            + f"\n\n{caption}"
         )
         preceding_context = preceding_context.strip()
-        following_context = "\n\n".join([self._get_paragraph_string(elem) for elem in following_elements])
+        following_context = "\n".join(
+            [self._get_line_string(line) for line in following_lines[: self.following_context_len]]
+        )
         following_context = following_context.strip()
 
         if meta is not None:
