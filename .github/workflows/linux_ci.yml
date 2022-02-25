@@ -200,7 +200,7 @@ jobs:
 
       # Generates a new JSON schema for the pipeline YAML validation
       - name: Generate JSON schema for pipelines
-        run: python ./.github/utils/generate_json_schema.py
+        run: python ./haystack/nodes/_json_schema.py
       
       # If there is anything to commit, fail
       # Note: this CI action mirrors autoformat.yml, with the difference that it

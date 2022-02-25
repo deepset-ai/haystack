@@ -1,33 +1,35 @@
+from typing import Any, Callable, Dict, Optional, Set, Tuple
 
-from ast import Return
 import json
+import inspect
+from pathlib import Path
 import logging
+
+from haystack.pipelines.base import JSON_SCHEMAS_PATH
 
 logging.basicConfig(level=logging.INFO)
 
-import inspect
-import subprocess
-from pathlib import Path
-from typing import Any, Dict, Optional, Set, Tuple
-
-from haystack import __version__, BaseComponent
 import pydantic.schema
-from fastapi.dependencies.utils import get_typed_signature
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
+from pydantic.typing import ForwardRef, evaluate_forwardref, is_callable_type
 from pydantic.fields import ModelField
-from pydantic.schema import SkipField, TypeModelOrEnum, TypeModelSet, encode_default
-from pydantic.schema import field_singleton_schema as _field_singleton_schema
-from pydantic.typing import is_callable_type
-
-schema_version = __version__
-filename = f"haystack-pipeline-{schema_version}.schema.json"
-destination_path = Path(__file__).parent.parent.parent / "json-schemas" / filename
+from pydantic.schema import (
+    SkipField, 
+    TypeModelOrEnum, 
+    TypeModelSet, 
+    encode_default, 
+    field_singleton_schema as _field_singleton_schema
+)
+ 
+from haystack import __version__ as haystack_version
+from haystack.nodes.base import BaseComponent
 
 
 
 class Settings(BaseSettings):
     input_token: SecretStr
     github_repository: str
+
 
 
 # Monkey patch Pydantic's field_singleton_schema to convert classes and functions to
@@ -68,11 +70,37 @@ def field_singleton_schema(
 pydantic.schema.field_singleton_schema = field_singleton_schema
 
 
+# From FastAPI's internals
+def get_typed_signature(call: Callable[..., Any]) -> inspect.Signature:
+    signature = inspect.signature(call)
+    globalns = getattr(call, "__globals__", {})
+    typed_params = [
+        inspect.Parameter(
+            name=param.name,
+            kind=param.kind,
+            default=param.default,
+            annotation=get_typed_annotation(param, globalns),
+        )
+        for param in signature.parameters.values()
+    ]
+    typed_signature = inspect.Signature(typed_params)
+    return typed_signature
+
+
+# From FastAPI's internals
+def get_typed_annotation(param: inspect.Parameter, globalns: Dict[str, Any]) -> Any:
+    annotation = param.annotation
+    if isinstance(annotation, str):
+        annotation = ForwardRef(annotation)
+        annotation = evaluate_forwardref(annotation, globalns, globalns)
+    return annotation
+
+
 class Config(BaseConfig):
     extra = "forbid"
 
 
-def get_json_schema():
+def get_json_schema(filename: str):
     """
     Generate JSON schema for Haystack pipelines.
     """
@@ -93,20 +121,25 @@ def get_json_schema():
             # Remove self parameter
             param_fields.pop(0)
             param_fields_kwargs: Dict[str, Any] = {}
+
             for param in param_fields:
                 logging.info(f"--- processing param: {param.name}")
                 annotation = Any
                 if param.annotation != param.empty:
                     annotation = param.annotation
+                    logging.info(f"       annotation: {annotation}")
                 default = Required
                 if param.default != param.empty:
                     default = param.default
+                    logging.info(f"       default: {default}")
                 param_fields_kwargs[param.name] = (annotation, default)
+
             model = create_model(
                 f"{node.__name__}ComponentParams",
                 __config__=Config,
                 **param_fields_kwargs,
             )
+
             model.update_forward_refs(**model.__dict__)
             params_schema = model.schema()
             params_schema["title"] = "Parameters"
@@ -150,7 +183,7 @@ def get_json_schema():
                 "title": "Version",
                 "description": "Version of the Haystack Pipeline file.",
                 "type": "string",
-                "const": schema_version,
+                "const": haystack_version,
             },
             "components": {
                 "title": "Components",
@@ -258,59 +291,30 @@ def new_version_entry(version):
     }
 
 
-def generate_json_schema():
+def generate_json_schema(
+    update_index: bool, 
+    filename: str = f"haystack-pipeline-{haystack_version}.schema.json",
+    destination_path: Path = JSON_SCHEMAS_PATH,
+    index_path: Path = JSON_SCHEMAS_PATH / "haystack-pipeline.schema.json"
+):
     # Create new schema file
-    pipeline_schema = get_json_schema()
-    destination_path.parent.mkdir(parents=True, exist_ok=True)
-    destination_path.write_text(json.dumps(pipeline_schema, indent=2))
+    pipeline_schema = get_json_schema(filename)
+    destination_path.mkdir(parents=True, exist_ok=True)
+    (destination_path / filename).write_text(json.dumps(pipeline_schema, indent=2))
 
     # Update schema index
-    index = []
-    index_path = Path(__file__).parent.parent.parent / "json-schemas" / "haystack-pipeline.schema.json"
-    with open(index_path, "r") as index_file:
-        index = json.load(index_file)
-    if index:
-        index = cleanup_rc_versions(index)
-        indexed_versions = list_indexed_versions(index)
-        if not any(version == schema_version for version in indexed_versions):
-            index["oneOf"].append(new_version_entry(schema_version))
-            with open(index_path, "w") as index_file:
-                json.dump(index, index_file, indent=4)
-
-
-def main():
-    from github import Github
-
-    generate_json_schema()
-    logging.basicConfig(level=logging.INFO)
-    settings = Settings()
-    logging.info(f"Using config: {settings.json()}")
-    g = Github(settings.input_token.get_secret_value())
-    repo = g.get_repo(settings.github_repository)
-
-    logging.info("Setting up GitHub Actions git user")
-    subprocess.run(["git", "config", "user.name", "github-actions"], check=True)
-    subprocess.run(["git", "config", "user.email", "github-actions@github.com"], check=True)
-    branch_name = "generate-json-schema"
-    logging.info(f"Creating a new branch {branch_name}")
-    subprocess.run(["git", "checkout", "-b", branch_name], check=True)
-    logging.info("Adding updated file")
-    subprocess.run(["git", "add", str(destination_path)], check=True)
-    logging.info("Committing updated file")
-    message = "⬆ Upgrade JSON Schema file"
-    subprocess.run(["git", "commit", "-m", message], check=True)
-    logging.info("Pushing branch")
-    subprocess.run(["git", "push", "origin", branch_name], check=True)
-    logging.info("Creating PR")
-    pr = repo.create_pull(title=message, body=message, base="master", head=branch_name)
-    logging.info(f"Created PR: {pr.number}")
-    logging.info("Finished")
+    if update_index:
+        index = []
+        with open(index_path, "r") as index_file:
+            index = json.load(index_file)
+        if index:
+            index = cleanup_rc_versions(index)
+            indexed_versions = list_indexed_versions(index)
+            if not any(version == haystack_version for version in indexed_versions):
+                index["oneOf"].append(new_version_entry(haystack_version))
+                with open(index_path, "w") as index_file:
+                    json.dump(index, index_file, indent=4)
 
 
 if __name__ == "__main__":
-    # If you only want to generate the JSON Schema file without submitting a PR
-    # uncomment this line:
-    generate_json_schema()
-
-    # and comment this line:
-    # main()
+    generate_json_schema(update_index=True)
