@@ -52,20 +52,6 @@ class PipelineError(HaystackError):
 class PipelineConfigError(PipelineError):
     """Exception for issues raised within a pipeline's config file"""
 
-    def __init__(self, message: str = "", source: Optional[Exception] = None, docs_link: Optional[str] = None):
-        super().__init__(message=message, source=source, docs_link=docs_link)
-
-
-class PipelineValidationError(PipelineError):
-    """
-    Exception for issues that occur while loading a pipeline
-
-    `PipelineValidationError` is quite informative, as it
-    wraps a `jsonschema.exceptions.ValidationError`.
-    See [https://python-jsonschema.readthedocs.io/en/latest/errors/]
-    for details about the information it carries.
-    """
-
     def __init__(
         self,
         message: str = "",
