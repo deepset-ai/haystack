@@ -1133,6 +1133,8 @@ class Pipeline(BasePipeline):
             if node == self.root_node:
                 continue
             component_instance = self.graph.nodes.get(node)["component"]
+            print(vars(component_instance))
+
             component_type = component_instance.pipeline_config["type"]
             component_params = component_instance.pipeline_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}

@@ -4,13 +4,40 @@ from typing import Any, Optional, Dict, List, Tuple, Optional
 import sys
 from copy import deepcopy
 from abc import ABC, abstractmethod
+from functools import wraps
 import inspect
 import logging
 
 from haystack.schema import Document, MultiLabel
+from haystack.errors import PipelineError
 
 
 logger = logging.getLogger(__name__)
+
+
+
+def exportable_to_yaml(func):
+    """
+    Save the init parameters of a component that later can be used with exporting
+    YAML configuration of a Pipeline.
+
+    :param kwargs: all parameters passed to the __init__() of the Component.
+    """
+    @wraps(func)
+    def wrapper_exportable_to_yaml(self, *args, **kwargs):
+        if args:
+            raise PipelineError("Nodes can receive only named parameters at initialization.")
+
+        if not self.pipeline_config:
+            self.pipeline_config = {"params": {}, "type": type(self).__name__}
+            for k, v in kwargs.items():
+                if isinstance(v, BaseComponent):
+                    self.pipeline_config["params"][k] = v.pipeline_config
+                elif v is not None:
+                    self.pipeline_config["params"][k] = v
+    
+    return wrapper_exportable_to_yaml
+
 
 
 class BaseComponent(ABC):
@@ -22,6 +49,10 @@ class BaseComponent(ABC):
     subclasses: dict = {}
     pipeline_config: dict = {}
     name: Optional[str] = None
+
+    @exportable_to_yaml
+    def __init__(self):
+        pass
 
     def __init_subclass__(cls, **kwargs):
         """

@@ -1,6 +1,7 @@
 import pytest
 import json
 import networkx as nx
+from transformers import pipelines
 
 import haystack
 from haystack import BaseComponent
@@ -10,9 +11,12 @@ from haystack.nodes import FileTypeClassifier
 from haystack.errors import PipelineConfigError
 
 from .conftest import SAMPLES_PATH, YAML_TEST_VERSION, MockDocumentStore, MockReader, MockRetriever
-from . import conftest  # For mocking
+from . import conftest
 
 
+#
+# Fixtures
+#
 
 @pytest.fixture
 def test_json_schema(request, monkeypatch, tmp_path):
@@ -137,6 +141,31 @@ def test_load_and_save_from_yaml(tmp_path, test_json_schema):
 #
 # Unit 
 #
+
+def test_load_yaml(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            version: {YAML_TEST_VERSION}
+            components:
+            - name: retriever
+              type: MockRetriever
+            - name: reader
+              type: MockReader
+            pipelines:
+            - name: query
+              nodes:
+              - name: retriever
+                inputs:
+                - Query
+              - name: reader
+                inputs:
+                - retriever
+        """)
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert len(pipeline.graph.nodes) == 3
+    assert isinstance(pipeline.get_node("retriever"), MockRetriever)
+    assert isinstance(pipeline.get_node("reader"), MockReader)
+
 
 def test_load_yaml_non_existing_file():
     with pytest.raises(PipelineConfigError):
@@ -374,4 +403,36 @@ def test_load_yaml_disconnected_component(tmp_path):
                 inputs:
                 - Query
         """)
-    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert len(pipeline.graph.nodes) == 2
+    assert isinstance(pipeline.get_document_store(), MockDocumentStore)
+    assert not pipeline.get_node("retriever")
+
+
+def test_save_yaml(tmp_path):
+    pipeline = Pipeline()
+    pipeline.add_node(MockRetriever(), name="retriever", inputs=["Query"])
+    pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
+
+    with open(tmp_path / "saved_pipeline.yml", "r") as saved_yaml:
+        content = saved_yaml.read()
+
+        assert content.count("retriever") == 2
+        assert "MockRetriever" in content
+        assert "Query" in content
+        assert f"version: {YAML_TEST_VERSION}" in content
+
+
+def test_save_yaml_fails(tmp_path):
+    pipeline = Pipeline()
+    retriever = MockRetriever()
+    pipeline.add_node(component=retriever, name="retriever", inputs=["Query"])
+
+    with open(tmp_path / "saved_pipeline.yml", "w") as another_file:
+        pass
+
+    pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
+
+    with open(tmp_path / "saved_pipeline.yml", "r") as saved_yaml:
+      content = saved_yaml.read()
+      assert content != ""

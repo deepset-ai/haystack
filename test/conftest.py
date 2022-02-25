@@ -181,7 +181,13 @@ class MockRetriever(BaseRetriever):
 
 
 class MockReader(BaseReader):
-    pass
+    
+    def predict(self, *a, **k):
+        pass
+
+    def predict_batch(self, *a, **k):
+        pass
+
 
 
 YAML_TEST_VERSION = "test-version"
