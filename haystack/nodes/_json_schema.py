@@ -97,7 +97,7 @@ def get_typed_annotation(param: inspect.Parameter, globalns: Dict[str, Any]) -> 
 
 
 class Config(BaseConfig):
-    extra = "forbid"
+    extra = "forbid"  # type: ignore
 
 
 def get_json_schema(filename: str):
@@ -299,7 +299,7 @@ def generate_json_schema(
 
     # Update schema index
     if update_index:
-        index = []
+        index = {}
         with open(index_path, "r") as index_file:
             index = json.load(index_file)
         if index:

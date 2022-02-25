@@ -266,7 +266,8 @@ class BasePipeline(ABC):
                 )
                 component_config["params"] = params
 
-        pipeline = cls.load_from_config(
+        pipeline = BasePipeline.load_from_config(
+            cls,
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
@@ -1309,7 +1310,7 @@ class RayPipeline(Pipeline):
         overwrite_with_env_variables: bool = True,
         address: Optional[str] = None,
         **kwargs,
-    ):
+    ):  # type: ignore
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -1360,13 +1361,13 @@ class RayPipeline(Pipeline):
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         """
         pipeline_config = cls._read_pipeline_config_from_yaml(path)
-        if pipeline_config["version"] != version:
+        if pipeline_config["version"] != VERSION:
             logger.warning(
-                f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({version}). "
+                f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({VERSION}). "
                 "Issues may occur during loading. "
                 "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml(), "
                 "check out our migration guide at https://haystack.deepset.ai/overview/migration "
-                f"or downgrade to haystack version {version}."
+                f"or downgrade to haystack version {pipeline_config['version']}."
             )
         return RayPipeline.load_from_config(
             pipeline_config=pipeline_config,
