@@ -86,6 +86,13 @@ def test_azure_converter():
         assert len(docs[0]["content"][0]) == 5  # number of columns, Form Recognizer assumes there are 5 columns
         assert docs[0]["content"][0] == ["", "Column 1", "", "Column 2", "Column 3"]
         assert docs[0]["content"][4] == ["D", "$54.35", "", "$6345.", ""]
+        assert (
+            docs[0]["meta"]["preceding_context"] == "specification. These proprietary technologies are not "
+            "standardized and their\nspecification is published only on "
+            "Adobe's website. Many of them are also not\nsupported by "
+            "popular third-party implementations of PDF."
+        )
+        assert docs[0]["meta"]["following_context"] == ""
 
         assert docs[1]["content_type"] == "text"
         assert docs[1]["content"].startswith("A sample PDF file")
@@ -101,6 +108,13 @@ def test_parsr_converter():
     assert len(docs[0]["content"][0]) == 4  # number of columns
     assert docs[0]["content"][0] == ["", "Column 1", "Column 2", "Column 3"]
     assert docs[0]["content"][4] == ["D", "$54.35", "$6345.", ""]
+    assert (
+        docs[0]["meta"]["preceding_context"] == "speciﬁcation. These proprietary technologies are not "
+        "standardized and their\nspeciﬁcation is published only on "
+        "Adobe's website. Many of them are also not\nsupported by popular "
+        "third-party implementations of PDF."
+    )
+    assert docs[0]["meta"]["following_context"] == ""
 
     assert docs[1]["content_type"] == "text"
     assert docs[1]["content"].startswith("A sample PDF ﬁle")
