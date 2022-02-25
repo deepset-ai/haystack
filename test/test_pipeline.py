@@ -507,16 +507,12 @@ def test_validate_pipeline_config_invalid_component_type():
 
 def test_validate_pipeline_config_invalid_component_param():
     with pytest.raises(ValueError):
-        validate_config(
-            {"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]}
-        )
+        validate_config({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
 
 
 def test_validate_pipeline_config_invalid_component_param_key():
     with pytest.raises(ValueError):
-        validate_config(
-            {"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]}
-        )
+        validate_config({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_name():
