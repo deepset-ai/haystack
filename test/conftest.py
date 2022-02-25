@@ -31,12 +31,13 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed("test", "test", ie)
 
+import haystack
 from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
 
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 
 from haystack.document_stores import BaseDocumentStore
-from haystack.nodes import BaseReader, BaseRetriever, FileTypeClassifier
+from haystack.nodes import BaseReader, BaseRetriever
 
 from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
@@ -183,8 +184,13 @@ class MockReader(BaseReader):
     pass
 
 
+YAML_TEST_VERSION = "test-version"
 
-
+@pytest.fixture(autouse=True)
+def mock_haystack_version(monkeypatch):
+    monkeypatch.setattr(haystack, "__version__", YAML_TEST_VERSION)
+    monkeypatch.setattr(haystack.pipelines.base, "VERSION", YAML_TEST_VERSION)
+    monkeypatch.setattr(haystack.nodes._json_schema, "haystack_version", YAML_TEST_VERSION)
 
 
 
