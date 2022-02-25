@@ -35,7 +35,7 @@ except:
 
 from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
-from haystack.errors import PipelineError, PipelineValidationError, PipelineConfigError
+from haystack.errors import PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -50,7 +50,7 @@ ALLOWED_INPUT_CHARS = re.compile(r"^[-a-zA-Z0-9_/.:]+$")
 MODULE_NOT_FOUND = "MODULE_NOT_FOUND"
 CODE_GEN_ALLOWED_IMPORTS = ["haystack.document_stores", "haystack.nodes"]
 CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
-
+JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
 
 class RootNode(BaseComponent):
     """
@@ -138,15 +138,13 @@ class BasePipeline:
         :return: None if validation is successful
         :raise: `PipelineValidationError` in case of issues.
         """
-        with open(
-            Path(__file__).parent.parent.parent / "json-schemas" / f"haystack-pipeline-{version}.schema.json", "r"
-        ) as schema_file:
+        with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-{version}.schema.json", "r") as schema_file:
             schema = json.load(schema_file)
 
         try:
             Draft7Validator(schema).validate(instance=pipeline_config)
         except ValidationError as validation_error:
-            raise PipelineValidationError(validation_error)
+            raise PipelineConfigError(validation_error)
         logging.debug(f"Pipeline configuration is valid.")
 
     @classmethod
@@ -232,7 +230,7 @@ class BasePipeline:
             )
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, version: str = str(__version__)):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -279,15 +277,7 @@ class BasePipeline:
                                              `_` sign must be used to specify nested hierarchical properties.
         """
 
-        pipeline_config = cls._read_pipeline_config_from_yaml(path)
-        if pipeline_config["version"] != __version__:
-            logger.warning(
-                f"YAML version ({pipeline_config['version']}) does not match with Haystack version ({__version__}). "
-                "Issues may occur during loading. "
-                "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml(), "
-                "check out our migration guide at https://haystack.deepset.ai/overview/migration "
-                f"or downgrade to haystack version {__version__}."
-            )
+        pipeline_config = cls._read_pipeline_config_from_yaml(path, version=version)
         return cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
@@ -502,11 +492,20 @@ class BasePipeline:
                 definition["params"][param_name] = value
 
     @classmethod
-    def _read_pipeline_config_from_yaml(cls, path: Path):
+    def _read_pipeline_config_from_yaml(cls, path: Path, version: str = str(__version__)):
         try:
             with open(path, "r", encoding="utf-8") as stream:
                 config = yaml.safe_load(stream)
-                cls.validate_config(config)
+                cls.validate_config(config, version=version)
+
+                if config["version"] != __version__:
+                    logger.warning(
+                        f"YAML version ({config['version']}) does not match with Haystack version ({__version__}). "
+                        "Issues may occur during loading. "
+                        "To fix this warning, save again this pipeline with the current Haystack version using Pipeline.save_to_yaml(), "
+                        "check out our migration guide at https://haystack.deepset.ai/overview/migration "
+                        f"or downgrade to Haystack version {config['version']}."
+                    )
                 return config
 
         except IOError as ioe:
@@ -557,36 +556,42 @@ class Pipeline(BasePipeline):
                 self.root_node = root_node
                 self.graph.add_node(root_node, component=RootNode())
             else:
-                raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
+                raise PipelineConfigError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
         component.name = name
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            assert len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node, (
-                f"The '{name}' node can only input from {self.root_node}. "
-                f"Set the 'inputs' parameter to ['{self.root_node}']"
-            )
+            if not len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node:
+                raise PipelineConfigError(f"The '{name}' node can only input from {self.root_node}. "
+                                          f"Set the 'inputs' parameter to ['{self.root_node}']")
             self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
         for i in inputs:
             if "." in i:
                 [input_node_name, input_edge_name] = i.split(".")
-                assert "output_" in input_edge_name, f"'{input_edge_name}' is not a valid edge name."
+                if not "output_" in input_edge_name:
+                    raise PipelineConfigError(f"'{input_edge_name}' is not a valid edge name.")
+
                 outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
-                assert int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node, (
-                    f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
-                    f"{outgoing_edges_input_node} outgoing edge(s)."
-                )
+                if not int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node:
+                    raise PipelineConfigError(f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
+                                              f"{outgoing_edges_input_node} outgoing edge(s).")
             else:
                 outgoing_edges_input_node = self.graph.nodes[i]["component"].outgoing_edges
-                assert outgoing_edges_input_node == 1, (
-                    f"Adding an edge from {i} to {name} is ambiguous as {i} has {outgoing_edges_input_node} edges. "
-                    f"Please specify the output explicitly."
-                )
+                if not outgoing_edges_input_node == 1:
+                    raise PipelineConfigError(
+                        f"Adding an edge from {i} to {name} is ambiguous as {i} has {outgoing_edges_input_node} edges. "
+                        f"Please specify the output explicitly."
+                    )
                 input_node_name = i
                 input_edge_name = "output_1"
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
+
+        if not nx.is_directed_acyclic_graph(self.graph):
+            self.graph.remove_node(name)
+            raise PipelineConfigError(f"Cannot add '{name}': it will create a loop in the pipeline.")
+
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
@@ -1103,8 +1108,9 @@ class Pipeline(BasePipeline):
 
             instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
             components[name] = instance
+
         except Exception as e:
-            raise Exception(f"Failed loading pipeline component '{name}': {e}")
+            raise PipelineConfigError(message=f"Failed loading pipeline component '{name}'", source=e)
         return instance
 
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
