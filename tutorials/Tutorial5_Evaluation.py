@@ -129,10 +129,7 @@ def tutorial5_evaluation():
     # ]
 
     # Similar to pipeline.run() we can execute pipeline.eval()
-    eval_result = pipeline.eval(
-        labels=eval_labels,
-        params={"Retriever": {"top_k": 5}}
-    )
+    eval_result = pipeline.eval(labels=eval_labels, params={"Retriever": {"top_k": 5}})
 
     # The EvaluationResult contains a pandas dataframe for each pipeline node.
     # That's why there are two dataframes in the EvaluationResult of an ExtractiveQAPipeline.
@@ -199,9 +196,7 @@ def tutorial5_evaluation():
     # Thereby, we can additionally calculate the upper bounds of the evaluation metrics of the Reader.
     # Note that even with isolated evaluation enabled, integrated evaluation will still be running.
     eval_result_with_upper_bounds = pipeline.eval(
-        labels=eval_labels,
-        params={"Retriever": {"top_k": 5}},
-        add_isolated_node_eval=True
+        labels=eval_labels, params={"Retriever": {"top_k": 5}}, add_isolated_node_eval=True
     )
     pipeline.print_eval_report(eval_result_with_upper_bounds)
 
@@ -212,11 +207,7 @@ def tutorial5_evaluation():
     # Evaluate Retriever on its own
     # Here we evaluate only the retriever, based on whether the gold_label document is retrieved.
     # Note that no_answer samples are omitted when evaluation is performed with this method
-    retriever_eval_results = retriever.eval(
-        top_k=5,
-        label_index=label_index,
-        doc_index=doc_index
-    )
+    retriever_eval_results = retriever.eval(top_k=5, label_index=label_index, doc_index=doc_index)
 
     ## Retriever Recall is the proportion of questions for which the correct document containing the answer is
     ## among the correct documents
@@ -234,11 +225,7 @@ def tutorial5_evaluation():
     # Here we evaluate only the reader in a closed domain fashion i.e. the reader is given one query
     # and its corresponding relevant document and metrics are calculated on whether the right position in this text is selected by
     # the model as the answer span (i.e. SQuAD style)
-    reader_eval_results = reader.eval(
-        document_store=document_store,
-        label_index=label_index,
-        doc_index=doc_index
-    )
+    reader_eval_results = reader.eval(document_store=document_store, label_index=label_index, doc_index=doc_index)
     # Evaluation of Reader can also be done directly on a SQuAD-formatted file without passing the data to Elasticsearch
     # reader_eval_results = reader.eval_on_file("../data/nq", "nq_dev_subset_v2.json")
 
