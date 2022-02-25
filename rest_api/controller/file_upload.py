@@ -11,7 +11,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 
 from haystack.pipelines.base import Pipeline
-from haystack.pipelines.utils import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml
+from haystack.pipelines.config import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml
 from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
 from rest_api.controller.utils import as_form
 
@@ -21,12 +21,8 @@ router = APIRouter()
 
 try:
     pipeline_config = read_pipeline_config_from_yaml(Path(PIPELINE_YAML_PATH))
-    pipeline_definition = get_pipeline_definition(
-        pipeline_config=pipeline_config, pipeline_name=INDEXING_PIPELINE_NAME
-    )
-    definitions = get_component_definitions(
-        pipeline_config=pipeline_config, overwrite_with_env_variables=True
-    )
+    pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=INDEXING_PIPELINE_NAME)
+    definitions = get_component_definitions(pipeline_config=pipeline_config, overwrite_with_env_variables=True)
     # Since each instance of FAISSDocumentStore creates an in-memory FAISS index, the Indexing & Query Pipelines would
     # end up with different indices. The same applies for InMemoryDocumentStore. The check below prevents creation of
     # Indexing Pipelines with FAISSDocumentStore or InMemoryDocumentStore.

@@ -15,6 +15,7 @@ from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode, ExtractiveQAPipeline
+from haystack.pipelines.config import _validate_user_input, validate_config
 from haystack.pipelines.utils import _PipelineCodeGen
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 
@@ -28,12 +29,14 @@ class ParentComponent(BaseComponent):
         super().__init__()
         self.set_config(dependent=dependent)
 
+
 class ParentComponent2(BaseComponent):
     outgoing_edges = 1
 
     def __init__(self, dependent: BaseComponent) -> None:
         super().__init__()
         self.set_config(dependent=dependent)
+
 
 class ChildComponent(BaseComponent):
     def __init__(self, some_key: str = None) -> None:
@@ -480,45 +483,45 @@ def test_PipelineCodeGen_is_component_order_invariant():
 
 
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
-def test_PipelineCodeGen_validate_user_input_invalid(input):
+def test_validate_user_input_invalid(input):
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_user_input(input)
+        _validate_user_input(input)
 
 
 @pytest.mark.parametrize(
     "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path"]
 )
-def test_PipelineCodeGen_validate_user_input_valid(input):
-    _PipelineCodeGen._validate_user_input(input)
+def test_validate_user_input_valid(input):
+    _validate_user_input(input)
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_component_name():
+def test_validate_pipeline_config_invalid_component_name():
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config({"components": [{"name": "\btest"}]})
+        validate_config({"components": [{"name": "\btest"}]})
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_component_type():
+def test_validate_pipeline_config_invalid_component_type():
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config({"components": [{"name": "test", "type": "\btest"}]})
+        validate_config({"components": [{"name": "test", "type": "\btest"}]})
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_component_param():
+def test_validate_pipeline_config_invalid_component_param():
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+        validate_config(
             {"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]}
         )
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_component_param_key():
+def test_validate_pipeline_config_invalid_component_param_key():
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+        validate_config(
             {"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]}
         )
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_name():
+def test_validate_pipeline_config_invalid_pipeline_name():
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+        validate_config(
             {
                 "components": [
                     {
@@ -531,9 +534,9 @@ def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_name():
         )
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_type():
+def test_validate_pipeline_config_invalid_pipeline_type():
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+        validate_config(
             {
                 "components": [
                     {
@@ -546,9 +549,9 @@ def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_type():
         )
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_node_name():
+def test_validate_pipeline_config_invalid_pipeline_node_name():
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+        validate_config(
             {
                 "components": [
                     {
@@ -561,9 +564,9 @@ def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_node_name():
         )
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_node_inputs():
+def test_validate_pipeline_config_invalid_pipeline_node_inputs():
     with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+        validate_config(
             {
                 "components": [
                     {

@@ -19,12 +19,14 @@ from haystack.nodes.evaluator.evaluator import (
     calculate_f1_str_multi,
     semantic_answer_similarity,
 )
-from haystack.pipelines.utils import (
-    _PipelineCodeGen,
-    _PipelineEvalReportGen,
+from haystack.pipelines.config import (
     get_component_definitions,
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
+)
+from haystack.pipelines.utils import (
+    _PipelineCodeGen,
+    _PipelineEvalReportGen,
 )
 from haystack.utils import DeepsetCloud
 
