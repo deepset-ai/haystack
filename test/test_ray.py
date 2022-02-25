@@ -11,7 +11,7 @@ from conftest import SAMPLES_PATH
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_load_pipeline(document_store_with_docs):
     pipeline = RayPipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml",
+        SAMPLES_PATH / "pipeline" / "test_ray_pipeline.yaml",
         pipeline_name="ray_query_pipeline",
         num_cpus=8,
     )

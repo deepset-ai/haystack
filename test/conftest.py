@@ -35,6 +35,9 @@ from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocument
 
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 
+from haystack.document_stores import BaseDocumentStore
+from haystack.nodes import BaseReader, BaseRetriever, FileTypeClassifier
+
 from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.ranker import SentenceTransformersRanker
@@ -119,6 +122,74 @@ def pytest_collection_modifyitems(config, items):
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
                 )
                 item.add_marker(skip_docstore)
+
+
+#
+# Empty mocks, as a base for unit tests.
+#
+# Monkeypatch the methods you need with either a mock implementation 
+# or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
+#
+
+class MockDocumentStore(BaseDocumentStore):
+
+    def _create_document_field_map(self, *a, **k):
+        pass
+
+    def delete_documents(self, *a, **k):
+        pass
+
+    def delete_labels(self, *a, **k):
+        pass
+
+    def get_all_documents(self, *a, **k):
+        pass
+
+    def get_all_documents_generator(self, *a, **k):
+        pass
+
+    def get_all_labels(self, *a, **k):
+        pass
+
+    def get_document_by_id(self, *a, **k):
+        pass
+
+    def get_document_count(self, *a, **k):
+        pass
+ 
+    def get_documents_by_id(self, *a, **k):
+        pass
+
+    def get_label_count(self, *a, **k):
+        pass
+
+    def query_by_embedding(self, *a, **k):
+        pass
+
+    def write_documents(self, *a, **k):
+        pass
+
+    def write_labels(self, *a, **k):
+        pass
+
+
+class MockRetriever(BaseRetriever):
+    
+    def retrieve(self, *a, **k):
+        pass
+
+
+class MockReader(BaseReader):
+    pass
+
+
+
+
+
+
+
+
+
 
 
 @pytest.fixture(scope="function", autouse=True)
