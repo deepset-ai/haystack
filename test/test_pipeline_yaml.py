@@ -1,32 +1,122 @@
-import networkx as nx
 import pytest
+import json
+import networkx as nx
 
-from haystack import __version__
+import haystack
+from haystack import __version__, BaseComponent
+from haystack.nodes._json_schema import get_json_schema
 from haystack.pipelines import Pipeline
-from haystack.nodes import FileTypeClassifier
-from haystack.errors import PipelineConfigError, PipelineValidationError
+from haystack.document_stores import BaseDocumentStore
+from haystack.nodes import BaseReader, BaseRetriever, FileTypeClassifier
+from haystack.errors import PipelineConfigError
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
+from . import test_pipeline_yaml  # For mocking
+
+
+class MockDocumentStore(BaseDocumentStore):
+
+    def _create_document_field_map(self, *a, **k):
+        pass
+
+    def delete_documents(self, *a, **k):
+        pass
+
+    def delete_labels(self, *a, **k):
+        pass
+
+    def get_all_documents(self, *a, **k):
+        pass
+
+    def get_all_documents_generator(self, *a, **k):
+        pass
+
+    def get_all_labels(self, *a, **k):
+        pass
+
+    def get_document_by_id(self, *a, **k):
+        pass
+
+    def get_document_count(self, *a, **k):
+        pass
+ 
+    def get_documents_by_id(self, *a, **k):
+        pass
+
+    def get_label_count(self, *a, **k):
+        pass
+
+    def query_by_embedding(self, *a, **k):
+        pass
+
+    def write_documents(self, *a, **k):
+        pass
+
+    def write_labels(self, *a, **k):
+        pass
+
+
+class MockReader(BaseReader):
+    pass
+
+class MockRetriever(BaseRetriever):
+    pass
+
+
+@pytest.fixture(autouse=True)
+def mock_importable_nodes_list(request, monkeypatch):
+    # Do not patch integration tests
+    if 'integration' in request.keywords:
+        return
+
+    monkeypatch.setattr(BaseComponent, "_find_subclasses_in_modules", lambda *a, **k: [
+        (test_pipeline_yaml, MockDocumentStore),
+        (test_pipeline_yaml, MockReader),
+        (test_pipeline_yaml, MockRetriever),
+    ])
+
+
+
+@pytest.fixture(autouse=True)
+def mock_json_schema(request, monkeypatch, tmp_path):
+    # Do not patch integration tests
+    if 'integration' in request.keywords:
+        return
+
+    monkeypatch.setattr(haystack.pipelines.base, "JSON_SCHEMAS_PATH", tmp_path)
+    monkeypatch.setattr(BaseComponent, "_find_subclasses_in_modules", lambda *a, **k: [
+        (test_pipeline_yaml, MockDocumentStore),
+        (test_pipeline_yaml, MockReader),
+        (test_pipeline_yaml, MockRetriever),
+    ])
+
+    filename = f"haystack-pipeline-{__version__}.schema.json"
+    test_schema = get_json_schema(filename=filename)
+
+    with open(tmp_path / filename, "w") as schema_file:
+        json.dump(test_schema, schema_file, indent=4)
+
 
 
 @pytest.fixture
-def pipeline_config_path(tmp_path):
-    """
-    This fixture ensures that the test YAML file is always loaded with the proper version,
-    so that it won't fail validation for that.
-    """
-    source_path = SAMPLES_PATH / "pipeline" / "test_pipeline.yaml"
-    test_path = tmp_path / "tmp.yml"
+def mock_110_json_schema(request, monkeypatch, tmp_path):
+    # Do not patch integration tests
+    if 'integration' in request.keywords:
+        return
 
-    config = None
-    with open(source_path, "r") as source_file:
-        config = source_file.read()
-    if config:
-        config = config.replace("1.1.0", __version__)
-        with open(test_path, "w") as tmp_file:
-            tmp_file.write(config)
+    monkeypatch.setattr(haystack.nodes._json_schema, "haystack_version", "1.1.0")
+    monkeypatch.setattr(haystack.pipelines.base, "JSON_SCHEMAS_PATH", tmp_path)
+    monkeypatch.setattr(BaseComponent, "_find_subclasses_in_modules", lambda *a, **k: [
+        (test_pipeline_yaml, MockDocumentStore),
+        (test_pipeline_yaml, MockReader),
+        (test_pipeline_yaml, MockRetriever),
+    ])
+    
+    filename = f"haystack-pipeline-1.1.0.schema.json"
+    test_schema = get_json_schema(filename=filename)
 
-    yield test_path
+    with open(tmp_path / filename, "w") as schema_file:
+        json.dump(test_schema, schema_file, indent=4)
 
 
 #
@@ -35,11 +125,13 @@ def pipeline_config_path(tmp_path):
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
-def test_load_and_save_from_yaml(tmp_path, pipeline_config_path):
+def test_load_and_save_from_yaml(tmp_path):
+    config_path = SAMPLES_PATH / "pipeline" / "test_pipeline.yaml"
+    config_version = "1.2.0"  # TODO: might parametrize on "important" schema changes
 
     # Test the indexing pipeline: 
     # Load it
-    indexing_pipeline = Pipeline.load_from_yaml(path=pipeline_config_path, pipeline_name="indexing_pipeline")
+    indexing_pipeline = Pipeline.load_from_yaml(path=config_path, version=config_version, pipeline_name="indexing_pipeline")
 
     # Check if it works
     indexing_pipeline.get_document_store().delete_documents()
@@ -62,7 +154,7 @@ def test_load_and_save_from_yaml(tmp_path, pipeline_config_path):
 
     # Test the query pipeline:
     # Load it
-    query_pipeline = Pipeline.load_from_yaml(path=pipeline_config_path, pipeline_name="query_pipeline")
+    query_pipeline = Pipeline.load_from_yaml(path=config_path, pipeline_name="query_pipeline")
 
     # Check if it works
     prediction = query_pipeline.run(
@@ -96,8 +188,109 @@ def test_load_yaml_non_existing_file():
 def test_load_yaml_invalid_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write("this is not valid YAML!")
-    with pytest.raises(PipelineValidationError):
+    with pytest.raises(PipelineConfigError):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_missing_version(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            components:
+            - name: docstore
+              type: MockDocumentStore
+            pipelines:
+            - name: query
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """)
+    with pytest.raises(PipelineConfigError) as e:
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+        assert "version" in str(e)
+
+
+def test_load_yaml_custom_version(tmp_path, mock_110_json_schema):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            version: 1.1.0
+            components:
+            - name: docstore
+              type: MockDocumentStore
+            pipelines:
+            - name: query
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """)
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", version="1.1.0")
+
+
+def test_load_yaml_non_existing_version(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            version: random
+            components:
+            - name: docstore
+              type: MockDocumentStore
+            pipelines:
+            - name: query
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """)
+    with pytest.raises(PipelineConfigError) as e:
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", version="random")
+        assert "version" in str(e) and "random" in str(e)
+ 
+
+def test_load_yaml_no_components(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            version: {__version__}
+            components:
+            pipelines:
+            - name: query
+              nodes:
+        """)
+    with pytest.raises(PipelineConfigError) as e:
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+        assert "components" in str(e)
+
+
+def test_load_yaml_wrong_component(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            version: {__version__}
+            components:
+            - name: docstore
+              type: ImaginaryDocumentStore
+            pipelines:
+            - name: query
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """)
+    with pytest.raises(PipelineConfigError) as e:
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+        assert "ImaginaryDocumentStore" in str(e)
+
+
+def test_load_yaml_no_pipelines(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            version: {__version__}
+            components:
+            - name: docstore
+              type: MockDocumentStore
+            pipelines:
+        """)
+    with pytest.raises(PipelineConfigError) as e:
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+        assert "pipeline" in str(e)
 
 
 def test_load_yaml_invalid_pipeline_name(tmp_path):
@@ -106,7 +299,7 @@ def test_load_yaml_invalid_pipeline_name(tmp_path):
             version: {__version__}
             components:
             - name: docstore
-              type: ElasticsearchDocumentStore
+              type: MockDocumentStore
             pipelines:
             - name: query
               nodes:
@@ -114,25 +307,70 @@ def test_load_yaml_invalid_pipeline_name(tmp_path):
                 inputs:
                 - Query
         """)
-    with pytest.raises(PipelineConfigError):
+    with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="invalid")
+        assert "invalid" in str(e) and "pipeline" in str(e)
 
 
-def test_load_yaml_missing_version(tmp_path):
+def test_load_yaml_pipeline_with_type(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(f"""
+            version: {__version__}
             components:
             - name: docstore
-              type: ElasticsearchDocumentStore
+              type: MockDocumentStore
             pipelines:
             - name: query
+              type: Query
               nodes:
               - name: docstore
                 inputs:
                 - Query
         """)
-    with pytest.raises(PipelineValidationError):
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_pipeline_with_wrong_nodes(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            version: {__version__}
+            components:
+            - name: docstore
+              type: MockDocumentStore
+            pipelines:
+            - name: query
+              nodes:
+              - name: not_existing_node
+                inputs:
+                - Query
+        """)
+    with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+        assert "not_existing_node" in str(e)
+
+
+def test_load_yaml_pipeline_not_a_dag(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(f"""
+            version: {__version__}
+            components:
+            - name: retriever
+              type: MockRetriever
+            - name: reader
+              type: MockRetriever
+            pipelines:
+            - name: query
+              nodes:
+              - name: retriever
+                inputs:
+                - reader
+              - name: reader
+                inputs:
+                - retriever
+        """)
+    with pytest.raises(PipelineConfigError) as e:
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
 
 
 # def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):

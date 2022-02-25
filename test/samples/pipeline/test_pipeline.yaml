@@ -1,4 +1,4 @@
-version: '1.1.0'
+version: '1.2.0'
 
 components:
   - name: Reader
@@ -11,7 +11,6 @@ components:
     type: ElasticsearchRetriever
     params:
       document_store: DocumentStore
-      custom_query: null
   - name: DocumentStore
     type: ElasticsearchDocumentStore
     params:
@@ -29,11 +28,11 @@ components:
     type: TransformersDocumentClassifier
     params:
       batch_size: 16
-      use_gpu: -1
+      use_gpu: false
   - name: QueryTimeDocumentClassifier
     type: TransformersDocumentClassifier
     params:
-      use_gpu: -1
+      use_gpu: false
 
 
 pipelines:
