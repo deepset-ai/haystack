@@ -184,14 +184,14 @@ class _PipelineEvalReportGen:
 
     @classmethod
     def _format_document_answer(cls, document_or_answer: dict):
-        return "\n \t".join([f"{name}: {value}" for name, value in document_or_answer.items()])
+        return "\n \t".join(f"{name}: {value}" for name, value in document_or_answer.items())
 
     @classmethod
     def _format_wrong_sample(cls, query: dict):
-        metrics = "\n \t".join([f"{name}: {value}" for name, value in query["metrics"].items()])
-        documents = "\n\n \t".join([cls._format_document_answer(doc) for doc in query.get("documents", [])])
+        metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
+        documents = "\n\n \t".join(map(cls._format_document_answer, query.get("documents", [])))
         documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
-        answers = "\n\n \t".join([cls._format_document_answer(answer) for answer in query.get("answers", [])])
+        answers = "\n\n \t".join(map(cls._format_document_answer, query.get("answers", [])))
         answers = f"Answers: \n \t{answers}\n" if len(answers) > 0 else ""
         gold_document_ids = "\n \t".join(query["gold_document_ids"])
         gold_answers = "\n \t".join(query.get("gold_answers", []))
@@ -224,24 +224,22 @@ class _PipelineEvalReportGen:
             for node in eval_result.node_results.keys()
         }
         examples_formatted = {
-            node: "\n".join([cls._format_wrong_sample(example) for example in examples])
-            for node, examples in examples.items()
+            node: "\n".join(map(cls._format_wrong_sample, examples)) for node, examples in examples.items()
         }
 
-        return "\n".join(
-            [cls._format_wrong_samples_node(node, examples) for node, examples in examples_formatted.items()]
-        )
+        return "\n".join(map(cls._format_wrong_samples_node, examples_formatted.keys(), examples_formatted.values()))
 
     @classmethod
     def _format_pipeline_node(cls, node: str, calculated_metrics: dict):
         node_metrics: dict = {}
-        for metric_mode in calculated_metrics:
-            for metric, value in calculated_metrics[metric_mode].get(node, {}).items():
+        for metric_mode, metrics in calculated_metrics:
+            for metric, value in metrics.get(node, {}).items():
                 node_metrics[f"{metric}{metric_mode}"] = value
 
-        node_metrics_formatted = "\n".join(
-            sorted([f"                        | {metric}: {value:5.3}" for metric, value in node_metrics.items()])
-        )
+        def format_node_metric(metric, value):
+            return f"                        | {metric}: {value:5.3}"
+
+        node_metrics_formatted = "\n".join(sorted(map(format_node_metric, node_metrics.keys(), node_metrics.values())))
         node_metrics_formatted = f"{node_metrics_formatted}\n" if len(node_metrics_formatted) > 0 else ""
         s = (
             f"                      {node}\n"
@@ -253,7 +251,7 @@ class _PipelineEvalReportGen:
 
     @classmethod
     def _format_pipeline_overview(cls, calculated_metrics: dict, graph: DiGraph):
-        pipeline_overview = "\n".join([cls._format_pipeline_node(node, calculated_metrics) for node in graph.nodes])
+        pipeline_overview = "\n".join(cls._format_pipeline_node(node, calculated_metrics) for node in graph.nodes)
         s = (
             f"================== Evaluation Report ==================\n"
             f"=======================================================\n"
