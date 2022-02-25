@@ -497,11 +497,17 @@ class Bert(LanguageModel):
             # Haystack style
             bert_config = BertConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            bert.model = BertModel.from_pretrained(haystack_lm_model, ignore_mismatched_sizes=True, config=bert_config, **kwargs)
+            if 'rembert' in pretrained_model_name_or_path:
+                bert.model = BertModel.from_pretrained(haystack_lm_model, ignore_mismatched_sizes=True, config=bert_config, **kwargs)
+            else:
+                bert.model = BertModel.from_pretrained(haystack_lm_model, config=bert_config, **kwargs)
             bert.language = bert.model.config.language
         else:
             # Pytorch-transformer Style
-            bert.model = BertModel.from_pretrained(str(pretrained_model_name_or_path), ignore_mismatched_sizes=True, **kwargs)
+            if 'rembert' in pretrained_model_name_or_path:
+                bert.model = BertModel.from_pretrained(str(pretrained_model_name_or_path), ignore_mismatched_sizes=True, **kwargs)
+            else:
+                bert.model = BertModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
             bert.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         return bert
 
