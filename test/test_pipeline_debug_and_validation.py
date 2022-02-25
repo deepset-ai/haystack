@@ -12,7 +12,7 @@ from haystack.nodes import (
     ElasticsearchRetriever,
 )
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 @pytest.mark.elasticsearch

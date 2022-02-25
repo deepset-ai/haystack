@@ -5,7 +5,7 @@ import ray
 
 from haystack.pipelines import RayPipeline
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)

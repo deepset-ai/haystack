@@ -19,7 +19,7 @@ from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode, Extra
 from haystack.pipelines.base import _PipelineCodeGen
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 
-from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
+from .conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
 
 
 @pytest.mark.elasticsearch

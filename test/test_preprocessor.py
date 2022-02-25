@@ -3,7 +3,7 @@ from pathlib import Path
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
 from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 TEXT = """
 This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in 
