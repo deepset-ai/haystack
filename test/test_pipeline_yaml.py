@@ -423,7 +423,7 @@ def test_save_yaml(tmp_path):
         assert f"version: {YAML_TEST_VERSION}" in content
 
 
-def test_save_yaml_fails(tmp_path):
+def test_save_yaml_overwrite(tmp_path):
     pipeline = Pipeline()
     retriever = MockRetriever()
     pipeline.add_node(component=retriever, name="retriever", inputs=["Query"])

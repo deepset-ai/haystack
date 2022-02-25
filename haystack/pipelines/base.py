@@ -267,7 +267,6 @@ class BasePipeline(ABC):
                 component_config["params"] = params
 
         pipeline = BasePipeline.load_from_config(
-            cls,
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
@@ -1303,14 +1302,14 @@ class RayPipeline(Pipeline):
         return pipeline
 
     @classmethod
-    def load_from_yaml(
+    def load_from_yaml(   # type: ignore
         cls,
         path: Path,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
         address: Optional[str] = None,
         **kwargs,
-    ):  # type: ignore
+    ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
