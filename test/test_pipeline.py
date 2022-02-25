@@ -28,12 +28,14 @@ class ParentComponent(BaseComponent):
         super().__init__()
         self.set_config(dependent=dependent)
 
+
 class ParentComponent2(BaseComponent):
     outgoing_edges = 1
 
     def __init__(self, dependent: BaseComponent) -> None:
         super().__init__()
         self.set_config(dependent=dependent)
+
 
 class ChildComponent(BaseComponent):
     def __init__(self, some_key: str = None) -> None:
