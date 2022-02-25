@@ -214,8 +214,7 @@ YAML_TEST_VERSION = "test-version"
 def mock_haystack_version(monkeypatch):
     monkeypatch.setattr(haystack, "__version__", YAML_TEST_VERSION)
     monkeypatch.setattr(haystack.pipelines.base, "VERSION", YAML_TEST_VERSION)
-    monkeypatch.setattr(haystack.nodes._json_schema, "haystack_version", YAML_TEST_VERSION)
-
+    #monkeypatch.setattr(haystack.nodes._json_schema, "haystack_version", YAML_TEST_VERSION)
 
 
 
