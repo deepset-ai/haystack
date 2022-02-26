@@ -3,20 +3,18 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
 
-import json
 import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
 
 import pinecone
-import faiss
 import numpy as np
 
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
-from inspect import Signature, signature
+from inspect import Signature
 
 logger = logging.getLogger(__name__)
 
@@ -210,20 +208,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         return document
 
     def _validate_params_load_from_disk(self, sig: Signature, locals: dict, kwargs: dict):
-        # TODO probably not needed
         raise NotImplementedError("_validate_params_load_from_disk not implemented for PineconeDocumentStore")
-        allowed_params = ["faiss_index_path", "faiss_config_path", "self", "kwargs"]
-        invalid_param_set = False
 
-        for param in sig.parameters.values():
-            if param.name not in allowed_params and param.default != locals[param.name]:
-                    invalid_param_set = True
-                    break
-        
-        if invalid_param_set or len(kwargs) > 0:
-            raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
-
-    def _validate_index_sync(self):        
+    def _validate_index_sync(self):
         # This check ensures the correct document database was loaded.
         # If it fails, make sure you provided the path to the database
         # used when creating the original Pinecone index
@@ -234,7 +221,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                              "original index.")
 
     def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 10_000, duplicate_documents: Optional[str] = None,
+                        batch_size: int = 32, duplicate_documents: Optional[str] = None,
                         headers: Optional[Dict[str, str]] = None) -> None:
         """
         Add new documents to the DocumentStore.
@@ -278,35 +265,24 @@ class PineconeDocumentStore(SQLDocumentStore):
         if len(document_objects) > 0:
             add_vectors = False if document_objects[0].embedding is None else True
             # I don't think below is required
-            """
-            if self.duplicate_documents == "overwrite" and add_vectors:
-                logger.warning("You have to provide `duplicate_documents = 'overwrite'` arg and "
-                               "`FAISSDocumentStore` does not support update in existing `faiss_index`.\n"
-                               "Please call `update_embeddings` method to repopulate `faiss_index`")
-            """
-
             with tqdm(total = len(document_objects), disable =not self.progress_bar, position=0,
                     desc="Writing Documents") as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
                     ids = [doc.id for doc in document_objects[i: i + batch_size]]
-                    # TODO find way to identify long metadata fields and split these to be stored in SQL
+                    # metadata fields are stored in Pinecone
                     metadata = [doc.meta for doc in document_objects[i: i + batch_size]]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i: i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
 
                         if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
-                        # TODO not sure if required to convert to list objects (maybe already are)
+                        # to convert to list objects
                         embeddings = [embed.tolist() for embed in embeddings]
                         vectors = zip(ids, embeddings, metadata)
                         self.pinecone_indexes[index].upsert(vectors=vectors)
 
                     docs_to_write_in_sql = []
                     for doc in document_objects[i: i + batch_size]:
-                        # TODO I think this is not necessary as we have doc.id, before was required
-                        # to map from doc.id to the integer 'vector_id' values used by faiss - but
-                        # we do need to use vector_id as this is used by the sql doc store
-                        #if add_vectors:
                         doc.meta["vector_id"] = doc.id
                         docs_to_write_in_sql.append(doc)
                     super(PineconeDocumentStore, self).write_documents(docs_to_write_in_sql, index=index,
@@ -319,13 +295,42 @@ class PineconeDocumentStore(SQLDocumentStore):
             self.index: self.embedding_field,
         }
 
+    def _build_filter_clause(self, filters: Dict[str, Union[str, int, float, bool, list]]) -> dict:
+        """ 
+        Transform Haystack filter conditions to Pinecone metadata filter syntax.
+        Haystack syntax == {'item_id': ['B00006IBLJ', 'B000GHJM9C', 'B000CS787S']}
+        Pinecone syntax == {'item_id': {'$in': ['B00006IBLJ', 'B000GHJM9C', 'B000CS787S']}}
+        """
+        pinecone_filter = {}
+        for key, value in filters.items():
+            if key in ['$and', '$or'] and type(value) is dict:
+                sublist = []
+                for sub_key, sub_value in value.items():
+                    sublist.append(self._build_filter_clause({sub_key: sub_value}))
+                pinecone_filter[key] = sublist
+            elif type(value) is list and key[0] != '$':
+                pinecone_filter[key] = {'$in': value}
+            elif type(value) is list and key in ['$and', '$or']:
+                # check if we have more operators in sublist
+                sublist = []
+                for sub_item in value:
+                    print(f"sub_item: {sub_item}")
+                    if type(sub_item) is dict:
+                        sublist.append(self._build_filter_clause(sub_item))
+                    else:
+                        sublist.append(sub_item)
+                pinecone_filter[key] = sublist
+            else:
+                pinecone_filter[key] = value
+        return pinecone_filter
+
     def update_embeddings(
         self,
         retriever: 'BaseRetriever',
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict] = None,
-        batch_size: int = 10_000
+        batch_size: int = 32
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -382,7 +387,6 @@ class PineconeDocumentStore(SQLDocumentStore):
                 metadata = []
                 ids = []
                 for doc in document_batch:
-                    # TODO if vector_id unecessary then rewrite below (maybe it is needed)
                     metadata.append({key: value for key, value in doc.meta.items() if key != "vector_id"})
                     ids.append(doc.id)
                 # update existing vectors in pinecone index
@@ -396,7 +400,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict] = None,
         return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
+        batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         if headers:
@@ -416,7 +420,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         filters: Optional[Dict] = None,
         return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
+        batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None
     ) -> Generator[Document, None, None]:
         """
@@ -458,7 +462,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             yield doc
 
     def get_documents_by_id(
-        self, ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None
+        self, ids: List[str], index: Optional[str] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None
     ) -> List[Document]:
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -466,7 +470,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         
         index = index or self.index
         index = self._sanitize_index_name(index)
-        # TODO could put this repetative chunk in a _method?
+        # get or create index
         if not self.pinecone_indexes.get(index):
             self.pinecone_indexes[index] = self._create_index_if_not_exist(
                 vector_dim=self.vector_dim,
@@ -585,6 +589,8 @@ class PineconeDocumentStore(SQLDocumentStore):
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
         self._limit_check(top_k, include_values=return_embedding)
+        if filters:
+            filters = self._build_filter_clause(filters)
 
         index = index or self.index
         index = self._sanitize_index_name(index)
