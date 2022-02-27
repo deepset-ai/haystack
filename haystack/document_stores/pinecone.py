@@ -321,7 +321,6 @@ class PineconeDocumentStore(SQLDocumentStore):
                 # check if we have more operators in sublist
                 sublist = []
                 for sub_item in value:
-                    print(f"sub_item: {sub_item}")
                     if type(sub_item) is dict:
                         sublist.append(self._build_filter_clause(sub_item))
                     else:
