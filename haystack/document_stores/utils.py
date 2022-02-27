@@ -314,7 +314,7 @@ def es_index_to_document_store(
     :param original_index_name: Elasticsearch index containing the records to be converted.
     :param original_content_field: Elasticsearch field containing the text to be put in the `content` field of the
         resulting haystack `Document` objects.
-    :param original_name_field: Optional Elasticsearch field containing the title title of the Document.
+    :param original_name_field: Optional Elasticsearch field containing the title of the Document.
     :param included_metadata_fields: List of Elasticsearch fields that shall be stored in the `meta` field of the
         resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
         all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the

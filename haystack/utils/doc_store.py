@@ -1,6 +1,9 @@
 import time
 import logging
 import subprocess
+import requests
+
+from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
@@ -119,8 +122,37 @@ def launch_milvus(sleep=15, delete_existing=False):
     # Start a Milvus server via docker
 
     logger.debug("Starting Milvus ...")
-    if delete_existing:
-        _ = subprocess.run([f"docker rm --force {MILVUS1_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
+
+    milvus_dir = Path.home() / "milvus"
+    milvus_dir.mkdir(exist_ok=True)
+
+    request = requests.get(
+        "https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml"
+    )
+    with open(milvus_dir / "docker-compose.yml", "wb") as f:
+        f.write(request.content)
+
+    status = subprocess.run(["cd /home/$USER/milvus/ && docker-compose up -d"], shell=True)
+
+    if status.returncode:
+        logger.warning(
+            "Tried to start Milvus through Docker but this failed. "
+            "It is likely that there is already an existing Milvus instance running. "
+        )
+    else:
+        time.sleep(sleep)
+
+
+def launch_milvus1(sleep=15):
+    # Start a Milvus (version <2.0.0) server via docker
+
+    logger.debug("Starting Milvus ...")
+    logger.warning(
+        "Automatic Milvus config creation not yet implemented. "
+        "If you are starting Milvus using launch_milvus(), "
+        "make sure you have a properly populated milvus/conf folder. "
+        "See (https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md) for more details."
+    )
     status = subprocess.run(
         [
             f"docker run -d --name {MILVUS1_CONTAINER_NAME} \
