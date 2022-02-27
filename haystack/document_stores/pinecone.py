@@ -211,14 +211,21 @@ class PineconeDocumentStore(SQLDocumentStore):
         # If it fails, make sure you provided the path to the database
         # used when creating the original Pinecone index
         if not self.get_document_count() == self.get_embedding_count():
-            raise ValueError("The number of documents present in the SQL database does not "
-                             "match the number of embeddings in Pinecone. Make sure your Pinecone "
-                             "index aligns to the same database that was used when creating the "
-                             "original index.")
+            raise ValueError(
+                "The number of documents present in the SQL database does not "
+                "match the number of embeddings in Pinecone. Make sure your Pinecone "
+                "index aligns to the same database that was used when creating the "
+                "original index."
+            )
 
-    def write_documents(self, documents: Union[List[dict], List[Document]], index: Optional[str] = None,
-                        batch_size: int = 32, duplicate_documents: Optional[str] = None,
-                        headers: Optional[Dict[str, str]] = None) -> None:
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: int = 32,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> None:
         """
         Add new documents to the DocumentStore.
 
@@ -262,24 +269,26 @@ class PineconeDocumentStore(SQLDocumentStore):
         if len(document_objects) > 0:
             add_vectors = False if document_objects[0].embedding is None else True
             # I don't think below is required
-            with tqdm(total = len(document_objects), disable =not self.progress_bar, position=0,
-                    desc="Writing Documents") as progress_bar:
+            with tqdm(
+                total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
+            ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
-                    ids = [doc.id for doc in document_objects[i: i + batch_size]]
+                    ids = [doc.id for doc in document_objects[i : i + batch_size]]
                     # metadata fields are stored in Pinecone
-                    metadata = [doc.meta for doc in document_objects[i: i + batch_size]]
+                    metadata = [doc.meta for doc in document_objects[i : i + batch_size]]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
 
-                        if self.similarity=="cosine": self.normalize_embedding(embeddings_to_index)
+                        if self.similarity == "cosine":
+                            self.normalize_embedding(embeddings_to_index)
                         # to convert to list objects
                         embeddings = [embed.tolist() for embed in embeddings]
                         vectors = zip(ids, embeddings, metadata)
                         self.pinecone_indexes[index].upsert(vectors=vectors)
 
                     docs_to_write_in_sql = []
-                    for doc in document_objects[i: i + batch_size]:
+                    for doc in document_objects[i : i + batch_size]:
                         doc.meta["vector_id"] = doc.id
                         docs_to_write_in_sql.append(doc)
                     super(PineconeDocumentStore, self).write_documents(
@@ -294,21 +303,21 @@ class PineconeDocumentStore(SQLDocumentStore):
         }
 
     def _build_filter_clause(self, filters: Dict[str, Union[str, int, float, bool, list]]) -> dict:
-        """ 
+        """
         Transform Haystack filter conditions to Pinecone metadata filter syntax.
         Haystack syntax == {'item_id': ['B00006IBLJ', 'B000GHJM9C', 'B000CS787S']}
         Pinecone syntax == {'item_id': {'$in': ['B00006IBLJ', 'B000GHJM9C', 'B000CS787S']}}
         """
         pinecone_filter = {}
         for key, value in filters.items():
-            if key in ['$and', '$or'] and type(value) is dict:
+            if key in ["$and", "$or"] and type(value) is dict:
                 sublist = []
                 for sub_key, sub_value in value.items():
                     sublist.append(self._build_filter_clause({sub_key: sub_value}))
                 pinecone_filter[key] = sublist
-            elif type(value) is list and key[0] != '$':
-                pinecone_filter[key] = {'$in': value}
-            elif type(value) is list and key in ['$and', '$or']:
+            elif type(value) is list and key[0] != "$":
+                pinecone_filter[key] = {"$in": value}
+            elif type(value) is list and key in ["$and", "$or"]:
                 # check if we have more operators in sublist
                 sublist = []
                 for sub_item in value:
@@ -328,7 +337,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict] = None,
-        batch_size: int = 32
+        batch_size: int = 32,
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -401,7 +410,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         filters: Optional[Dict] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -421,7 +430,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         filters: Optional[Dict] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -465,7 +474,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         ids: List[str],
         index: Optional[str] = None,
         batch_size: int = 32,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
