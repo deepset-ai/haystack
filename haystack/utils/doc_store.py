@@ -1,17 +1,29 @@
 import time
 import logging
 import subprocess
+import requests
+
+from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
+ELASTICSEARCH_CONTAINER_NAME = "elasticsearch"
+OPENSEARCH_CONTAINER_NAME = "opensearch"
+MILVUS1_CONTAINER_NAME = "milvus1"
+WEAVIATE_CONTAINER_NAME = "weaviate"
 
 
-def launch_es(sleep=15):
+def launch_es(sleep=15, delete_existing=False):
     # Start an Elasticsearch server via Docker
 
     logger.debug("Starting Elasticsearch ...")
+    if delete_existing:
+        _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
-        ['docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2'], shell=True
+        [
+            f'docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'
+        ],
+        shell=True,
     )
     if status.returncode:
         logger.warning(
@@ -22,35 +34,17 @@ def launch_es(sleep=15):
         time.sleep(sleep)
 
 
-def launch_open_distro_es(sleep=15):
-    # Start an Open Distro for Elasticsearch server via Docker
-
-    logger.debug("Starting Open Distro for Elasticsearch ...")
-    status = subprocess.run(
-        [
-            'docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" amazon/opendistro-for-elasticsearch:1.13.2'
-        ],
-        shell=True,
-    )
-    if status.returncode:
-        logger.warning(
-            "Tried to start Open Distro for Elasticsearch through Docker but this failed. "
-            "It is likely that there is already an existing Elasticsearch instance running. "
-        )
-    else:
-        time.sleep(sleep)
-
-
-def launch_opensearch(sleep=15):
+def launch_opensearch(sleep=15, delete_existing=False):
     # Start an OpenSearch server via docker
 
     logger.debug("Starting OpenSearch...")
     # This line is needed since it is not possible to start a new docker container with the name opensearch if there is a stopped image with the same now
     # docker rm only succeeds if the container is stopped, not if it is running
-    _ = subprocess.run(["docker rm opensearch"], shell=True, stdout=subprocess.DEVNULL)
+    if delete_existing:
+        _ = subprocess.run([f"docker rm --force {OPENSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            'docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name opensearch opensearchproject/opensearch:1.0.0-rc1'
+            f'docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.2.4'
         ],
         shell=True,
     )
@@ -69,7 +63,7 @@ def launch_weaviate(sleep=15):
     logger.debug("Starting Weaviate ...")
     status = subprocess.run(
         [
-            "docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.2"
+            "docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --name {WEAVIATE_CONTAINER_NAME} semitechnologies/weaviate:1.7.2"
         ],
         shell=True,
     )
@@ -82,27 +76,75 @@ def launch_weaviate(sleep=15):
         time.sleep(sleep)
 
 
-def stop_opensearch():
-    logger.debug("Stopping OpenSearch...")
-    status = subprocess.run(["docker stop opensearch"], shell=True)
+def stop_container(container_name, delete_container=False):
+    logger.debug(f"Stopping {container_name}...")
+    status = subprocess.run([f"docker stop {container_name}"], shell=True)
     if status.returncode:
         logger.warning(
-            "Tried to stop OpenSearch but this failed. "
-            "It is likely that there was no OpenSearch Docker container with the name opensearch"
+            f"Tried to stop {container_name} but this failed. "
+            f"It is likely that there was no Docker container with the name {container_name}"
         )
-    status = subprocess.run(["docker rm opensearch"], shell=True)
+    if delete_container:
+        status = subprocess.run([f"docker rm {container_name}"], shell=True)
 
 
-def stop_service(document_store):
+def stop_opensearch(delete_container=False):
+    stop_container(OPENSEARCH_CONTAINER_NAME, delete_container)
+
+
+def stop_elasticsearch(delete_container=False):
+    stop_container(ELASTICSEARCH_CONTAINER_NAME, delete_container)
+
+
+def stop_milvus(delete_container=False):
+    stop_container(MILVUS1_CONTAINER_NAME, delete_container)
+
+
+def stop_weaviate(delete_container=False):
+    stop_container(WEAVIATE_CONTAINER_NAME, delete_container)
+
+
+def stop_service(document_store, delete_container=False):
     ds_class = str(type(document_store))
     if "OpenSearchDocumentStore" in ds_class:
-        stop_opensearch()
+        stop_opensearch(delete_container)
+    elif "ElasticsearchDocumentStore" in ds_class:
+        stop_elasticsearch(delete_container)
+    elif "MilvusDocumentStore" in ds_class:
+        stop_milvus(delete_container)
+    elif "WeaviateDocumentStore" in ds_class:
+        stop_weaviate(delete_container)
     else:
-        logger.warning(f"No support yet for auto stopping the service behind a {ds_class}")
+        logger.warning(f"No support yet for auto stopping the service behind a {type(document_store)}")
 
 
-def launch_milvus(sleep=15):
+def launch_milvus(sleep=15, delete_existing=False):
     # Start a Milvus server via docker
+
+    logger.debug("Starting Milvus ...")
+
+    milvus_dir = Path.home() / "milvus"
+    milvus_dir.mkdir(exist_ok=True)
+
+    request = requests.get(
+        "https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml"
+    )
+    with open(milvus_dir / "docker-compose.yml", "wb") as f:
+        f.write(request.content)
+
+    status = subprocess.run(["cd /home/$USER/milvus/ && docker-compose up -d"], shell=True)
+
+    if status.returncode:
+        logger.warning(
+            "Tried to start Milvus through Docker but this failed. "
+            "It is likely that there is already an existing Milvus instance running. "
+        )
+    else:
+        time.sleep(sleep)
+
+
+def launch_milvus1(sleep=15):
+    # Start a Milvus (version <2.0.0) server via docker
 
     logger.debug("Starting Milvus ...")
     logger.warning(
@@ -113,14 +155,10 @@ def launch_milvus(sleep=15):
     )
     status = subprocess.run(
         [
-            "sudo docker run -d --name milvus_cpu_1.0.0 \
+            f"docker run -d --name {MILVUS1_CONTAINER_NAME} \
           -p 19530:19530 \
           -p 19121:19121 \
-          -v /home/$USER/milvus/db:/var/lib/milvus/db \
-          -v /home/$USER/milvus/conf:/var/lib/milvus/conf \
-          -v /home/$USER/milvus/logs:/var/lib/milvus/logs \
-          -v /home/$USER/milvus/wal:/var/lib/milvus/wal \
-          milvusdb/milvus:1.0.0-cpu-d030521-1ea92e"
+          milvusdb/milvus:1.1.0-cpu-d050721-5e559c"
         ],
         shell=True,
     )
