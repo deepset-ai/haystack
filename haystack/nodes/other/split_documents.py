@@ -8,6 +8,7 @@ class SplitDocumentList(BaseComponent):
     """
     A node to split a list of `Document`s by `content_type` or by the values of a metadata field.
     """
+
     # By default (split_by == "content_type"), the node has two outgoing edges.
     outgoing_edges = 2
 
@@ -25,9 +26,10 @@ class SplitDocumentList(BaseComponent):
             value of the provided list will be routed to `"output_2"`, etc.
         """
 
-        assert split_by == "content_type" or metadata_values is not None, \
-            "If split_by is set to the name of a metadata field, you must provide metadata_values " \
+        assert split_by == "content_type" or metadata_values is not None, (
+            "If split_by is set to the name of a metadata field, you must provide metadata_values "
             "to group the documents to."
+        )
 
         # Save init parameters to enable export of component config as YAML
         self.set_config(split_by=split_by, metadata_values=metadata_values)

@@ -9,8 +9,9 @@ class JoinAnswers(BaseComponent):
     A node to join `Answer`s produced by multiple `Reader` nodes.
     """
 
-    def __init__(self, join_mode: str = "concatenate", weights: Optional[List[float]] = None,
-                 top_k_join: Optional[int] = None):
+    def __init__(
+        self, join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None
+    ):
         """
         :param join_mode: `"concatenate"` to combine documents from multiple `Reader`s. `"merge"` to aggregate scores
         of individual `Answer`s.
@@ -21,8 +22,9 @@ class JoinAnswers(BaseComponent):
         """
 
         assert join_mode in ["concatenate", "merge"], f"JoinAnswers node does not support '{join_mode}' join_mode."
-        assert not (weights is not None and join_mode == "concatenate"), \
-            "Weights are not compatible with 'concatenate' join_mode"
+        assert not (
+            weights is not None and join_mode == "concatenate"
+        ), "Weights are not compatible with 'concatenate' join_mode"
 
         # Save init parameters to enable export of component config as YAML
         self.set_config(join_mode=join_mode, weights=weights, top_k_join=top_k_join)
