@@ -19,22 +19,29 @@ class HaystackError(Exception):
 
     def __init__(self, message: str = "", source: Optional[Exception] = None, docs_link: Optional[str] = None):
         super().__init__()
-        self.message = message
         self.source = source
         self.docs_link = None
+        if self.source:
+            try:
+                self.message = f"{message} ({getattr(self.source, 'message')})"
+            except AttributeError:
+                self.message = f"{message} ({self.source})"
+        else:
+            self.message = message
+
 
     def __getattr__(self, attr):
         if self.source:
             return getattr(self.source, attr)
 
     def __str__(self):
-        docs_message = f"\n\nCheck out the documentation at {self.docs_link}" if self.docs_link else ""
-        if self.message and self.source:
-            return f"{self.message} ({str(self.source)}){docs_message}"
-        if not self.source:
-            return f"{self.message}{docs_message}"
-        else:
-            return f"{str(self.source)}{docs_message}"
+        if self.docs_link:
+            docs_message = f"\n\nCheck out the documentation at {self.docs_link}"
+            return self.message + docs_message
+        return self.message
+
+    def __repr__(self):
+        return str(self)
 
 
 class PipelineError(HaystackError):

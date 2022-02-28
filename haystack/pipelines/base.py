@@ -16,6 +16,7 @@ import networkx as nx
 from abc import ABC, abstractclassmethod
 from jsonschema import Draft7Validator
 from jsonschema.exceptions import ValidationError
+from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
 import yaml
 from networkx import DiGraph
@@ -146,8 +147,12 @@ class BasePipeline(ABC):
 
         try:
             Draft7Validator(schema).validate(instance=pipeline_config)
-        except ValidationError as validation_error:
-            raise PipelineConfigError(validation_error)
+        except ValidationError as validation:
+            error_location = '->'.join(repr(index) for index in list(validation.relative_schema_path)[:-1] if repr(index)!="'items'")
+            raise PipelineConfigError(
+                message=f"Validation failed. {validation.message}. "
+                        f"The error is in {error_location}, see the stacktrace for more information."
+            ) from validation
         logging.debug(f"Pipeline configuration is valid.")
 
     @classmethod
