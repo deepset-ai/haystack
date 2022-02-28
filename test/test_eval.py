@@ -83,7 +83,7 @@ def test_summarizer_calculate_metrics(
     assert metrics["Summarizer"]["ndcg"] == 0.5
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 @pytest.mark.parametrize("batch_size", [None, 20])
 def test_add_eval_data(document_store, batch_size):
     # add eval data (SQUAD format)
@@ -130,7 +130,7 @@ def test_add_eval_data(document_store, batch_size):
     assert doc.content[start:end] == "France"
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_eval_reader(reader, document_store: BaseDocumentStore):
     # add eval data (SQUAD format)
@@ -216,7 +216,7 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     assert eval_reader.top_k_em == eval_reader_vanila.top_k_em
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_eval_data_split_word(document_store):
     # splitting by word
     preprocessor = PreProcessor(
@@ -241,7 +241,7 @@ def test_eval_data_split_word(document_store):
     assert len(set(labels[0].document_ids)) == 2
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_eval_data_split_passage(document_store):
     # splitting by passage
     preprocessor = PreProcessor(

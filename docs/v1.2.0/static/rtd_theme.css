@@ -1,0 +1,46 @@
+@import url("theme.css");
+
+.wy-side-nav-search {
+  background-color: #59a5b7;
+}
+
+.wy-nav-content {
+  background-color: #eee;
+}
+
+.wy-menu h2 {
+  margin: 1em auto 0.3em 0.25em;
+  color: #bbb;
+}
+
+/* -- index page ------------------------------------------------------------ */
+
+table.contentstable {
+    width: 90%;
+}
+
+table.contentstable p.biglink {
+    line-height: 150%;
+}
+
+a.biglink {
+    font-size: 1.3em;
+}
+
+span.linkdescr {
+    font-style: italic;
+    padding-top: 5px;
+    font-size: 90%;
+}
+
+/* https://github.com/rtfd/sphinx_rtd_theme/pull/591/files and
+   https://github.com/rtfd/sphinx_rtd_theme/issues/590 */
+
+.rst-content .section ol li p:last-child,
+.rst-content .section ul li p:last-child {
+    margin-bottom: 24px !important;
+}
+
+ul.simple {
+  margin-bottom: 2ex !important; /* dirty but necessary hack */
+}

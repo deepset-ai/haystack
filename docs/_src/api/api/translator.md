@@ -56,7 +56,7 @@ We currently recommend using OPUS models (see __init__() for details)
 
 ```python
 |    DOCS = [
-|        Document(text="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
+|        Document(content="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
 |                       and widely attributed as the originator of Second-order cybernetics.")
 |    ]
 |    translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
