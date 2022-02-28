@@ -1,7 +1,7 @@
 from typing import List, Tuple, Dict, Optional
 
 from haystack.nodes.base import BaseComponent
-from haystack import Document
+from haystack.schema import Document
 
 
 class SplitDocumentList(BaseComponent):

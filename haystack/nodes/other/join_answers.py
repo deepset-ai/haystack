@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict, Tuple
 
-from haystack import Answer
+from haystack.schema import Answer
 from haystack.nodes import BaseComponent
 
 
