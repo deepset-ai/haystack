@@ -115,7 +115,6 @@ def tutorial15_tableqa():
     prediction = table_qa_pipeline.run("How many twin buildings are under construction?")
     print_answers(prediction, details="minimum")
 
-
     ### Pipeline for QA on Combination of Text and Tables
     # We are using one node for retrieving both texts and tables, the TableTextRetriever.
     # In order to do question-answering on the Documents coming from the TableTextRetriever, we need to route
