@@ -635,9 +635,13 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
 
 def test_split_document_list_content_type(test_docs_xs):
     # Test splitting by content_type
-    docs = [Document(content="text document", content_type="text"),
-            Document(content=pd.DataFrame(columns=["col 1", "col 2"], data=[["row 1", "row 1"], ["row 2", "row 2"]]),
-                     content_type="table")]
+    docs = [
+        Document(content="text document", content_type="text"),
+        Document(
+            content=pd.DataFrame(columns=["col 1", "col 2"], data=[["row 1", "row 1"], ["row 2", "row 2"]]),
+            content_type="table",
+        ),
+    ]
 
     split_documents = SplitDocumentList()
     result, _ = split_documents.run(documents=docs)
