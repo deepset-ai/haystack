@@ -33,7 +33,7 @@ class JoinAnswers(BaseComponent):
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
 
-    def run(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
+    def run(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
         reader_results = [inp["answers"] for inp in inputs]
 
         if self.join_mode == "concatenate":
@@ -57,6 +57,7 @@ class JoinAnswers(BaseComponent):
 
         for result, weight in zip(reader_results, weights):
             for answer in result:
-                answer.score *= weight
+                if isinstance(answer.score, float):
+                    answer.score *= weight
 
         return sorted([answer for cur_reader_result in reader_results for answer in cur_reader_result], reverse=True)

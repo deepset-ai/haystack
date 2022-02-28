@@ -41,9 +41,9 @@ class SplitDocumentList(BaseComponent):
         if split_by != "content_type" and metadata_values is not None:
             self.outgoing_edges = len(metadata_values)
 
-    def run(self, documents: List[Document]) -> Tuple[Dict, str]:
+    def run(self, documents: List[Document]) -> Tuple[Dict, str]:  # type: ignore
         if self.split_by == "content_type":
-            split_documents = {"output_1": [], "output_2": []}
+            split_documents: Dict[str, List[Document]] = {"output_1": [], "output_2": []}
 
             for doc in documents:
                 if doc.content_type == "text":
@@ -52,6 +52,8 @@ class SplitDocumentList(BaseComponent):
                     split_documents["output_2"].append(doc)
 
         else:
+            assert isinstance(self.metadata_values, list), "You need to provide metadata_values if you want to split" \
+                                                           " a list of Documents by a metadata field."
             split_documents = {f"output_{i+1}": [] for i in range(len(self.metadata_values))}
             for doc in documents:
                 current_metadata_value = doc.meta.get(self.split_by, None)
