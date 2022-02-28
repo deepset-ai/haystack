@@ -52,8 +52,9 @@ class SplitDocumentList(BaseComponent):
                     split_documents["output_2"].append(doc)
 
         else:
-            assert isinstance(self.metadata_values, list), "You need to provide metadata_values if you want to split" \
-                                                           " a list of Documents by a metadata field."
+            assert isinstance(self.metadata_values, list), (
+                "You need to provide metadata_values if you want to split" " a list of Documents by a metadata field."
+            )
             split_documents = {f"output_{i+1}": [] for i in range(len(self.metadata_values))}
             for doc in documents:
                 current_metadata_value = doc.meta.get(self.split_by, None)
