@@ -90,14 +90,14 @@ WATERING_CAN = r"""
        '--------'                                       
 """
 
-WORKER_M = r""" 0 
+WORKER_M = r""" 0  
 /|\
-/'\"""
+/'\ """
 
-WORKER_F = r""" 0 
-/w\
-/ \"""
+WORKER_F = r""" 0  
+/w\ 
+/ \ """
 
-WORKER_X = r""" 0 
-/w\
-/'\"""
+WORKER_X = r""" 0  
+/w\ 
+/'\ """
