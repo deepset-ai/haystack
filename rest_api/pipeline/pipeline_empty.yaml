@@ -7,7 +7,6 @@ components:
   
 pipelines:
   - name: query
-    type: Query
     nodes:
       - name: FileTypeClassifier
         inputs: [File]

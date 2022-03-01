@@ -30,14 +30,12 @@ components:    # define all the building-blocks for Pipeline
 
 pipelines:
   - name: query    # a sample extractive-qa Pipeline
-    type: Query
     nodes:
       - name: Retriever
         inputs: [Query]
       - name: Reader
         inputs: [Retriever]
   - name: indexing
-    type: Indexing
     nodes:
       - name: FileTypeClassifier
         inputs: [File]
