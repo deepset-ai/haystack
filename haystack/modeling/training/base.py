@@ -18,6 +18,7 @@ from torch.optim import Optimizer
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
 from haystack.modeling.logger import MLFlowLogger as MlLogger
@@ -354,8 +355,10 @@ class Trainer:
         # With early stopping we want to restore the best model
         if self.early_stopping and self.early_stopping.save_dir:
             logger.info("Restoring best model so far from {}".format(self.early_stopping.save_dir))
-            lm_name = self.model.language_model.name
-            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device, lm_name=lm_name)
+            lm_name1 = self.model.language_model1.name
+            lm_name2 = self.model.language_model2.name
+            #self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device, lm_name=lm_name)
+            self.model = BiAdaptiveModel.load(load_dir=self.early_stopping.save_dir, lm1_name=lm_name1, lm2_name=lm_name2, device=self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
         # Eval on test set
