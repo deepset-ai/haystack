@@ -162,13 +162,13 @@ class LanguageModel(nn.Module):
         """
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
-        logger.info("The model name is: ", pretrained_model_name_or_path)
-        if 'roberta' in pretrained_model_name_or_path:
+        logger.info("The model name is: ", str(pretrained_model_name_or_path))
+        if 'roberta' in str(pretrained_model_name_or_path):
             logger.info("XLM model being used, resizing vocab")
             n_added_tokens = 5
-        elif 'MiniLM' in pretrained_model_name_or_path:
+        elif 'MiniLM' in str(pretrained_model_name_or_path) and 'sentence' in str(pretrained_model_name_or_path):
             logger.info("MiniLM model being used, resizing vocab")
-            n_added_tokens = 70
+            n_added_tokens = -35
         kwargs["revision"] = kwargs.get("revision", None)
         logger.info("LOADING MODEL")
         logger.info("=============")
@@ -1194,6 +1194,7 @@ class DPRQuestionEncoder(LanguageModel):
         super(DPRQuestionEncoder, self).__init__()
         self.model = None
         self.name = "dpr_question_encoder"
+        self.model_path = ""
 
     @classmethod
     @silence_transformers_logs
@@ -1218,6 +1219,8 @@ class DPRQuestionEncoder(LanguageModel):
             dpr_question_encoder.name = kwargs["haystack_lm_name"]
         else:
             dpr_question_encoder.name = pretrained_model_name_or_path
+
+        dpr_question_encoder.model_path = str(pretrained_model_name_or_path)
 
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
@@ -1321,8 +1324,9 @@ class DPRQuestionEncoder(LanguageModel):
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
-        if 'distiluse' in self.name:
-            output_tuple = self.model(  # Breaks for MUSE because of token_type_ids
+        if 'distiluse' in str(self.model_path):
+            logger.info("Using MUSE without token_type_ids")
+            output_tuple = self.model(
                 input_ids=query_input_ids,
                 attention_mask=query_attention_mask,
                 return_dict=True,
@@ -1357,6 +1361,7 @@ class DPRContextEncoder(LanguageModel):
         super(DPRContextEncoder, self).__init__()
         self.model = None
         self.name = "dpr_context_encoder"
+        self.model_path = ""
 
     @classmethod
     @silence_transformers_logs
@@ -1381,6 +1386,8 @@ class DPRContextEncoder(LanguageModel):
             dpr_context_encoder.name = kwargs["haystack_lm_name"]
         else:
             dpr_context_encoder.name = pretrained_model_name_or_path
+
+        dpr_context_encoder.model_path = str(pretrained_model_name_or_path)
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
 
@@ -1492,14 +1499,15 @@ class DPRContextEncoder(LanguageModel):
         passage_segment_ids = passage_segment_ids.view(-1, max_seq_len)
         passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)
 
-        if 'distiluse' in self.name:
+        if 'distiluse' in str(self.model_path):
+            logger.info("Using MUSE without token_type_ids")
             output_tuple = self.model(
                 input_ids=passage_input_ids,
                 attention_mask=passage_attention_mask,
                 return_dict=True,
             )
         else:
-            output_tuple = self.model(
+            output_tuple = self.model( # Breaks for MUSE because of token_type_ids
                 input_ids=passage_input_ids,
                 token_type_ids=passage_segment_ids,
                 attention_mask=passage_attention_mask,
