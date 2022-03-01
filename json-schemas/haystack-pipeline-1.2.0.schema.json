@@ -90,6 +90,9 @@
             "$ref": "#/definitions/RCIReaderComponent"
           },
           {
+            "$ref": "#/definitions/RouteDocumentsComponent"
+          },
+          {
             "$ref": "#/definitions/SentenceTransformersRankerComponent"
           },
           {
@@ -97,9 +100,6 @@
           },
           {
             "$ref": "#/definitions/SklearnQueryClassifierComponent"
-          },
-          {
-            "$ref": "#/definitions/SplitDocumentListComponent"
           },
           {
             "$ref": "#/definitions/TableReaderComponent"
@@ -1697,6 +1697,47 @@
       ],
       "additionalProperties": false
     },
+    "RouteDocumentsComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "RouteDocuments"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "split_by": {
+              "title": "Split By",
+              "default": "content_type",
+              "type": "string"
+            },
+            "metadata_values": {
+              "title": "Metadata Values",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "SentenceTransformersRankerComponent": {
       "type": "object",
       "properties": {
@@ -1875,47 +1916,6 @@
                 },
                 {}
               ]
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "SplitDocumentListComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "SplitDocumentList"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "split_by": {
-              "title": "Split By",
-              "default": "content_type",
-              "type": "string"
-            },
-            "metadata_values": {
-              "title": "Metadata Values",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             }
           },
           "additionalProperties": false,
