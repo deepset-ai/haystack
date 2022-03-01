@@ -645,28 +645,38 @@ class Pipeline(BasePipeline):
                         f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}"
                     )
                 queue.pop(node_id)
-                next_nodes = self.get_next_nodes(node_id, stream_id)
-                for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
-                    if queue.get(n):  # concatenate inputs if it's a join node
-                        existing_input = queue[n]
-                        if "inputs" not in existing_input.keys():
-                            updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
-                            if query:
-                                updated_input["query"] = query
-                            if file_paths:
-                                updated_input["file_paths"] = file_paths
-                            if labels:
-                                updated_input["labels"] = labels
-                            if documents:
-                                updated_input["documents"] = documents
-                            if meta:
-                                updated_input["meta"] = meta
+                #
+                if stream_id == "split_documents":
+                    for stream_id in [key for key in node_output.keys() if key.startswith("output_")]:
+                        current_node_output = {k: v for k, v in node_output.items() if not k.startswith("output_")}
+                        current_docs = node_output.pop(stream_id)
+                        current_node_output["documents"] = current_docs
+                        next_nodes = self.get_next_nodes(node_id, stream_id)
+                        for n in next_nodes:
+                            queue[n] = current_node_output
+                else:
+                    next_nodes = self.get_next_nodes(node_id, stream_id)
+                    for n in next_nodes:  # add successor nodes with corresponding inputs to the queue
+                        if queue.get(n):  # concatenate inputs if it's a join node
+                            existing_input = queue[n]
+                            if "inputs" not in existing_input.keys():
+                                updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
+                                if query:
+                                    updated_input["query"] = query
+                                if file_paths:
+                                    updated_input["file_paths"] = file_paths
+                                if labels:
+                                    updated_input["labels"] = labels
+                                if documents:
+                                    updated_input["documents"] = documents
+                                if meta:
+                                    updated_input["meta"] = meta
+                            else:
+                                existing_input["inputs"].append(node_output)
+                                updated_input = existing_input
+                            queue[n] = updated_input
                         else:
-                            existing_input["inputs"].append(node_output)
-                            updated_input = existing_input
-                        queue[n] = updated_input
-                    else:
-                        queue[n] = node_output
+                            queue[n] = node_output
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
