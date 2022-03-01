@@ -373,7 +373,8 @@ class SQLDocumentStore(BaseDocumentStore):
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    overwrite: Update any existing documents with the same ID when adding documents
+                                    but is considerably slower (default).
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
 
