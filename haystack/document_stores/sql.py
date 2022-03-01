@@ -396,6 +396,7 @@ class SQLDocumentStore(BaseDocumentStore):
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
         for i in range(0, len(document_objects), batch_size):
+            docs_orm = []
             for doc in document_objects[i : i + batch_size]:
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
@@ -408,12 +409,8 @@ class SQLDocumentStore(BaseDocumentStore):
                     meta=meta_orms,
                     index=index,
                 )
-                if duplicate_documents == "overwrite":
-                    # First old meta data cleaning is required
-                    self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
-                    self.session.merge(doc_orm)
-                else:
-                    self.session.add(doc_orm)
+                docs_orm.append(doc_orm)
+            self.session.bulk_save_objects(docs_orm)
             try:
                 self.session.commit()
             except Exception as ex:
