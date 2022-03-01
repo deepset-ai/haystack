@@ -21,6 +21,7 @@ from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
 from haystack.modeling.logger import MLFlowLogger as MlLogger
+from pathlib import Path
 
 try:
     from apex import amp
@@ -65,7 +66,7 @@ class EarlyStopping:
         """
         self.head = head
         self.metric = metric
-        self.save_dir = save_dir
+        self.save_dir = Path(save_dir)
         self.mode = mode
         self.patience = patience
         self.min_delta = min_delta
