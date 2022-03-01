@@ -1076,7 +1076,7 @@ def test_route_documents_by_metafield(test_docs_xs):
 
 @pytest.mark.parametrize("join_mode", ["concatenate", "merge"])
 def test_join_answers_concatenate(join_mode):
-    inputs =[{"answers": [Answer(answer="answer 1", score=0.7)]}, {"answers": [Answer(answer="answer 2", score=0.8)]}]
+    inputs = [{"answers": [Answer(answer="answer 1", score=0.7)]}, {"answers": [Answer(answer="answer 2", score=0.8)]}]
 
     join_answers = JoinAnswers(join_mode=join_mode)
     result, _ = join_answers.run(inputs)
