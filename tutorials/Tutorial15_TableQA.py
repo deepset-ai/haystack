@@ -6,7 +6,7 @@ from haystack.utils import launch_es, fetch_archive_from_http, print_answers
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack import Document, Pipeline
 from haystack.nodes.retriever import TableTextRetriever
-from haystack.nodes import TableReader, FARMReader, SplitDocumentList, JoinAnswers
+from haystack.nodes import TableReader, FARMReader, RouteDocuments, JoinAnswers
 
 
 def tutorial15_tableqa():
@@ -126,14 +126,14 @@ def tutorial15_tableqa():
     # "deepset/tapas-large-nq-reader" as TableReader models. The disadvantage of these models is, however,
     # that they are not capable of doing aggregations over multiple table cells.
     table_reader = TableReader("deepset/tapas-large-nq-hn-reader")
-    split_documents = SplitDocumentList()
+    route_documents = RouteDocuments()
     join_answers = JoinAnswers()
 
     text_table_qa_pipeline = Pipeline()
     text_table_qa_pipeline.add_node(component=retriever, name="TableTextRetriever", inputs=["Query"])
-    text_table_qa_pipeline.add_node(component=split_documents, name="SplitDocumentList", inputs=["TableTextRetriever"])
-    text_table_qa_pipeline.add_node(component=text_reader, name="TextReader", inputs=["SplitDocumentList.output_1"])
-    text_table_qa_pipeline.add_node(component=table_reader, name="TableReader", inputs=["SplitDocumentList.output_2"])
+    text_table_qa_pipeline.add_node(component=route_documents, name="RouteDocuments", inputs=["TableTextRetriever"])
+    text_table_qa_pipeline.add_node(component=text_reader, name="TextReader", inputs=["RouteDocuments.output_1"])
+    text_table_qa_pipeline.add_node(component=table_reader, name="TableReader", inputs=["RouteDocuments.output_2"])
     text_table_qa_pipeline.add_node(component=join_answers, name="JoinAnswers", inputs=["TextReader", "TableReader"])
 
     # Example query whose answer resides in a text passage
