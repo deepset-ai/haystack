@@ -401,7 +401,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
-                doc_orm = DocumentORM(
+                doc_orm = dict(
                     id=doc.id,
                     content=doc.to_dict()["content"],
                     content_type=doc.content_type,
@@ -410,7 +410,7 @@ class SQLDocumentStore(BaseDocumentStore):
                     index=index,
                 )
                 docs_orm.append(doc_orm)
-            self.session.bulk_save_objects(docs_orm)
+            self.session.bulk_insert_mappings(DocumentORM, docs_orm)
             try:
                 self.session.commit()
             except Exception as ex:
