@@ -16,7 +16,7 @@ class JoinAnswers(BaseComponent):
         :param join_mode: `"concatenate"` to combine documents from multiple `Reader`s. `"merge"` to aggregate scores
         of individual `Answer`s.
         :param weights: A node-wise list (length of list must be equal to the number of input nodes) of weights for
-            adjusting `Answer` scores when using the `"merge"` join_mode. By default, equal weight is assignef to each
+            adjusting `Answer` scores when using the `"merge"` join_mode. By default, equal weight is assigned to each
             `Reader` score. This parameter is not compatible with the `"concatenate"` join_mode.
         :param top_k_join: Limit `Answer`s to top_k based on the resulting scored of the join.
         """
@@ -36,16 +36,17 @@ class JoinAnswers(BaseComponent):
     def run(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
         reader_results = [inp["answers"] for inp in inputs]
 
+        if not top_k_join:
+            top_k_join = self.top_k_join
+
         if self.join_mode == "concatenate":
             concatenated_answers = [answer for cur_reader_result in reader_results for answer in cur_reader_result]
-            concatenated_answers = sorted(concatenated_answers, reverse=True)
+            concatenated_answers = sorted(concatenated_answers, reverse=True)[:top_k_join]
             return {"answers": concatenated_answers, "labels": inputs[0].get("labels", None)}, "output_1"
 
         elif self.join_mode == "merge":
             merged_answers = self._merge_answers(reader_results)
 
-            if not top_k_join:
-                top_k_join = self.top_k_join if self.top_k_join is not None else len(merged_answers)
             merged_answers = merged_answers[:top_k_join]
             return {"answers": merged_answers, "labels": inputs[0].get("labels", None)}, "output_1"
 

@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import responses
 
-from haystack import __version__, Document
+from haystack import __version__, Document, Answer, JoinAnswers
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -19,7 +19,7 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode, ExtractiveQAPipeline
 from haystack.pipelines.base import _PipelineCodeGen
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, SplitDocumentList
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments
 
 from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
 
@@ -1043,8 +1043,8 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
         assert kwargs["headers"] == auth_headers
 
 
-def test_split_document_list_content_type(test_docs_xs):
-    # Test splitting by content_type
+def test_route_documents_by_content_type():
+    # Test routing by content_type
     docs = [
         Document(content="text document", content_type="text"),
         Document(
@@ -1053,23 +1053,39 @@ def test_split_document_list_content_type(test_docs_xs):
         ),
     ]
 
-    split_documents = SplitDocumentList()
-    result, _ = split_documents.run(documents=docs)
+    route_documents = RouteDocuments()
+    result, _ = route_documents.run(documents=docs)
     assert len(result["output_1"]) == 1
     assert len(result["output_2"]) == 1
     assert result["output_1"][0].content_type == "text"
     assert result["output_2"][0].content_type == "table"
 
-    # Test splitting by metadata field
+
+def test_route_documents_by_metafield(test_docs_xs):
+    # Test routing by metadata field
     docs = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in test_docs_xs]
-    split_documents = SplitDocumentList(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
-    result, _ = split_documents.run(docs)
+    route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
+    result, _ = route_documents.run(docs)
     assert len(result["output_1"]) == 1
     assert len(result["output_2"]) == 1
     assert len(result["output_3"]) == 1
     assert result["output_1"][0].meta["meta_field"] == "test1"
     assert result["output_2"][0].meta["meta_field"] == "test3"
     assert result["output_3"][0].meta["meta_field"] == "test5"
+
+
+@pytest.mark.parametrize("join_mode", ["concatenate", "merge"])
+def test_join_answers_concatenate(join_mode):
+    inputs =[{"answers": [Answer(answer="answer 1", score=0.7)]}, {"answers": [Answer(answer="answer 2", score=0.8)]}]
+
+    join_answers = JoinAnswers(join_mode=join_mode)
+    result, _ = join_answers.run(inputs)
+    assert len(result["answers"]) == 2
+    assert result["answers"] == sorted(result["answers"], reverse=True)
+
+    result, _ = join_answers.run(inputs, top_k_join=1)
+    assert len(result["answers"]) == 1
+    assert result["answers"][0].answer == "answer 2"
 
 
 def clean_faiss_document_store():
