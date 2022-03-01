@@ -4,9 +4,10 @@ from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 
 
-class SplitDocumentList(BaseComponent):
+class RouteDocuments(BaseComponent):
     """
-    A node to split a list of `Document`s by `content_type` or by the values of a metadata field.
+    A node to split a list of `Document`s by `content_type` or by the values of a metadata field and route them to
+    different nodes.
     """
 
     # By default (split_by == "content_type"), the node has two outgoing edges.
@@ -14,7 +15,7 @@ class SplitDocumentList(BaseComponent):
 
     def __init__(self, split_by: str = "content_type", metadata_values: Optional[List[str]] = None):
         """
-        :param split_by: Field to split the documents by. Either `"content_type"` or a metadata field name.
+        :param split_by: Field to split the documents by, either `"content_type"` or a metadata field name.
             If this parameter is set to `"content_type"`, the list of `Document`s will be split into a list containing
             only `Document`s of type `"text"` (will be routed to `"output_1"`) and a list containing only `Document`s of
             type `"text"` (will be routed to `"output_2"`).
