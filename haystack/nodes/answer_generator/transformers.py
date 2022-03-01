@@ -361,7 +361,7 @@ class Seq2SeqGenerator(BaseGenerator):
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
-
+        super().__init__()
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.min_length = min_length
