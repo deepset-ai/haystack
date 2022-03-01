@@ -274,7 +274,7 @@ class BasePipeline(ABC):
                 )
                 component_config["params"] = params
 
-        pipeline = BasePipeline.load_from_config(
+        pipeline = cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
