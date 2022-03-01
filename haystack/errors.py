@@ -31,8 +31,9 @@ class HaystackError(Exception):
 
 
     def __getattr__(self, attr):
-        if self.source:
-            return getattr(self.source, attr)
+        # If self.source is None, it will raise the expected AttributeError
+        getattr(self.source, attr)
+        
 
     def __str__(self):
         if self.docs_link:
