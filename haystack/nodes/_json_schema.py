@@ -224,6 +224,10 @@ def get_json_schema(filename: str):
                                         "items": {"type": "string"},
                                     },
                                 },
+                                "required": [
+                                    "name",
+                                    "inputs"
+                                ],
                                 "additionalProperties": False,
                             },
                             "required": ["name", "nodes"],

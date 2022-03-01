@@ -148,10 +148,13 @@ class BasePipeline(ABC):
         try:
             Draft7Validator(schema).validate(instance=pipeline_config)
         except ValidationError as validation:
-            error_location = '->'.join(repr(index) for index in list(validation.relative_schema_path)[:-1] if repr(index)!="'items'")
+            error_path = [i for i in list(validation.relative_schema_path)[:-1] if repr(i)!="'items'" and repr(i)!="'properties'"]
+            error_location = '->'.join(repr(index) for index in error_path)
+            if error_location:
+                error_location = f"The error is in {error_location}."
             raise PipelineConfigError(
-                message=f"Validation failed. {validation.message}. "
-                        f"The error is in {error_location}, see the stacktrace for more information."
+                message=f"Validation failed. {validation.message}. {error_location} "
+                         "See the stacktrace for more information."
             ) from validation
         logging.debug(f"Pipeline configuration is valid.")
 
@@ -1109,8 +1112,16 @@ class Pipeline(BasePipeline):
             instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
             components[name] = instance
 
+        except KeyError as ke:
+            raise PipelineConfigError(
+                message=f"Failed loading pipeline component '{name}': "
+                        "seems like the component does not exist. Did you spell its name correctly?"
+            ) from ke
         except Exception as e:
-            raise PipelineConfigError(message=f"Failed loading pipeline component '{name}'", source=e)
+            raise PipelineConfigError(
+                message=f"Failed loading pipeline component '{name}'. "
+                         "See the stacktrace above for more informations."
+            ) from e
         return instance
 
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
