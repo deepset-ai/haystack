@@ -65,7 +65,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                 f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}"
             )
 
-        super.__init__()
+        super().__init__()
         # self.set_config(
         #     workspace=workspace,
         #     index=index,
