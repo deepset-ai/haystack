@@ -18,22 +18,6 @@ from . import conftest
 # Fixtures
 #
 
-@pytest.fixture
-def test_json_schema(request, monkeypatch, tmp_path):
-    """
-    JSON schema with the test version number but all the latest, real nodes
-    """
-    monkeypatch.setattr(haystack.nodes._json_schema, "haystack_version", YAML_TEST_VERSION)
-    monkeypatch.setattr(haystack.pipelines.base, "JSON_SCHEMAS_PATH", tmp_path)
-    monkeypatch.setattr(haystack.pipelines.base, "VERSION", YAML_TEST_VERSION)
-
-    filename = f"haystack-pipeline-{YAML_TEST_VERSION}.schema.json"
-    test_schema = get_json_schema(filename=filename)
-
-    with open(tmp_path / filename, "w") as schema_file:
-        json.dump(test_schema, schema_file, indent=4)
-
-
 @pytest.fixture(autouse=True)
 def mock_importable_nodes_list(request, monkeypatch):
     # Do not patch integration tests

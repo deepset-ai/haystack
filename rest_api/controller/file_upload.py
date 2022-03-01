@@ -11,6 +11,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 
 from haystack.pipelines.base import Pipeline
+from haystack.errors import PipelineConfigError
 from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
 from rest_api.controller.utils import as_form
 
@@ -44,10 +45,10 @@ try:
         INDEXING_PIPELINE = None
     else:
         INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
-except KeyError:
-    INDEXING_PIPELINE = None
-    logger.warning("Indexing Pipeline not found in the YAML configuration. File Upload API will not be available.")
 
+except PipelineConfigError as e:
+    INDEXING_PIPELINE = None
+    logger.exception(f"{e.message}. File Upload API will not be available.")
 
 # create directory for uploading files
 os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)
