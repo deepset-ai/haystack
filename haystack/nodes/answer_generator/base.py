@@ -1,11 +1,11 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Dict
 
 from haystack.schema import Answer, Document
 from haystack.nodes.base import BaseComponent
 
 
-class BaseGenerator(BaseComponent):
+class BaseGenerator(BaseComponent, ABC):
     """
     Abstract class for Generators
     """

@@ -1,13 +1,13 @@
 from typing import List, Optional, Dict, Any, Union
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
 import langdetect
 
 from haystack.nodes.base import BaseComponent
 
 
-class BaseConverter(BaseComponent):
+class BaseConverter(BaseComponent, ABC):
     """
     Base class for implementing file converts to transform input documents to text format for ingestion in DocumentStore.
     """
@@ -31,9 +31,9 @@ class BaseConverter(BaseComponent):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
-
+        super().__init__()
         # save init parameters to enable export of component config as YAML
-        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        # self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         self.remove_numeric_tables = remove_numeric_tables
         self.valid_languages = valid_languages

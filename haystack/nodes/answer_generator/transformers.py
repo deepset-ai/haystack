@@ -103,21 +103,21 @@ class RAGenerator(BaseGenerator):
         :param prefix: The prefix used by the generator's tokenizer.
         :param use_gpu: Whether to use GPU. Falls back on CPU if no GPU is available.
         """
-
+        super().__init__()
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            retriever=retriever,
-            generator_type=generator_type,
-            top_k=top_k,
-            max_length=max_length,
-            min_length=min_length,
-            num_beams=num_beams,
-            embed_title=embed_title,
-            prefix=prefix,
-            use_gpu=use_gpu,
-        )
+        # self.set_config(
+        #     model_name_or_path=model_name_or_path,
+        #     model_version=model_version,
+        #     retriever=retriever,
+        #     generator_type=generator_type,
+        #     top_k=top_k,
+        #     max_length=max_length,
+        #     min_length=min_length,
+        #     num_beams=num_beams,
+        #     embed_title=embed_title,
+        #     prefix=prefix,
+        #     use_gpu=use_gpu,
+        # )
 
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length

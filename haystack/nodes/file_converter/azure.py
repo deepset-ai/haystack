@@ -57,17 +57,18 @@ class AzureConverter(BaseConverter):
                                               This parameter lets you choose, whether to merge multiple column header
                                               rows to a single row.
         """
+        super().__init__(valid_languages=valid_languages)
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            endpoint=endpoint,
-            credential_key=credential_key,
-            model_id=model_id,
-            valid_languages=valid_languages,
-            save_json=save_json,
-            preceding_context_len=preceding_context_len,
-            following_context_len=following_context_len,
-            merge_multiple_column_headers=merge_multiple_column_headers,
-        )
+        # self.set_config(
+        #     endpoint=endpoint,
+        #     credential_key=credential_key,
+        #     model_id=model_id,
+        #     valid_languages=valid_languages,
+        #     save_json=save_json,
+        #     preceding_context_len=preceding_context_len,
+        #     following_context_len=following_context_len,
+        #     merge_multiple_column_headers=merge_multiple_column_headers,
+        # )
 
         self.document_analysis_client = DocumentAnalysisClient(
             endpoint=endpoint, credential=AzureKeyCredential(credential_key)
@@ -78,8 +79,6 @@ class AzureConverter(BaseConverter):
         self.preceding_context_len = preceding_context_len
         self.following_context_len = following_context_len
         self.merge_multiple_column_headers = merge_multiple_column_headers
-
-        super().__init__(valid_languages=valid_languages)
 
     def convert(
         self,

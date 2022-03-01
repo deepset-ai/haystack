@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 import logging
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import wraps
 from time import perf_counter
 
@@ -12,7 +12,7 @@ from haystack.nodes.base import BaseComponent
 logger = logging.getLogger(__name__)
 
 
-class BaseRanker(BaseComponent):
+class BaseRanker(BaseComponent, ABC):
     return_no_answers: bool
     outgoing_edges = 1
     query_count = 0

@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import networkx as nx
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 from jsonschema import Draft7Validator
 from jsonschema.exceptions import ValidationError
 from jsonschema import _utils as jsonschema_utils
@@ -172,7 +172,8 @@ class BasePipeline(ABC):
         cls.validate_config(pipeline_config=pipeline_config, version=version or VERSION)
         logging.debug(f"'{path}' is valid.")
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def load_from_config(
         cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
     ):

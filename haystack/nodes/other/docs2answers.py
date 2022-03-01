@@ -14,7 +14,8 @@ class Docs2Answers(BaseComponent):
     outgoing_edges = 1
 
     def __init__(self):
-        self.set_config()
+        super().__init__()
+        # self.set_config()
 
     def run(self, query: str, documents: List[Document]):  # type: ignore
         # conversion from Document -> Answer

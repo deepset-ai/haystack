@@ -26,15 +26,14 @@ def exportable_to_yaml(func):
     @wraps(func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
         if args:
-            raise PipelineError("Nodes can receive only named parameters at initialization.")
+            logger.warning("Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!")
 
-        if not self.pipeline_config:
-            self.pipeline_config = {"params": {}, "type": type(self).__name__}
-            for k, v in kwargs.items():
-                if isinstance(v, BaseComponent):
-                    self.pipeline_config["params"][k] = v.pipeline_config
-                elif v is not None:
-                    self.pipeline_config["params"][k] = v
+        self.pipeline_config = {"params": {}, "type": type(self).__name__}
+        for k, v in kwargs.items():
+            if isinstance(v, BaseComponent):
+                self.pipeline_config["params"][k] = v.pipeline_config
+            elif v is not None:
+                self.pipeline_config["params"][k] = v
     
     return wrapper_exportable_to_yaml
 

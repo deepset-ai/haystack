@@ -1,12 +1,12 @@
 from typing import Any, Dict, List, Mapping, Optional, Union
 from copy import deepcopy
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document, Answer
 
 
-class BaseTranslator(BaseComponent):
+class BaseTranslator(BaseComponent, ABC):
     """
     Abstract class for a Translator component that translates either a query or a doc from language A to language B.
     """

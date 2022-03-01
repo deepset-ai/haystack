@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 
 import logging
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from time import perf_counter
 from functools import wraps
 from tqdm import tqdm
@@ -15,7 +15,7 @@ from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
 logger = logging.getLogger(__name__)
 
 
-class BaseGraphRetriever(BaseComponent):
+class BaseGraphRetriever(BaseComponent, ABC):
     """
     Base classfor knowledge graph retrievers.
     """
@@ -36,7 +36,7 @@ class BaseGraphRetriever(BaseComponent):
         return results, "output_1"
 
 
-class BaseRetriever(BaseComponent):
+class BaseRetriever(BaseComponent, ABC):
     """
     Base class for regular retrievers.
     """

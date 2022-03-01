@@ -1,11 +1,13 @@
 from typing import List, Dict, Any, Optional, Union
 
+from abc import ABC, abstractmethod
 from haystack.nodes.base import BaseComponent
 
 
-class BasePreProcessor(BaseComponent):
+class BasePreProcessor(BaseComponent, ABC):
     outgoing_edges = 1
 
+    @abstractmethod
     def process(
         self,
         documents: Union[dict, List[dict]],
@@ -22,6 +24,7 @@ class BasePreProcessor(BaseComponent):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def clean(
         self,
         document: dict,
@@ -31,6 +34,7 @@ class BasePreProcessor(BaseComponent):
     ) -> Dict[str, Any]:
         raise NotImplementedError
 
+    @abstractmethod
     def split(
         self,
         document: dict,

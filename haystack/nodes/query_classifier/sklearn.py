@@ -72,8 +72,9 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         ):
             raise TypeError("model_name_or_path and vectorizer_name_or_path must either be of type Path or str")
 
+        super().__init__()
         # save init parameters to enable export of component config as YAML
-        self.set_config(model_name_or_path=model_name_or_path, vectorizer_name_or_path=vectorizer_name_or_path)
+        # self.set_config(model_name_or_path=model_name_or_path, vectorizer_name_or_path=vectorizer_name_or_path)
 
         if isinstance(model_name_or_path, Path):
             file_url = urllib.request.pathname2url(r"{}".format(model_name_or_path))

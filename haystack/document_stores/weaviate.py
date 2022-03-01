@@ -105,25 +105,27 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         if similarity != "cosine":
             raise ValueError(f"Weaviate only supports cosine similarity, but you provided {similarity}")
+
+        super().__init__()
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            host=host,
-            port=port,
-            timeout_config=timeout_config,
-            username=username,
-            password=password,
-            index=index,
-            embedding_dim=embedding_dim,
-            content_field=content_field,
-            name_field=name_field,
-            similarity=similarity,
-            index_type=index_type,
-            custom_schema=custom_schema,
-            return_embedding=return_embedding,
-            embedding_field=embedding_field,
-            progress_bar=progress_bar,
-            duplicate_documents=duplicate_documents,
-        )
+        # self.set_config(
+        #     host=host,
+        #     port=port,
+        #     timeout_config=timeout_config,
+        #     username=username,
+        #     password=password,
+        #     index=index,
+        #     embedding_dim=embedding_dim,
+        #     content_field=content_field,
+        #     name_field=name_field,
+        #     similarity=similarity,
+        #     index_type=index_type,
+        #     custom_schema=custom_schema,
+        #     return_embedding=return_embedding,
+        #     embedding_field=embedding_field,
+        #     progress_bar=progress_bar,
+        #     duplicate_documents=duplicate_documents,
+        # )
 
         # Connect to Weaviate server using python binding
         weaviate_url = f"{host}:{port}"

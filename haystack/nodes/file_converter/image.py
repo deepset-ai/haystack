@@ -39,9 +39,9 @@ class ImageToTextConverter(BaseConverter):
                                 # List of available languages
                                 print(pytesseract.get_languages(config=''))
         """
-
+        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
         # save init parameters to enable export of component config as YAML
-        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        # self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         verify_installation = subprocess.run(["tesseract -v"], shell=True)
         if verify_installation.returncode == 127:

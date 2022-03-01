@@ -101,18 +101,19 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param batch_size: batch size to be processed at once
         :param classification_field: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
         """
+        super().__init__()
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            tokenizer=tokenizer,
-            use_gpu=use_gpu,
-            return_all_scores=return_all_scores,
-            labels=labels,
-            task=task,
-            batch_size=batch_size,
-            classification_field=classification_field,
-        )
+        # self.set_config(
+        #     model_name_or_path=model_name_or_path,
+        #     model_version=model_version,
+        #     tokenizer=tokenizer,
+        #     use_gpu=use_gpu,
+        #     return_all_scores=return_all_scores,
+        #     labels=labels,
+        #     task=task,
+        #     batch_size=batch_size,
+        #     classification_field=classification_field,
+        # )
         if labels and task == "text-classification":
             logger.warning(
                 f"Provided labels {labels} will be ignored for task text-classification. Set task to "
