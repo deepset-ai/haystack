@@ -162,12 +162,13 @@ class LanguageModel(nn.Module):
         """
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
+        logger.info("The model name is: ", pretrained_model_name_or_path)
         if 'roberta' in pretrained_model_name_or_path:
             logger.info("XLM model being used, resizing vocab")
             n_added_tokens = 5
         elif 'MiniLM' in pretrained_model_name_or_path:
             logger.info("MiniLM model being used, resizing vocab")
-            n_added_tokens = 35
+            n_added_tokens = 70
         kwargs["revision"] = kwargs.get("revision", None)
         logger.info("LOADING MODEL")
         logger.info("=============")
@@ -1320,7 +1321,7 @@ class DPRQuestionEncoder(LanguageModel):
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
-        if 'distiluse' in self.pretrained_model_name_or_path:
+        if 'distiluse' in self.name:
             output_tuple = self.model(  # Breaks for MUSE because of token_type_ids
                 input_ids=query_input_ids,
                 attention_mask=query_attention_mask,
@@ -1491,7 +1492,7 @@ class DPRContextEncoder(LanguageModel):
         passage_segment_ids = passage_segment_ids.view(-1, max_seq_len)
         passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)
 
-        if 'distiluse' in self.pretrained_model_name_or_path:
+        if 'distiluse' in self.name:
             output_tuple = self.model(
                 input_ids=passage_input_ids,
                 attention_mask=passage_attention_mask,
