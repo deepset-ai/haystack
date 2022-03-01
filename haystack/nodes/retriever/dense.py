@@ -22,7 +22,7 @@ from haystack.modeling.data_handler.processor import TextSimilarityProcessor, Ta
 from haystack.modeling.data_handler.data_silo import DataSilo
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.optimization import initialize_optimizer
-from haystack.modeling.training.base import Trainer
+from haystack.modeling.training.base import Trainer, EarlyStopping
 from haystack.modeling.utils import initialize_device_settings
 
 
@@ -359,6 +359,7 @@ class DensePassageRetriever(BaseRetriever):
         max_samples: int = None,
         max_processes: int = 128,
         multiprocessing_strategy: Optional[str] = None,
+        early_stopping: Optional[EarlyStopping] = None,
         dev_split: float = 0,
         batch_size: int = 2,
         embed_title: bool = True,
@@ -468,6 +469,7 @@ class DensePassageRetriever(BaseRetriever):
             evaluate_every=evaluate_every,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp,
+            early_stopping=early_stopping,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on the public mlflow server: https://public-mlflow.deepset.ai
