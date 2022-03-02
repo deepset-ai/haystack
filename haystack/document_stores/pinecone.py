@@ -460,7 +460,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         # check there are vectors
         count = self.get_embedding_count(index)
         if count == 0:
-            raise Exception("No documents exist, try creating documents with write_embeddings first.")
+            raise Exception("No documents exist, try creating documents with either write_embeddings or update_embeddings first.")
         res = self.pinecone_indexes[index].fetch(ids=ids)
         # convert Pinecone responses to documents
         documents = []
@@ -499,17 +499,6 @@ class PineconeDocumentStore(SQLDocumentStore):
         # if no namespace return zero
         count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
         return count
-
-    def train_index(
-        self,
-        documents: Optional[Union[List[dict], List[Document]]],
-        embeddings: Optional[np.ndarray] = None,
-        index: Optional[str] = None,
-    ):
-        """
-        Not applicable to PineconeDocumentStore.
-        """
-        raise NotImplementedError("PineconeDocumentStore does not require training")
 
     def delete_documents(
         self,
@@ -613,17 +602,6 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def save(self):
-        """
-        Save index to the specified file, not implemented for PineconeDocumentStore.
-        """
-        raise NotImplementedError("save method not implemented for PineconeDocumentStore")
-
-    def _load_init_params_from_config(
-        self, index_path: Optional[Union[str, Path]] = None, config_path: Optional[Union[str, Path]] = None
-    ):
-        raise NotImplementedError("Load init params from config not implemented for Pinecone")
-
     def _limit_check(self, top_k: str, include_values: Optional[bool] = None):
         """
         Confirms the top_k value does not exceed Pinecone vector database limits.
@@ -642,7 +620,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 )
 
     @classmethod
-    def load():
+    def load(cls):
         """
         Default class method used for loading indexes. Not applicable to the PineconeDocumentStore.
         """
