@@ -14,6 +14,7 @@ import numpy as np
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.filter_utils import LogicalFilterClause
 from inspect import Signature
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         environment: str = "us-west1-gcp",
         sql_url: str = "sqlite:///pinecone_document_store.db",
         pinecone_index: Optional["pinecone.Index"] = None,
-        vector_dim: int = 768,
+        embedding_dim: int = 768,
         return_embedding: bool = False,
         index: str = "document",
         similarity: str = "cosine",
@@ -57,7 +58,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
                         deployment, Postgres is recommended.
         :param pinecone_index: pinecone-client Index object, an index will be initialized or loaded if not specified.
-        :param vector_dim: the embedding vector size.
+        :param embedding_dim: the embedding vector size.
         :param return_embedding: To return document embedding
         :param index: Name of index in document store to use.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
@@ -93,7 +94,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             )
 
         self.index = index
-        self.vector_dim = vector_dim
+        self.embedding_dim = embedding_dim
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
@@ -110,7 +111,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             self.pinecone_indexes[clean_index] = pinecone_index
         else:
             self.pinecone_indexes[clean_index] = self._create_index_if_not_exist(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index=clean_index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
@@ -138,7 +139,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
     def _create_index_if_not_exist(
         self,
-        vector_dim: int,
+        embedding_dim: int,
         index: Optional[str] = None,
         metric_type: Optional[str] = "cosine",
         replicas: Optional[int] = 1,
@@ -158,7 +159,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             # search pinecone hosted indexes and create if it does not exist
             if index not in pinecone.list_indexes():
                 pinecone.create_index(
-                    name=index, dimension=vector_dim, metric=metric_type, replicas=replicas, shards=shards
+                    name=index, dimension=embedding_dim, metric=metric_type, replicas=replicas, shards=shards
                 )
             index_conn = pinecone.Index(index)
 
@@ -172,9 +173,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
     def _convert_pinecone_result_to_document(self, result: dict, return_embedding: bool) -> Document:
         """
-        Convert Pinecone result dict into haystack document object. This is more involved because
-        weaviate search result dict varies between get and query interfaces.
-        Weaviate get methods return the data items in properties key, whereas the query doesn't.
+        Convert Pinecone result dict into haystack document object.
         """
         score = None
         content = ""
@@ -202,9 +201,6 @@ class PineconeDocumentStore(SQLDocumentStore):
             }
         )
         return document
-
-    def _validate_params_load_from_disk(self, sig: Signature, locals: dict, kwargs: dict):
-        raise NotImplementedError("_validate_params_load_from_disk not implemented for PineconeDocumentStore")
 
     def _validate_index_sync(self):
         # This check ensures the correct document database was loaded.
@@ -254,7 +250,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         if not self.pinecone_indexes.get(index):
             self.pinecone_indexes[index] = self._create_index_if_not_exist(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index=index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
@@ -268,7 +264,6 @@ class PineconeDocumentStore(SQLDocumentStore):
         )
         if len(document_objects) > 0:
             add_vectors = False if document_objects[0].embedding is None else True
-            # I don't think below is required
             with tqdm(
                 total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
@@ -301,34 +296,6 @@ class PineconeDocumentStore(SQLDocumentStore):
         return {
             self.index: self.embedding_field,
         }
-
-    def _build_filter_clause(self, filters: Dict[str, Union[str, int, float, bool, list]]) -> dict:
-        """
-        Transform Haystack filter conditions to Pinecone metadata filter syntax.
-        Haystack syntax == {'item_id': ['B00006IBLJ', 'B000GHJM9C', 'B000CS787S']}
-        Pinecone syntax == {'item_id': {'$in': ['B00006IBLJ', 'B000GHJM9C', 'B000CS787S']}}
-        """
-        pinecone_filter = {}
-        for key, value in filters.items():
-            if key in ["$and", "$or"] and type(value) is dict:
-                sublist = []
-                for sub_key, sub_value in value.items():
-                    sublist.append(self._build_filter_clause({sub_key: sub_value}))
-                pinecone_filter[key] = sublist
-            elif type(value) is list and key[0] != "$":
-                pinecone_filter[key] = {"$in": value}
-            elif type(value) is list and key in ["$and", "$or"]:
-                # check if we have more operators in sublist
-                sublist = []
-                for sub_item in value:
-                    if type(sub_item) is dict:
-                        sublist.append(self._build_filter_clause(sub_item))
-                    else:
-                        sublist.append(sub_item)
-                pinecone_filter[key] = sublist
-            else:
-                pinecone_filter[key] = value
-        return pinecone_filter
 
     def update_embeddings(
         self,
@@ -484,7 +451,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         # get or create index
         if not self.pinecone_indexes.get(index):
             self.pinecone_indexes[index] = self._create_index_if_not_exist(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index=index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
@@ -521,7 +488,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
         if not self.pinecone_indexes.get(index):
             self.pinecone_indexes[index] = self._create_index_if_not_exist(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index=self.index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
@@ -571,7 +538,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
         if not self.pinecone_indexes.get(index):
             self.pinecone_indexes[index] = self._create_index_if_not_exist(
-                vector_dim=self.vector_dim,
+                embedding_dim=self.embedding_dim,
                 index=self.index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
@@ -606,7 +573,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
         self._limit_check(top_k, include_values=return_embedding)
         if filters:
-            filters = self._build_filter_clause(filters)
+            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
         index = index or self.index
         index = self._sanitize_index_name(index)
