@@ -197,9 +197,12 @@ class ParsrConverter(BaseConverter):
         elem_idx: int,
         meta: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
+
         row_idx_start = 0
         caption = ""
-        table_list = [[""] * len(element["content"][0]["content"]) for _ in range(len(element["content"]))]
+        number_of_columns = max([len(row["content"]) for row in element["content"]])
+        number_of_rows = len(element["content"])
+        table_list = [[""] * number_of_columns for _ in range(number_of_rows)]
 
         for row_idx, row in enumerate(element["content"]):
             for col_idx, cell in enumerate(row["content"]):
