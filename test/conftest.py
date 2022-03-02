@@ -132,15 +132,12 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_docstore)
 
         if "milvus1" in keywords and not milvus1:
-            skip_milvus1 = pytest.mark.skip(
-                reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed."
-            )
+            skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
             item.add_marker(skip_milvus1)
         elif "milvus" in keywords and milvus1:
-            skip_milvus = pytest.mark.skip(
-                reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed."
-            )
+            skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
             item.add_marker(skip_milvus)
+
 
 @pytest.fixture(scope="function", autouse=True)
 def gc_cleanup(request):
