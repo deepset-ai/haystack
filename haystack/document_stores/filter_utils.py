@@ -466,13 +466,8 @@ class InOperation(ComparisonOperation):
 
         return filter_dict
 
-    def convert_to_pinecone(self) -> Dict[str, Union[str, List[Dict]]]:
-        filter_dict: Dict[str, Union[str, List[Dict]]] = {self.field_name: {"$in": []}}
-        assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
-        for value in self.comparison_value:
-            assert isinstance(filter_dict[self.field_name]["$in"], list)  # Necessary for mypy
-            filter_dict[self.field_name]["$in"].append(value)
-        return filter_dict
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, List]]:
+        return {self.field_name: {"$in": self.comparison_value}}
 
     def invert(self) -> "NinOperation":
         return NinOperation(self.field_name, self.comparison_value)
@@ -540,13 +535,8 @@ class NinOperation(ComparisonOperation):
 
         return filter_dict
 
-    def convert_to_pinecone(self) -> Dict[str, Union[str, List[Dict]]]:
-        filter_dict: Dict[str, Union[str, List[Dict]]] = {self.field_name: {"$nin": []}}
-        assert isinstance(self.comparison_value, list), "'$nin' operation requires comparison value to be a list."
-        for value in self.comparison_value:
-            assert isinstance(filter_dict[self.field_name]["$nin"], list)  # Necessary for mypy
-            filter_dict[self.field_name]["$nin"].append(value)
-        return filter_dict
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, List]]:
+        return {self.field_name: {"$nin": self.comparison_value}}
 
     def invert(self) -> "InOperation":
         return InOperation(self.field_name, self.comparison_value)
@@ -576,7 +566,7 @@ class GtOperation(ComparisonOperation):
         assert not isinstance(comp_value, list), "Comparison value for '$gt' operation must not be a list."
         return {"path": [self.field_name], "operator": "GreaterThan", comp_value_type: comp_value}
 
-    def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, float, int]]:
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$gt' operation must not be a list."
         return {self.field_name: {"$gt": self.comparison_value}}
 
@@ -608,7 +598,7 @@ class GteOperation(ComparisonOperation):
         assert not isinstance(comp_value, list), "Comparison value for '$gte' operation must not be a list."
         return {"path": [self.field_name], "operator": "GreaterThanEqual", comp_value_type: comp_value}
 
-    def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, float, int]]:
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$gte' operation must not be a list."
         return {self.field_name: {"$gte": self.comparison_value}}
 
@@ -640,7 +630,7 @@ class LtOperation(ComparisonOperation):
         assert not isinstance(comp_value, list), "Comparison value for '$lt' operation must not be a list."
         return {"path": [self.field_name], "operator": "LessThan", comp_value_type: comp_value}
 
-    def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, float, int]]:
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$lt' operation must not be a list."
         return {self.field_name: {"$lt": self.comparison_value}}
 
@@ -672,7 +662,7 @@ class LteOperation(ComparisonOperation):
         assert not isinstance(comp_value, list), "Comparison value for '$lte' operation must not be a list."
         return {"path": [self.field_name], "operator": "LessThanEqual", comp_value_type: comp_value}
 
-    def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, float, int]]:
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$lte' operation must not be a list."
         return {self.field_name: {"$lte": self.comparison_value}}
 

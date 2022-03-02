@@ -4,7 +4,6 @@ if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
 
 import logging
-from pathlib import Path
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
 
@@ -15,7 +14,7 @@ from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from inspect import Signature
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class PineconeDocumentStore(SQLDocumentStore):
     """
     Document store for very large scale embedding based dense retrievers like the DPR.
 
-    It implements the Pinecone vector database (https://www.pinecone.io)
+    It implements the Pinecone vector database ([https://www.pinecone.io](https://www.pinecone.io))
     to perform similarity search on vectors.
 
     The document text is stored using the SQLDocumentStore, while
@@ -49,40 +48,46 @@ class PineconeDocumentStore(SQLDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
-        **kwargs,
     ):
         """
-        :param api_key: Pinecone vector database API key (https://app.pinecone.io)
-        :param environment: Pinecone cloud environment uses "us-west1-gcp" by default. Other GCP and AWS regions are supported,
-                            contact Pinecone if required.
+        :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
+        :param environment: Pinecone cloud environment uses `"us-west1-gcp"` by default. Other GCP and AWS regions are
+            supported, contact Pinecone if required.
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
-                        deployment, Postgres is recommended.
+            deployment, Postgres is recommended.
         :param pinecone_index: pinecone-client Index object, an index will be initialized or loaded if not specified.
-        :param embedding_dim: the embedding vector size.
-        :param return_embedding: To return document embedding
+        :param embedding_dim: The embedding vector size.
+        :param return_embedding: Whether to return document embeddings.
         :param index: Name of index in document store to use.
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-                   more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
-                   In both cases, the returned values in Document.score are normalized to be in range [0,1]:
-                   For `dot_product`: expit(np.asarray(raw_score / 100))
-                   For `cosine`: (raw_score + 1) / 2
-        :param replicas: The number of replicas. Replicas duplicate your index. They provide higher availability and
-                         throughput.
-        :param shards: The number of shards to be used in the index. We recommend you use 1 shard per 1GB of data.
+        :param similarity: The similarity function used to compare document vectors. `"dot_product"` is the default
+            since it is more performant with DPR embeddings. `"cosine"` is recommended if you are using a
+            Sentence-Transformer model.
+            In both cases, the returned values in Document.score are normalized to be in range [0,1]:
+                - For `"dot_product"`: `expit(np.asarray(raw_score / 100))`
+                - For `"cosine"`: `(raw_score + 1) / 2`
+        :param replicas: The number of replicas. Replicas duplicate the index. They provide higher availability and
+            throughput.
+        :param shards: The number of shards to be used in the index. We recommend to use 1 shard per 1GB of data.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
-                             Can be helpful to disable in production deployments to keep the logs clean.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
+            Can be helpful to disable in production deployments to keep the logs clean.
+        :param duplicate_documents: Handle duplicates document based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
         """
+        # Save init parameters to enable export of component config as YAML
+        self.set_config(api_key=api_key, environment=environment, sql_url=sql_url, embedding_dim=embedding_dim,
+                        return_embedding=return_embedding, index=index, similarity=similarity, replicas=replicas,
+                        shards=shards, embedding_field=embedding_field, progress_bar=progress_bar,
+                        duplicate_documents=duplicate_documents)
+
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
 
-        # formal similarity string
+        # Formal similarity string
         if similarity in ("dot_product", "cosine"):
             self.metric_type = similarity
         elif similarity in ("l2", "euclidean"):
@@ -104,7 +109,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         self.replicas = replicas
         self.shards = shards
 
-        # initialize dictionary of index connections
+        # Initialize dictionary of index connections
         self.pinecone_indexes: Dict[str, pinecone.Index] = {}
         clean_index = self._sanitize_index_name(index)
         if pinecone_index:
@@ -144,46 +149,42 @@ class PineconeDocumentStore(SQLDocumentStore):
         shards: Optional[int] = 1,
     ):
         """
-        Create a new index for storing documents in case if an
+        Create a new index for storing documents in case an
         index with the name doesn't exist already.
         """
         index = index or self.index
         index = self._sanitize_index_name(index)
 
-        # if index already loaded can skip
+        # Skip if already exists
         if index in self.pinecone_indexes.keys():
-            index_conn = self.pinecone_indexes[index]
+            index_connection = self.pinecone_indexes[index]
         else:
-            # search pinecone hosted indexes and create if it does not exist
+            # Search pinecone hosted indexes and create an index if it does not exist
             if index not in pinecone.list_indexes():
                 pinecone.create_index(
                     name=index, dimension=embedding_dim, metric=metric_type, replicas=replicas, shards=shards
                 )
-            index_conn = pinecone.Index(index)
+            index_connection = pinecone.Index(index)
 
-        # get index statistics
-        stats = index_conn.describe_index_stats()
+        # Get index statistics
+        stats = index_connection.describe_index_stats()
         dims = stats["dimension"]
         count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
         logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
         # return index connection
-        return index_conn
+        return index_connection
 
     def _convert_pinecone_result_to_document(self, result: dict, return_embedding: bool) -> Document:
         """
         Convert Pinecone result dict into haystack document object.
         """
-        score = None
         content = ""
 
         id = result.get("id")
-        score = result.get("score")
+        score = result.get("score", None)
         embedding = result.get("values")
-        meta = result.get("metadata") or {}
-
-        content_type = None
-        if meta.get("contenttype") is not None:
-            content_type = str(meta.pop("contenttype"))
+        meta = result.get("metadata")
+        content_type = meta.pop("content_type") if "content_type" in meta else None
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
@@ -201,9 +202,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         return document
 
     def _validate_index_sync(self):
-        # This check ensures the correct document database was loaded.
-        # If it fails, make sure you provided the path to the database
-        # used when creating the original Pinecone index
+        """
+        This check ensures the correct document database was loaded. If it fails, make sure you provided the same path
+        to the SQL database as when you created the original Pinecone index.
+        """
         if not self.get_document_count() == self.get_embedding_count():
             raise ValueError(
                 "The number of documents present in the SQL database does not "
@@ -219,22 +221,22 @@ class PineconeDocumentStore(SQLDocumentStore):
         batch_size: int = 32,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-    ) -> None:
+    ):
         """
         Add new documents to the DocumentStore.
 
         :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
-                          them right away in Pinecone. If not, you can later call update_embeddings() to create & index them.
-        :param index: (SQL) index name for storing the docs and metadata
-        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :raises DuplicateDocumentError: Exception trigger on duplicate document
-        :return: None
+            them right away in Pinecone. If not, you can later call `update_embeddings()` to create & index them.
+        :param index: (SQL) index name for storing the docs and metadata.
+        :param batch_size: Number of Documents to process at a time. When working with large number of documents,
+            batching can help reduce memory footprint.
+       :param duplicate_documents: Handle duplicates document based on parameter options.\
+
+            Parameter options:
+                - `"skip"`: Ignore the duplicate documents.
+                - `"overwrite"`: Update any existing documents with the same ID when adding documents.
+                - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :raises DuplicateDocumentError: Exception trigger on duplicate document.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -242,11 +244,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = index or self.index
         index = self._sanitize_index_name(index)
         duplicate_documents = duplicate_documents or self.duplicate_documents
-        assert (
-            duplicate_documents in self.duplicate_documents_options
-        ), f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
+        assert duplicate_documents in self.duplicate_documents_options, \
+            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
-        if not self.pinecone_indexes.get(index):
+        if index not in self.pinecone_indexes:
             self.pinecone_indexes[index] = self._create_index_if_not_exist(
                 embedding_dim=self.embedding_dim,
                 index=index,
@@ -266,69 +267,87 @@ class PineconeDocumentStore(SQLDocumentStore):
                 total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
-                    ids = [doc.id for doc in document_objects[i : i + batch_size]]
-                    # metadata fields are stored in Pinecone
-                    metadata = [doc.meta for doc in document_objects[i : i + batch_size]]
+                    ids = [doc.id for doc in document_objects[i: i + batch_size]]
+                    metadata = [doc.meta for doc in document_objects[i: i + batch_size]]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
 
                         if self.similarity == "cosine":
                             self.normalize_embedding(embeddings_to_index)
-                        # to convert to list objects
+                        # Convert embeddings to list objects
                         embeddings = [embed.tolist() for embed in embeddings]
-                        vectors = zip(ids, embeddings, metadata)
-                        self.pinecone_indexes[index].upsert(vectors=vectors)
+                        data_to_write_to_pinecone = zip(ids, embeddings, metadata)
+                        # Metadata fields and embeddings are stored in Pinecone
+                        self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone)
 
-                    docs_to_write_in_sql = []
+                    docs_to_write_to_sql = []
                     for doc in document_objects[i : i + batch_size]:
                         doc.meta["vector_id"] = doc.id
-                        docs_to_write_in_sql.append(doc)
+                        docs_to_write_to_sql.append(doc)
                     super(PineconeDocumentStore, self).write_documents(
-                        docs_to_write_in_sql, index=index, duplicate_documents=duplicate_documents
+                        docs_to_write_to_sql, index=index, duplicate_documents=duplicate_documents
                     )
                     progress_bar.update(batch_size)
             progress_bar.close()
 
     def _create_document_field_map(self) -> Dict:
-        return {
-            self.index: self.embedding_field,
-        }
+        return {self.embedding_field: "embedding"}
 
     def update_embeddings(
         self,
         retriever: "BaseRetriever",
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
-        filters: Optional[Dict] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         batch_size: int = 32,
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
-        This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+        This can be useful if you want to add or change the embeddings for your documents (e.g. after changing the
+        retriever config).
 
-        :param retriever: Retriever to use to get embeddings for text
-        :param index: Index name for which embeddings are to be updated. If set to None, the default self.index is used.
-        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to False,
-                                           only documents without embeddings are processed. This mode can be used for
-                                           incremental updating of embeddings, wherein, only newly indexed documents
-                                           get processed.
+        :param retriever: Retriever to use to get embeddings for text.
+        :param index: Index name for which embeddings are to be updated. If set to `None`, the default `self.index` is
+            used.
+        :param update_existing_embeddings: Whether to update existing embeddings of the documents. If set to `False`,
+            only documents without embeddings are processed. This mode can be used for incremental updating of
+            embeddings, wherein, only newly indexed documents get processed.
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                        Example: {"genre": {"$in": ["documentary", "action"]}},
-                        more info on filtering syntax here https://www.pinecone.io/docs/metadata-filtering/
-        :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :return: None
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                ```
+        :param batch_size: Number of documents to process at a time. When working with large number of documents,
+            batching can help reduce memory footprint.
         """
-        if filters:
-            raise Exception("update_embeddings does not support filtering.")
-
         index = index or self.index
         index = self._sanitize_index_name(index)
 
-        if not self.pinecone_indexes.get(index):
-            raise ValueError("Couldn't find a Pinecone index. Try to init the PineconeDocumentStore() again ...")
+        if index not in self.pinecone_indexes:
+            raise ValueError(f"Couldn't find a the index '{index}' in Pinecone. Try to init the "
+                             f"PineconeDocumentStore() again ...")
 
-        document_count = self.get_document_count(index=index)
+        document_count = self.get_document_count(index=index, filters=filters)
         if document_count == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
@@ -351,10 +370,8 @@ class PineconeDocumentStore(SQLDocumentStore):
                 assert len(document_batch) == len(embeddings)
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
-
                 if self.similarity == "cosine":
                     self.normalize_embedding(embeddings_to_index)
-
                 embeddings = embeddings.tolist()
 
                 metadata = []
@@ -371,27 +388,24 @@ class PineconeDocumentStore(SQLDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
+
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
-        if filters:
-            raise Exception("get_all_documents does not support filters.")
-        self._limit_check(batch_size)
 
-        result = self.get_all_documents_generator(
-            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
-        )
+        result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding,
+                                                  batch_size=batch_size)
         documents = list(result)
         return documents
 
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
@@ -403,34 +417,47 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"genre": {"$in": ["documentary", "action"]}},
-                        more info on filtering syntax here https://www.pinecone.io/docs/metadata-filtering/
+        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
-        if filters:
-            raise Exception("get_all_documents_generator does not support filters.")
-        self._limit_check(batch_size)
+        if return_embedding is None:
+            return_embedding = self.return_embedding
 
         index = index or self.index
         index = self._sanitize_index_name(index)
         documents = super(PineconeDocumentStore, self).get_all_documents_generator(
             index=index, filters=filters, batch_size=batch_size, return_embedding=False
         )
-        if return_embedding is None:
-            return_embedding = self.return_embedding
 
         for doc in documents:
             if return_embedding:
-                if doc.meta and doc.meta.get("vector_id") is not None:
-                    res = self.pinecone_indexes[index].fetch(ids=[doc.id])
-                    if res["vectors"].get(doc.id):
-                        doc.embedding = self._convert_pinecone_result_to_document(
-                            result=res["vectors"][doc.id], return_embedding=return_embedding
-                        ).embedding
+                self._attach_embedding_to_document(document=doc, index=index)
             yield doc
 
     def get_documents_by_id(
@@ -440,107 +467,104 @@ class PineconeDocumentStore(SQLDocumentStore):
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
+
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
-        self._limit_check(batch_size)
 
         index = index or self.index
         index = self._sanitize_index_name(index)
-        # get or create index
-        if not self.pinecone_indexes.get(index):
-            self.pinecone_indexes[index] = self._create_index_if_not_exist(
-                embedding_dim=self.embedding_dim,
-                index=index,
-                metric_type=self.metric_type,
-                replicas=self.replicas,
-                shards=self.shards,
-            )
-        # check there are vectors
-        count = self.get_embedding_count(index)
-        if count == 0:
-            raise Exception(
-                "No documents exist, try creating documents with either write_embeddings or update_embeddings first."
-            )
-        res = self.pinecone_indexes[index].fetch(ids=ids)
-        # convert Pinecone responses to documents
-        documents = []
-        for id_val in ids:
-            # check exists
-            if res["vectors"].get(id_val):
-                documents.append(
-                    self._convert_pinecone_result_to_document(
-                        result=res["vectors"][id_val], return_embedding=self.return_embedding
-                    )
-                )
-        # get content from SQL
-        content = super().get_documents_by_id([doc.id for doc in documents])
-        for i, doc in enumerate(documents):
-            doc.content = content[i].content
+
+        documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
+        if self.return_embedding:
+            for doc in documents:
+                self._attach_embedding_to_document(document=doc, index=index)
+
         return documents
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict] = None) -> int:
+    def get_embedding_count(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
+    ) -> int:
         """
         Return the count of embeddings in the document store.
         """
         if filters:
-            raise Exception("Filters are not supported for get_embedding_count in PineconeDocumentStore")
+            raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
+
         index = index or self.index
         index = self._sanitize_index_name(index)
-        if not self.pinecone_indexes.get(index):
-            self.pinecone_indexes[index] = self._create_index_if_not_exist(
-                embedding_dim=self.embedding_dim,
-                index=self.index,
-                metric_type=self.metric_type,
-                replicas=self.replicas,
-                shards=self.shards,
-            )
+        if not self.pinecone_indexes.get(index, False):
+            raise ValueError(f"No index named {index} found in Pinecone.")
 
         stats = self.pinecone_indexes[index].describe_index_stats()
         # if no namespace return zero
-        count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
+        count = stats["namespaces"][""]["vector_count"] if "" in stats["namespaces"] else 0
         return count
 
     def delete_documents(
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
         Delete documents from the document store.
 
-        :param index: Index name to delete the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+        :param index: Index name to delete the documents from. If `None`, the DocumentStore's default index
+            (`self.index`) will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
-        :param filters: Optional filters to narrow down the documents to be deleted (not supported by PineconeDocumentStore).
-                        Example: {"genre": {"$in": ["documentary", "action"]}},
-                        more info on filtering syntax here https://www.pinecone.io/docs/metadata-filtering/
-        :return: None
+        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                ```
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
-        if filters:
-            raise NotImplementedError("PineconeDocumentStore does not support filtering during document deletion.")
 
         index = index or self.index
         index = self._sanitize_index_name(index)
-        if not self.pinecone_indexes.get(index):
-            self.pinecone_indexes[index] = self._create_index_if_not_exist(
-                embedding_dim=self.embedding_dim,
-                index=self.index,
-                metric_type=self.metric_type,
-                replicas=self.replicas,
-                shards=self.shards,
-            )
-        _ = self.pinecone_indexes[index].delete(ids=ids)
-        # delete from SQL
+        if index not in self.pinecone_indexes:
+            raise ValueError(f"No index named {index} found in Pinecone.")
+
+        if ids is None and filters is None:
+            self.pinecone_indexes[index].delete(delete_all=True)
+        else:
+            affected_docs = self.get_all_documents(filters=filters, return_embedding=False)
+            if ids:
+                affected_docs = [doc for doc in affected_docs if doc.id in ids]
+
+            doc_ids = [doc.meta.get("vector_id") for doc in affected_docs
+                       if doc.meta and doc.meta.get("vector_id") is not None]
+            self.pinecone_indexes[index].delete(ids=doc_ids)
+
         super().delete_documents(index=index, ids=ids, filters=filters)
 
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -549,34 +573,91 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"genre": {"$in": ["documentary", "action"]}},
-                        more info on filtering syntax here https://www.pinecone.io/docs/metadata-filtering/
-        :param top_k: How many documents to return
-        :param index: Index name to query the document from.
-        :param return_embedding: To return document embedding
-        :return:
+        :param query_emb: Embedding of the query (e.g. gathered from DPR).
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+            conditions.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                # or simpler using default operators
+                filters = {
+                    "type": "article",
+                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                    "rating": {"$gte": 3},
+                    "$or": {
+                        "genre": ["economy", "politics"],
+                        "publisher": "nytimes"
+                    }
+                }
+                ```
+                To use the same logical operator multiple times on the same level, logical operators take
+                optionally a list of dictionaries as value.
+                __Example__:
+                ```python
+                filters = {
+                    "$or": [
+                        {
+                            "$and": {
+                                "Type": "News Paper",
+                                "Date": {
+                                    "$lt": "2019-01-01"
+                                }
+                            }
+                        },
+                        {
+                            "$and": {
+                                "Type": "Blog Post",
+                                "Date": {
+                                    "$gte": "2019-01-01"
+                                }
+                            }
+                        }
+                    ]
+                }
+                ```
+        :param top_k: How many documents to return.
+        :param index: The name of the index from which to retrieve documents.
+        :param return_embedding: Whether to return document embedding.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
         self._limit_check(top_k, include_values=return_embedding)
-        if filters:
+
+        if filters is not None:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
         index = index or self.index
         index = self._sanitize_index_name(index)
 
-        if not self.pinecone_indexes.get(index):
+        if index not in self.pinecone_indexes.get:
             raise Exception(
-                f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running 'update_embeddings()' to create and populate an index."
+                f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
+                f"'update_embeddings()' to create and populate an index."
             )
 
-        if return_embedding is None:
-            return_embedding = self.return_embedding
-
         query_emb = query_emb.reshape(1, -1).astype(np.float32)
-
         if self.similarity == "cosine":
             self.normalize_embedding(query_emb)
 
@@ -587,7 +668,6 @@ class PineconeDocumentStore(SQLDocumentStore):
         for match in res["results"][0]["matches"]:
             score_matrix.append(match["score"])
             vector_id_matrix.append(match["id"])
-
         documents = self.get_documents_by_vector_ids(vector_id_matrix, index=index)
 
         # assign query score to each document
@@ -596,11 +676,22 @@ class PineconeDocumentStore(SQLDocumentStore):
             raw_score = scores_for_vector_ids[doc.id]
             doc.score = self.finalize_raw_score(raw_score, self.similarity)
 
-            if return_embedding is True:
-                # get embedding from Pinecone response
-                doc.embedding = self.pinecone_indexes[index].reconstruct(int(doc.id))
+            if return_embedding:
+                # Get embedding from Pinecone response
+                self._attach_embedding_to_document(document=doc, index=index)
 
         return documents
+
+    def _attach_embedding_to_document(self, document: Document, index: str):
+        """
+        Fetches the Document's embedding from the specified Pinecone index and attaches it to the Document's
+        embedding field.
+        """
+        if document.meta and document.meta.get("vector_id", None) is not None:
+            result = self.pinecone_indexes[index].fetch(ids=[document.id])
+            if result["vectors"].get(document.id, False):
+                embedding = result["vectors"][document.id].get("values", None)
+                document.embedding = np.asarray(embedding, dtype=np.float32)
 
     def _limit_check(self, top_k: int, include_values: Optional[bool] = None):
         """
