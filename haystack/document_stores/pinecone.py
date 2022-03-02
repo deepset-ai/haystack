@@ -129,10 +129,8 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         self._validate_index_sync()
 
-    def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
-        if index is None:
-            return None
-        elif "_" in index:
+    def _sanitize_index_name(self, index: str) -> str:
+        if "_" in index:
             return index.replace("_", "-").lower()
         else:
             return index.lower()
@@ -181,7 +179,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         id = result.get("id")
         score = result.get("score")
         embedding = result.get("values")
-        meta = result.get("metadata")
+        meta = result.get("metadata") or {}
 
         content_type = None
         if meta.get("contenttype") is not None:
@@ -602,7 +600,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         return documents
 
-    def _limit_check(self, top_k: str, include_values: Optional[bool] = None):
+    def _limit_check(self, top_k: int, include_values: Optional[bool] = None):
         """
         Confirms the top_k value does not exceed Pinecone vector database limits.
         """
