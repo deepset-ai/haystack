@@ -320,7 +320,7 @@ class NotOperation(LogicalFilterClause):
             return {"operator": "Or", "operands": conditions}
         else:
             return conditions[0]
-    
+
     def convert_to_pinecone(self) -> Dict[str, Union[str, int, float, bool, List[Dict]]]:
         conditions = [condition.invert().convert_to_pinecone() for condition in self.conditions]
         if len(conditions) > 1:
@@ -363,7 +363,7 @@ class AndOperation(LogicalFilterClause):
     def convert_to_weaviate(self) -> Dict[str, Union[str, List[Dict]]]:
         conditions = [condition.convert_to_weaviate() for condition in self.conditions]
         return {"operator": "And", "operands": conditions}
-    
+
     def convert_to_pinecone(self) -> Dict[str, Union[str, List[Dict]]]:
         conditions = [condition.convert_to_pinecone() for condition in self.conditions]
         return {"$and": conditions}
@@ -426,7 +426,7 @@ class EqOperation(ComparisonOperation):
     def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
         return {"path": [self.field_name], "operator": "Equal", comp_value_type: comp_value}
-    
+
     def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
         return {self.field_name: {"$eq": self.comparison_value}}
 
@@ -471,9 +471,7 @@ class InOperation(ComparisonOperation):
         assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
         for value in self.comparison_value:
             assert isinstance(filter_dict[self.field_name]["$in"], list)  # Necessary for mypy
-            filter_dict[self.field_name]["$in"].append(
-                value
-            )
+            filter_dict[self.field_name]["$in"].append(value)
         return filter_dict
 
     def invert(self) -> "NinOperation":
@@ -502,7 +500,7 @@ class NeOperation(ComparisonOperation):
     def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
         return {"path": [self.field_name], "operator": "NotEqual", comp_value_type: comp_value}
-    
+
     def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
         return {self.field_name: {"$ne": self.comparison_value}}
 
@@ -541,15 +539,13 @@ class NinOperation(ComparisonOperation):
             )
 
         return filter_dict
-    
+
     def convert_to_pinecone(self) -> Dict[str, Union[str, List[Dict]]]:
         filter_dict: Dict[str, Union[str, List[Dict]]] = {self.field_name: {"$nin": []}}
         assert isinstance(self.comparison_value, list), "'$nin' operation requires comparison value to be a list."
         for value in self.comparison_value:
             assert isinstance(filter_dict[self.field_name]["$nin"], list)  # Necessary for mypy
-            filter_dict[self.field_name]["$nin"].append(
-                value
-            )
+            filter_dict[self.field_name]["$nin"].append(value)
         return filter_dict
 
     def invert(self) -> "InOperation":
@@ -579,7 +575,7 @@ class GtOperation(ComparisonOperation):
         comp_value_type, comp_value = self._get_weaviate_datatype()
         assert not isinstance(comp_value, list), "Comparison value for '$gt' operation must not be a list."
         return {"path": [self.field_name], "operator": "GreaterThan", comp_value_type: comp_value}
-    
+
     def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, float, int]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$gt' operation must not be a list."
         return {self.field_name: {"$gt": self.comparison_value}}
@@ -611,7 +607,7 @@ class GteOperation(ComparisonOperation):
         comp_value_type, comp_value = self._get_weaviate_datatype()
         assert not isinstance(comp_value, list), "Comparison value for '$gte' operation must not be a list."
         return {"path": [self.field_name], "operator": "GreaterThanEqual", comp_value_type: comp_value}
-    
+
     def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, float, int]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$gte' operation must not be a list."
         return {self.field_name: {"$gte": self.comparison_value}}
@@ -647,7 +643,7 @@ class LtOperation(ComparisonOperation):
     def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, float, int]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$lt' operation must not be a list."
         return {self.field_name: {"$lt": self.comparison_value}}
-    
+
     def invert(self) -> "GteOperation":
         return GteOperation(self.field_name, self.comparison_value)
 
@@ -675,7 +671,7 @@ class LteOperation(ComparisonOperation):
         comp_value_type, comp_value = self._get_weaviate_datatype()
         assert not isinstance(comp_value, list), "Comparison value for '$lte' operation must not be a list."
         return {"path": [self.field_name], "operator": "LessThanEqual", comp_value_type: comp_value}
-    
+
     def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, float, int]]:
         assert not isinstance(self.comparison_value, list), "Comparison value for '$lte' operation must not be a list."
         return {self.field_name: {"$lte": self.comparison_value}}

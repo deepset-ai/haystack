@@ -458,7 +458,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         # check there are vectors
         count = self.get_embedding_count(index)
         if count == 0:
-            raise Exception("No documents exist, try creating documents with either write_embeddings or update_embeddings first.")
+            raise Exception(
+                "No documents exist, try creating documents with either write_embeddings or update_embeddings first."
+            )
         res = self.pinecone_indexes[index].fetch(ids=ids)
         # convert Pinecone responses to documents
         documents = []
