@@ -10,10 +10,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-#from haystack.pipelines.base import JSON_SCHEMAS_PATH
-JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
-SCHEMA_URL = "https://haystack.deepset.ai/json-schemas/"
-
 import pydantic.schema
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
 from pydantic.typing import ForwardRef, evaluate_forwardref, is_callable_type
@@ -28,7 +24,10 @@ from pydantic.schema import (
  
 from haystack import __version__ as haystack_version
 from haystack.nodes.base import BaseComponent
+from haystack.pipelines.base import JSON_SCHEMAS_PATH
 
+
+SCHEMA_URL = "https://haystack.deepset.ai/json-schemas/"
 
 
 class Settings(BaseSettings):
@@ -317,7 +316,7 @@ def new_version_entry(version):
     }
 
 
-def generate_json_schema(
+def update_json_schema(
     update_index: bool, 
     destination_path: Path = JSON_SCHEMAS_PATH,
     index_path: Path = JSON_SCHEMAS_PATH / "haystack-pipeline.schema.json"
@@ -371,7 +370,7 @@ def generate_json_schema(
         logging.info(f"The schemas are different: adding {filename} to the schema folder.")
 
         # Let's check if the schema changed without a version change
-        if haystack_version in supported_versions:
+        if haystack_version in supported_versions and len(supported_versions) > 1:
             logging.info(f"Version {haystack_version} was supported by the latest schema"
                          f"(supported versions: {supported_versions}). "
                          f"Removing support for version {haystack_version} from it.")
@@ -398,8 +397,3 @@ def generate_json_schema(
             if all(new_entry != entry for entry in index["oneOf"]):
                 index["oneOf"].append(new_version_entry(haystack_version))
             dump(index, index_path)
-
-
-
-if __name__ == "__main__":    
-    generate_json_schema(update_index=True)
