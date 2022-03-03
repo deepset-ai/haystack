@@ -12,6 +12,24 @@
             "version": {
               "oneOf": [
                 {
+                  "const": "unstable"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/json-schemas/haystack-pipeline-unstable.schema.json"
+        }
+      ]
+    },
+    {
+      "allOf": [
+        {
+          "properties": {
+            "version": {
+              "oneOf": [
+                {
                   "const": "0.7"
                 },
                 {

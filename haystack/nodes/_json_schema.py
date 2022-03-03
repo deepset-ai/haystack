@@ -24,7 +24,7 @@ from pydantic.schema import (
 
 from haystack import __version__ as haystack_version
 from haystack.nodes.base import BaseComponent
-from haystack.pipelines.base import JSON_SCHEMAS_PATH
+from haystack.pipelines.config import JSON_SCHEMAS_PATH
 
 
 SCHEMA_URL = "https://haystack.deepset.ai/json-schemas/"
@@ -329,8 +329,12 @@ def update_json_schema(
     # Create new schema with the same filename and versions embedded, to be identical to the latest one.
     new_schema = get_json_schema(latest_schema_path.name, supported_versions)
 
-    # FIXME for testing, remove!!
-    dump(new_schema, Path("test_file_1.json"))
+    # Update the unstable schema (for tests and internal use).
+    unstable_filename = "haystack-pipeline-unstable.schema.json"
+    unstable_schema = deepcopy(new_schema)
+    unstable_schema["$id"] = f"{SCHEMA_URL}{unstable_filename}"
+    unstable_schema["properties"]["version"]["oneOf"] = [{"const": "unstable"}]
+    dump(unstable_schema, destination_path / unstable_filename)
 
     # If the two schemas are identical, no need to write a new one:
     # Just add the new version to the list of versions supported by
