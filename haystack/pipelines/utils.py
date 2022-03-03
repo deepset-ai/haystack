@@ -243,7 +243,7 @@ def _format_wrong_examples_report(eval_result: EvaluationResult, n_wrong_example
 
 def _format_pipeline_node(node: str, calculated_metrics: dict):
     node_metrics: dict = {}
-    for metric_mode, metrics in calculated_metrics:
+    for metric_mode, metrics in calculated_metrics.items():
         for metric, value in metrics.get(node, {}).items():
             node_metrics[f"{metric}{metric_mode}"] = value
 
