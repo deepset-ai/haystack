@@ -194,7 +194,6 @@ class BasePipeline(ABC):
         """
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
-
     @classmethod
     @abstractmethod
     def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
@@ -244,7 +243,6 @@ class BasePipeline(ABC):
                                              `_` sign must be used to specify nested hierarchical properties.
         """
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
-
 
     @classmethod
     def load_from_deepset_cloud(
@@ -1025,7 +1023,7 @@ class Pipeline(BasePipeline):
                                              `_` sign must be used to specify nested hierarchical properties.
         """
         validate_config(pipeline_config)
-        
+
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
