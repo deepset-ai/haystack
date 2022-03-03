@@ -8,6 +8,8 @@ from pathlib import Path
 from copy import deepcopy
 import logging
 
+import haystack
+
 logging.basicConfig(level=logging.INFO)
 
 import pydantic.schema
@@ -248,35 +250,6 @@ def get_json_schema(filename: str, compatible_versions: List[str]):
     return pipeline_schema
 
 
-# def list_indexed_versions(index):
-#     """
-#     Given the schema index as a parsed JSON,
-#     return a list of all the versions it contains.
-#     """
-#     indexed_versions = []
-#     for version_entry in index["oneOf"]:
-#         for property_entry in version_entry["allOf"]:
-#             if "properties" in property_entry.keys():
-#                 indexed_versions.append(property_entry["properties"]["version"]["const"])
-#     return indexed_versions
-
-
-# def cleanup_rc_versions(index):
-#     """
-#     Given the schema index as a parsed JSON,
-#     removes any existing (unstable) rc version from it.
-#     """
-#     new_versions_list = []
-#     for version_entry in index["oneOf"]:
-#         for property_entry in version_entry["allOf"]:
-#             if "properties" in property_entry.keys():
-#                 if "rc" not in property_entry["properties"]["version"]["const"]:
-#                     new_versions_list.append(version_entry)
-#                     break
-#     index["oneOf"] = new_versions_list
-#     return index
-
-
 def natural_sort(list_to_sort: List[str]) -> List[str]:
     """Sorts a list keeping numbers in the correct numerical order"""
     convert = lambda text: int(text) if text.isdigit() else text.lower()
@@ -317,7 +290,7 @@ def update_json_schema(
     index_path: Path = JSON_SCHEMAS_PATH / "haystack-pipeline.schema.json",
 ):
     # Locate the latest schema's path
-    latest_schema_path = destination_path / Path(natural_sort(os.listdir(destination_path))[-2])
+    latest_schema_path = destination_path / Path(natural_sort(os.listdir(destination_path))[-3])  # -1 is index, -2 is unstable
     logging.info(f"Latest schema: {latest_schema_path}")
     latest_schema = load(latest_schema_path)
 
@@ -329,16 +302,10 @@ def update_json_schema(
     # Create new schema with the same filename and versions embedded, to be identical to the latest one.
     new_schema = get_json_schema(latest_schema_path.name, supported_versions)
 
-    # Update the unstable schema (for tests and internal use).
-    unstable_filename = "haystack-pipeline-unstable.schema.json"
-    unstable_schema = deepcopy(new_schema)
-    unstable_schema["$id"] = f"{SCHEMA_URL}{unstable_filename}"
-    unstable_schema["properties"]["version"]["oneOf"] = [{"const": "unstable"}]
-    dump(unstable_schema, destination_path / unstable_filename)
-
     # If the two schemas are identical, no need to write a new one:
     # Just add the new version to the list of versions supported by
     # the latest schema if it's not there yet
+    unstable_versions_block = []
     if json.dumps(new_schema) == json.dumps(latest_schema):
         logging.info("No difference in the schema, won't create a new file.")
 
@@ -355,6 +322,7 @@ def update_json_schema(
 
             # Updating the latest schema's list of supported versions
             supported_versions_block.append({"const": haystack_version})
+            unstable_versions_block = supported_versions_block
             latest_schema["properties"]["version"]["oneOf"] = supported_versions_block
             dump(latest_schema, latest_schema_path)
 
@@ -393,6 +361,7 @@ def update_json_schema(
 
         # Dump the new schema file
         new_schema["$id"] = f"{SCHEMA_URL}{filename}"
+        unstable_versions_block = [{"const": haystack_version}]
         new_schema["properties"]["version"]["oneOf"] = [{"const": haystack_version}]
         dump(new_schema, destination_path / filename)
 
@@ -403,3 +372,11 @@ def update_json_schema(
             if all(new_entry != entry for entry in index["oneOf"]):
                 index["oneOf"].append(new_version_entry(haystack_version))
             dump(index, index_path)
+
+
+    # Update the unstable schema (for tests and internal use).
+    unstable_filename = "haystack-pipeline-unstable.schema.json"
+    unstable_schema = deepcopy(new_schema)
+    unstable_schema["$id"] = f"{SCHEMA_URL}{unstable_filename}"
+    unstable_schema["properties"]["version"]["oneOf"] = [{"const": "unstable"}] + unstable_versions_block
+    dump(unstable_schema, destination_path / unstable_filename)

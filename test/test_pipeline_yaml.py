@@ -195,6 +195,27 @@ def test_load_yaml_non_existing_version(tmp_path):
         assert "version" in str(e) and "random" in str(e)
 
 
+def test_load_yaml_incompatible_version(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            """
+            version: 1.1.0
+            components:
+            - name: docstore
+              type: MockDocumentStore
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineConfigError) as e:
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", version="random")
+        assert "version" in str(e) and "1.1.0" in str(e)
+
+
 def test_load_yaml_no_components(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
