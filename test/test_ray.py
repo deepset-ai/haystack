@@ -8,8 +8,21 @@ from haystack.pipelines import RayPipeline
 from .conftest import SAMPLES_PATH
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_load_pipeline(document_store_with_docs):
+@pytest.fixture(autouse=True)
+def shutdown_ray():
+    yield
+    try:
+        import ray
+
+        ray.shutdown()
+    except:
+        pass
+
+
+
+@pytest.mark.integration
+@pytest.mark.elasticsearch
+def test_load_pipeline(test_json_schema):
     pipeline = RayPipeline.load_from_yaml(
         SAMPLES_PATH / "pipeline" / "test_ray_pipeline.yaml",
         pipeline_name="ray_query_pipeline",
@@ -21,14 +34,3 @@ def test_load_pipeline(document_store_with_docs):
     assert ray.serve.get_deployment(name="Reader").num_replicas == 1
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"
-
-
-@pytest.fixture(scope="function", autouse=True)
-def shutdown_ray():
-    yield
-    try:
-        import ray
-
-        ray.shutdown()
-    except:
-        pass

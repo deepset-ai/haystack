@@ -12,7 +12,14 @@ from haystack.nodes import (
     ElasticsearchRetriever,
 )
 
-from .conftest import SAMPLES_PATH, MockDocumentStore, MockRetriever, MockReader
+from .conftest import SAMPLES_PATH, MockRetriever as BaseMockRetriever, MockReader
+
+
+class MockRetriever(BaseMockRetriever):
+
+    def retrieve(self, top_k: int):
+        if not isinstance(top_k, int):
+            raise ValueError("TEST ERROR!")
 
 
 
@@ -140,7 +147,7 @@ def test_global_debug_attributes_override_node_ones(document_store_with_docs, tm
     assert prediction["_debug"]["Reader"]["output"]
 
 
-def test_invalid_run_args():
+def test_missing_top_level_arg():
     pipeline = Pipeline()
     pipeline.add_node(component=MockRetriever(), name="Retriever", inputs=["Query"])
     pipeline.add_node(component=MockReader(), name="Reader", inputs=["Retriever"])
@@ -149,9 +156,21 @@ def test_invalid_run_args():
         pipeline.run(params={"Retriever": {"top_k": 10}})
     assert "run() missing 1 required positional argument: 'query'" in str(exc.value)
 
+
+def test_unexpected_top_level_arg():
+    pipeline = Pipeline()
+    pipeline.add_node(component=MockRetriever(), name="Retriever", inputs=["Query"])
+    pipeline.add_node(component=MockReader(), name="Reader", inputs=["Retriever"])
+
     with pytest.raises(Exception) as exc:
         pipeline.run(invalid_query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}})
     assert "run() got an unexpected keyword argument 'invalid_query'" in str(exc.value)
+
+
+def test_unexpected_node_arg():
+    pipeline = Pipeline()
+    pipeline.add_node(component=MockRetriever(), name="Retriever", inputs=["Query"])
+    pipeline.add_node(component=MockReader(), name="Reader", inputs=["Retriever"])
 
     with pytest.raises(Exception) as exc:
         pipeline.run(query="Who made the PDF specification?", params={"Retriever": {"invalid": 10}})
