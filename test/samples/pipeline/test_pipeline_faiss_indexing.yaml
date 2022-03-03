@@ -19,7 +19,6 @@ components:
 
 pipelines:
   - name: indexing_pipeline
-    type: Pipeline
     nodes:
       - name: PDFConverter
         inputs: [File]

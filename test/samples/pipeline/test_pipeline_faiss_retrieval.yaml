@@ -13,7 +13,6 @@ components:
 
 pipelines:
   - name: query_pipeline
-    type: Pipeline
     nodes:
       - name: DPRRetriever
         inputs: [Query]
