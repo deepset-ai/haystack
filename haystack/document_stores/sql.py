@@ -402,23 +402,25 @@ class SQLDocumentStore(BaseDocumentStore):
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
-                doc_init = DocumentORM if duplicate_documents == "overwrite" else dict
-                doc_orm = doc_init(
-                    id=doc.id,
-                    content=doc.to_dict()["content"],
-                    content_type=doc.content_type,
-                    vector_id=vector_id,
-                    meta=meta_orms,
-                    index=index,
-                )
+                doc_mapping = {
+                    id: doc.id,
+                    content: doc.to_dict()["content"],
+                    content_type: doc.content_type,
+                    vector_id: vector_id,
+                    meta: meta_orms,
+                    index: index,
+                }
                 if duplicate_documents == "overwrite":
+                    doc_orm = DocumentORM(**doc_mapping)
                     # First old meta data cleaning is required
                     self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)
                 else:
-                    docs_orm.append(doc_orm)
+                    docs_orm.append(doc_mapping)
+
             if docs_orm:
                 self.session.bulk_insert_mappings(DocumentORM, docs_orm)
+
             try:
                 self.session.commit()
             except Exception as ex:
