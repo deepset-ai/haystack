@@ -207,32 +207,7 @@ class MockReader(BaseReader):
         pass
 
 
-YAML_TEST_VERSION = "test-version"
-
-
-@pytest.fixture(autouse=True)
-def mock_haystack_version(monkeypatch):
-    monkeypatch.setattr(haystack, "__version__", YAML_TEST_VERSION)
-    monkeypatch.setattr(haystack.pipelines.base, "VERSION", YAML_TEST_VERSION)
-
-
-@pytest.fixture
-def test_json_schema(monkeypatch, tmp_path):
-    """
-    JSON schema with the test version number but all the latest, real nodes.
-
-    Useful for integration test where you need to load pipelines from YAML and don't want to
-    keep updating the YAML version number at every release.
-    """
-    monkeypatch.setattr(haystack.nodes._json_schema, "haystack_version", YAML_TEST_VERSION)
-    monkeypatch.setattr(haystack.pipelines.base, "JSON_SCHEMAS_PATH", tmp_path)
-    monkeypatch.setattr(haystack.pipelines.base, "VERSION", YAML_TEST_VERSION)
-
-    filename = f"haystack-pipeline-{YAML_TEST_VERSION}.schema.json"
-    test_schema = get_json_schema(filename=filename)
-
-    with open(tmp_path / filename, "w") as schema_file:
-        json.dump(test_schema, schema_file, indent=4)
+YAML_TEST_VERSION = "unstable"
 
 
 @pytest.fixture(scope="function", autouse=True)

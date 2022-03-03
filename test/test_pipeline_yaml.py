@@ -10,7 +10,7 @@ from haystack.pipelines import Pipeline
 from haystack.nodes import FileTypeClassifier
 from haystack.errors import PipelineConfigError
 
-from .conftest import SAMPLES_PATH, YAML_TEST_VERSION, MockDocumentStore, MockReader, MockRetriever
+from .conftest import SAMPLES_PATH, MockDocumentStore, MockReader, MockRetriever
 from . import conftest
 
 
@@ -39,33 +39,16 @@ def mock_importable_nodes_list(request, monkeypatch):
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, mock_importable_nodes_list, tmp_path):
     """
-    JSON schema with the test version number but all mocked nodes
+    JSON schema with the unstable version but all mocked nodes
     """
     # Do not patch integration tests
     if "integration" in request.keywords:
         return
 
     monkeypatch.setattr(haystack.pipelines.base, "JSON_SCHEMAS_PATH", tmp_path)
-    monkeypatch.setattr(haystack.pipelines.base, "VERSION", YAML_TEST_VERSION)
 
-    filename = f"haystack-pipeline-{YAML_TEST_VERSION}.schema.json"
-    test_schema = get_json_schema(filename=filename, compatible_versions=[YAML_TEST_VERSION])
-
-    with open(tmp_path / filename, "w") as schema_file:
-        json.dump(test_schema, schema_file, indent=4)
-
-
-@pytest.fixture
-def mock_another_version_json_schema(request, monkeypatch, mock_importable_nodes_list, tmp_path):
-    # Do not patch integration tests
-    if "integration" in request.keywords:
-        return
-
-    monkeypatch.setattr(haystack.nodes._json_schema, "haystack_version", "another-version")
-    monkeypatch.setattr(haystack.pipelines.base, "JSON_SCHEMAS_PATH", tmp_path)
-
-    filename = f"haystack-pipeline-another-version.schema.json"
-    test_schema = get_json_schema(filename=filename)
+    filename = f"haystack-pipeline-unstable.schema.json"
+    test_schema = get_json_schema(filename=filename, compatible_versions=["unstable"])
 
     with open(tmp_path / filename, "w") as schema_file:
         json.dump(test_schema, schema_file, indent=4)
@@ -74,7 +57,6 @@ def mock_another_version_json_schema(request, monkeypatch, mock_importable_nodes
 #
 # Integration
 #
-
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
@@ -137,7 +119,7 @@ def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: retriever
               type: MockRetriever
@@ -192,25 +174,6 @@ def test_load_yaml_missing_version(tmp_path):
         assert "version" in str(e)
 
 
-def test_load_yaml_custom_version(tmp_path, mock_another_version_json_schema):
-    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(
-            """
-            version: another-version
-            components:
-            - name: docstore
-              type: MockDocumentStore
-            pipelines:
-            - name: my_pipeline
-              nodes:
-              - name: docstore
-                inputs:
-                - Query
-        """
-        )
-    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", version="another-version")
-
-
 def test_load_yaml_non_existing_version(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -236,7 +199,7 @@ def test_load_yaml_no_components(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             pipelines:
             - name: my_pipeline
@@ -252,7 +215,7 @@ def test_load_yaml_wrong_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: docstore
               type: ImaginaryDocumentStore
@@ -273,7 +236,7 @@ def test_load_yaml_no_pipelines(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: docstore
               type: MockDocumentStore
@@ -289,7 +252,7 @@ def test_load_yaml_invalid_pipeline_name(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: docstore
               type: MockDocumentStore
@@ -310,7 +273,7 @@ def test_load_yaml_pipeline_with_wrong_nodes(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: docstore
               type: MockDocumentStore
@@ -331,7 +294,7 @@ def test_load_yaml_pipeline_not_acyclic_graph(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: retriever
               type: MockRetriever
@@ -358,7 +321,7 @@ def test_load_yaml_wrong_root(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: retriever
               type: MockRetriever
@@ -380,7 +343,7 @@ def test_load_yaml_two_roots(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: retriever
               type: MockRetriever
@@ -406,7 +369,7 @@ def test_load_yaml_disconnected_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: {YAML_TEST_VERSION}
+            version: unstable
             components:
             - name: docstore
               type: MockDocumentStore
@@ -437,7 +400,7 @@ def test_save_yaml(tmp_path):
         assert content.count("retriever") == 2
         assert "MockRetriever" in content
         assert "Query" in content
-        assert f"version: {YAML_TEST_VERSION}" in content
+        assert f"version: unstable" in content
 
 
 def test_save_yaml_overwrite(tmp_path):

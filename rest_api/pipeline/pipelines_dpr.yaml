@@ -1,4 +1,4 @@
-version: '1.2.0'
+version: 'unstable'
 
 components:    # define all the building-blocks for Pipeline
   - name: DocumentStore
