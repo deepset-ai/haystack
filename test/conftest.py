@@ -562,6 +562,10 @@ def document_store(request, tmp_path):
     yield document_store
     document_store.delete_documents()
 
+    # Make sure to drop Milvus2 collection, required for tests using different embedding dimensions
+    if isinstance(document_store, MilvusDocumentStore) and not milvus1:
+        document_store.collection.drop()
+
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
 def document_store_dot_product(request, tmp_path):
