@@ -12,16 +12,38 @@ from haystack import __version__, Document, Answer, JoinAnswers
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode, ExtractiveQAPipeline
-from haystack.pipelines.base import _PipelineCodeGen
+from haystack.pipelines.config import _validate_user_input, validate_config
+from haystack.pipelines.utils import generate_code
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments
 
 from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
+
+
+class ParentComponent(BaseComponent):
+    outgoing_edges = 1
+
+    def __init__(self, dependent: BaseComponent) -> None:
+        super().__init__()
+        self.set_config(dependent=dependent)
+
+
+class ParentComponent2(BaseComponent):
+    outgoing_edges = 1
+
+    def __init__(self, dependent: BaseComponent) -> None:
+        super().__init__()
+        self.set_config(dependent=dependent)
+
+
+class ChildComponent(BaseComponent):
+    def __init__(self, some_key: str = None) -> None:
+        super().__init__()
+        self.set_config(some_key=some_key)
 
 
 @pytest.mark.elasticsearch
@@ -167,7 +189,7 @@ def test_load_tfidfretriever_yaml(tmp_path):
 
 
 @pytest.mark.elasticsearch
-def test_to_code():
+def test_to_code_creates_same_pipelines():
     index_pipeline = Pipeline.load_from_yaml(
         SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
@@ -184,14 +206,116 @@ def test_to_code():
     assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
 
 
-@pytest.mark.elasticsearch
-def test_PipelineCodeGen_simple_sparse_pipeline():
-    doc_store = ElasticsearchDocumentStore(index="my-index")
-    retriever = ElasticsearchRetriever(document_store=doc_store, top_k=20)
+def test_get_config_creates_dependent_component():
+    child = ChildComponent()
+    parent = ParentComponent(dependent=child)
     pipeline = Pipeline()
-    pipeline.add_node(component=retriever, name="retri", inputs=["Query"])
+    pipeline.add_node(component=parent, name="parent", inputs=["Query"])
 
-    code = _PipelineCodeGen.generate_code(pipeline=pipeline, pipeline_variable_name="p", generate_imports=False)
+    expected_pipelines = [{"name": "query", "type": "Pipeline", "nodes": [{"name": "parent", "inputs": ["Query"]}]}]
+
+    expected_components = [
+        {"name": "parent", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+    ]
+
+    config = pipeline.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_creates_only_one_dependent_component_referenced_by_multiple_parents():
+    child = ChildComponent()
+    parent = ParentComponent(dependent=child)
+    parent2 = ParentComponent2(dependent=child)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="Parent1", inputs=["Query"])
+    p_ensemble.add_node(component=parent2, name="Parent2", inputs=["Query"])
+    p_ensemble.add_node(component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["Parent1", "Parent2"])
+
+    expected_components = [
+        {"name": "Parent1", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+        {"name": "Parent2", "type": "ParentComponent2", "params": {"dependent": "ChildComponent"}},
+        {"name": "JoinResults", "type": "JoinDocuments", "params": {"join_mode": "merge"}},
+    ]
+
+    expected_pipelines = [
+        {
+            "name": "query",
+            "type": "Pipeline",
+            "nodes": [
+                {"name": "Parent1", "inputs": ["Query"]},
+                {"name": "Parent2", "inputs": ["Query"]},
+                {"name": "JoinResults", "inputs": ["Parent1", "Parent2"]},
+            ],
+        }
+    ]
+
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_creates_two_different_dependent_components_of_same_type():
+    child_a = ChildComponent(some_key="A")
+    child_b = ChildComponent(some_key="B")
+    parent = ParentComponent(dependent=child_a)
+    parent2 = ParentComponent(dependent=child_b)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="ParentA", inputs=["Query"])
+    p_ensemble.add_node(component=parent2, name="ParentB", inputs=["Query"])
+    p_ensemble.add_node(component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["ParentA", "ParentB"])
+
+    expected_components = [
+        {"name": "ParentA", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {"some_key": "A"}},
+        {"name": "ParentB", "type": "ParentComponent", "params": {"dependent": "ChildComponent_2"}},
+        {"name": "ChildComponent_2", "type": "ChildComponent", "params": {"some_key": "B"}},
+        {"name": "JoinResults", "type": "JoinDocuments", "params": {"join_mode": "merge"}},
+    ]
+
+    expected_pipelines = [
+        {
+            "name": "query",
+            "type": "Pipeline",
+            "nodes": [
+                {"name": "ParentA", "inputs": ["Query"]},
+                {"name": "ParentB", "inputs": ["Query"]},
+                {"name": "JoinResults", "inputs": ["ParentA", "ParentB"]},
+            ],
+        }
+    ]
+
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_generate_code_simple_pipeline():
+    config = {
+        "components": [
+            {
+                "name": "retri",
+                "type": "ElasticsearchRetriever",
+                "params": {"document_store": "ElasticsearchDocumentStore", "top_k": 20},
+            },
+            {
+                "name": "ElasticsearchDocumentStore",
+                "type": "ElasticsearchDocumentStore",
+                "params": {"index": "my-index"},
+            },
+        ],
+        "pipelines": [{"name": "query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+    }
+
+    code = generate_code(pipeline_config=config, pipeline_variable_name="p", generate_imports=False)
     assert code == (
         'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
         "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
@@ -201,186 +325,197 @@ def test_PipelineCodeGen_simple_sparse_pipeline():
     )
 
 
-@pytest.mark.elasticsearch
-def test_PipelineCodeGen_dual_retriever_pipeline():
-    es_doc_store = ElasticsearchDocumentStore(index="my-index")
-    es_retriever = ElasticsearchRetriever(document_store=es_doc_store, top_k=20)
-    dense_doc_store = InMemoryDocumentStore(index="my-index")
-    emb_retriever = EmbeddingRetriever(
-        document_store=dense_doc_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
-    )
-    p_ensemble = Pipeline()
-    p_ensemble.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])
-    p_ensemble.add_node(component=emb_retriever, name="EmbeddingRetriever", inputs=["Query"])
-    p_ensemble.add_node(
-        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"]
-    )
+def test_generate_code_imports():
+    pipeline_config = {
+        "components": [
+            {
+                "name": "DocumentStore",
+                "type": "ElasticsearchDocumentStore",
+            },
+            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri2", "type": "EmbeddingRetriever", "params": {"document_store": "DocumentStore"}},
+        ],
+        "pipelines": [
+            {
+                "name": "Query",
+                "type": "Pipeline",
+                "nodes": [{"name": "retri", "inputs": ["Query"]}, {"name": "retri2", "inputs": ["Query"]}],
+            }
+        ],
+    }
 
-    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
+    code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=True)
     assert code == (
-        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
-        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
-        'in_memory_document_store = InMemoryDocumentStore(index="my-index")\n'
-        'embedding_retriever = EmbeddingRetriever(document_store=in_memory_document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
-        'join_results = JoinDocuments(join_mode="merge")\n'
+        "from haystack.document_stores import ElasticsearchDocumentStore\n"
+        "from haystack.nodes import ElasticsearchRetriever, EmbeddingRetriever\n"
+        "from haystack.pipelines import Pipeline\n"
+        "\n"
+        "document_store = ElasticsearchDocumentStore()\n"
+        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "retri_2 = EmbeddingRetriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
-        'p.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])\n'
-        'p.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])\n'
-        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"])'
+        'p.add_node(component=retri, name="retri", inputs=["Query"])\n'
+        'p.add_node(component=retri_2, name="retri2", inputs=["Query"])'
     )
 
 
-@pytest.mark.elasticsearch
-def test_PipelineCodeGen_dual_retriever_pipeline_same_docstore():
-    es_doc_store = ElasticsearchDocumentStore(index="my-index")
-    es_retriever = ElasticsearchRetriever(document_store=es_doc_store, top_k=20)
-    emb_retriever = EmbeddingRetriever(
-        document_store=es_doc_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+def test_generate_code_imports_no_pipeline_cls():
+    pipeline_config = {
+        "components": [
+            {
+                "name": "DocumentStore",
+                "type": "ElasticsearchDocumentStore",
+            },
+            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+        ],
+        "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+    }
+
+    code = generate_code(
+        pipeline_config=pipeline_config,
+        pipeline_variable_name="p",
+        generate_imports=True,
+        add_pipeline_cls_import=False,
     )
-    p_ensemble = Pipeline()
-    p_ensemble.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])
-    p_ensemble.add_node(component=emb_retriever, name="EmbeddingRetriever", inputs=["Query"])
-    p_ensemble.add_node(
-        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"]
-    )
-
-    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
-    assert code == (
-        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
-        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
-        'embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
-        'join_results = JoinDocuments(join_mode="merge")\n'
-        "\n"
-        "p = Pipeline()\n"
-        'p.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])\n'
-        'p.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])\n'
-        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"])'
-    )
-
-
-@pytest.mark.elasticsearch
-def test_PipelineCodeGen_dual_retriever_pipeline_different_docstore():
-    es_doc_store_a = ElasticsearchDocumentStore(index="my-index-a")
-    es_doc_store_b = ElasticsearchDocumentStore(index="my-index-b")
-    es_retriever = ElasticsearchRetriever(document_store=es_doc_store_a, top_k=20)
-    emb_retriever = EmbeddingRetriever(
-        document_store=es_doc_store_b, embedding_model="sentence-transformers/all-MiniLM-L6-v2"
-    )
-    p_ensemble = Pipeline()
-    p_ensemble.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])
-    p_ensemble.add_node(component=emb_retriever, name="EmbeddingRetriever", inputs=["Query"])
-    p_ensemble.add_node(
-        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"]
-    )
-
-    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
-    assert code == (
-        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index-a")\n'
-        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
-        'elasticsearch_document_store_2 = ElasticsearchDocumentStore(index="my-index-b")\n'
-        'embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store_2, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
-        'join_results = JoinDocuments(join_mode="merge")\n'
-        "\n"
-        "p = Pipeline()\n"
-        'p.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])\n'
-        'p.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])\n'
-        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"])'
-    )
-
-
-@pytest.mark.elasticsearch
-def test_PipelineCodeGen_dual_retriever_pipeline_same_type():
-    es_doc_store = ElasticsearchDocumentStore(index="my-index")
-    es_retriever_1 = ElasticsearchRetriever(document_store=es_doc_store, top_k=20)
-    es_retriever_2 = ElasticsearchRetriever(document_store=es_doc_store, top_k=10)
-    p_ensemble = Pipeline()
-    p_ensemble.add_node(component=es_retriever_1, name="EsRetriever1", inputs=["Query"])
-    p_ensemble.add_node(component=es_retriever_2, name="EsRetriever2", inputs=["Query"])
-    p_ensemble.add_node(
-        component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["EsRetriever1", "EsRetriever2"]
-    )
-
-    code = _PipelineCodeGen.generate_code(pipeline=p_ensemble, pipeline_variable_name="p", generate_imports=False)
-    assert code == (
-        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
-        "es_retriever_1 = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
-        "es_retriever_2 = ElasticsearchRetriever(document_store=elasticsearch_document_store)\n"
-        'join_results = JoinDocuments(join_mode="merge")\n'
-        "\n"
-        "p = Pipeline()\n"
-        'p.add_node(component=es_retriever_1, name="EsRetriever1", inputs=["Query"])\n'
-        'p.add_node(component=es_retriever_2, name="EsRetriever2", inputs=["Query"])\n'
-        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever1", "EsRetriever2"])'
-    )
-
-
-@pytest.mark.elasticsearch
-def test_PipelineCodeGen_imports():
-    doc_store = ElasticsearchDocumentStore(index="my-index")
-    retriever = ElasticsearchRetriever(document_store=doc_store, top_k=20)
-    pipeline = Pipeline()
-    pipeline.add_node(component=retriever, name="retri", inputs=["Query"])
-
-    code = _PipelineCodeGen.generate_code(pipeline=pipeline, pipeline_variable_name="p", generate_imports=True)
     assert code == (
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
         "from haystack.nodes import ElasticsearchRetriever\n"
         "\n"
-        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
-        "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        "document_store = ElasticsearchDocumentStore()\n"
+        "retri = ElasticsearchRetriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])'
     )
 
 
-def test_PipelineCodeGen_order_components():
-    dependency_map = {"a": ["aa", "ab"], "aa": [], "ab": ["aba"], "aba": [], "b": ["a", "c"], "c": ["a"]}
-    ordered = _PipelineCodeGen._order_components(dependency_map=dependency_map)
-    assert ordered == ["aa", "aba", "ab", "a", "c", "b"]
+def test_generate_code_comment():
+    pipeline_config = {
+        "components": [
+            {
+                "name": "DocumentStore",
+                "type": "ElasticsearchDocumentStore",
+            },
+            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+        ],
+        "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+    }
+
+    comment = "This is my comment\n...and here is a new line"
+    code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", comment=comment)
+    assert code == (
+        "# This is my comment\n"
+        "# ...and here is a new line\n"
+        "from haystack.document_stores import ElasticsearchDocumentStore\n"
+        "from haystack.nodes import ElasticsearchRetriever\n"
+        "from haystack.pipelines import Pipeline\n"
+        "\n"
+        "document_store = ElasticsearchDocumentStore()\n"
+        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=retri, name="retri", inputs=["Query"])'
+    )
+
+
+def test_generate_code_is_component_order_invariant():
+    pipeline_config = {
+        "pipelines": [
+            {
+                "name": "Query",
+                "type": "Pipeline",
+                "nodes": [
+                    {"name": "EsRetriever", "inputs": ["Query"]},
+                    {"name": "EmbeddingRetriever", "inputs": ["Query"]},
+                    {"name": "JoinResults", "inputs": ["EsRetriever", "EmbeddingRetriever"]},
+                ],
+            }
+        ]
+    }
+
+    doc_store = {
+        "name": "ElasticsearchDocumentStore",
+        "type": "ElasticsearchDocumentStore",
+    }
+    es_retriever = {
+        "name": "EsRetriever",
+        "type": "ElasticsearchRetriever",
+        "params": {"document_store": "ElasticsearchDocumentStore"},
+    }
+    emb_retriever = {
+        "name": "EmbeddingRetriever",
+        "type": "EmbeddingRetriever",
+        "params": {
+            "document_store": "ElasticsearchDocumentStore",
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        },
+    }
+    join_node = {
+        "name": "JoinResults",
+        "type": "JoinDocuments",
+    }
+
+    component_orders = [
+        [doc_store, es_retriever, emb_retriever, join_node],
+        [es_retriever, emb_retriever, join_node, doc_store],
+        [join_node, es_retriever, emb_retriever, doc_store],
+    ]
+
+    expected_code = (
+        "elasticsearch_document_store = ElasticsearchDocumentStore()\n"
+        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store)\n"
+        'embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
+        "join_results = JoinDocuments()\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])\n'
+        'p.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])\n'
+        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"])'
+    )
+
+    for components in component_orders:
+        pipeline_config["components"] = components
+        code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=False)
+        assert code == expected_code
 
 
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
-def test_PipelineCodeGen_validate_user_input_invalid(input):
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_user_input(input)
+def test_validate_user_input_invalid(input):
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        _validate_user_input(input)
 
 
 @pytest.mark.parametrize(
     "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path"]
 )
-def test_PipelineCodeGen_validate_user_input_valid(input):
-    _PipelineCodeGen._validate_user_input(input)
+def test_validate_user_input_valid(input):
+    _validate_user_input(input)
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_component_name():
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config({"components": [{"name": "\btest"}]})
+def test_validate_pipeline_config_invalid_component_name():
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        validate_config({"components": [{"name": "\btest"}]})
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_component_type():
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config({"components": [{"name": "test", "type": "\btest"}]})
+def test_validate_pipeline_config_invalid_component_type():
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        validate_config({"components": [{"name": "test", "type": "\btest"}]})
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_component_param():
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
-            {"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]}
-        )
+def test_validate_pipeline_config_invalid_component_param():
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        validate_config({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_component_param_key():
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
-            {"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]}
-        )
+def test_validate_pipeline_config_invalid_component_param_key():
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        validate_config({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_name():
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+def test_validate_pipeline_config_invalid_pipeline_name():
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        validate_config(
             {
                 "components": [
                     {
@@ -393,9 +528,9 @@ def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_name():
         )
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_type():
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+def test_validate_pipeline_config_invalid_pipeline_type():
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        validate_config(
             {
                 "components": [
                     {
@@ -408,9 +543,9 @@ def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_type():
         )
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_node_name():
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+def test_validate_pipeline_config_invalid_pipeline_node_name():
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        validate_config(
             {
                 "components": [
                     {
@@ -423,9 +558,9 @@ def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_node_name():
         )
 
 
-def test_PipelineCodeGen_validate_pipeline_config_invalid_pipeline_node_inputs():
-    with pytest.raises(ValueError):
-        _PipelineCodeGen._validate_config(
+def test_validate_pipeline_config_invalid_pipeline_node_inputs():
+    with pytest.raises(ValueError, match="is not a valid config variable name"):
+        validate_config(
             {
                 "components": [
                     {
