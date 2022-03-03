@@ -18,6 +18,7 @@ from . import conftest
 # Fixtures
 #
 
+
 @pytest.fixture(autouse=True)
 def mock_importable_nodes_list(request, monkeypatch):
     # Do not patch integration tests

@@ -19,7 +19,6 @@ def shutdown_ray():
         pass
 
 
-
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_load_pipeline(test_json_schema):
