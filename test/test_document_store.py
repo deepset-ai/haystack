@@ -450,6 +450,9 @@ def test_write_document_index(document_store):
     assert len(document_store.get_all_documents()) == 0
 
 
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 def test_document_with_embeddings(document_store):
     documents = [
         {"content": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -471,6 +474,9 @@ def test_document_with_embeddings(document_store):
     assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
 
 
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
@@ -582,6 +588,7 @@ def test_update_embeddings(document_store, retriever):
         assert document_store.get_embedding_count(index="haystack_test_one") == 14
 
 
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.embedding_dim(512)
 def test_update_embeddings_table_text_retriever(document_store, retriever):

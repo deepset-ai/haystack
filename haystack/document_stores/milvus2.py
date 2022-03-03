@@ -661,4 +661,4 @@ class Milvus2DocumentStore(SQLDocumentStore):
         """
         if filters:
             raise Exception("filters are not supported for get_embedding_count in MilvusDocumentStore.")
-        return len(self.get_all_documents())
+        return len(self.get_all_documents(index=index))
