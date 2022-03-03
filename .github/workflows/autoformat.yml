@@ -76,7 +76,7 @@ jobs:
 
       # Generates a new JSON schema for the pipeline YAML validation
       - name: Generate JSON schema for pipelines
-        run: python ./haystack/nodes/_json_schema.py
+        run: python -c "import logging;logging.basicConfig(level=logging.INFO);from haystack.nodes._json_schema import update_json_schema;update_json_schema(update_index=True)"
       
       # Commit the files to GitHub
       - name: Commit files
