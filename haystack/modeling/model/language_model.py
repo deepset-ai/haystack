@@ -169,7 +169,7 @@ class LanguageModel(nn.Module):
             elif 'MiniLM' in str(pretrained_model_name_or_path) and 'sentence' in str(pretrained_model_name_or_path):
                 logger.info("MiniLM model being used, resizing vocab")
                 n_added_tokens = -35
-        logger.info("The model name is: ", pretrained_model_name_or_path)
+        logger.info("The model name is: ", str(pretrained_model_name_or_path))
 
         kwargs["revision"] = kwargs.get("revision", None)
         logger.info("LOADING MODEL")
