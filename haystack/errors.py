@@ -19,15 +19,21 @@ class HaystackError(Exception):
 
     def __init__(self, message: str = "", source: Optional[Exception] = None, docs_link: Optional[str] = None):
         super().__init__()
+        self.message = message
         self.source = source
         self.docs_link = None
+
         if self.source:
             try:
-                self.message = f"{message} ({getattr(self.source, 'message')})"
+                source_string = str(getattr(self.source, 'message'))
             except AttributeError:
-                self.message = f"{message} ({self.source})"
-        else:
-            self.message = message
+                source_string = str(self.source)
+
+            if message and message.strip() != "" and source_string != "":
+                self.message = f"{message} ({source_string})"
+            else:
+                self.message = source_string
+
 
 
     def __getattr__(self, attr):
