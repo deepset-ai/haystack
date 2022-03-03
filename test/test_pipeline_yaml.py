@@ -18,17 +18,22 @@ from . import conftest
 # Fixtures
 #
 
+
 @pytest.fixture(autouse=True)
 def mock_importable_nodes_list(request, monkeypatch):
     # Do not patch integration tests
-    if 'integration' in request.keywords:
+    if "integration" in request.keywords:
         return
 
-    monkeypatch.setattr(BaseComponent, "_find_subclasses_in_modules", lambda *a, **k: [
-        (conftest, MockDocumentStore),
-        (conftest, MockReader),
-        (conftest, MockRetriever),
-    ])
+    monkeypatch.setattr(
+        BaseComponent,
+        "_find_subclasses_in_modules",
+        lambda *a, **k: [
+            (conftest, MockDocumentStore),
+            (conftest, MockReader),
+            (conftest, MockRetriever),
+        ],
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -37,7 +42,7 @@ def mock_json_schema(request, monkeypatch, mock_importable_nodes_list, tmp_path)
     JSON schema with the test version number but all mocked nodes
     """
     # Do not patch integration tests
-    if 'integration' in request.keywords:
+    if "integration" in request.keywords:
         return
 
     monkeypatch.setattr(haystack.pipelines.base, "JSON_SCHEMAS_PATH", tmp_path)
@@ -53,7 +58,7 @@ def mock_json_schema(request, monkeypatch, mock_importable_nodes_list, tmp_path)
 @pytest.fixture
 def mock_another_version_json_schema(request, monkeypatch, mock_importable_nodes_list, tmp_path):
     # Do not patch integration tests
-    if 'integration' in request.keywords:
+    if "integration" in request.keywords:
         return
 
     monkeypatch.setattr(haystack.nodes._json_schema, "haystack_version", "another-version")
@@ -70,12 +75,13 @@ def mock_another_version_json_schema(request, monkeypatch, mock_importable_nodes
 # Integration
 #
 
+
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_load_and_save_from_yaml(tmp_path, test_json_schema):
     config_path = SAMPLES_PATH / "pipeline" / "test_pipeline.yaml"
 
-    # Test the indexing pipeline: 
+    # Test the indexing pipeline:
     # Load it
     indexing_pipeline = Pipeline.load_from_yaml(path=config_path, pipeline_name="indexing_pipeline")
 
@@ -88,7 +94,7 @@ def test_load_and_save_from_yaml(tmp_path, test_json_schema):
     # Save it
     new_indexing_config = tmp_path / "test_indexing.yaml"
     indexing_pipeline.save_to_yaml(new_indexing_config)
-    
+
     # Re-load it and compare the resulting pipelines
     new_indexing_pipeline = Pipeline.load_from_yaml(path=new_indexing_config)
     assert nx.is_isomorphic(new_indexing_pipeline.graph, indexing_pipeline.graph)
@@ -123,12 +129,14 @@ def test_load_and_save_from_yaml(tmp_path, test_json_schema):
 
 
 #
-# Unit 
+# Unit
 #
+
 
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: retriever
@@ -144,7 +152,8 @@ def test_load_yaml(tmp_path):
               - name: reader
                 inputs:
                 - retriever
-        """)
+        """
+        )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert len(pipeline.graph.nodes) == 3
     assert isinstance(pipeline.get_node("retriever"), MockRetriever)
@@ -165,7 +174,8 @@ def test_load_yaml_invalid_yaml(tmp_path):
 
 def test_load_yaml_missing_version(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write("""
+        tmp_file.write(
+            """
             components:
             - name: docstore
               type: MockDocumentStore
@@ -175,7 +185,8 @@ def test_load_yaml_missing_version(tmp_path):
               - name: docstore
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "version" in str(e)
@@ -183,7 +194,8 @@ def test_load_yaml_missing_version(tmp_path):
 
 def test_load_yaml_custom_version(tmp_path, mock_another_version_json_schema):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write("""
+        tmp_file.write(
+            """
             version: another-version
             components:
             - name: docstore
@@ -194,13 +206,15 @@ def test_load_yaml_custom_version(tmp_path, mock_another_version_json_schema):
               - name: docstore
                 inputs:
                 - Query
-        """)
+        """
+        )
     Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", version="another-version")
 
 
 def test_load_yaml_non_existing_version(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write("""
+        tmp_file.write(
+            """
             version: random
             components:
             - name: docstore
@@ -211,7 +225,8 @@ def test_load_yaml_non_existing_version(tmp_path):
               - name: docstore
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", version="random")
         assert "version" in str(e) and "random" in str(e)
@@ -219,13 +234,15 @@ def test_load_yaml_non_existing_version(tmp_path):
 
 def test_load_yaml_no_components(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             pipelines:
             - name: my_pipeline
               nodes:
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "components" in str(e)
@@ -233,7 +250,8 @@ def test_load_yaml_no_components(tmp_path):
 
 def test_load_yaml_wrong_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: docstore
@@ -244,7 +262,8 @@ def test_load_yaml_wrong_component(tmp_path):
               - name: docstore
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "ImaginaryDocumentStore" in str(e)
@@ -252,13 +271,15 @@ def test_load_yaml_wrong_component(tmp_path):
 
 def test_load_yaml_no_pipelines(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: docstore
               type: MockDocumentStore
             pipelines:
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "pipeline" in str(e)
@@ -266,7 +287,8 @@ def test_load_yaml_no_pipelines(tmp_path):
 
 def test_load_yaml_invalid_pipeline_name(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: docstore
@@ -277,7 +299,8 @@ def test_load_yaml_invalid_pipeline_name(tmp_path):
               - name: docstore
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="invalid")
         assert "invalid" in str(e) and "pipeline" in str(e)
@@ -285,7 +308,8 @@ def test_load_yaml_invalid_pipeline_name(tmp_path):
 
 def test_load_yaml_pipeline_with_wrong_nodes(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: docstore
@@ -296,7 +320,8 @@ def test_load_yaml_pipeline_with_wrong_nodes(tmp_path):
               - name: not_existing_node
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "not_existing_node" in str(e)
@@ -304,7 +329,8 @@ def test_load_yaml_pipeline_with_wrong_nodes(tmp_path):
 
 def test_load_yaml_pipeline_not_acyclic_graph(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: retriever
@@ -320,16 +346,18 @@ def test_load_yaml_pipeline_not_acyclic_graph(tmp_path):
               - name: reader
                 inputs:
                 - retriever
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert ("reader" in str(e) or "retriever" in str(e))
+        assert "reader" in str(e) or "retriever" in str(e)
         assert "loop" in str(e)
 
 
 def test_load_yaml_wrong_root(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: retriever
@@ -340,7 +368,8 @@ def test_load_yaml_wrong_root(tmp_path):
               - name: retriever
                 inputs:
                 - Nothing
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "Nothing" in str(e)
@@ -349,7 +378,8 @@ def test_load_yaml_wrong_root(tmp_path):
 
 def test_load_yaml_two_roots(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: retriever
@@ -365,7 +395,8 @@ def test_load_yaml_two_roots(tmp_path):
               - name: retriever_2
                 inputs:
                 - File
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "File" in str(e) or "Query" in str(e)
@@ -373,7 +404,8 @@ def test_load_yaml_two_roots(tmp_path):
 
 def test_load_yaml_disconnected_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(f"""
+        tmp_file.write(
+            f"""
             version: {YAML_TEST_VERSION}
             components:
             - name: docstore
@@ -386,7 +418,8 @@ def test_load_yaml_disconnected_component(tmp_path):
               - name: docstore
                 inputs:
                 - Query
-        """)
+        """
+        )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert len(pipeline.graph.nodes) == 2
     assert isinstance(pipeline.get_document_store(), MockDocumentStore)
@@ -418,5 +451,5 @@ def test_save_yaml_overwrite(tmp_path):
     pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
 
     with open(tmp_path / "saved_pipeline.yml", "r") as saved_yaml:
-      content = saved_yaml.read()
-      assert content != ""
+        content = saved_yaml.read()
+        assert content != ""

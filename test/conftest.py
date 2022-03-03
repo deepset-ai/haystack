@@ -148,12 +148,12 @@ def pytest_collection_modifyitems(config, items):
 #
 # Empty mocks, as a base for unit tests.
 #
-# Monkeypatch the methods you need with either a mock implementation 
+# Monkeypatch the methods you need with either a mock implementation
 # or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
 #
 
-class MockDocumentStore(BaseDocumentStore):
 
+class MockDocumentStore(BaseDocumentStore):
     def _create_document_field_map(self, *a, **k):
         pass
 
@@ -177,7 +177,7 @@ class MockDocumentStore(BaseDocumentStore):
 
     def get_document_count(self, *a, **k):
         pass
- 
+
     def get_documents_by_id(self, *a, **k):
         pass
 
@@ -195,13 +195,11 @@ class MockDocumentStore(BaseDocumentStore):
 
 
 class MockRetriever(BaseRetriever):
-    
     def retrieve(self, *a, **k):
         pass
 
 
 class MockReader(BaseReader):
-    
     def predict(self, *a, **k):
         pass
 
@@ -209,8 +207,8 @@ class MockReader(BaseReader):
         pass
 
 
-
 YAML_TEST_VERSION = "test-version"
+
 
 @pytest.fixture(autouse=True)
 def mock_haystack_version(monkeypatch):
@@ -235,9 +233,6 @@ def test_json_schema(monkeypatch, tmp_path):
 
     with open(tmp_path / filename, "w") as schema_file:
         json.dump(test_schema, schema_file, indent=4)
-
-
-
 
 
 @pytest.fixture(scope="function", autouse=True)

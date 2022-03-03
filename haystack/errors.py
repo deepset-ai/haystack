@@ -25,7 +25,7 @@ class HaystackError(Exception):
 
         if self.source:
             try:
-                source_string = str(getattr(self.source, 'message'))
+                source_string = str(getattr(self.source, "message"))
             except AttributeError:
                 source_string = str(self.source)
 
@@ -34,12 +34,9 @@ class HaystackError(Exception):
             else:
                 self.message = source_string
 
-
-
     def __getattr__(self, attr):
         # If self.source is None, it will raise the expected AttributeError
         getattr(self.source, attr)
-        
 
     def __str__(self):
         if self.docs_link:

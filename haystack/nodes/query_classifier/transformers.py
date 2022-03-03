@@ -66,7 +66,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         super().__init__()
         # save init parameters to enable export of component config as YAML
         # self.set_config(model_name_or_path=model_name_or_path)
-        
+
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
         device = 0 if self.devices[0].type == "cuda" else -1
 

@@ -55,7 +55,6 @@ CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
 
 
-
 class RootNode(BaseComponent):
     """
     RootNode feeds inputs together with corresponding params to a Pipeline.
@@ -148,13 +147,17 @@ class BasePipeline(ABC):
         try:
             Draft7Validator(schema).validate(instance=pipeline_config)
         except ValidationError as validation:
-            error_path = [i for i in list(validation.relative_schema_path)[:-1] if repr(i)!="'items'" and repr(i)!="'properties'"]
-            error_location = '->'.join(repr(index) for index in error_path)
+            error_path = [
+                i
+                for i in list(validation.relative_schema_path)[:-1]
+                if repr(i) != "'items'" and repr(i) != "'properties'"
+            ]
+            error_location = "->".join(repr(index) for index in error_path)
             if error_location:
                 error_location = f"The error is in {error_location}."
             raise PipelineConfigError(
                 message=f"Validation failed. {validation.message}. {error_location} "
-                         "See the stacktrace for more information."
+                "See the stacktrace for more information."
             ) from validation
         logging.debug(f"Pipeline configuration is valid.")
 
@@ -384,11 +387,15 @@ class BasePipeline(ABC):
             if len(pipeline_config["pipelines"]) == 1:
                 pipeline_definition = pipeline_config["pipelines"][0]
             else:
-                raise PipelineConfigError("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
+                raise PipelineConfigError(
+                    "The YAML contains multiple pipelines. Please specify the pipeline name to load."
+                )
         else:
             pipelines_in_definitions = list(filter(lambda p: p["name"] == pipeline_name, pipeline_config["pipelines"]))
             if not pipelines_in_definitions:
-                raise PipelineConfigError(f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file.")
+                raise PipelineConfigError(
+                    f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file."
+                )
             pipeline_definition = pipelines_in_definitions[0]
 
         return pipeline_definition
@@ -497,14 +504,18 @@ class Pipeline(BasePipeline):
                 self.root_node = root_node
                 self.graph.add_node(root_node, component=RootNode())
             else:
-                raise PipelineConfigError(f"Root node '{root_node}' is invalid. Available options are {valid_root_nodes}.")
+                raise PipelineConfigError(
+                    f"Root node '{root_node}' is invalid. Available options are {valid_root_nodes}."
+                )
         component.name = name
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
             if not len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node:
-                raise PipelineConfigError(f"The '{name}' node can only input from {self.root_node}. "
-                                          f"Set the 'inputs' parameter to ['{self.root_node}']")
+                raise PipelineConfigError(
+                    f"The '{name}' node can only input from {self.root_node}. "
+                    f"Set the 'inputs' parameter to ['{self.root_node}']"
+                )
             self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
@@ -516,16 +527,19 @@ class Pipeline(BasePipeline):
 
                 outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
                 if not int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node:
-                    raise PipelineConfigError(f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
-                                              f"{outgoing_edges_input_node} outgoing edge(s).")
+                    raise PipelineConfigError(
+                        f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
+                        f"{outgoing_edges_input_node} outgoing edge(s)."
+                    )
             else:
                 try:
                     outgoing_edges_input_node = self.graph.nodes[i]["component"].outgoing_edges
                 except KeyError as e:
                     raise PipelineConfigError(
                         message=f"Cannot find node '{name}'. Make sure you're not using more "
-                                f"than one root node ({valid_root_nodes}) in the same pipeline.", 
-                        source=e)
+                        f"than one root node ({valid_root_nodes}) in the same pipeline.",
+                        source=e,
+                    )
 
                 if not outgoing_edges_input_node == 1:
                     raise PipelineConfigError(
@@ -539,7 +553,6 @@ class Pipeline(BasePipeline):
         if not nx.is_directed_acyclic_graph(self.graph):
             self.graph.remove_node(name)
             raise PipelineConfigError(f"Cannot add '{name}': it will create a loop in the pipeline.")
-
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
@@ -972,7 +985,13 @@ class Pipeline(BasePipeline):
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, version: Optional[str] = None):
+    def load_from_yaml(
+        cls,
+        path: Path,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        version: Optional[str] = None,
+    ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -1025,7 +1044,6 @@ class Pipeline(BasePipeline):
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
         )
-
 
     @classmethod
     def load_from_config(
@@ -1126,12 +1144,12 @@ class Pipeline(BasePipeline):
         except KeyError as ke:
             raise PipelineConfigError(
                 message=f"Failed loading pipeline component '{name}': "
-                        "seems like the component does not exist. Did you spell its name correctly?"
+                "seems like the component does not exist. Did you spell its name correctly?"
             ) from ke
         except Exception as e:
             raise PipelineConfigError(
                 message=f"Failed loading pipeline component '{name}'. "
-                         "See the stacktrace above for more informations."
+                "See the stacktrace above for more informations."
             ) from e
         return instance
 
@@ -1329,7 +1347,7 @@ class RayPipeline(Pipeline):
         return pipeline
 
     @classmethod
-    def load_from_yaml(   # type: ignore
+    def load_from_yaml(  # type: ignore
         cls,
         path: Path,
         pipeline_name: Optional[str] = None,
