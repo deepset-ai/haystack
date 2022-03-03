@@ -77,6 +77,9 @@ def test_faq_pipeline(retriever, document_store):
 
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 def test_document_search_pipeline(retriever, document_store):
     documents = [
         {"content": "Sample text for document-1", "meta": {"source": "wiki1"}},
