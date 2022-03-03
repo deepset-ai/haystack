@@ -25,7 +25,6 @@ from haystack.schema import Document
 from .conftest import SAMPLES_PATH
 
 
-
 @pytest.mark.parametrize(
     "retriever,document_store",
     [

@@ -16,7 +16,6 @@ from haystack.nodes.retriever.dense import EmbeddingRetriever
 from .conftest import ensure_ids_are_correct_uuids
 
 
-
 DOCUMENTS = [
     {
         "meta": {"name": "name_1", "year": "2020", "month": "01"},
