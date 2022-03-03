@@ -60,9 +60,6 @@
             "$ref": "#/definitions/ImageToTextConverterComponent"
           },
           {
-            "$ref": "#/definitions/JoinAnswersComponent"
-          },
-          {
             "$ref": "#/definitions/JoinDocumentsComponent"
           },
           {
@@ -88,9 +85,6 @@
           },
           {
             "$ref": "#/definitions/RCIReaderComponent"
-          },
-          {
-            "$ref": "#/definitions/RouteDocumentsComponent"
           },
           {
             "$ref": "#/definitions/SentenceTransformersRankerComponent"
@@ -1099,51 +1093,6 @@
       ],
       "additionalProperties": false
     },
-    "JoinAnswersComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "JoinAnswers"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "join_mode": {
-              "title": "Join Mode",
-              "default": "concatenate",
-              "type": "string"
-            },
-            "weights": {
-              "title": "Weights",
-              "type": "array",
-              "items": {
-                "type": "number"
-              }
-            },
-            "top_k_join": {
-              "title": "Top K Join",
-              "type": "integer"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
     "JoinDocumentsComponent": {
       "type": "object",
       "properties": {
@@ -1685,47 +1634,6 @@
               "title": "Max Seq Len",
               "default": 256,
               "type": "integer"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "RouteDocumentsComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "RouteDocuments"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "split_by": {
-              "title": "Split By",
-              "default": "content_type",
-              "type": "string"
-            },
-            "metadata_values": {
-              "title": "Metadata Values",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             }
           },
           "additionalProperties": false,
