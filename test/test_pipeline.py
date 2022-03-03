@@ -17,7 +17,7 @@ from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode
-from haystack.pipelines.config import _validate_user_input, validate_config
+from haystack.pipelines.config import validate_config, validate_config_strings
 from haystack.pipelines.utils import generate_code
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments
 
@@ -343,39 +343,39 @@ def test_generate_code_is_component_order_invariant():
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
 def test_validate_user_input_invalid(input):
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        _validate_user_input(input)
+        validate_config_strings(input)
 
 
 @pytest.mark.parametrize(
     "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path"]
 )
 def test_validate_user_input_valid(input):
-    _validate_user_input(input)
+    validate_config_strings(input)
 
 
 def test_validate_pipeline_config_invalid_component_name():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "\btest"}]})
+        validate_config_strings({"components": [{"name": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_component_type():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "test", "type": "\btest"}]})
+        validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_component_param():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
+        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
 
 
 def test_validate_pipeline_config_invalid_component_param_key():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
+        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_name():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config(
+        validate_config_strings(
             {
                 "components": [
                     {
@@ -388,24 +388,9 @@ def test_validate_pipeline_config_invalid_pipeline_name():
         )
 
 
-def test_validate_pipeline_config_invalid_pipeline_type():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config(
-            {
-                "components": [
-                    {
-                        "name": "test",
-                        "type": "test",
-                    }
-                ],
-                "pipelines": [{"name": "test", "type": "\btest"}],
-            }
-        )
-
-
 def test_validate_pipeline_config_invalid_pipeline_node_name():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config(
+        validate_config_strings(
             {
                 "components": [
                     {
@@ -420,7 +405,7 @@ def test_validate_pipeline_config_invalid_pipeline_node_name():
 
 def test_validate_pipeline_config_invalid_pipeline_node_inputs():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config(
+        validate_config_strings(
             {
                 "components": [
                     {
