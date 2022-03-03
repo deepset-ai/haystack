@@ -31,7 +31,6 @@ def mock_test_json_schema(test_json_schema):
     pass
 
 
-
 @pytest.mark.elasticsearch
 def test_to_code():
     index_pipeline = Pipeline.load_from_yaml(

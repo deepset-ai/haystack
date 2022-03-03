@@ -7,7 +7,7 @@
 ## BaseQueryClassifier
 
 ```python
-class BaseQueryClassifier(BaseComponent)
+class BaseQueryClassifier(BaseComponent,  ABC)
 ```
 
 Abstract class for Query Classifiers

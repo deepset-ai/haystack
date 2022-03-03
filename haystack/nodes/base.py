@@ -15,7 +15,6 @@ from haystack.errors import PipelineError
 logger = logging.getLogger(__name__)
 
 
-
 def exportable_to_yaml(func):
     """
     Save the init parameters of a component that later can be used with exporting
@@ -23,10 +22,13 @@ def exportable_to_yaml(func):
 
     :param kwargs: all parameters passed to the __init__() of the Component.
     """
+
     @wraps(func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
         if args:
-            logger.warning("Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!")
+            logger.warning(
+                "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
+            )
 
         self.pipeline_config = {"params": {}, "type": type(self).__name__}
         for k, v in kwargs.items():
@@ -34,9 +36,8 @@ def exportable_to_yaml(func):
                 self.pipeline_config["params"][k] = v.pipeline_config
             elif v is not None:
                 self.pipeline_config["params"][k] = v
-    
-    return wrapper_exportable_to_yaml
 
+    return wrapper_exportable_to_yaml
 
 
 class BaseComponent(ABC):
@@ -211,7 +212,9 @@ class BaseComponent(ABC):
                     self.pipeline_config["params"][k] = v
 
     @classmethod
-    def _find_subclasses_in_modules(cls, include_base_classes: bool = False, importable_modules=["haystack.document_stores", "haystack.nodes"]):
+    def _find_subclasses_in_modules(
+        cls, include_base_classes: bool = False, importable_modules=["haystack.document_stores", "haystack.nodes"]
+    ):
         """
         This function returns a list `(module, class)` of all the classes that can be imported
         dynamically, for example from a pipeline YAML definition or to generate documentation.
@@ -223,9 +226,9 @@ class BaseComponent(ABC):
             for module in importable_modules
             for _, clazz in inspect.getmembers(sys.modules[module])
             if (
-                inspect.isclass(clazz) and 
-                not inspect.isabstract(clazz) and
-                issubclass(clazz, BaseComponent) and 
-                (include_base_classes or not clazz.__name__.startswith("Base"))
+                inspect.isclass(clazz)
+                and not inspect.isabstract(clazz)
+                and issubclass(clazz, BaseComponent)
+                and (include_base_classes or not clazz.__name__.startswith("Base"))
             )
         ]

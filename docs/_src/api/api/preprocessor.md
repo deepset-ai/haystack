@@ -7,7 +7,7 @@
 ## BasePreProcessor
 
 ```python
-class BasePreProcessor(BaseComponent)
+class BasePreProcessor(BaseComponent,  ABC)
 ```
 
 <a id="base.BasePreProcessor.process"></a>
@@ -15,6 +15,7 @@ class BasePreProcessor(BaseComponent)
 #### process
 
 ```python
+@abstractmethod
 def process(documents: Union[dict, List[dict]], clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True) -> List[dict]
 ```
 

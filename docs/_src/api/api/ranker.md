@@ -7,7 +7,7 @@
 ## BaseRanker
 
 ```python
-class BaseRanker(BaseComponent)
+class BaseRanker(BaseComponent,  ABC)
 ```
 
 <a id="base.BaseRanker.timing"></a>

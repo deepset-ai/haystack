@@ -7,7 +7,7 @@
 ## BaseGraphRetriever
 
 ```python
-class BaseGraphRetriever(BaseComponent)
+class BaseGraphRetriever(BaseComponent,  ABC)
 ```
 
 Base classfor knowledge graph retrievers.
@@ -17,7 +17,7 @@ Base classfor knowledge graph retrievers.
 ## BaseRetriever
 
 ```python
-class BaseRetriever(BaseComponent)
+class BaseRetriever(BaseComponent,  ABC)
 ```
 
 Base class for regular retrievers.
