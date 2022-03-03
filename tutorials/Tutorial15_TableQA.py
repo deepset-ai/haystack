@@ -6,7 +6,7 @@ from haystack.utils import launch_es, fetch_archive_from_http, print_answers
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack import Document, Pipeline
 from haystack.nodes.retriever import TableTextRetriever
-from haystack.nodes import TableReader
+from haystack.nodes import TableReader, FARMReader, RouteDocuments, JoinAnswers
 
 
 def tutorial15_tableqa():
@@ -114,6 +114,37 @@ def tutorial15_tableqa():
 
     prediction = table_qa_pipeline.run("How many twin buildings are under construction?")
     print_answers(prediction, details="minimum")
+
+    ### Pipeline for QA on Combination of Text and Tables
+    # We are using one node for retrieving both texts and tables, the TableTextRetriever.
+    # In order to do question-answering on the Documents coming from the TableTextRetriever, we need to route
+    # Documents of type "text" to a FARMReader ( or alternatively TransformersReader) and Documents of type
+    # "table" to a TableReader.
+
+    text_reader = FARMReader("deepset/roberta-base-squad2")
+    # In order to get meaningful scores from the TableReader, use "deepset/tapas-large-nq-hn-reader" or
+    # "deepset/tapas-large-nq-reader" as TableReader models. The disadvantage of these models is, however,
+    # that they are not capable of doing aggregations over multiple table cells.
+    table_reader = TableReader("deepset/tapas-large-nq-hn-reader")
+    route_documents = RouteDocuments()
+    join_answers = JoinAnswers()
+
+    text_table_qa_pipeline = Pipeline()
+    text_table_qa_pipeline.add_node(component=retriever, name="TableTextRetriever", inputs=["Query"])
+    text_table_qa_pipeline.add_node(component=route_documents, name="RouteDocuments", inputs=["TableTextRetriever"])
+    text_table_qa_pipeline.add_node(component=text_reader, name="TextReader", inputs=["RouteDocuments.output_1"])
+    text_table_qa_pipeline.add_node(component=table_reader, name="TableReader", inputs=["RouteDocuments.output_2"])
+    text_table_qa_pipeline.add_node(component=join_answers, name="JoinAnswers", inputs=["TextReader", "TableReader"])
+
+    # Example query whose answer resides in a text passage
+    predictions = text_table_qa_pipeline.run(query="Who is Aleksandar Trifunovic?")
+    # We can see both text passages and tables as contexts of the predicted answers.
+    print_answers(predictions, details="minimum")
+
+    # Example query whose answer resides in a table
+    predictions = text_table_qa_pipeline.run(query="What is Cuba's national tree?")
+    # We can see both text passages and tables as contexts of the predicted answers.
+    print_answers(predictions, details="minimum")
 
 
 if __name__ == "__main__":
