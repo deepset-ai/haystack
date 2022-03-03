@@ -72,21 +72,26 @@ def read_pipeline_config_from_yaml(path: Path):
         return yaml.safe_load(stream)
 
 
-def validate_config_strings(pipeline_config: Dict[str, Any]):
-    for component in pipeline_config["components"]:
-        _validate_user_input(component["name"])
-        _validate_user_input(component["type"])
-        for k, v in component.get("params", {}).items():
-            _validate_user_input(k)
-            _validate_user_input(v)
-    for pipeline in pipeline_config["pipelines"]:
-        _validate_user_input(pipeline["name"])
-        if pipeline.get("type", None):
-            _validate_user_input(pipeline.get("type"))
-        for node in pipeline["nodes"]:
-            _validate_user_input(node["name"])
-            for input in node["inputs"]:
-                _validate_user_input(input)
+def validate_config_strings(pipeline_config: Any):
+    """
+    Ensures that strings used in the pipelines configuration
+    contain only alphanumeric characters and basic punctuation.
+    """
+    if isinstance(pipeline_config, dict):
+        for key, value in pipeline_config.items():
+            validate_config_strings(key)
+            validate_config_strings(value)
+        
+    elif isinstance(pipeline_config, list):
+        for value in pipeline_config:
+            validate_config_strings(value)
+
+    else:
+        if not VALID_CODE_GEN_INPUT_REGEX.match(str(pipeline_config)):
+            raise PipelineConfigError(
+                f"'{pipeline_config}' is not a valid config variable name. "
+                "Use alphanumeric characters or dash, underscore and colon only."
+            )
 
 
 def build_component_dependency_graph(
@@ -120,11 +125,6 @@ def build_component_dependency_graph(
         for referenced_component in referenced_components:
             graph.add_edge(referenced_component, component_name)
     return graph
-
-
-def _validate_user_input(input: str):
-    if isinstance(input, str) and not VALID_CODE_GEN_INPUT_REGEX.match(input):
-        raise ValueError(f"'{input}' is not a valid config variable name. Use word characters only.")
 
 
 def validate_yaml(path: Path):
