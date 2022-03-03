@@ -74,7 +74,7 @@ def read_pipeline_config_from_yaml(path: Path):
         return yaml.safe_load(stream)
 
 
-def validate_config(pipeline_config: Dict[str, Any]):
+def validate_config_strings(pipeline_config: Dict[str, Any]):
     for component in pipeline_config["components"]:
         _validate_user_input(component["name"])
         _validate_user_input(component["type"])
@@ -149,6 +149,8 @@ def validate_config(pipeline_config: Dict) -> None:
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
+    validate_config_strings(pipeline_config)
+
     with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-unstable.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 

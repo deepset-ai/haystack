@@ -1,4 +1,4 @@
-version: 'test-version'
+version: 'unstable'
 
 components:
   - name: DPRRetriever

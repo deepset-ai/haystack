@@ -21,7 +21,7 @@ def shutdown_ray():
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
-def test_load_pipeline(test_json_schema):
+def test_load_pipeline():
     pipeline = RayPipeline.load_from_yaml(
         SAMPLES_PATH / "pipeline" / "test_ray_pipeline.yaml",
         pipeline_name="ray_query_pipeline",

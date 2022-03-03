@@ -24,14 +24,6 @@ from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocum
 from .conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
 
 
-#
-# FIXME Needs autouse=True because tests do not properly mock nodes yet.
-#
-@pytest.fixture(autouse=True)
-def mock_test_json_schema(test_json_schema):
-    pass
-
-
 class ParentComponent(BaseComponent):
     outgoing_edges = 1
 

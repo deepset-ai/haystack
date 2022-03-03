@@ -207,9 +207,6 @@ class MockReader(BaseReader):
         pass
 
 
-YAML_TEST_VERSION = "unstable"
-
-
 @pytest.fixture(scope="function", autouse=True)
 def gc_cleanup(request):
     """

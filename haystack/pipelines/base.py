@@ -30,6 +30,7 @@ from haystack.pipelines.config import (
     get_component_definitions,
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
+    validate_config_strings,
     validate_config,
 )
 from haystack.pipelines.utils import (
@@ -1025,7 +1026,6 @@ class Pipeline(BasePipeline):
                                              `_` sign must be used to specify nested hierarchical properties.
         """
         validate_config(pipeline_config)
-        
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
