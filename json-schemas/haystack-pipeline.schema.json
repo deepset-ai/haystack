@@ -93,7 +93,7 @@
             "version": {
               "oneOf": [
                 {
-                  "const": "1.2.1rc0
+                  "const": "1.2.1rc0"
                 }
               ]
             }
@@ -103,6 +103,6 @@
           "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/json-schemas/haystack-pipeline-1.2.1rc0.schema.json"
         }
       ]
-    },
+    }
   ]
 }
