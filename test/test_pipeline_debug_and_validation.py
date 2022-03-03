@@ -16,11 +16,9 @@ from .conftest import SAMPLES_PATH, MockRetriever as BaseMockRetriever, MockRead
 
 
 class MockRetriever(BaseMockRetriever):
-
     def retrieve(self, top_k: int):
         if not isinstance(top_k, int):
             raise ValueError("TEST ERROR!")
-
 
 
 @pytest.mark.elasticsearch

@@ -33,7 +33,6 @@ def mock_test_json_schema(test_json_schema):
     pass
 
 
-
 @pytest.mark.parametrize(
     "retriever,document_store",
     [
