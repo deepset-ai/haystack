@@ -16,6 +16,14 @@ from haystack.nodes.retriever.dense import EmbeddingRetriever
 from .conftest import ensure_ids_are_correct_uuids
 
 
+#
+# FIXME Needs autouse=True because tests do not properly mock nodes yet.
+#
+@pytest.fixture(autouse=True)
+def mock_test_json_schema(test_json_schema):
+    pass
+
+
 DOCUMENTS = [
     {
         "meta": {"name": "name_1", "year": "2020", "month": "01"},

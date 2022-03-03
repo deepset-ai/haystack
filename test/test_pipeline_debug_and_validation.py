@@ -12,7 +12,8 @@ from haystack.nodes import (
     ElasticsearchRetriever,
 )
 
-from .conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH, MockDocumentStore, MockRetriever, MockReader
+
 
 
 @pytest.mark.elasticsearch
@@ -140,18 +141,21 @@ def test_global_debug_attributes_override_node_ones(document_store_with_docs, tm
 
 
 def test_invalid_run_args():
-    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline")
+    pipeline = Pipeline()
+    pipeline.add_node(component=MockRetriever(), name="Retriever", inputs=["Query"])
+    pipeline.add_node(component=MockReader(), name="Reader", inputs=["Retriever"])
+
     with pytest.raises(Exception) as exc:
-        pipeline.run(params={"ESRetriever": {"top_k": 10}})
+        pipeline.run(params={"Retriever": {"top_k": 10}})
     assert "run() missing 1 required positional argument: 'query'" in str(exc.value)
 
     with pytest.raises(Exception) as exc:
-        pipeline.run(invalid_query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}})
+        pipeline.run(invalid_query="Who made the PDF specification?", params={"Retriever": {"top_k": 10}})
     assert "run() got an unexpected keyword argument 'invalid_query'" in str(exc.value)
 
     with pytest.raises(Exception) as exc:
-        pipeline.run(query="Who made the PDF specification?", params={"ESRetriever": {"invalid": 10}})
-    assert "Invalid parameter 'invalid' for the node 'ESRetriever'" in str(exc.value)
+        pipeline.run(query="Who made the PDF specification?", params={"Retriever": {"invalid": 10}})
+    assert "Invalid parameter 'invalid' for the node 'Retriever'" in str(exc.value)
 
 
 def test_debug_info_propagation():

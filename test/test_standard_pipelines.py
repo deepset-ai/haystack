@@ -25,6 +25,15 @@ from haystack.schema import Document
 from .conftest import SAMPLES_PATH
 
 
+#
+# FIXME Needs autouse=True because tests do not properly mock nodes yet.
+#
+@pytest.fixture(autouse=True)
+def mock_test_json_schema(test_json_schema):
+    pass
+
+
+
 @pytest.mark.parametrize(
     "retriever,document_store",
     [
