@@ -81,7 +81,8 @@ def validate_config_strings(pipeline_config: Dict[str, Any]):
             _validate_user_input(v)
     for pipeline in pipeline_config["pipelines"]:
         _validate_user_input(pipeline["name"])
-        _validate_user_input(pipeline.get("type", ""))
+        if pipeline.get("type", None):
+            _validate_user_input(pipeline.get("type"))
         for node in pipeline["nodes"]:
             _validate_user_input(node["name"])
             for input in node["inputs"]:
