@@ -102,7 +102,7 @@ except ImportError:
 
 from haystack.modeling.evaluation import eval
 from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogger
-from haystack.nodes.other import JoinDocuments, Docs2Answers
+from haystack.nodes.other import JoinDocuments, Docs2Answers, JoinAnswers, RouteDocuments
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.file_classifier import FileTypeClassifier
 from haystack.utils import preprocessing

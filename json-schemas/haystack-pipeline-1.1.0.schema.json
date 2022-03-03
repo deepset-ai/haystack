@@ -9,7 +9,11 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "const": "1.1.0"
+      "oneOf": [
+        {
+          "const": "1.1.0"
+        }
+      ]
     },
     "components": {
       "title": "Components",
