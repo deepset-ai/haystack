@@ -116,16 +116,8 @@ def pytest_collection_modifyitems(config, items):
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
-        document_store_types_to_run = document_store_types_to_run.split(",")
+        document_store_types_to_run = document_store_types_to_run.split(", ")
         keywords = []
-
-        if "milvus1" in document_store_types_to_run and not os.getenv("MILVUS1_ENABLED"):
-            document_store_types_to_run.remove("milvus1")
-            document_store_types_to_run.append("milvus")
-            if not milvus1:
-                raise Exception(
-                    "Milvus1 is enabled, but your pymilvus version only supports Milvus 2. Please select the correct pymilvus version."
-                )
 
         for i in item.keywords:
             if "-" in i:
@@ -138,6 +130,13 @@ def pytest_collection_modifyitems(config, items):
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
                 )
                 item.add_marker(skip_docstore)
+
+        if "milvus1" in keywords and not milvus1:
+            skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
+            item.add_marker(skip_milvus1)
+        elif "milvus" in keywords and milvus1:
+            skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
+            item.add_marker(skip_milvus)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -562,6 +561,10 @@ def document_store(request, tmp_path):
     )
     yield document_store
     document_store.delete_documents()
+
+    # Make sure to drop Milvus2 collection, required for tests using different embedding dimensions
+    if isinstance(document_store, MilvusDocumentStore) and not milvus1:
+        document_store.collection.drop()
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
