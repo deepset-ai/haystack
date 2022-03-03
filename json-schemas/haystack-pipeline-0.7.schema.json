@@ -160,6 +160,11 @@
                   "description": "The name of this particular node in the pipeline. This should be one of the names from the components defined in the same file.",
                   "type": "string"
                 },
+                "type": {
+                  "title": "Type",
+                  "description": "The type of pipeline (Pipeline, RayPipeline). Unused, dropped in version >= 1.1.0. Please remove this parameter from your definition.",
+                  "type": "string"
+                },
                 "inputs": {
                   "title": "Inputs",
                   "description": "Input parameters for this node.",
