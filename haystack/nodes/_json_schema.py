@@ -1,13 +1,18 @@
-from typing import Any, Callable, Dict, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
+import os
+import re
 import json
 import inspect
 from pathlib import Path
+from copy import deepcopy
 import logging
 
-from haystack.pipelines.base import JSON_SCHEMAS_PATH
-
 logging.basicConfig(level=logging.INFO)
+
+#from haystack.pipelines.base import JSON_SCHEMAS_PATH
+JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
+SCHEMA_URL = "https://haystack.deepset.ai/json-schemas/"
 
 import pydantic.schema
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
@@ -100,7 +105,7 @@ class Config(BaseConfig):
     extra = "forbid"  # type: ignore
 
 
-def get_json_schema(filename: str):
+def get_json_schema(filename: str, compatible_versions: List[str]):
     """
     Generate JSON schema for Haystack pipelines.
     """
@@ -123,15 +128,15 @@ def get_json_schema(filename: str):
             param_fields_kwargs: Dict[str, Any] = {}
 
             for param in param_fields:
-                logging.info(f"--- processing param: {param.name}")
+                #logging.info(f"--- processing param: {param.name}")
                 annotation = Any
                 if param.annotation != param.empty:
                     annotation = param.annotation
-                    logging.info(f"       annotation: {annotation}")
+                    #logging.info(f"       annotation: {annotation}")
                 default = Required
                 if param.default != param.empty:
                     default = param.default
-                    logging.info(f"       default: {default}")
+                    #logging.info(f"       default: {default}")
                 param_fields_kwargs[param.name] = (annotation, default)
 
             model = create_model(
@@ -172,9 +177,11 @@ def get_json_schema(filename: str):
 
     all_definitions = {**schema_definitions, **additional_definitions}
     component_refs = [{"$ref": f"#/definitions/{name}"} for name in schema_definitions]
+    compatible_version_strings = [{"const": version} for version in compatible_versions]
+
     pipeline_schema = {
         "$schema": "http://json-schema.org/draft-07/schema",
-        "$id": f"https://haystack.deepset.ai/json-schemas/{filename}",
+        "$id": f"{SCHEMA_URL}{filename}",
         "title": "Haystack Pipeline",
         "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
         "type": "object",
@@ -183,7 +190,7 @@ def get_json_schema(filename: str):
                 "title": "Version",
                 "description": "Version of the Haystack Pipeline file.",
                 "type": "string",
-                "const": haystack_version,
+                "oneOf": compatible_version_strings
             },
             "components": {
                 "title": "Components",
@@ -246,33 +253,53 @@ def get_json_schema(filename: str):
     return pipeline_schema
 
 
-def list_indexed_versions(index):
-    """
-    Given the schema index as a parsed JSON,
-    return a list of all the versions it contains.
-    """
-    indexed_versions = []
-    for version_entry in index["oneOf"]:
-        for property_entry in version_entry["allOf"]:
-            if "properties" in property_entry.keys():
-                indexed_versions.append(property_entry["properties"]["version"]["const"])
-    return indexed_versions
+# def list_indexed_versions(index):
+#     """
+#     Given the schema index as a parsed JSON,
+#     return a list of all the versions it contains.
+#     """
+#     indexed_versions = []
+#     for version_entry in index["oneOf"]:
+#         for property_entry in version_entry["allOf"]:
+#             if "properties" in property_entry.keys():
+#                 indexed_versions.append(property_entry["properties"]["version"]["const"])
+#     return indexed_versions
 
 
-def cleanup_rc_versions(index):
-    """
-    Given the schema index as a parsed JSON,
-    removes any existing (unstable) rc version from it.
-    """
-    new_versions_list = []
-    for version_entry in index["oneOf"]:
-        for property_entry in version_entry["allOf"]:
-            if "properties" in property_entry.keys():
-                if "rc" not in property_entry["properties"]["version"]["const"]:
-                    new_versions_list.append(version_entry)
-                    break
-    index["oneOf"] = new_versions_list
-    return index
+# def cleanup_rc_versions(index):
+#     """
+#     Given the schema index as a parsed JSON,
+#     removes any existing (unstable) rc version from it.
+#     """
+#     new_versions_list = []
+#     for version_entry in index["oneOf"]:
+#         for property_entry in version_entry["allOf"]:
+#             if "properties" in property_entry.keys():
+#                 if "rc" not in property_entry["properties"]["version"]["const"]:
+#                     new_versions_list.append(version_entry)
+#                     break
+#     index["oneOf"] = new_versions_list
+#     return index
+
+
+
+def natural_sort(list_to_sort: List[str]) -> List[str]:
+    """ Sorts a list keeping numbers in the correct numerical order """
+    convert = lambda text: int(text) if text.isdigit() else text.lower() 
+    alphanumeric_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)] 
+    return sorted(list_to_sort, key=alphanumeric_key)
+
+
+def load(path: Path) -> Dict[str, Any]:
+    """ Shorthand for loading a JSON """
+    with open(path, "r") as json_file:
+        return json.load(json_file)
+
+
+def dump(data: Dict[str, Any], path: Path) -> None:
+    """ Shorthand for dumping to JSON """
+    with open(path, "w") as json_file:
+        json.dump(data, json_file, indent=2)
 
 
 def new_version_entry(version):
@@ -281,7 +308,7 @@ def new_version_entry(version):
     """
     return {
         "allOf": [
-            {"properties": {"version": {"const": version}}},
+            {"properties": {"version": {"oneOf": [{"const": version}]}}},
             {
                 "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/json-schemas/"
                 f"haystack-pipeline-{version}.schema.json"
@@ -292,28 +319,87 @@ def new_version_entry(version):
 
 def generate_json_schema(
     update_index: bool, 
-    filename: str = f"haystack-pipeline-{haystack_version}.schema.json",
     destination_path: Path = JSON_SCHEMAS_PATH,
     index_path: Path = JSON_SCHEMAS_PATH / "haystack-pipeline.schema.json"
 ):
-    # Create new schema file
-    pipeline_schema = get_json_schema(filename)
-    destination_path.mkdir(parents=True, exist_ok=True)
-    (destination_path / filename).write_text(json.dumps(pipeline_schema, indent=2))
+    # Locate the latest schema's path
+    latest_schema_path = destination_path / Path(natural_sort(os.listdir(destination_path))[-2])
+    logging.info(f"Latest schema: {latest_schema_path}")
+    latest_schema = load(latest_schema_path)
 
-    # Update schema index
-    if update_index:
-        index = {}
-        with open(index_path, "r") as index_file:
-            index = json.load(index_file)
-        if index:
-            index = cleanup_rc_versions(index)
-            indexed_versions = list_indexed_versions(index)
-            if not any(version == haystack_version for version in indexed_versions):
+    # List the versions supported by the last schema
+    supported_versions_block = deepcopy(latest_schema["properties"]["version"]["oneOf"])
+    supported_versions = [entry["const"].replace('"', '') for entry in supported_versions_block]
+    logging.info(f"Versions supported by this schema: {supported_versions}")
+
+    # Create new schema with the same filename and versions embedded, to be identical to the latest one.
+    new_schema = get_json_schema(latest_schema_path.name, supported_versions)
+
+    # FIXME for testing, remove!!
+    dump(new_schema, Path("test_file_1.json"))
+
+    # If the two schemas are identical, no need to write a new one:
+    # Just add the new version to the list of versions supported by
+    # the latest schema if it's not there yet
+    if json.dumps(new_schema) == json.dumps(latest_schema):
+        logging.info("No difference in the schema, won't create a new file.")
+
+        if haystack_version in supported_versions:
+            logging.info(f"Version {haystack_version} was already supported "
+                         f"(supported versions: {supported_versions})")
+        else:
+            logging.info(f"This version ({haystack_version}) was not listed "
+                         f"(supported versions: {supported_versions}): "
+                          "updating the supported versions list.")
+
+            # Updating the latest schema's list of supported versions
+            supported_versions_block.append({"const": haystack_version})
+            latest_schema["properties"]["version"]["oneOf"] = supported_versions_block
+            dump(latest_schema, latest_schema_path)
+
+            # Update the JSON schema index too
+            if update_index:
+                index = load(index_path)
+                index["oneOf"][-1]["allOf"][0]["properties"]["version"]["oneOf"] = supported_versions_block
+                dump(index, index_path)            
+
+    # If the two schemas are different, then there has been some
+    # changes into the schema, so we need a new file. Update the schema's
+    # filename and supported versions, then save it.
+    else:
+        filename = f"haystack-pipeline-{haystack_version}.schema.json"
+        logging.info(f"The schemas are different: adding {filename} to the schema folder.")
+
+        # Let's check if the schema changed without a version change
+        if haystack_version in supported_versions:
+            logging.info(f"Version {haystack_version} was supported by the latest schema"
+                         f"(supported versions: {supported_versions}). "
+                         f"Removing support for version {haystack_version} from it.")
+            
+            supported_versions_block = [entry for entry in supported_versions_block if entry["const"].replace('"', '') != haystack_version]
+            latest_schema["properties"]["version"]["oneOf"] = supported_versions_block
+            dump(latest_schema, latest_schema_path)
+
+            # Update the JSON schema index too
+            if update_index:
+                index = load(index_path)
+                index["oneOf"][-1]["allOf"][0]["properties"]["version"]["oneOf"] = supported_versions_block
+                dump(index, index_path)    
+
+        # Dump the new schema file
+        new_schema["$id"] = f"{SCHEMA_URL}{filename}"
+        new_schema["properties"]["version"]["oneOf"] = [{"const": haystack_version}]
+        dump(new_schema, destination_path / filename)
+    
+        # Update schema index with a whole new entry
+        if update_index:
+            index = load(index_path)
+            new_entry = new_version_entry(haystack_version)
+            if all(new_entry != entry for entry in index["oneOf"]):
                 index["oneOf"].append(new_version_entry(haystack_version))
-                with open(index_path, "w") as index_file:
-                    json.dump(index, index_file, indent=4)
+            dump(index, index_path)
 
 
-if __name__ == "__main__":
+
+if __name__ == "__main__":    
     generate_json_schema(update_index=True)
