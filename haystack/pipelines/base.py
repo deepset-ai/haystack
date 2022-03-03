@@ -25,8 +25,8 @@ from haystack.pipelines.config import (
     read_pipeline_config_from_yaml,
 )
 from haystack.pipelines.utils import (
-    _PipelineCodeGen,
-    _PipelineEvalReportGen,
+    generate_code,
+    print_eval_report,
 )
 from haystack.utils import DeepsetCloud
 
@@ -96,7 +96,7 @@ class BasePipeline:
                             Default value is False.
         """
         pipeline_config = self.get_config()
-        code = _PipelineCodeGen.generate_code(
+        code = generate_code(
             pipeline_config=pipeline_config,
             pipeline_variable_name=pipeline_variable_name,
             generate_imports=generate_imports,
@@ -121,7 +121,7 @@ class BasePipeline:
                             Default value is True.
         """
         pipeline_config = self.get_config()
-        code = _PipelineCodeGen.generate_code(
+        code = generate_code(
             pipeline_config=pipeline_config,
             pipeline_variable_name=pipeline_variable_name,
             generate_imports=generate_imports,
@@ -1118,7 +1118,7 @@ class Pipeline(BasePipeline):
         :param metrics_filter: The metrics to show per node. If None all metrics will be shown.
         """
         graph = DiGraph(self.graph.edges)
-        _PipelineEvalReportGen.print_eval_report(
+        print_eval_report(
             eval_result=eval_result, graph=graph, n_wrong_examples=n_wrong_examples, metrics_filter=metrics_filter
         )
 

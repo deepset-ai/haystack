@@ -102,6 +102,8 @@ def build_component_dependency_graph(
         params = component_definition.get("params", {})
         referenced_components: List[str] = list()
         for param_value in params.values():
+            # Currently we don't do any additional type validation here.
+            # See https://github.com/deepset-ai/haystack/pull/2253#discussion_r815951591.
             if param_value in component_definitions:
                 referenced_components.append(param_value)
         for referenced_component in referenced_components:

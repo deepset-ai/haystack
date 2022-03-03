@@ -18,7 +18,7 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode, ExtractiveQAPipeline
 from haystack.pipelines.config import _validate_user_input, validate_config
-from haystack.pipelines.utils import _PipelineCodeGen
+from haystack.pipelines.utils import generate_code
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments
 
 from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
@@ -298,7 +298,7 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
         assert expected_component in config["components"]
 
 
-def test_PipelineCodeGen_simple_pipeline():
+def test_generate_code_simple_pipeline():
     config = {
         "components": [
             {
@@ -315,7 +315,7 @@ def test_PipelineCodeGen_simple_pipeline():
         "pipelines": [{"name": "query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
 
-    code = _PipelineCodeGen.generate_code(pipeline_config=config, pipeline_variable_name="p", generate_imports=False)
+    code = generate_code(pipeline_config=config, pipeline_variable_name="p", generate_imports=False)
     assert code == (
         'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
         "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
@@ -325,7 +325,7 @@ def test_PipelineCodeGen_simple_pipeline():
     )
 
 
-def test_PipelineCodeGen_imports():
+def test_generate_code_imports():
     pipeline_config = {
         "components": [
             {
@@ -344,9 +344,7 @@ def test_PipelineCodeGen_imports():
         ],
     }
 
-    code = _PipelineCodeGen.generate_code(
-        pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=True
-    )
+    code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=True)
     assert code == (
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
         "from haystack.nodes import ElasticsearchRetriever, EmbeddingRetriever\n"
@@ -362,7 +360,7 @@ def test_PipelineCodeGen_imports():
     )
 
 
-def test_PipelineCodeGen_imports_no_pipeline_cls():
+def test_generate_code_imports_no_pipeline_cls():
     pipeline_config = {
         "components": [
             {
@@ -374,7 +372,7 @@ def test_PipelineCodeGen_imports_no_pipeline_cls():
         "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
 
-    code = _PipelineCodeGen.generate_code(
+    code = generate_code(
         pipeline_config=pipeline_config,
         pipeline_variable_name="p",
         generate_imports=True,
@@ -392,7 +390,7 @@ def test_PipelineCodeGen_imports_no_pipeline_cls():
     )
 
 
-def test_PipelineCodeGen_comment():
+def test_generate_code_comment():
     pipeline_config = {
         "components": [
             {
@@ -405,7 +403,7 @@ def test_PipelineCodeGen_comment():
     }
 
     comment = "This is my comment\n...and here is a new line"
-    code = _PipelineCodeGen.generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", comment=comment)
+    code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", comment=comment)
     assert code == (
         "# This is my comment\n"
         "# ...and here is a new line\n"
@@ -421,7 +419,7 @@ def test_PipelineCodeGen_comment():
     )
 
 
-def test_PipelineCodeGen_is_component_order_invariant():
+def test_generate_code_is_component_order_invariant():
     pipeline_config = {
         "pipelines": [
             {
@@ -478,9 +476,7 @@ def test_PipelineCodeGen_is_component_order_invariant():
 
     for components in component_orders:
         pipeline_config["components"] = components
-        code = _PipelineCodeGen.generate_code(
-            pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=False
-        )
+        code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=False)
         assert code == expected_code
 
 
