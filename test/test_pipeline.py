@@ -6,7 +6,6 @@ from unittest.mock import Mock
 import pytest
 import responses
 
-from haystack import __version__
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -21,147 +20,13 @@ from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 
 from .conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
 
+#
+# FIXME Needs autouse=True because tests do not properly mock nodes yet.
+#
+@pytest.fixture(autouse=True)
+def mock_test_json_schema(test_json_schema):
+    pass
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_load_and_save_yaml(document_store, tmp_path):
-    # test correct load of indexing pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline")
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
-    )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0].answer == "Adobe Systems"
-    assert "_debug" not in prediction.keys()
-
-    # test invalid pipeline name
-    with pytest.raises(Exception):
-        Pipeline.load_from_yaml(path=SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="invalid")
-    # test config export
-    pipeline.save_to_yaml(tmp_path / "test.yaml")
-    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
-        saved_yaml = stream.read()
-    expected_yaml = f"""
-        components:
-        - name: ESRetriever
-          params:
-            document_store: ElasticsearchDocumentStore
-          type: ElasticsearchRetriever
-        - name: ElasticsearchDocumentStore
-          params:
-            index: haystack_test
-            label_index: haystack_test_label
-          type: ElasticsearchDocumentStore
-        - name: Reader
-          params:
-            model_name_or_path: deepset/roberta-base-squad2
-            no_ans_boost: -10
-            num_processes: 0
-          type: FARMReader
-        pipelines:
-        - name: query
-          nodes:
-          - inputs:
-            - Query
-            name: ESRetriever
-          - inputs:
-            - ESRetriever
-            name: Reader
-          type: Pipeline
-        version: {__version__}
-    """
-    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
-
-
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
-    # populating index
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    # test correct load of query pipeline from yaml
-    pipeline = ExtractiveQAPipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline"
-    )
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
-    )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0].answer == "Adobe Systems"
-    assert "_debug" not in prediction.keys()
-
-    # test invalid pipeline name
-    with pytest.raises(Exception):
-        ExtractiveQAPipeline.load_from_yaml(
-            path=SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="invalid"
-        )
-    # test config export
-    pipeline.save_to_yaml(tmp_path / "test.yaml")
-    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
-        saved_yaml = stream.read()
-    expected_yaml = f"""
-        components:
-        - name: ESRetriever
-          params:
-            document_store: ElasticsearchDocumentStore
-          type: ElasticsearchRetriever
-        - name: ElasticsearchDocumentStore
-          params:
-            index: haystack_test
-            label_index: haystack_test_label
-          type: ElasticsearchDocumentStore
-        - name: Reader
-          params:
-            model_name_or_path: deepset/roberta-base-squad2
-            no_ans_boost: -10
-            num_processes: 0
-          type: FARMReader
-        pipelines:
-        - name: query
-          nodes:
-          - inputs:
-            - Query
-            name: ESRetriever
-          - inputs:
-            - ESRetriever
-            name: Reader
-          type: Pipeline
-        version: {__version__}
-    """
-    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
-
-
-def test_load_tfidfretriever_yaml(tmp_path):
-    documents = [
-        {
-            "content": "A Doc specifically talking about haystack. Haystack can be used to scale QA models to large document collections."
-        }
-    ]
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
-    )
-    with pytest.raises(Exception) as exc_info:
-        pipeline.run(
-            query="What can be used to scale QA models to large document collections?",
-            params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-        )
-    exception_raised = str(exc_info.value)
-    assert "Retrieval requires dataframe df and tf-idf matrix" in exception_raised
-
-    pipeline.get_node(name="Retriever").document_store.write_documents(documents=documents)
-    prediction = pipeline.run(
-        query="What can be used to scale QA models to large document collections?",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-    )
-    assert prediction["query"] == "What can be used to scale QA models to large document collections?"
-    assert prediction["answers"][0].answer == "haystack"
 
 
 @pytest.mark.elasticsearch
@@ -174,6 +39,11 @@ def test_to_code():
     )
     query_pipeline_code = query_pipeline.to_code(pipeline_variable_name="query_pipeline_from_code")
     index_pipeline_code = index_pipeline.to_code(pipeline_variable_name="index_pipeline_from_code")
+
+    print(query_pipeline_code)
+    print("-----------------------")
+    print(index_pipeline_code)
+
     exec(query_pipeline_code)
     exec(index_pipeline_code)
     assert locals()["query_pipeline_from_code"] is not None
