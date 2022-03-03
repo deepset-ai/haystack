@@ -81,6 +81,16 @@ def validate_config(pipeline_config: Dict[str, Any]):
 def build_component_dependency_graph(
     pipeline_definition: Dict[str, Any], component_definitions: Dict[str, Any]
 ) -> DiGraph:
+    """
+    Builds a dependency graph between components. Dependencies are:
+    - referenced components during component build time (e.g. init params)
+    - predecessor components in the pipeline that produce the needed input
+
+    This enables sorting the components in a working and meaningful order for instantiation using topological sorting.
+
+    :param pipeline_definition: the definition of the pipeline (e.g. use get_pipeline_definition() to obtain it)
+    :param component_definitions: the definition of the pipeline components (e.g. use get_component_definitions() to obtain it)
+    """
     graph = DiGraph()
     for node in pipeline_definition["nodes"]:
         node_name = node["name"]
@@ -101,10 +111,10 @@ def build_component_dependency_graph(
 
 def _validate_user_input(input: str):
     if isinstance(input, str) and not VALID_CODE_GEN_INPUT_REGEX.match(input):
-        raise ValueError(f"'{input}' is not a valid code gen variable name. Use word characters only.")
+        raise ValueError(f"'{input}' is not a valid config variable name. Use word characters only.")
 
 
-def _overwrite_with_env_variables(definition: Dict[str, Any]):
+def _overwrite_with_env_variables(component_definition: Dict[str, Any]):
     """
     Overwrite the pipeline config with environment variables. For example, to change index name param for an
     ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
@@ -112,8 +122,11 @@ def _overwrite_with_env_variables(definition: Dict[str, Any]):
 
     :param definition: a dictionary containing the YAML definition of a component.
     """
-    env_prefix = f"{definition['name']}_params_".upper()
+    env_prefix = f"{component_definition['name']}_params_".upper()
     for key, value in os.environ.items():
         if key.startswith(env_prefix):
             param_name = key.replace(env_prefix, "").lower()
-            definition["params"][param_name] = value
+            component_definition["params"][param_name] = value
+            logger.info(
+                f"Param '{param_name}' of component '{component_definition['name']}' overwritten with environment variable '{key}' value '{value}'."
+            )
