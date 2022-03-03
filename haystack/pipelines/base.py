@@ -1,4 +1,5 @@
 from __future__ import annotations
+from os import pipe
 from typing import Dict, List, Optional, Any
 
 import copy
@@ -15,6 +16,7 @@ from jsonschema import Draft7Validator
 from jsonschema.exceptions import ValidationError
 from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
+from transformers import pipelines
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
@@ -24,9 +26,11 @@ from haystack.nodes.evaluator.evaluator import (
     semantic_answer_similarity,
 )
 from haystack.pipelines.config import (
+    JSON_SCHEMAS_PATH,
     get_component_definitions,
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
+    validate_config,
 )
 from haystack.pipelines.utils import (
     generate_code,
@@ -917,7 +921,6 @@ class Pipeline(BasePipeline):
         path: Path,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
-        version: Optional[str] = None,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -965,7 +968,7 @@ class Pipeline(BasePipeline):
                                              `_` sign must be used to specify nested hierarchical properties.
         """
 
-        pipeline_config = cls._read_pipeline_config_from_yaml(path, version=version or VERSION)
+        pipeline_config = read_pipeline_config_from_yaml(path)
         return cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
@@ -1021,6 +1024,8 @@ class Pipeline(BasePipeline):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
+        validate_config(pipeline_config)
+        
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
