@@ -58,6 +58,7 @@ def mock_json_schema(request, monkeypatch, mock_importable_nodes_list, tmp_path)
 # Integration
 #
 
+
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_load_and_save_from_yaml(tmp_path):

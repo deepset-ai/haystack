@@ -34,9 +34,7 @@ def get_pipeline_definition(pipeline_config: Dict[str, Any], pipeline_name: Opti
         if len(pipeline_config["pipelines"]) == 1:
             pipeline_definition = pipeline_config["pipelines"][0]
         else:
-            raise PipelineConfigError(
-                "The YAML contains multiple pipelines. Please specify the pipeline name to load."
-            )
+            raise PipelineConfigError("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
     else:
         pipelines_in_definitions = list(filter(lambda p: p["name"] == pipeline_name, pipeline_config["pipelines"]))
         if not pipelines_in_definitions:
@@ -154,34 +152,33 @@ def validate_config(pipeline_config: Dict) -> None:
     with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-unstable.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 
-    compatible_versions = [version["const"].replace('"', '') for version in schema['properties']['version']['oneOf']]
+    compatible_versions = [version["const"].replace('"', "") for version in schema["properties"]["version"]["oneOf"]]
     try:
         Draft7Validator(schema).validate(instance=pipeline_config)
-        
+
         if pipeline_config["version"] == "unstable":
             logging.warning(
                 "You seem to be using the 'unstable' version of the schema to validate "
                 "your pipeline configuration.\n"
                 "This is NOT RECOMMENDED in production environments, as pipelines "
                 "might manage to load and then misbehave without warnings.\n"
-                f"Please pin your configurations to '{__version__}' to ensure stability.")
+                f"Please pin your configurations to '{__version__}' to ensure stability."
+            )
 
         elif pipeline_config["version"] not in compatible_versions:
             raise PipelineConfigError(
                 f"Cannot load pipeline configuration of version {pipeline_config['version']} "
                 f"in Haystack version {__version__} (compatible versions are {compatible_versions}).\n"
-                 "Please check out the documentation "
-                 "(https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
-                 "and fix your configuration accordingly."
+                "Please check out the documentation "
+                "(https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
+                "and fix your configuration accordingly."
             )
 
     except ValidationError as validation:
 
         # Format the error to make it as clear as possible
         error_path = [
-            i
-            for i in list(validation.relative_schema_path)[:-1]
-            if repr(i) != "'items'" and repr(i) != "'properties'"
+            i for i in list(validation.relative_schema_path)[:-1] if repr(i) != "'items'" and repr(i) != "'properties'"
         ]
         error_location = "->".join(repr(index) for index in error_path)
         if error_location:

@@ -290,7 +290,9 @@ def update_json_schema(
     index_path: Path = JSON_SCHEMAS_PATH / "haystack-pipeline.schema.json",
 ):
     # Locate the latest schema's path
-    latest_schema_path = destination_path / Path(natural_sort(os.listdir(destination_path))[-3])  # -1 is index, -2 is unstable
+    latest_schema_path = destination_path / Path(
+        natural_sort(os.listdir(destination_path))[-3]
+    )  # -1 is index, -2 is unstable
     logging.info(f"Latest schema: {latest_schema_path}")
     latest_schema = load(latest_schema_path)
 
@@ -372,7 +374,6 @@ def update_json_schema(
             if all(new_entry != entry for entry in index["oneOf"]):
                 index["oneOf"].append(new_version_entry(haystack_version))
             dump(index, index_path)
-
 
     # Update the unstable schema (for tests and internal use).
     unstable_filename = "haystack-pipeline-unstable.schema.json"

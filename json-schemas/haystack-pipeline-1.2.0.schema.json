@@ -37,6 +37,9 @@
             "$ref": "#/definitions/InMemoryDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/Milvus2DocumentStoreComponent"
+          },
+          {
             "$ref": "#/definitions/OpenDistroElasticsearchDocumentStoreComponent"
           },
           {
@@ -739,6 +742,131 @@
             "scoring_batch_size": {
               "title": "Scoring Batch Size",
               "default": 500000,
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Milvus2DocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Milvus2DocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "sql_url": {
+              "title": "Sql Url",
+              "default": "sqlite:///",
+              "type": "string"
+            },
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "type": "string"
+            },
+            "port": {
+              "title": "Port",
+              "default": "19530",
+              "type": "string"
+            },
+            "connection_pool": {
+              "title": "Connection Pool",
+              "default": "SingletonThread",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "vector_dim": {
+              "title": "Vector Dim",
+              "type": "integer"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "index_file_size": {
+              "title": "Index File Size",
+              "default": 1024,
+              "type": "integer"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "IVF_FLAT",
+              "type": "string"
+            },
+            "index_param": {
+              "title": "Index Param",
+              "type": "object"
+            },
+            "search_param": {
+              "title": "Search Param",
+              "type": "object"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "id_field": {
+              "title": "Id Field",
+              "default": "id",
+              "type": "string"
+            },
+            "custom_fields": {
+              "title": "Custom Fields",
+              "type": "array",
+              "items": {}
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "isolation_level": {
+              "title": "Isolation Level",
+              "type": "string"
+            },
+            "consistency_level": {
+              "title": "Consistency Level",
+              "default": 0,
               "type": "integer"
             }
           },
