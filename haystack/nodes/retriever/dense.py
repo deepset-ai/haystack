@@ -360,6 +360,7 @@ class DensePassageRetriever(BaseRetriever):
         max_processes: int = 128,
         multiprocessing_strategy: Optional[str] = None,
         early_stopping: Optional[EarlyStopping] = None,
+        logging_wandb: bool=False,
         dev_split: float = 0,
         batch_size: int = 2,
         embed_title: bool = True,
@@ -470,6 +471,7 @@ class DensePassageRetriever(BaseRetriever):
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp,
             early_stopping=early_stopping,
+            logging_wandb=logging_wandb,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on the public mlflow server: https://public-mlflow.deepset.ai

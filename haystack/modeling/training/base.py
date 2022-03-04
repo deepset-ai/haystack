@@ -34,6 +34,12 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+try:
+    import wandb
+
+except:
+    logger.error("Wandb not installed")
+
 
 class EarlyStopping:
     """
@@ -136,6 +142,7 @@ class Trainer:
         grad_acc_steps: int = 1,
         local_rank: int = -1,
         early_stopping: Optional[EarlyStopping] = None,
+        logging_wandb: bool = False,
         log_learning_rate: bool = False,
         log_loss_every: int = 10,
         checkpoint_on_sigterm: bool = False,
@@ -202,6 +209,17 @@ class Trainer:
         self.disable_tqdm = disable_tqdm
         self.max_grad_norm = max_grad_norm
         self.test_result = None
+        self.logging_wandb = logging_wandb
+
+        if self.logging_wandb:
+            try:
+                wandb.init(project="DPR training",
+                           config={
+                               "epochs": self.epochs,
+                               "evaluate_every": self.evaluate_every
+                           })
+            except:
+                logger.error("Failed to start wandb")
 
         if use_amp and not AMP_AVAILABLE:
             raise ImportError(
@@ -290,6 +308,9 @@ class Trainer:
                 batch = {key: batch[key].to(self.device) for key in batch}
                 loss = self.compute_loss(batch, step)
 
+                if self.logging_wandb:
+                    wandb.log({"Training loss": loss})
+
                 # Perform  evaluation
                 if (
                     self.evaluate_every != 0
@@ -307,6 +328,13 @@ class Trainer:
                         )
                         evalnr += 1
                         result = evaluator_dev.eval(self.model)
+
+                        if self.logging_wandb:
+                            wandb.log({"Eval loss": result[0]['loss']})
+                            wandb.log({"Eval f1": result[0]['f1']})
+                            wandb.log({"Eval acc": result[0]['acc']})
+                            wandb.log({"Eval avg_rank": result[0]['average_rank']})
+
                         evaluator_dev.log_results(result, "Dev", self.global_step)
                         if self.early_stopping:
                             do_stopping, save_model, eval_value = self.early_stopping.check_stopping(result)
