@@ -129,7 +129,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         self.progress_bar = progress_bar
 
         super().__init__(
-            url=sql_url, index=index, duplicate_documents=duplicate_documents  # no sanitation for SQL index name
+            url=sql_url, index=clean_index, duplicate_documents=duplicate_documents
         )
 
         self._validate_index_sync()
@@ -281,10 +281,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                         # Metadata fields and embeddings are stored in Pinecone
                         self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone)
 
-                    docs_to_write_to_sql = []
-                    for doc in document_objects[i : i + batch_size]:
-                        doc.meta["vector_id"] = doc.id
-                        docs_to_write_to_sql.append(doc)
+                    docs_to_write_to_sql = document_objects[i : i + batch_size]
                     super(PineconeDocumentStore, self).write_documents(
                         docs_to_write_to_sql, index=index, duplicate_documents=duplicate_documents
                     )
@@ -372,12 +369,12 @@ class PineconeDocumentStore(SQLDocumentStore):
                 embeddings_to_index = np.array(embeddings, dtype="float32")
                 if self.similarity == "cosine":
                     self.normalize_embedding(embeddings_to_index)
-                embeddings = embeddings.tolist()
+                embeddings = embeddings_to_index.tolist()
 
                 metadata = []
                 ids = []
                 for doc in document_batch:
-                    metadata.append({key: value for key, value in doc.meta.items() if key != "vector_id"})
+                    metadata.append(doc.meta)
                     ids.append(doc.id)
                 # update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(vectors=zip(ids, embeddings, metadata))
@@ -464,6 +461,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         self,
         ids: List[str],
         index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
@@ -471,11 +469,14 @@ class PineconeDocumentStore(SQLDocumentStore):
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
         index = index or self.index
         index = self._sanitize_index_name(index)
 
         documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
-        if self.return_embedding:
+        if return_embedding:
             for doc in documents:
                 self._attach_embedding_to_document(document=doc, index=index)
 
@@ -501,6 +502,19 @@ class PineconeDocumentStore(SQLDocumentStore):
         # if no namespace return zero
         count = stats["namespaces"][""]["vector_count"] if "" in stats["namespaces"] else 0
         return count
+
+    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
+        """
+        Update the metadata dictionary of a document by specifying its string id
+        """
+        index = index or self.index
+        index = self._sanitize_index_name(index)
+        if index in self.pinecone_indexes:
+            doc = self.get_documents_by_id(ids=[id], index=index, return_embedding=True)[0]
+            if doc.embedding is not None:
+                self.pinecone_indexes[index].upsert(vectors=([id], [doc.embedding.tolist()], [meta]))
+
+        super().update_document_meta(id=id, meta=meta, index=index)
 
     def delete_documents(
         self,
@@ -545,19 +559,16 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         index = index or self.index
         index = self._sanitize_index_name(index)
-        if index not in self.pinecone_indexes:
-            raise ValueError(f"No index named {index} found in Pinecone.")
+        if index in self.pinecone_indexes:
+            if ids is None and filters is None:
+                self.pinecone_indexes[index].delete(delete_all=True)
+            else:
+                affected_docs = self.get_all_documents(filters=filters, return_embedding=False)
+                if ids:
+                    affected_docs = [doc for doc in affected_docs if doc.id in ids]
 
-        if ids is None and filters is None:
-            self.pinecone_indexes[index].delete(delete_all=True)
-        else:
-            affected_docs = self.get_all_documents(filters=filters, return_embedding=False)
-            if ids:
-                affected_docs = [doc for doc in affected_docs if doc.id in ids]
-
-            doc_ids = [doc.meta.get("vector_id") for doc in affected_docs
-                       if doc.meta and doc.meta.get("vector_id") is not None]
-            self.pinecone_indexes[index].delete(ids=doc_ids)
+                doc_ids = [doc.id for doc in affected_docs]
+                self.pinecone_indexes[index].delete(ids=doc_ids)
 
         super().delete_documents(index=index, ids=ids, filters=filters)
 
@@ -651,7 +662,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = index or self.index
         index = self._sanitize_index_name(index)
 
-        if index not in self.pinecone_indexes.get:
+        if index not in self.pinecone_indexes:
             raise Exception(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
@@ -668,17 +679,13 @@ class PineconeDocumentStore(SQLDocumentStore):
         for match in res["results"][0]["matches"]:
             score_matrix.append(match["score"])
             vector_id_matrix.append(match["id"])
-        documents = self.get_documents_by_vector_ids(vector_id_matrix, index=index)
+        documents = self.get_documents_by_id(vector_id_matrix, index=index, return_embedding=return_embedding)
 
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
         for i, doc in enumerate(documents):
             raw_score = scores_for_vector_ids[doc.id]
             doc.score = self.finalize_raw_score(raw_score, self.similarity)
-
-            if return_embedding:
-                # Get embedding from Pinecone response
-                self._attach_embedding_to_document(document=doc, index=index)
 
         return documents
 
@@ -687,11 +694,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         Fetches the Document's embedding from the specified Pinecone index and attaches it to the Document's
         embedding field.
         """
-        if document.meta and document.meta.get("vector_id", None) is not None:
-            result = self.pinecone_indexes[index].fetch(ids=[document.id])
-            if result["vectors"].get(document.id, False):
-                embedding = result["vectors"][document.id].get("values", None)
-                document.embedding = np.asarray(embedding, dtype=np.float32)
+        result = self.pinecone_indexes[index].fetch(ids=[document.id])
+        if result["vectors"].get(document.id, False):
+            embedding = result["vectors"][document.id].get("values", None)
+            document.embedding = np.asarray(embedding, dtype=np.float32)
 
     def _limit_check(self, top_k: int, include_values: Optional[bool] = None):
         """
