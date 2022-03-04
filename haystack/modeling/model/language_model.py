@@ -162,13 +162,13 @@ class LanguageModel(nn.Module):
         """
         n_added_tokens = kwargs.pop("n_added_tokens", 0)
         language_model_class = kwargs.pop("language_model_class", None)
-        logger.info("The model name is: ", str(pretrained_model_name_or_path))
-        if 'roberta' in str(pretrained_model_name_or_path):
-            logger.info("XLM model being used, resizing vocab")
-            n_added_tokens = 5
-        elif 'MiniLM' in str(pretrained_model_name_or_path) and 'sentence' in str(pretrained_model_name_or_path):
-            logger.info("MiniLM model being used, resizing vocab")
-            n_added_tokens = -35
+        if not 'early_stopping' in str(pretrained_model_name_or_path):
+            if 'roberta' in str(pretrained_model_name_or_path):
+                logger.info("XLM model being used, resizing vocab")
+                n_added_tokens = 5
+            elif 'MiniLM' in str(pretrained_model_name_or_path) and 'sentence' in str(pretrained_model_name_or_path):
+                logger.info("MiniLM model being used, resizing vocab")
+                n_added_tokens = -35
         kwargs["revision"] = kwargs.get("revision", None)
         logger.info("LOADING MODEL")
         logger.info("=============")
