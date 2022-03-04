@@ -5,3 +5,14 @@ modeling training base.py -> modify early stopping with biadaptive model, earlys
 retriever dense dense.py -> add early stopping to trainer
 
 GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true python -m pip install -e ".[all]"
+
+
+test_modelling_dpr -> good to test retriever models
+
+for distilled:
+- remove token input ids in
+    - language_model.py
+
+- Files from huggingface library to modify -> transformers/models/dpr/modeling_dpr.py
+    - modeling_dpr.py - DPREncoder, DPRQUestionEncoder, DPRContextEncoder
+    - Can create class that expands from (nn.Module) and rewrites the formard method calling with the proper parameters
