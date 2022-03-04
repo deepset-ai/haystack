@@ -403,12 +403,12 @@ class SQLDocumentStore(BaseDocumentStore):
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
                 doc_mapping = {
-                    id: doc.id,
-                    content: doc.to_dict()["content"],
-                    content_type: doc.content_type,
-                    vector_id: vector_id,
-                    meta: meta_orms,
-                    index: index,
+                    "id": doc.id,
+                    "content": doc.to_dict()["content"],
+                    "content_type": doc.content_type,
+                    "vector_id": vector_id,
+                    "meta": meta_orms,
+                    "index": index,
                 }
                 if duplicate_documents == "overwrite":
                     doc_orm = DocumentORM(**doc_mapping)
