@@ -125,7 +125,9 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate", "pinecone"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate", "pinecone"], indirect=True
+)
 def test_write_with_duplicate_doc_ids_custom_index(document_store):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -218,7 +220,9 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory", "pinecone"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory", "pinecone"], indirect=True
+)
 def test_extended_filter(document_store_with_docs):
     # Test comparison operators individually
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})

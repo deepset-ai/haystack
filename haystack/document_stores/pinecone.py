@@ -79,10 +79,20 @@ class PineconeDocumentStore(SQLDocumentStore):
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
         """
         # Save init parameters to enable export of component config as YAML
-        self.set_config(api_key=api_key, environment=environment, sql_url=sql_url, embedding_dim=embedding_dim,
-                        return_embedding=return_embedding, index=index, similarity=similarity, replicas=replicas,
-                        shards=shards, embedding_field=embedding_field, progress_bar=progress_bar,
-                        duplicate_documents=duplicate_documents)
+        self.set_config(
+            api_key=api_key,
+            environment=environment,
+            sql_url=sql_url,
+            embedding_dim=embedding_dim,
+            return_embedding=return_embedding,
+            index=index,
+            similarity=similarity,
+            replicas=replicas,
+            shards=shards,
+            embedding_field=embedding_field,
+            progress_bar=progress_bar,
+            duplicate_documents=duplicate_documents,
+        )
 
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
@@ -128,9 +138,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         self.progress_bar = progress_bar
 
-        super().__init__(
-            url=sql_url, index=clean_index, duplicate_documents=duplicate_documents
-        )
+        super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
 
         self._validate_index_sync()
 
@@ -244,8 +252,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = index or self.index
         index = self._sanitize_index_name(index)
         duplicate_documents = duplicate_documents or self.duplicate_documents
-        assert duplicate_documents in self.duplicate_documents_options, \
-            f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
+        assert (
+            duplicate_documents in self.duplicate_documents_options
+        ), f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
         if index not in self.pinecone_indexes:
             self.pinecone_indexes[index] = self._create_index_if_not_exist(
@@ -267,8 +276,8 @@ class PineconeDocumentStore(SQLDocumentStore):
                 total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
-                    ids = [doc.id for doc in document_objects[i: i + batch_size]]
-                    metadata = [doc.meta for doc in document_objects[i: i + batch_size]]
+                    ids = [doc.id for doc in document_objects[i : i + batch_size]]
+                    metadata = [doc.meta for doc in document_objects[i : i + batch_size]]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
@@ -341,8 +350,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
 
         if index not in self.pinecone_indexes:
-            raise ValueError(f"Couldn't find a the index '{index}' in Pinecone. Try to init the "
-                             f"PineconeDocumentStore() again ...")
+            raise ValueError(
+                f"Couldn't find a the index '{index}' in Pinecone. Try to init the "
+                f"PineconeDocumentStore() again ..."
+            )
 
         document_count = self.get_document_count(index=index, filters=filters)
         if document_count == 0:
@@ -394,8 +405,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
-        result = self.get_all_documents_generator(index=index, filters=filters, return_embedding=return_embedding,
-                                                  batch_size=batch_size)
+        result = self.get_all_documents_generator(
+            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
+        )
         documents = list(result)
         return documents
 
@@ -483,9 +495,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         return documents
 
     def get_embedding_count(
-        self,
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
+        self, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
     ) -> int:
         """
         Return the count of embeddings in the document store.
