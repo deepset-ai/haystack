@@ -184,7 +184,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         score = result.get("score", None)
         embedding = result.get("values")
         meta = result.get("metadata")
-        content_type = meta.pop("content_type") if "content_type" in meta else None
+        content_type = meta.pop("content_type") if isinstance(meta, dict) and "content_type" in meta else None
 
         if return_embedding and embedding:
             embedding = np.asarray(embedding, dtype=np.float32)
@@ -461,9 +461,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         self,
         ids: List[str],
         index: Optional[str] = None,
-        return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> List[Document]:
 
         if headers:

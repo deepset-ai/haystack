@@ -427,7 +427,7 @@ class EqOperation(ComparisonOperation):
         comp_value_type, comp_value = self._get_weaviate_datatype()
         return {"path": [self.field_name], "operator": "Equal", comp_value_type: comp_value}
 
-    def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[List[str], str, int, float, bool]]]:
         return {self.field_name: {"$eq": self.comparison_value}}
 
     def invert(self) -> "NeOperation":
@@ -467,6 +467,7 @@ class InOperation(ComparisonOperation):
         return filter_dict
 
     def convert_to_pinecone(self) -> Dict[str, Dict[str, List]]:
+        assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
         return {self.field_name: {"$in": self.comparison_value}}
 
     def invert(self) -> "NinOperation":
@@ -496,7 +497,7 @@ class NeOperation(ComparisonOperation):
         comp_value_type, comp_value = self._get_weaviate_datatype()
         return {"path": [self.field_name], "operator": "NotEqual", comp_value_type: comp_value}
 
-    def convert_to_pinecone(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[List[str], str, int, float, bool]]]:
         return {self.field_name: {"$ne": self.comparison_value}}
 
     def invert(self) -> "EqOperation":
@@ -536,6 +537,7 @@ class NinOperation(ComparisonOperation):
         return filter_dict
 
     def convert_to_pinecone(self) -> Dict[str, Dict[str, List]]:
+        assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
         return {self.field_name: {"$nin": self.comparison_value}}
 
     def invert(self) -> "InOperation":
@@ -567,7 +569,7 @@ class GtOperation(ComparisonOperation):
         return {"path": [self.field_name], "operator": "GreaterThan", comp_value_type: comp_value}
 
     def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
-        assert not isinstance(self.comparison_value, list), "Comparison value for '$gt' operation must not be a list."
+        assert not isinstance(self.comparison_value, (list, str)), "Comparison value for '$gt' operation must be a float or int."
         return {self.field_name: {"$gt": self.comparison_value}}
 
     def invert(self) -> "LteOperation":
@@ -599,7 +601,7 @@ class GteOperation(ComparisonOperation):
         return {"path": [self.field_name], "operator": "GreaterThanEqual", comp_value_type: comp_value}
 
     def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
-        assert not isinstance(self.comparison_value, list), "Comparison value for '$gte' operation must not be a list."
+        assert not isinstance(self.comparison_value, (list, str)), "Comparison value for '$gte' operation must be a float or int."
         return {self.field_name: {"$gte": self.comparison_value}}
 
     def invert(self) -> "LtOperation":
@@ -631,7 +633,7 @@ class LtOperation(ComparisonOperation):
         return {"path": [self.field_name], "operator": "LessThan", comp_value_type: comp_value}
 
     def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
-        assert not isinstance(self.comparison_value, list), "Comparison value for '$lt' operation must not be a list."
+        assert not isinstance(self.comparison_value, (list, str)), "Comparison value for '$lt' operation must be a float or int."
         return {self.field_name: {"$lt": self.comparison_value}}
 
     def invert(self) -> "GteOperation":
@@ -663,7 +665,7 @@ class LteOperation(ComparisonOperation):
         return {"path": [self.field_name], "operator": "LessThanEqual", comp_value_type: comp_value}
 
     def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
-        assert not isinstance(self.comparison_value, list), "Comparison value for '$lte' operation must not be a list."
+        assert not isinstance(self.comparison_value, (list, str)), "Comparison value for '$lte' operation must be a float or int."
         return {self.field_name: {"$lte": self.comparison_value}}
 
     def invert(self) -> "GtOperation":
