@@ -144,11 +144,7 @@ def test_file_upload_with_no_meta(client: TestClient):
     assert len(response.json()) == 0
 
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
-    response = client.post(
-        url="/file-upload",
-        files=file_to_upload,
-        data={"meta": ""},
-    )
+    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": ""})
     assert 200 == response.status_code
 
     response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
@@ -160,11 +156,7 @@ def test_file_upload_with_wrong_meta(client: TestClient):
     assert len(response.json()) == 0
 
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
-    response = client.post(
-        url="/file-upload",
-        files=file_to_upload,
-        data={"meta": "1"},
-    )
+    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": "1"})
     assert 500 == response.status_code
 
     response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
