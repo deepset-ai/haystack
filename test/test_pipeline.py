@@ -331,10 +331,7 @@ def test_generate_code_simple_pipeline():
 def test_generate_code_imports():
     pipeline_config = {
         "components": [
-            {
-                "name": "DocumentStore",
-                "type": "ElasticsearchDocumentStore",
-            },
+            {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
             {"name": "retri2", "type": "EmbeddingRetriever", "params": {"document_store": "DocumentStore"}},
         ],
@@ -366,10 +363,7 @@ def test_generate_code_imports():
 def test_generate_code_imports_no_pipeline_cls():
     pipeline_config = {
         "components": [
-            {
-                "name": "DocumentStore",
-                "type": "ElasticsearchDocumentStore",
-            },
+            {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
@@ -396,10 +390,7 @@ def test_generate_code_imports_no_pipeline_cls():
 def test_generate_code_comment():
     pipeline_config = {
         "components": [
-            {
-                "name": "DocumentStore",
-                "type": "ElasticsearchDocumentStore",
-            },
+            {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
@@ -437,10 +428,7 @@ def test_generate_code_is_component_order_invariant():
         ]
     }
 
-    doc_store = {
-        "name": "ElasticsearchDocumentStore",
-        "type": "ElasticsearchDocumentStore",
-    }
+    doc_store = {"name": "ElasticsearchDocumentStore", "type": "ElasticsearchDocumentStore"}
     es_retriever = {
         "name": "EsRetriever",
         "type": "ElasticsearchRetriever",
@@ -454,10 +442,7 @@ def test_generate_code_is_component_order_invariant():
             "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
         },
     }
-    join_node = {
-        "name": "JoinResults",
-        "type": "JoinDocuments",
-    }
+    join_node = {"name": "JoinResults", "type": "JoinDocuments"}
 
     component_orders = [
         [doc_store, es_retriever, emb_retriever, join_node],
@@ -518,31 +503,13 @@ def test_validate_pipeline_config_invalid_component_param_key():
 
 def test_validate_pipeline_config_invalid_pipeline_name():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config(
-            {
-                "components": [
-                    {
-                        "name": "test",
-                        "type": "test",
-                    }
-                ],
-                "pipelines": [{"name": "\btest"}],
-            }
-        )
+        validate_config({"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_type():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
         validate_config(
-            {
-                "components": [
-                    {
-                        "name": "test",
-                        "type": "test",
-                    }
-                ],
-                "pipelines": [{"name": "test", "type": "\btest"}],
-            }
+            {"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "test", "type": "\btest"}]}
         )
 
 
@@ -550,12 +517,7 @@ def test_validate_pipeline_config_invalid_pipeline_node_name():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
         validate_config(
             {
-                "components": [
-                    {
-                        "name": "test",
-                        "type": "test",
-                    }
-                ],
+                "components": [{"name": "test", "type": "test"}],
                 "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "\btest"}]}],
             }
         )
@@ -565,12 +527,7 @@ def test_validate_pipeline_config_invalid_pipeline_node_inputs():
     with pytest.raises(ValueError, match="is not a valid config variable name"):
         validate_config(
             {
-                "components": [
-                    {
-                        "name": "test",
-                        "type": "test",
-                    }
-                ],
+                "components": [{"name": "test", "type": "test"}],
                 "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "test", "inputs": ["\btest"]}]}],
             }
         )
@@ -1198,8 +1155,7 @@ def test_documentsearch_es_authentication(retriever_with_docs, document_store_wi
     auth_headers = {"Authorization": "Basic YWRtaW46cm9vdA=="}
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     prediction = pipeline.run(
-        query="Who lives in Berlin?",
-        params={"Retriever": {"top_k": 10, "headers": auth_headers}},
+        query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
     )
     assert prediction is not None
     assert len(prediction["documents"]) == 5
@@ -1222,13 +1178,11 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
     if not mock_client:
         with pytest.raises(Exception):
             prediction = pipeline.run(
-                query="Who lives in Berlin?",
-                params={"Retriever": {"top_k": 10, "headers": auth_headers}},
+                query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
             )
     else:
         prediction = pipeline.run(
-            query="Who lives in Berlin?",
-            params={"Retriever": {"top_k": 10, "headers": auth_headers}},
+            query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
         )
         assert prediction is not None
         assert len(prediction["documents"]) == 5

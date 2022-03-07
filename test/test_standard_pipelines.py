@@ -6,13 +6,7 @@ import math
 import pytest
 
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.pipelines import (
-    Pipeline,
-    FAQPipeline,
-    DocumentSearchPipeline,
-    RootNode,
-    MostSimilarDocumentsPipeline,
-)
+from haystack.pipelines import Pipeline, FAQPipeline, DocumentSearchPipeline, RootNode, MostSimilarDocumentsPipeline
 from haystack.nodes import (
     DensePassageRetriever,
     ElasticsearchRetriever,
@@ -27,36 +21,16 @@ from conftest import SAMPLES_PATH
 
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [
-        ("embedding", "memory"),
-        ("embedding", "faiss"),
-        ("embedding", "milvus1"),
-        ("embedding", "elasticsearch"),
-    ],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_faq_pipeline(retriever, document_store):
     documents = [
-        {
-            "content": "How to test module-1?",
-            "meta": {"source": "wiki1", "answer": "Using tests for module-1"},
-        },
-        {
-            "content": "How to test module-2?",
-            "meta": {"source": "wiki2", "answer": "Using tests for module-2"},
-        },
-        {
-            "content": "How to test module-3?",
-            "meta": {"source": "wiki3", "answer": "Using tests for module-3"},
-        },
-        {
-            "content": "How to test module-4?",
-            "meta": {"source": "wiki4", "answer": "Using tests for module-4"},
-        },
-        {
-            "content": "How to test module-5?",
-            "meta": {"source": "wiki5", "answer": "Using tests for module-5"},
-        },
+        {"content": "How to test module-1?", "meta": {"source": "wiki1", "answer": "Using tests for module-1"}},
+        {"content": "How to test module-2?", "meta": {"source": "wiki2", "answer": "Using tests for module-2"}},
+        {"content": "How to test module-3?", "meta": {"source": "wiki3", "answer": "Using tests for module-3"}},
+        {"content": "How to test module-4?", "meta": {"source": "wiki4", "answer": "Using tests for module-4"}},
+        {"content": "How to test module-5?", "meta": {"source": "wiki5", "answer": "Using tests for module-5"}},
     ]
 
     document_store.write_documents(documents)
@@ -103,11 +77,7 @@ def test_document_search_pipeline(retriever, document_store):
 
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [
-        ("embedding", "faiss"),
-        ("embedding", "milvus1"),
-        ("embedding", "elasticsearch"),
-    ],
+    [("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_most_similar_documents_pipeline(retriever, document_store):
@@ -308,20 +278,12 @@ def test_query_keyword_statement_classifier():
             return kwargs, "output_2"
 
     pipeline = Pipeline()
+    pipeline.add_node(name="SkQueryKeywordQuestionClassifier", component=SklearnQueryClassifier(), inputs=["Query"])
     pipeline.add_node(
-        name="SkQueryKeywordQuestionClassifier",
-        component=SklearnQueryClassifier(),
-        inputs=["Query"],
+        name="KeywordNode", component=KeywordOutput(), inputs=["SkQueryKeywordQuestionClassifier.output_2"]
     )
     pipeline.add_node(
-        name="KeywordNode",
-        component=KeywordOutput(),
-        inputs=["SkQueryKeywordQuestionClassifier.output_2"],
-    )
-    pipeline.add_node(
-        name="QuestionNode",
-        component=QuestionOutput(),
-        inputs=["SkQueryKeywordQuestionClassifier.output_1"],
+        name="QuestionNode", component=QuestionOutput(), inputs=["SkQueryKeywordQuestionClassifier.output_1"]
     )
     output = pipeline.run(query="morse code")
     assert output["output"] == "keyword"
@@ -331,19 +293,13 @@ def test_query_keyword_statement_classifier():
 
     pipeline = Pipeline()
     pipeline.add_node(
-        name="TfQueryKeywordQuestionClassifier",
-        component=TransformersQueryClassifier(),
-        inputs=["Query"],
+        name="TfQueryKeywordQuestionClassifier", component=TransformersQueryClassifier(), inputs=["Query"]
     )
     pipeline.add_node(
-        name="KeywordNode",
-        component=KeywordOutput(),
-        inputs=["TfQueryKeywordQuestionClassifier.output_2"],
+        name="KeywordNode", component=KeywordOutput(), inputs=["TfQueryKeywordQuestionClassifier.output_2"]
     )
     pipeline.add_node(
-        name="QuestionNode",
-        component=QuestionOutput(),
-        inputs=["TfQueryKeywordQuestionClassifier.output_1"],
+        name="QuestionNode", component=QuestionOutput(), inputs=["TfQueryKeywordQuestionClassifier.output_1"]
     )
     output = pipeline.run(query="morse code")
     assert output["output"] == "keyword"

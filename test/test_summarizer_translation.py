@@ -9,9 +9,7 @@ from test_summarizer import SPLIT_DOCS
 @pytest.mark.elasticsearch
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
-    "retriever,document_store",
-    [("embedding", "memory"), ("elasticsearch", "elasticsearch")],
-    indirect=True,
+    "retriever,document_store", [("embedding", "memory"), ("elasticsearch", "elasticsearch")], indirect=True
 )
 def test_summarization_pipeline_with_translator(
     document_store, retriever, summarizer, en_to_de_translator, de_to_en_translator

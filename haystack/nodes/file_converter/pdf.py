@@ -20,11 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class PDFToTextConverter(BaseConverter):
-    def __init__(
-        self,
-        remove_numeric_tables: bool = False,
-        valid_languages: Optional[List[str]] = None,
-    ):
+    def __init__(self, remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = None):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
@@ -156,11 +152,7 @@ class PDFToTextConverter(BaseConverter):
 
 
 class PDFToTextOCRConverter(BaseConverter):
-    def __init__(
-        self,
-        remove_numeric_tables: bool = False,
-        valid_languages: Optional[List[str]] = ["eng"],
-    ):
+    def __init__(self, remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = ["eng"]):
         """
         Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
 
