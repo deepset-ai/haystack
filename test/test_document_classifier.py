@@ -14,11 +14,7 @@ def test_document_classifier(document_classifier):
             meta={"name": "0"},
             id="1",
         ),
-        Document(
-            content="""That's bad. I don't like it.""",
-            meta={"name": "1"},
-            id="2",
-        ),
+        Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
     ]
     results = document_classifier.predict(documents=docs)
     expected_labels = ["joy", "sadness"]
@@ -36,11 +32,7 @@ def test_zero_shot_document_classifier(zero_shot_document_classifier):
             meta={"name": "0"},
             id="1",
         ),
-        Document(
-            content="""That's bad. I don't like it.""",
-            meta={"name": "1"},
-            id="2",
-        ),
+        Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
     ]
     results = zero_shot_document_classifier.predict(documents=docs)
     expected_labels = ["positive", "negative"]
@@ -58,11 +50,7 @@ def test_document_classifier_batch_size(batched_document_classifier):
             meta={"name": "0"},
             id="1",
         ),
-        Document(
-            content="""That's bad. I don't like it.""",
-            meta={"name": "1"},
-            id="2",
-        ),
+        Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
     ]
     results = batched_document_classifier.predict(documents=docs)
     expected_labels = ["joy", "sadness"]
@@ -99,11 +87,7 @@ def test_document_classifier_as_query_node(document_classifier):
             meta={"name": "0"},
             id="1",
         ),
-        Document(
-            content="""That's bad. I don't like it.""",
-            meta={"name": "1"},
-            id="2",
-        ),
+        Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
     ]
     output, output_name = document_classifier.run(documents=docs, root_node="Query")
     expected_labels = ["joy", "sadness"]

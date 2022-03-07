@@ -299,9 +299,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             progress_bar.close()
 
     def _create_document_field_map(self) -> Dict:
-        return {
-            self.index: self.embedding_field,
-        }
+        return {self.index: self.embedding_field}
 
     def update_embeddings(
         self,
