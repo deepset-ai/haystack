@@ -1211,7 +1211,7 @@ class RayPipeline(Pipeline):
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
         address: Optional[str] = None,
-        **kwargs,
+        **kwargs
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
