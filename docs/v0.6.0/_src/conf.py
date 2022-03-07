@@ -71,11 +71,7 @@ html_logo = "img/logo.png"
 html_additional_pages = {"index": "pages/index.html"}
 
 # The file extensions of source files.
-source_suffix = {
-    ".rst": "restructuredtext",
-    ".txt": "restructuredtext",
-    ".md": "markdown",
-}
+source_suffix = {".rst": "restructuredtext", ".txt": "restructuredtext", ".md": "markdown"}
 
 # -- Add autodocs for __init__() methods -------------------------------------
 

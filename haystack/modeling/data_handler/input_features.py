@@ -81,11 +81,7 @@ def sample_to_features_text(sample, tasks, max_seq_len, tokenizer):
     assert len(padding_mask) == max_seq_len
     assert len(segment_ids) == max_seq_len
 
-    feat_dict = {
-        "input_ids": input_ids,
-        "padding_mask": padding_mask,
-        "segment_ids": segment_ids,
-    }
+    feat_dict = {"input_ids": input_ids, "padding_mask": padding_mask, "segment_ids": segment_ids}
 
     # Add Labels for different tasks
     for task_name, task in tasks.items():

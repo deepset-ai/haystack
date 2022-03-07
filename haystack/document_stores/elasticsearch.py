@@ -383,15 +383,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         {"strings": {"path_match": "*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
                     ],
                 },
-                "settings": {
-                    "analysis": {
-                        "analyzer": {
-                            "default": {
-                                "type": self.analyzer,
-                            }
-                        }
-                    }
-                },
+                "settings": {"analysis": {"analyzer": {"default": {"type": self.analyzer}}}},
             }
 
             if self.synonyms:
@@ -538,15 +530,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if query:
             body["query"] = {
                 "bool": {
-                    "should": [
-                        {
-                            "multi_match": {
-                                "query": query,
-                                "type": "most_fields",
-                                "fields": self.search_fields,
-                            }
-                        }
-                    ]
+                    "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
                 }
             }
         if filters:
@@ -1291,10 +1275,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         return query
 
     def _convert_es_hit_to_document(
-        self,
-        hit: dict,
-        return_embedding: bool,
-        adapt_score_for_embedding: bool = False,
+        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {
@@ -1799,10 +1780,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         # +1 in similarity to avoid negative numbers (for cosine sim)
-        body: Dict[str, Any] = {
-            "size": top_k,
-            "query": self._get_vector_similarity_query(query_emb, top_k),
-        }
+        body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
@@ -1915,15 +1893,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         {"strings": {"path_match": "*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
                     ],
                 },
-                "settings": {
-                    "analysis": {
-                        "analyzer": {
-                            "default": {
-                                "type": self.analyzer,
-                            }
-                        }
-                    }
-                },
+                "settings": {"analysis": {"analyzer": {"default": {"type": self.analyzer}}}},
             }
 
             if self.synonyms:

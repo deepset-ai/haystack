@@ -54,7 +54,7 @@ def convert_files_to_dicts(
             if encoding is None and suffix == ".pdf":
                 encoding = "Latin1"
             logger.info("Converting {}".format(path))
-            document = suffix2converter[suffix].convert(file_path=path, meta=None, encoding=encoding,)[
+            document = suffix2converter[suffix].convert(file_path=path, meta=None, encoding=encoding)[
                 0
             ]  # PDFToTextConverter, TextConverter, and DocxToTextConverter return a list containing a single dict
             text = document["content"]

@@ -315,16 +315,12 @@ def summarizer():
 
 @pytest.fixture(scope="function")
 def en_to_de_translator():
-    return TransformersTranslator(
-        model_name_or_path="Helsinki-NLP/opus-mt-en-de",
-    )
+    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
 
 
 @pytest.fixture(scope="function")
 def de_to_en_translator():
-    return TransformersTranslator(
-        model_name_or_path="Helsinki-NLP/opus-mt-de-en",
-    )
+    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
 
 
 @pytest.fixture(scope="function")
@@ -400,16 +396,12 @@ def table_reader(request):
 
 @pytest.fixture(scope="function")
 def ranker_two_logits():
-    return SentenceTransformersRanker(
-        model_name_or_path="deepset/gbert-base-germandpr-reranking",
-    )
+    return SentenceTransformersRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
 
 
 @pytest.fixture(scope="function")
 def ranker():
-    return SentenceTransformersRanker(
-        model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
-    )
+    return SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
 
 
 @pytest.fixture(scope="function")
@@ -734,10 +726,7 @@ def get_document_store(
 
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
-            weaviate_url="http://localhost:8080",
-            index=index,
-            similarity=similarity,
-            embedding_dim=embedding_dim,
+            weaviate_url="http://localhost:8080", index=index, similarity=similarity, embedding_dim=embedding_dim
         )
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()
