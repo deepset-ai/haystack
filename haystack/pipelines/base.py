@@ -393,8 +393,8 @@ class BasePipeline:
         document_stores = [c for c in distinct_components if c["type"].endswith("DocumentStore")]
         for document_store in document_stores:
             if document_store["type"] != "DeepsetCloudDocumentStore":
-                logger.info(f"In order to be used in Deepset Cloud, component '{document_store['name']}' of type '{document_store['type']}' "
-                            f"has been automatically converted to DeepsetCloudDocumentStore. "
+                logger.info(f"In order to be used on Deepset Cloud, component '{document_store['name']}' of type '{document_store['type']}' "
+                            f"has been automatically converted to type DeepsetCloudDocumentStore. "
                             f"Usually the replacement will result in equivalent pipeline quality. "
                             f"However depending on chosen settings of '{document_store['name']}' differences might occur.")
                 document_store["type"] = "DeepsetCloudDocumentStore"
