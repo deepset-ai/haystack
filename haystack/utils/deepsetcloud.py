@@ -393,7 +393,11 @@ class PipelineClient:
         return generator
 
     def save_pipeline_config(
-        self, config: dict, pipeline_config_name: Optional[str] = None, workspace: Optional[str] = None, headers: dict = None
+        self,
+        config: dict,
+        pipeline_config_name: Optional[str] = None,
+        workspace: Optional[str] = None,
+        headers: dict = None,
     ):
         config["name"] = pipeline_config_name
         workspace_url = self._build_workspace_url(workspace=workspace)
@@ -403,7 +407,11 @@ class PipelineClient:
             logger.warning(f"Unexpected response from saving pipeline config: {response}")
 
     def update_pipeline_config(
-        self, config: dict, pipeline_config_name: Optional[str] = None, workspace: Optional[str] = None, headers: dict = None
+        self,
+        config: dict,
+        pipeline_config_name: Optional[str] = None,
+        workspace: Optional[str] = None,
+        headers: dict = None,
     ):
         config["name"] = pipeline_config_name
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
@@ -412,13 +420,17 @@ class PipelineClient:
         if "name" not in response or response["name"] != pipeline_config_name:
             logger.warning(f"Unexpected response from updating pipeline config: {response}")
 
-    def deploy(self, pipeline_config_name: Optional[str] = None, workspace: Optional[str] = None, headers: dict = None) -> dict:
+    def deploy(
+        self, pipeline_config_name: Optional[str] = None, workspace: Optional[str] = None, headers: dict = None
+    ) -> dict:
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         deploy_url = f"{pipeline_url}/deploy"
         response = self.client.post(url=deploy_url, headers=headers).json()
         return response
 
-    def undeploy(self, pipeline_config_name: Optional[str] = None, workspace: Optional[str] = None, headers: dict = None) -> dict:
+    def undeploy(
+        self, pipeline_config_name: Optional[str] = None, workspace: Optional[str] = None, headers: dict = None
+    ) -> dict:
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         undeploy_url = f"{pipeline_url}/undeploy"
         response = self.client.post(url=undeploy_url, headers=headers).json()
