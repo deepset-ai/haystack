@@ -301,9 +301,7 @@ class Inferencer:
         """
         dicts = self.processor.file_to_dicts(file)
         preds_all = self.inference_from_dicts(
-            dicts,
-            return_json=return_json,
-            multiprocessing_chunksize=multiprocessing_chunksize,
+            dicts, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
         )
         return list(preds_all)
 
@@ -343,10 +341,7 @@ class Inferencer:
                 multiprocessing_chunksize = _chunk_size
 
             predictions = self._inference_with_multiprocessing(
-                dicts,
-                return_json,
-                aggregate_preds,
-                multiprocessing_chunksize,
+                dicts, return_json, aggregate_preds, multiprocessing_chunksize
             )
 
             self.processor.log_problematic(self.problematic_sample_ids)

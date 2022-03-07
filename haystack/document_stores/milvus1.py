@@ -24,7 +24,7 @@ from haystack.document_stores.base import get_batches_from_generator
 logger = logging.getLogger(__name__)
 
 
-class MilvusDocumentStore(SQLDocumentStore):
+class Milvus1DocumentStore(SQLDocumentStore):
     """
     Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
     Therefore, it is particularly suited for Haystack users that work with dense retrieval methods (like DPR).
@@ -39,7 +39,8 @@ class MilvusDocumentStore(SQLDocumentStore):
 
     Usage:
     1. Start a Milvus server (see https://milvus.io/docs/v1.0.0/install_milvus.md)
-    2. Init a MilvusDocumentStore in Haystack
+    2. Run pip install farm-haystack[milvus1]
+    3. Init a MilvusDocumentStore in Haystack
     """
 
     def __init__(
@@ -160,10 +161,7 @@ class MilvusDocumentStore(SQLDocumentStore):
         self.progress_bar = progress_bar
 
         super().__init__(
-            url=sql_url,
-            index=index,
-            duplicate_documents=duplicate_documents,
-            isolation_level=isolation_level,
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
         )
 
     def __del__(self):
@@ -193,9 +191,7 @@ class MilvusDocumentStore(SQLDocumentStore):
                 raise RuntimeError(f"Index creation on Milvus server failed: {status}")
 
     def _create_document_field_map(self) -> Dict:
-        return {
-            self.index: self.embedding_field,
-        }
+        return {self.index: self.embedding_field}
 
     def write_documents(
         self,

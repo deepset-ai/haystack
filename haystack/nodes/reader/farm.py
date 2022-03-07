@@ -922,10 +922,7 @@ class FARMReader(BaseReader):
                             )
                             continue
                         aggregated_per_question[aggregation_key]["answers"].append(
-                            {
-                                "text": label.answer.answer,
-                                "answer_start": label.answer.offsets_in_document[0].start,
-                            }
+                            {"text": label.answer.answer, "answer_start": label.answer.offsets_in_document[0].start}
                         )
                         aggregated_per_question[aggregation_key]["is_impossible"] = False
                     # create new one

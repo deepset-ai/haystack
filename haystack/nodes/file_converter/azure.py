@@ -132,10 +132,7 @@ class AzureConverter(BaseConverter):
         return docs
 
     def convert_azure_json(
-        self,
-        file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
-        valid_languages: Optional[List[str]] = None,
+        self, file_path: Path, meta: Optional[Dict[str, str]] = None, valid_languages: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """
         Extract text and tables from the JSON output of Azure's Form Recognizer service.
