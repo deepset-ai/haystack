@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pandas as pd
 import pytest
 import responses
+import logging
 
 from haystack import __version__, Document, Answer, JoinAnswers
 from haystack.document_stores.base import BaseDocumentStore
@@ -17,11 +18,12 @@ from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode
-from haystack.pipelines.config import validate_config, validate_config_strings
+from haystack.pipelines.config import validate_config_strings
 from haystack.pipelines.utils import generate_code
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments
+from haystack.errors import PipelineConfigError
 
-from .conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
+from .conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, MockDocumentStore, MockRetriever, deepset_cloud_fixture
 
 
 class ParentComponent(BaseComponent):
@@ -29,7 +31,9 @@ class ParentComponent(BaseComponent):
 
     def __init__(self, dependent: BaseComponent) -> None:
         super().__init__()
-        self.set_config(dependent=dependent)
+
+    def run(*args, **kwargs):
+        logging.info("ParentComponent run() was called")
 
 
 class ParentComponent2(BaseComponent):
@@ -37,13 +41,36 @@ class ParentComponent2(BaseComponent):
 
     def __init__(self, dependent: BaseComponent) -> None:
         super().__init__()
-        self.set_config(dependent=dependent)
+
+    def run(*args, **kwargs):
+        logging.info("ParentComponent2 run() was called")
 
 
 class ChildComponent(BaseComponent):
     def __init__(self, some_key: str = None) -> None:
         super().__init__()
-        self.set_config(some_key=some_key)
+
+    def run(*args, **kwargs):
+        logging.info("ChildComponent run() was called")
+
+
+class DummyRetriever(MockRetriever):
+    def __init__(self, document_store):
+        self.document_store = document_store
+
+    def run(self):
+        test = "test"
+        return {"test": test}, "output_1"
+
+
+class JoinNode(RootNode):
+    def run(self, output=None, inputs=None):
+        if inputs:
+            output = ""
+            for input_dict in inputs:
+                output += input_dict["output"]
+        return {"output": output}, "output_1"
+
 
 
 @pytest.mark.integration
@@ -72,8 +99,7 @@ def test_get_config_creates_dependent_component():
     pipeline = Pipeline()
     pipeline.add_node(component=parent, name="parent", inputs=["Query"])
 
-    expected_pipelines = [{"name": "query", "type": "Pipeline", "nodes": [{"name": "parent", "inputs": ["Query"]}]}]
-
+    expected_pipelines = [{"name": "query", "nodes": [{"name": "parent", "inputs": ["Query"]}]}]
     expected_components = [
         {"name": "parent", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
         {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
@@ -105,7 +131,6 @@ def test_get_config_creates_only_one_dependent_component_referenced_by_multiple_
     expected_pipelines = [
         {
             "name": "query",
-            "type": "Pipeline",
             "nodes": [
                 {"name": "Parent1", "inputs": ["Query"]},
                 {"name": "Parent2", "inputs": ["Query"]},
@@ -142,7 +167,6 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
     expected_pipelines = [
         {
             "name": "query",
-            "type": "Pipeline",
             "nodes": [
                 {"name": "ParentA", "inputs": ["Query"]},
                 {"name": "ParentB", "inputs": ["Query"]},
@@ -160,6 +184,7 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
 
 def test_generate_code_simple_pipeline():
     config = {
+        "version": "unstable",
         "components": [
             {
                 "name": "retri",
@@ -172,7 +197,7 @@ def test_generate_code_simple_pipeline():
                 "params": {"index": "my-index"},
             },
         ],
-        "pipelines": [{"name": "query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+        "pipelines": [{"name": "query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
 
     code = generate_code(pipeline_config=config, pipeline_variable_name="p", generate_imports=False)
@@ -187,6 +212,7 @@ def test_generate_code_simple_pipeline():
 
 def test_generate_code_imports():
     pipeline_config = {
+        "version": "unstable",
         "components": [
             {
                 "name": "DocumentStore",
@@ -198,7 +224,6 @@ def test_generate_code_imports():
         "pipelines": [
             {
                 "name": "Query",
-                "type": "Pipeline",
                 "nodes": [{"name": "retri", "inputs": ["Query"]}, {"name": "retri2", "inputs": ["Query"]}],
             }
         ],
@@ -222,6 +247,7 @@ def test_generate_code_imports():
 
 def test_generate_code_imports_no_pipeline_cls():
     pipeline_config = {
+        "version": "unstable",
         "components": [
             {
                 "name": "DocumentStore",
@@ -229,7 +255,7 @@ def test_generate_code_imports_no_pipeline_cls():
             },
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
         ],
-        "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+        "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
 
     code = generate_code(
@@ -252,6 +278,7 @@ def test_generate_code_imports_no_pipeline_cls():
 
 def test_generate_code_comment():
     pipeline_config = {
+        "version": "unstable",
         "components": [
             {
                 "name": "DocumentStore",
@@ -259,7 +286,7 @@ def test_generate_code_comment():
             },
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
         ],
-        "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+        "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
 
     comment = "This is my comment\n...and here is a new line"
@@ -281,10 +308,10 @@ def test_generate_code_comment():
 
 def test_generate_code_is_component_order_invariant():
     pipeline_config = {
+        "version": "unstable",
         "pipelines": [
             {
                 "name": "Query",
-                "type": "Pipeline",
                 "nodes": [
                     {"name": "EsRetriever", "inputs": ["Query"]},
                     {"name": "EmbeddingRetriever", "inputs": ["Query"]},
@@ -342,7 +369,7 @@ def test_generate_code_is_component_order_invariant():
 
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
 def test_validate_user_input_invalid(input):
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
         validate_config_strings(input)
 
 
@@ -354,27 +381,27 @@ def test_validate_user_input_valid(input):
 
 
 def test_validate_pipeline_config_invalid_component_name():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
         validate_config_strings({"components": [{"name": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_component_type():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
         validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_component_param():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
         validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
 
 
 def test_validate_pipeline_config_invalid_component_param_key():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
         validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_name():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
         validate_config_strings(
             {
                 "components": [
@@ -389,7 +416,7 @@ def test_validate_pipeline_config_invalid_pipeline_name():
 
 
 def test_validate_pipeline_config_invalid_pipeline_node_name():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
         validate_config_strings(
             {
                 "components": [
@@ -404,7 +431,7 @@ def test_validate_pipeline_config_invalid_pipeline_node_name():
 
 
 def test_validate_pipeline_config_invalid_pipeline_node_inputs():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
         validate_config_strings(
             {
                 "components": [
@@ -836,10 +863,7 @@ def test_pipeline_components():
 
 
 def test_pipeline_get_document_store_from_components():
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    doc_store = DummyDocumentStore()
+    doc_store = MockDocumentStore()
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=doc_store, inputs=["File"])
 
@@ -847,11 +871,8 @@ def test_pipeline_get_document_store_from_components():
 
 
 def test_pipeline_get_document_store_from_components_multiple_doc_stores():
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    doc_store_a = DummyDocumentStore()
-    doc_store_b = DummyDocumentStore()
+    doc_store_a = MockDocumentStore()
+    doc_store_b = MockDocumentStore()
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=doc_store_a, inputs=["File"])
     pipeline.add_node(name="B", component=doc_store_b, inputs=["File"])
@@ -861,18 +882,7 @@ def test_pipeline_get_document_store_from_components_multiple_doc_stores():
 
 
 def test_pipeline_get_document_store_from_retriever():
-    class DummyRetriever(BaseRetriever):
-        def __init__(self, document_store):
-            self.document_store = document_store
-
-        def run(self):
-            test = "test"
-            return {"test": test}, "output_1"
-
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    doc_store = DummyDocumentStore()
+    doc_store = MockDocumentStore()
     retriever = DummyRetriever(document_store=doc_store)
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=retriever, inputs=["Query"])
@@ -881,26 +891,7 @@ def test_pipeline_get_document_store_from_retriever():
 
 
 def test_pipeline_get_document_store_from_dual_retriever():
-    class DummyRetriever(BaseRetriever):
-        def __init__(self, document_store):
-            self.document_store = document_store
-
-        def run(self):
-            test = "test"
-            return {"test": test}, "output_1"
-
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    class JoinNode(RootNode):
-        def run(self, output=None, inputs=None):
-            if inputs:
-                output = ""
-                for input_dict in inputs:
-                    output += input_dict["output"]
-            return {"output": output}, "output_1"
-
-    doc_store = DummyDocumentStore()
+    doc_store = MockDocumentStore()
     retriever_a = DummyRetriever(document_store=doc_store)
     retriever_b = DummyRetriever(document_store=doc_store)
     pipeline = Pipeline()
@@ -912,27 +903,8 @@ def test_pipeline_get_document_store_from_dual_retriever():
 
 
 def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
-    class DummyRetriever(BaseRetriever):
-        def __init__(self, document_store):
-            self.document_store = document_store
-
-        def run(self):
-            test = "test"
-            return {"test": test}, "output_1"
-
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    class JoinNode(RootNode):
-        def run(self, output=None, inputs=None):
-            if inputs:
-                output = ""
-                for input_dict in inputs:
-                    output += input_dict["output"]
-            return {"output": output}, "output_1"
-
-    doc_store_a = DummyDocumentStore()
-    doc_store_b = DummyDocumentStore()
+    doc_store_a = MockDocumentStore()
+    doc_store_b = MockDocumentStore()
     retriever_a = DummyRetriever(document_store=doc_store_a)
     retriever_b = DummyRetriever(document_store=doc_store_b)
     pipeline = Pipeline()

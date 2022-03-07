@@ -3,7 +3,7 @@ from typing import Any, Optional, Dict, List, Tuple, Optional
 
 import sys
 from copy import deepcopy
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 from functools import wraps
 import inspect
 import logging
@@ -17,19 +17,15 @@ logger = logging.getLogger(__name__)
 
 def exportable_to_yaml(func):
     """
-    Save the init parameters of a component that later can be used with exporting
-    YAML configuration of a Pipeline.
-
-    :param kwargs: all parameters passed to the __init__() of the Component.
+    Decorator that saves the init parameters of a node that later can 
+    be used with exporting YAML configuration of a Pipeline.
     """
-
     @wraps(func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
         if args:
             logger.warning(
                 "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
             )
-
         self.pipeline_config = {"params": {}, "type": type(self).__name__}
         for k, v in kwargs.items():
             if isinstance(v, BaseComponent):
@@ -40,7 +36,27 @@ def exportable_to_yaml(func):
     return wrapper_exportable_to_yaml
 
 
-class BaseComponent(ABC):
+# Metaclasses are like decorators for classes
+# __new__ is called when a class is created (not an instance!)
+# Inherits from ABCMeta to avoid metaclass conflicts with ABC
+class Meta(ABCMeta):
+
+    def __new__(cls, name, bases, dct):
+        subclass = super().__new__(cls, name, bases, dct)
+
+        # Automatically registers all the init parameters in
+        # an instance attribute called `pipeline_config`, 
+        # used tosave this component to YAML. See exportable_to_yaml()
+        subclass.__init__ = exportable_to_yaml(subclass.__init__)
+
+        # Keeps track of all available subclasses by name.
+        # Enables generic load() for all specific component implementations.
+        subclass.subclasses[subclass.__name__] = subclass
+
+        return subclass
+
+
+class BaseComponent(ABC, metaclass=Meta):
     """
     A base class for implementing nodes in a Pipeline.
     """
@@ -49,18 +65,6 @@ class BaseComponent(ABC):
     subclasses: dict = {}
     pipeline_config: dict = {}
     name: Optional[str] = None
-
-    @exportable_to_yaml
-    def __init__(self):
-        pass
-
-    def __init_subclass__(cls, **kwargs):
-        """
-        Automatically keeps track of all available subclasses.
-        Enables generic load() for all specific component implementations.
-        """
-        super().__init_subclass__(**kwargs)
-        cls.subclasses[cls.__name__] = cls
 
     @classmethod
     def get_subclass(cls, component_type: str):
