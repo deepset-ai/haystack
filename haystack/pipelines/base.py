@@ -458,6 +458,7 @@ class BasePipeline:
             if pipeline_info is None:
                 raise Exception(f"Pipeline config '{pipeline_config_name}' does not exist anymore.")
             status = pipeline_info["status"]
+            time.sleep(5)
         
         if status == "DEPLOYED":
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully deployed.")
@@ -518,6 +519,7 @@ class BasePipeline:
             if pipeline_info is None:
                 raise Exception(f"Pipeline config '{pipeline_config_name}' does not exist anymore.")
             status = pipeline_info["status"]
+            time.sleep(5)
         
         if status == "UNDEPLOYED":
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully undeployed.")
