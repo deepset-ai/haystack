@@ -47,9 +47,10 @@ jobs:
       
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
+        # databind==1.5.1 is temporary to fix pip backtracking issue https://github.com/deepset-ai/haystack/issues/2280
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager .[test]
+          pip install --upgrade --upgrade-strategy eager .[test] databind==1.5.1
           pip install --upgrade --upgrade-strategy eager rest_api/
           pip install --upgrade --upgrade-strategy eager ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
