@@ -47,10 +47,9 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
-        # databind==1.5.1 is temporary to fix pip backtracking issue https://github.com/deepset-ai/haystack/issues/2280
         run: |
           pip install --upgrade pip
-          pip install .[test] databind==1.5.1
+          pip install .[test]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
@@ -114,10 +113,9 @@ jobs:
         # The cache might miss during the execution of an action: there should always be a fallback step to
         # rebuild it in case it goes missing
         if: steps.cache.outputs.cache-hit != 'true'
-        # databind==1.5.1 is temporary to fix pip backtracking issue https://github.com/deepset-ai/haystack/issues/2280
         run: |
           pip install --upgrade pip
-          pip install .[all] databind==1.5.1
+          pip install .[all]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
@@ -160,10 +158,9 @@ jobs:
         # The cache might miss during the execution of an action: there should always be a fallback step to
         # rebuild it in case it goes missing
         if: steps.cache.outputs.cache-hit != 'true'
-        # databind==1.5.1 is temporary to fix pip backtracking issue https://github.com/deepset-ai/haystack/issues/2280
         run: |
           pip install --upgrade pip
-          pip install .[all] databind==1.5.1
+          pip install .[all]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
