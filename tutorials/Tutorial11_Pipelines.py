@@ -55,10 +55,7 @@ def tutorial11_pipelines():
 
     query = "Who is the father of Arya Stark?"
     p_extractive_premade = ExtractiveQAPipeline(reader=reader, retriever=es_retriever)
-    res = p_extractive_premade.run(
-        query=query,
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
-    )
+    res = p_extractive_premade.run(query=query, params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}})
     print("\nQuery: ", query)
     print("Answers:")
     print_answers(res, details="minimum")
@@ -69,10 +66,7 @@ def tutorial11_pipelines():
 
     query = "Who is the father of Arya Stark?"
     p_retrieval = DocumentSearchPipeline(es_retriever)
-    res = p_retrieval.run(
-        query=query,
-        params={"Retriever": {"top_k": 10}},
-    )
+    res = p_retrieval.run(query=query, params={"Retriever": {"top_k": 10}})
     print()
     print_documents(res, max_text_len=200)
 
@@ -90,10 +84,7 @@ def tutorial11_pipelines():
     # Generative QA
     query = "Who is the father of Arya Stark?"
     p_generator = GenerativeQAPipeline(generator=rag_generator, retriever=dpr_retriever)
-    res = p_generator.run(
-        query=query,
-        params={"Retriever": {"top_k": 10}},
-    )
+    res = p_generator.run(query=query, params={"Retriever": {"top_k": 10}})
     print()
     print_answers(res, details="minimum")
 
@@ -125,10 +116,7 @@ def tutorial11_pipelines():
 
     # Now we can run it
     query = "Who is the father of Arya Stark?"
-    res = p_extractive.run(
-        query=query,
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
-    )
+    res = p_extractive.run(query=query, params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}})
     print("\nQuery: ", query)
     print("Answers:")
     print_answers(res, details="minimum")
@@ -151,8 +139,7 @@ def tutorial11_pipelines():
     # Run pipeline
     query = "Who is the father of Arya Stark?"
     res = p_ensemble.run(
-        query="Who is the father of Arya Stark?",
-        params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}},
+        query="Who is the father of Arya Stark?", params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
     )
     print("\nQuery: ", query)
     print("Answers:")
@@ -186,9 +173,7 @@ def tutorial11_pipelines():
 
     # Run only the dense retriever on the full sentence query
     query = "Who is the father of Arya Stark?"
-    res_1 = p_classifier.run(
-        query=query,
-    )
+    res_1 = p_classifier.run(query=query)
     print()
     print("\nQuery: ", query)
     print(" * DPR Answers:")
@@ -196,9 +181,7 @@ def tutorial11_pipelines():
 
     # Run only the sparse retriever on a keyword based query
     query = "Arya Stark father"
-    res_2 = p_classifier.run(
-        query=query,
-    )
+    res_2 = p_classifier.run(query=query)
     print()
     print("\nQuery: ", query)
     print(" * ES Answers:")

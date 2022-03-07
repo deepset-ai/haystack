@@ -20,15 +20,8 @@ from haystack.nodes.evaluator.evaluator import (
     calculate_f1_str_multi,
     semantic_answer_similarity,
 )
-from haystack.pipelines.config import (
-    get_component_definitions,
-    get_pipeline_definition,
-    read_pipeline_config_from_yaml,
-)
-from haystack.pipelines.utils import (
-    generate_code,
-    print_eval_report,
-)
+from haystack.pipelines.config import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml
+from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
 
 try:
@@ -81,10 +74,7 @@ class BasePipeline:
         raise NotImplementedError
 
     def to_code(
-        self,
-        pipeline_variable_name: str = "pipeline",
-        generate_imports: bool = True,
-        add_comment: bool = False,
+        self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
     ) -> str:
         """
         Returns the code to create this pipeline as string.
@@ -106,10 +96,7 @@ class BasePipeline:
         return code
 
     def to_notebook_cell(
-        self,
-        pipeline_variable_name: str = "pipeline",
-        generate_imports: bool = True,
-        add_comment: bool = True,
+        self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True
     ):
         """
         Creates a new notebook cell with the code to create this pipeline.
@@ -325,10 +312,7 @@ class BasePipeline:
 
     @classmethod
     def list_pipelines_on_deepset_cloud(
-        cls,
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
+        cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
     ) -> List[dict]:
         """
         Lists all pipeline configs available on Deepset Cloud.
@@ -1209,12 +1193,7 @@ class Pipeline(BasePipeline):
         }
         return config
 
-    def _generate_component_name(
-        self,
-        type_name: str,
-        params: Dict[str, Any],
-        existing_components: Dict[str, Any],
-    ):
+    def _generate_component_name(self, type_name: str, params: Dict[str, Any], existing_components: Dict[str, Any]):
         component_name: str = type_name
         # add number if there are multiple distinct ones of the same type
         while component_name in existing_components and params != existing_components[component_name]["params"]:

@@ -161,10 +161,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
         self.progress_bar = progress_bar
 
         super().__init__(
-            url=sql_url,
-            index=index,
-            duplicate_documents=duplicate_documents,
-            isolation_level=isolation_level,
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
         )
 
     def __del__(self):
@@ -194,9 +191,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
                 raise RuntimeError(f"Index creation on Milvus server failed: {status}")
 
     def _create_document_field_map(self) -> Dict:
-        return {
-            self.index: self.embedding_field,
-        }
+        return {self.index: self.embedding_field}
 
     def write_documents(
         self,

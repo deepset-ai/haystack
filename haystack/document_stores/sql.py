@@ -257,11 +257,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
-        result = self._query(
-            index=index,
-            filters=filters,
-            batch_size=batch_size,
-        )
+        result = self._query(index=index, filters=filters, batch_size=batch_size)
         yield from result
 
     def _create_document_field_map(self) -> Dict:
@@ -482,13 +478,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index = index or self.index
         for chunk_map in self.chunked_dict(vector_id_map, size=batch_size):
             self.session.query(DocumentORM).filter(DocumentORM.id.in_(chunk_map), DocumentORM.index == index).update(
-                {
-                    DocumentORM.vector_id: case(
-                        chunk_map,
-                        value=DocumentORM.id,
-                    )
-                },
-                synchronize_session=False,
+                {DocumentORM.vector_id: case(chunk_map, value=DocumentORM.id)}, synchronize_session=False
             )
             try:
                 self.session.commit()
@@ -538,8 +528,7 @@ class SQLDocumentStore(BaseDocumentStore):
         if filters:
             for key, values in filters.items():
                 query = query.join(MetaDocumentORM, aliased=True).filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
+                    MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values)
                 )
 
         if only_documents_without_embedding:
@@ -658,8 +647,7 @@ class SQLDocumentStore(BaseDocumentStore):
             if filters:
                 for key, values in filters.items():
                     document_ids_to_delete = document_ids_to_delete.join(MetaDocumentORM, aliased=True).filter(
-                        MetaDocumentORM.name == key,
-                        MetaDocumentORM.value.in_(values),
+                        MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values)
                     )
             if ids:
                 document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))

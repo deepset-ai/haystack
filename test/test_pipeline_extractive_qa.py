@@ -9,10 +9,7 @@ from haystack.schema import Answer
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    prediction = pipeline.run(
-        query="Who lives in Berlin?",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-    )
+    prediction = pipeline.run(query="Who lives in Berlin?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}})
     assert prediction is not None
     assert type(prediction["answers"][0]) == Answer
     assert prediction["query"] == "Who lives in Berlin?"
@@ -70,9 +67,7 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
 def test_extractive_qa_answers_with_translator(reader, retriever_with_docs, en_to_de_translator, de_to_en_translator):
     base_pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     pipeline = TranslationWrapperPipeline(
-        input_translator=de_to_en_translator,
-        output_translator=en_to_de_translator,
-        pipeline=base_pipeline,
+        input_translator=de_to_en_translator, output_translator=en_to_de_translator, pipeline=base_pipeline
     )
 
     prediction = pipeline.run(query="Wer lebt in Berlin?", params={"Reader": {"top_k": 3}})

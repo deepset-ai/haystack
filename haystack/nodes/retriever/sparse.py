@@ -180,10 +180,7 @@ class TfidfRetriever(BaseRetriever):
         self.set_config(document_store=document_store, top_k=top_k, auto_fit=auto_fit)
 
         self.vectorizer = TfidfVectorizer(
-            lowercase=True,
-            stop_words=None,
-            token_pattern=r"(?u)\b\w\w+\b",
-            ngram_range=(1, 1),
+            lowercase=True, stop_words=None, token_pattern=r"(?u)\b\w\w+\b", ngram_range=(1, 1)
         )
 
         self.document_store = document_store
