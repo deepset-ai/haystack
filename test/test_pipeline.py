@@ -219,7 +219,7 @@ def test_generate_code_imports():
                 "type": "ElasticsearchDocumentStore",
             },
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
-            {"name": "retri2", "type": "EmbeddingRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri2", "type": "TfidfRetriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [
             {
@@ -232,12 +232,12 @@ def test_generate_code_imports():
     code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=True)
     assert code == (
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
-        "from haystack.nodes import ElasticsearchRetriever, EmbeddingRetriever\n"
+        "from haystack.nodes import ElasticsearchRetriever, TfidfRetriever\n"
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
         "retri = ElasticsearchRetriever(document_store=document_store)\n"
-        "retri_2 = EmbeddingRetriever(document_store=document_store)\n"
+        "retri_2 = TfidfRetriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])\n'

@@ -83,7 +83,7 @@ class BasePipeline(ABC):
 
     def get_config(self, return_defaults: bool = False) -> dict:
         """
-        Returns a configuration for the Pipeline that can be used with `BasePipeline.load_from_config()`.
+        Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
 
         :param return_defaults: whether to output parameters that have the default values.
         """
@@ -296,6 +296,7 @@ class BasePipeline(ABC):
                 )
                 component_config["params"] = params
 
+        del pipeline_config["name"]  # Would fail validation otherwise
         pipeline = cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
@@ -1050,6 +1051,9 @@ class Pipeline(BasePipeline):
         :param components: dict containing component objects.
         """
         try:
+
+            print(name, components)
+
             if name in components.keys():  # check if component is already loaded.
                 return components[name]
 

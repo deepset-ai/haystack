@@ -22,16 +22,23 @@ def exportable_to_yaml(func):
     """
     @wraps(func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
+
+        # Warn for unnamed input params - should be rare
         if args:
             logger.warning(
                 "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
             )
+
+        # Store all the named input parameters in self.pipeline_config
         self.pipeline_config = {"params": {}, "type": type(self).__name__}
         for k, v in kwargs.items():
             if isinstance(v, BaseComponent):
                 self.pipeline_config["params"][k] = v.pipeline_config
             elif v is not None:
                 self.pipeline_config["params"][k] = v
+
+        # Call the actuall __init__ function with all the arguments
+        func(self, *args, **kwargs)
 
     return wrapper_exportable_to_yaml
 
