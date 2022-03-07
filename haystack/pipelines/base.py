@@ -395,7 +395,7 @@ class BasePipeline:
             if document_store["type"] != "DeepsetCloudDocumentStore":
                 logger.info(f"In order to be used on Deepset Cloud, component '{document_store['name']}' of type '{document_store['type']}' "
                             f"has been automatically converted to type DeepsetCloudDocumentStore. "
-                            f"Usually the replacement will result in equivalent pipeline quality. "
+                            f"Usually this replacement will result in equivalent pipeline quality. "
                             f"However depending on chosen settings of '{document_store['name']}' differences might occur.")
                 document_store["type"] = "DeepsetCloudDocumentStore"
                 document_store["params"] = {}
