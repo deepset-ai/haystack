@@ -171,10 +171,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         else:
             return index[0].upper() + index[1:]
 
-    def _create_schema_and_index_if_not_exist(
-        self,
-        index: Optional[str] = None,
-    ):
+    def _create_schema_and_index_if_not_exist(self, index: Optional[str] = None):
         """
         Create a new index (schema/class in Weaviate) for storing documents in case if an
         index (schema) with the name doesn't exist already.
@@ -1035,11 +1032,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 "All the documents in Weaviate store have an embedding by default. Only update is allowed!"
             )
 
-        result = self._get_all_documents_in_index(
-            index=index,
-            filters=filters,
-            batch_size=batch_size,
-        )
+        result = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size)
 
         for result_batch in get_batches_from_generator(result, batch_size):
             document_batch = [
