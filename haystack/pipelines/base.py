@@ -1,4 +1,5 @@
 from __future__ import annotations
+import time
 from typing import Dict, List, Optional, Any
 
 import copy
@@ -408,6 +409,124 @@ class BasePipeline:
         else:
             client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
+
+    @classmethod
+    def deploy_on_deepset_cloud(
+        cls,
+        pipeline_config_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        timeout: int = 60
+    ):
+        """
+        Deploys the pipelines of a pipeline config on Deepset Cloud. 
+        Blocks until pipelines are successfully deployed or deployment failed. 
+        If pipelines are already deployed it does nothing.
+        If deployment fails an error will be raised.
+
+        Pipeline config must be present on Deepset Cloud. See save_to_deepset_cloud() for more information.
+
+        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+        :param workspace: workspace in Deepset Cloud
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param timeout: The time in seconds to wait until deployment completes. 
+                        If the timeout is exceeded an error will be raised.
+        """
+        client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, pipeline_config_name=pipeline_config_name)
+        pipeline_info = client.get_pipeline_config_info()
+        if pipeline_info is None:
+            raise ValueError(f"Pipeline config '{pipeline_config_name}' does not exist.")
+        
+        status = pipeline_info["status"]
+        if status in ["DEPLOYED", "DEPLOYED_UNHEALTHY"]:
+            logger.info(f"Pipeline config '{pipeline_config_name}' is already deployed.")
+            return
+        
+        if status == "UNDEPLOYED":
+            res = client.deploy()
+            status = res["status"]
+
+        start_time = time.time()
+        while status in ["DEPLOYMENT_SCHEDULED", "DEPLOYMENT_IN_PROGRESS"]:
+            if time.time() - start_time > timeout:
+                raise TimeoutError(f"Deployment of '{pipeline_config_name}' timed out.")
+            pipeline_info = client.get_pipeline_config_info()
+            if pipeline_info is None:
+                raise Exception(f"Pipeline config '{pipeline_config_name}' does not exist anymore.")
+            status = pipeline_info["status"]
+        
+        if status == "DEPLOYED":
+            logger.info(f"Pipeline config '{pipeline_config_name}' successfully deployed.")
+        elif status == "DEPLOYED_UNHEALTHY":
+            logger.warning(f"Deployment of pipeline config '{pipeline_config_name}' succeeded. But '{pipeline_config_name}' is unhealthy.")
+        elif status in ["UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYMENT_SCHEDULED"]:
+            raise Exception(f"Deployment of pipline config '{pipeline_config_name}' aborted. Undeployment was requested.")
+        elif status == "UNDEPLOYED":
+            raise Exception(f"Deployment of pipeline config '{pipeline_config_name}' failed.")
+        else:
+            raise Exception(f"Deployment of pipeline config '{pipeline_config_name} ended in unexpected status: {status}")
+
+    @classmethod
+    def undeploy_on_deepset_cloud(
+        cls,
+        pipeline_config_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        timeout: int = 60
+    ):
+        """
+        Undeploys the pipelines of a pipeline config on Deepset Cloud. 
+        Blocks until pipelines are successfully undeployed or undeployment failed. 
+        If pipelines are already undeployed it does nothing.
+        If undeployment fails an error will be raised.
+
+        Pipeline config must be present on Deepset Cloud. See save_to_deepset_cloud() for more information.
+
+        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+        :param workspace: workspace in Deepset Cloud
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param timeout: The time in seconds to wait until undeployment completes. 
+                        If the timeout is exceeded an error will be raised.
+        """
+        client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, pipeline_config_name=pipeline_config_name)
+        pipeline_info = client.get_pipeline_config_info()
+        if pipeline_info is None:
+            raise ValueError(f"Pipeline config '{pipeline_config_name}' does not exist.")
+        
+        status = pipeline_info["status"]
+        if status == "UNDEPLOYED":
+            logger.info(f"Pipeline config '{pipeline_config_name}' is already deployed.")
+            return
+        
+        if status in ["DEPLOYED", "DEPLOYED_UNHEALTHY"]:
+            res = client.undeploy()
+            status = res["status"]
+
+        start_time = time.time()
+        while status in ["UNDEPLOYMENT_SCHEDULED", "UNDEPLOYMENT_IN_PROGRESS"]:
+            if time.time() - start_time > timeout:
+                raise TimeoutError(f"Undeployment of '{pipeline_config_name}' timed out.")
+            pipeline_info = client.get_pipeline_config_info()
+            if pipeline_info is None:
+                raise Exception(f"Pipeline config '{pipeline_config_name}' does not exist anymore.")
+            status = pipeline_info["status"]
+        
+        if status == "UNDEPLOYED":
+            logger.info(f"Pipeline config '{pipeline_config_name}' successfully undeployed.")
+        elif status in ["DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_SCHEDULED"]:
+            raise Exception(f"Undeployment of pipline config '{pipeline_config_name}' aborted. Deployment was requested.")
+        elif status in ["DEPLOYED", "DEPLOYED_UNHEALTHY"]:
+            raise Exception(f"Undeployment of pipeline config '{pipeline_config_name}' failed.")
+        else:
+            raise Exception(f"Undeployment of pipeline config '{pipeline_config_name} ended in unexpected status: {status}")
 
 
 class Pipeline(BasePipeline):
