@@ -81,7 +81,7 @@ def validate_config_strings(pipeline_config: Any):
         for key, value in pipeline_config.items():
             validate_config_strings(key)
             validate_config_strings(value)
-        
+
     elif isinstance(pipeline_config, list):
         for value in pipeline_config:
             validate_config_strings(value)
