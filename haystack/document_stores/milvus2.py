@@ -193,17 +193,11 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self.progress_bar = progress_bar
 
         super().__init__(
-            url=sql_url,
-            index=index,
-            duplicate_documents=duplicate_documents,
-            isolation_level=isolation_level,
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
         )
 
     def _create_collection_and_index_if_not_exist(
-        self,
-        index: Optional[str] = None,
-        consistency_level: int = 0,
-        index_param: Optional[Dict[str, Any]] = None,
+        self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None
     ):
         index = index or self.index
         index_param = index_param or self.index_param
@@ -240,9 +234,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         return collection
 
     def _create_document_field_map(self) -> Dict:
-        return {
-            self.index: self.embedding_field,
-        }
+        return {self.index: self.embedding_field}
 
     def write_documents(
         self,
@@ -626,8 +618,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             vector_id_map[int(vector_id)] = doc
 
         search_result: QueryResult = self.collection.query(
-            expr=f'{self.id_field} in [ {",".join(ids)} ]',
-            output_fields=[self.embedding_field],
+            expr=f'{self.id_field} in [ {",".join(ids)} ]', output_fields=[self.embedding_field]
         )
 
         for result in search_result:

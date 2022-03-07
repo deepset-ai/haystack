@@ -20,11 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImageToTextConverter(BaseConverter):
-    def __init__(
-        self,
-        remove_numeric_tables: bool = False,
-        valid_languages: Optional[List[str]] = ["eng"],
-    ):
+    def __init__(self, remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = ["eng"]):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it

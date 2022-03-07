@@ -181,13 +181,7 @@ class PreProcessor(BasePreProcessor):
         nested_docs = [self._process_single(d, **kwargs) for d in tqdm(documents, unit="docs")]
         return [d for x in nested_docs for d in x]
 
-    def clean(
-        self,
-        document: dict,
-        clean_whitespace: bool,
-        clean_header_footer: bool,
-        clean_empty_lines: bool,
-    ) -> dict:
+    def clean(self, document: dict, clean_whitespace: bool, clean_header_footer: bool, clean_empty_lines: bool) -> dict:
         """
         Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
         and empty lines. Its exact functionality is defined by the parameters passed into PreProcessor.__init__().

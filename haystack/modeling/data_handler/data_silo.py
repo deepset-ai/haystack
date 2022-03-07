@@ -140,9 +140,7 @@ class DataSilo:
 
         num_dicts = len(dicts)
         multiprocessing_chunk_size, num_cpus_used = calc_chunksize(
-            num_dicts=num_dicts,
-            max_processes=self.max_processes,
-            max_chunksize=self.max_multiprocessing_chunksize,
+            num_dicts=num_dicts, max_processes=self.max_processes, max_chunksize=self.max_multiprocessing_chunksize
         )
 
         with ExitStack() as stack:
@@ -383,11 +381,7 @@ class DataSilo:
         else:
             data_loader_test = None
 
-        self.loaders = {
-            "train": data_loader_train,
-            "dev": data_loader_dev,
-            "test": data_loader_test,
-        }
+        self.loaders = {"train": data_loader_train, "dev": data_loader_dev, "test": data_loader_test}
 
     def _create_dev_from_train(self):
         """
@@ -594,10 +588,7 @@ class DataSiloForCrossVal:
         sampler_train = RandomSampler(trainset)
 
         self.data_loader_train = NamedDataLoader(
-            dataset=trainset,
-            sampler=sampler_train,
-            batch_size=self.batch_size,
-            tensor_names=self.tensor_names,
+            dataset=trainset, sampler=sampler_train, batch_size=self.batch_size, tensor_names=self.tensor_names
         )
         self.data_loader_dev = NamedDataLoader(
             dataset=devset,
@@ -611,11 +602,7 @@ class DataSiloForCrossVal:
             batch_size=self.batch_size,
             tensor_names=self.tensor_names,
         )
-        self.loaders = {
-            "train": self.data_loader_train,
-            "dev": self.data_loader_dev,
-            "test": self.data_loader_test,
-        }
+        self.loaders = {"train": self.data_loader_train, "dev": self.data_loader_dev, "test": self.data_loader_test}
 
     def get_data_loader(self, which):
         return self.loaders[which]
@@ -694,11 +681,7 @@ class DataSiloForCrossVal:
             documents.append(list(document))
 
         xval_split = cls._split_for_qa(
-            documents=documents,
-            id_index=id_index,
-            n_splits=n_splits,
-            shuffle=shuffle,
-            random_state=random_state,
+            documents=documents, id_index=id_index, n_splits=n_splits, shuffle=shuffle, random_state=random_state
         )
         silos = []
 

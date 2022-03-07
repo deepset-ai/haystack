@@ -305,10 +305,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     labels = EVAL_LABELS[:1]
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result = pipeline.eval(
-        labels=labels,
-        params={"Retriever": {"top_k": 5}},
-    )
+    eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics()
 
@@ -469,10 +466,7 @@ def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path
     ]
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result = pipeline.eval(
-        labels=labels,
-        params={"Retriever": {"top_k": 5}},
-    )
+    eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics()
 
@@ -541,10 +535,7 @@ def test_reader_eval_in_pipeline(reader):
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
-        params={"Retriever": {"top_k": 5}},
-    )
+    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
 
@@ -773,10 +764,7 @@ def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
     ]
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(
-        labels=labels,
-        params={"Retriever": {"top_k": 5}},
-    )
+    eval_result: EvaluationResult = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
     wrongs_retriever = eval_result.wrong_examples(node="Retriever", n=1)
     wrongs_reader = eval_result.wrong_examples(node="Reader", n=1)

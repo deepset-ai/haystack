@@ -51,49 +51,37 @@ def tutorial14_query_classifier():
     sklearn_keyword_classifier.draw("pipeline_classifier.png")
 
     # Run only the dense retriever on the full sentence query
-    res_1 = sklearn_keyword_classifier.run(
-        query="Who is the father of Arya Stark?",
-    )
+    res_1 = sklearn_keyword_classifier.run(query="Who is the father of Arya Stark?")
     print("\n===============================")
     print("DPR Results" + "\n" + "=" * 15)
     print_answers(res_1, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
-    res_2 = sklearn_keyword_classifier.run(
-        query="arya stark father",
-    )
+    res_2 = sklearn_keyword_classifier.run(query="arya stark father")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
     print_answers(res_2, details="minimum")
 
     # Run only the dense retriever on the full sentence query
-    res_3 = sklearn_keyword_classifier.run(
-        query="which country was jon snow filmed ?",
-    )
+    res_3 = sklearn_keyword_classifier.run(query="which country was jon snow filmed ?")
     print("\n===============================")
     print("DPR Results" + "\n" + "=" * 15)
     print_answers(res_3, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
-    res_4 = sklearn_keyword_classifier.run(
-        query="jon snow country",
-    )
+    res_4 = sklearn_keyword_classifier.run(query="jon snow country")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
     print_answers(res_4, details="minimum")
 
     # Run only the dense retriever on the full sentence query
-    res_5 = sklearn_keyword_classifier.run(
-        query="who are the younger brothers of arya stark ?",
-    )
+    res_5 = sklearn_keyword_classifier.run(query="who are the younger brothers of arya stark ?")
     print("\n===============================")
     print("DPR Results" + "\n" + "=" * 15)
     print_answers(res_5, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
-    res_6 = sklearn_keyword_classifier.run(
-        query="arya stark younger brothers",
-    )
+    res_6 = sklearn_keyword_classifier.run(query="arya stark younger brothers")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
     print_answers(res_6, details="minimum")
@@ -116,49 +104,37 @@ def tutorial14_query_classifier():
     transformer_keyword_classifier.draw("pipeline_classifier.png")
 
     # Run only the dense retriever on the full sentence query
-    res_1 = transformer_keyword_classifier.run(
-        query="Who is the father of Arya Stark?",
-    )
+    res_1 = transformer_keyword_classifier.run(query="Who is the father of Arya Stark?")
     print("\n===============================")
     print("DPR Results" + "\n" + "=" * 15)
     print_answers(res_1, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
-    res_2 = transformer_keyword_classifier.run(
-        query="arya stark father",
-    )
+    res_2 = transformer_keyword_classifier.run(query="arya stark father")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
     print_answers(res_2, details="minimum")
 
     # Run only the dense retriever on the full sentence query
-    res_3 = transformer_keyword_classifier.run(
-        query="which country was jon snow filmed ?",
-    )
+    res_3 = transformer_keyword_classifier.run(query="which country was jon snow filmed ?")
     print("\n===============================")
     print("DPR Results" + "\n" + "=" * 15)
     print_answers(res_3, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
-    res_4 = transformer_keyword_classifier.run(
-        query="jon snow country",
-    )
+    res_4 = transformer_keyword_classifier.run(query="jon snow country")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
     print_answers(res_4, details="minimum")
 
     # Run only the dense retriever on the full sentence query
-    res_5 = transformer_keyword_classifier.run(
-        query="who are the younger brothers of arya stark ?",
-    )
+    res_5 = transformer_keyword_classifier.run(query="who are the younger brothers of arya stark ?")
     print("\n===============================")
     print("DPR Results" + "\n" + "=" * 15)
     print_answers(res_5, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
-    res_6 = transformer_keyword_classifier.run(
-        query="arya stark younger brothers",
-    )
+    res_6 = transformer_keyword_classifier.run(query="arya stark younger brothers")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
     print_answers(res_6, details="minimum")
@@ -179,17 +155,13 @@ def tutorial14_query_classifier():
     transformer_question_classifier.draw("question_classifier.png")
 
     # Run only the QA reader on the question query
-    res_1 = transformer_question_classifier.run(
-        query="Who is the father of Arya Stark?",
-    )
+    res_1 = transformer_question_classifier.run(query="Who is the father of Arya Stark?")
     print("\n===============================")
     print("DPR Results" + "\n" + "=" * 15)
     print_answers(res_1, details="minimum")
 
     # Show only DPR results
-    res_2 = transformer_question_classifier.run(
-        query="Arya Stark was the daughter of a Lord.",
-    )
+    res_2 = transformer_question_classifier.run(query="Arya Stark was the daughter of a Lord.")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
     print_answers(res_2, details="minimum")

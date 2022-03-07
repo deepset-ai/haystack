@@ -8,6 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 120
+skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
 
 [tool.pylint.'MESSAGES CONTROL']

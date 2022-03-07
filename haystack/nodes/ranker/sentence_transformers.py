@@ -53,12 +53,6 @@ class SentenceTransformersRanker(BaseRanker):
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
         """
         super().__init__()
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(
-        #     model_name_or_path=model_name_or_path,
-        #     model_version=model_version,
-        #     top_k=top_k,
-        # )
 
         self.top_k = top_k
 

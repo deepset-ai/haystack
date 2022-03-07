@@ -357,10 +357,7 @@ class Processor(ABC):
             logger.debug(random_sample)
 
     def _log_params(self):
-        params = {
-            "processor": self.__class__.__name__,
-            "tokenizer": self.tokenizer.__class__.__name__,
-        }
+        params = {"processor": self.__class__.__name__, "tokenizer": self.tokenizer.__class__.__name__}
         names = ["max_seq_len", "dev_split"]
         for name in names:
             value = getattr(self, name)
@@ -1925,12 +1922,7 @@ class InferenceProcessor(TextClassificationProcessor):
     - Doesn't read from file, but only consumes dictionaries (e.g. coming from API requests)
     """
 
-    def __init__(
-        self,
-        tokenizer,
-        max_seq_len,
-        **kwargs,
-    ):
+    def __init__(self, tokenizer, max_seq_len, **kwargs):
 
         super(InferenceProcessor, self).__init__(
             tokenizer=tokenizer,
@@ -2020,10 +2012,7 @@ class InferenceProcessor(TextClassificationProcessor):
     # Private method to keep s3e pooling and embedding extraction working
     def _sample_to_features(self, sample: Sample) -> Dict:
         features = sample_to_features_text(
-            sample=sample,
-            tasks=self.tasks,
-            max_seq_len=self.max_seq_len,
-            tokenizer=self.tokenizer,
+            sample=sample, tasks=self.tasks, max_seq_len=self.max_seq_len, tokenizer=self.tokenizer
         )
         return features
 
