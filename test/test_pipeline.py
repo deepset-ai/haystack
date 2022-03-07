@@ -749,6 +749,7 @@ def test_save_to_deepset_cloud():
         )
 
 
+@pytest.mark.elasticsearch
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
 def test_save_nonexisting_pipeline_to_deepset_cloud():
