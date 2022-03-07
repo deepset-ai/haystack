@@ -15,12 +15,12 @@ from haystack.errors import PipelineError
 logger = logging.getLogger(__name__)
 
 
-def exportable_to_yaml(func):
+def exportable_to_yaml(init_func):
     """
     Decorator that saves the init parameters of a node that later can 
     be used with exporting YAML configuration of a Pipeline.
     """
-    @wraps(func)
+    @wraps(init_func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
 
         # Warn for unnamed input params - should be rare
@@ -29,16 +29,20 @@ def exportable_to_yaml(func):
                 "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
             )
 
-        # Store all the named input parameters in self.pipeline_config
-        self.pipeline_config = {"params": {}, "type": type(self).__name__}
+        # with super().__init__() this method might be executed many times
+        # FIXME it would be better to decorate only non-abstract classes though!
+        if not self._pipeline_config:
+            self._pipeline_config = {"params": {}, "type": type(self).__name__}
+
+        # Store all the named input parameters in self._pipeline_config
         for k, v in kwargs.items():
             if isinstance(v, BaseComponent):
-                self.pipeline_config["params"][k] = v.pipeline_config
+                self._pipeline_config["params"][k] = v._pipeline_config
             elif v is not None:
-                self.pipeline_config["params"][k] = v
+                self._pipeline_config["params"][k] = v
 
         # Call the actuall __init__ function with all the arguments
-        func(self, *args, **kwargs)
+        init_func(self, *args, **kwargs)
 
     return wrapper_exportable_to_yaml
 
@@ -52,7 +56,7 @@ class Meta(ABCMeta):
         subclass = super().__new__(cls, name, bases, dct)
 
         # Automatically registers all the init parameters in
-        # an instance attribute called `pipeline_config`, 
+        # an instance attribute called `_pipeline_config`, 
         # used tosave this component to YAML. See exportable_to_yaml()
         subclass.__init__ = exportable_to_yaml(subclass.__init__)
 
@@ -70,8 +74,8 @@ class BaseComponent(ABC, metaclass=Meta):
 
     outgoing_edges: int
     subclasses: dict = {}
-    pipeline_config: dict = {}
     name: Optional[str] = None
+    _pipeline_config: dict = {}
 
     @classmethod
     def get_subclass(cls, component_type: str):
@@ -214,13 +218,13 @@ class BaseComponent(ABC, metaclass=Meta):
 
         :param kwargs: all parameters passed to the __init__() of the Component.
         """
-        if not self.pipeline_config:
-            self.pipeline_config = {"params": {}, "type": type(self).__name__}
+        if not self._pipeline_config:
+            self._pipeline_config = {"params": {}, "type": type(self).__name__}
             for k, v in kwargs.items():
                 if isinstance(v, BaseComponent):
-                    self.pipeline_config["params"][k] = v.pipeline_config
+                    self._pipeline_config["params"][k] = v._pipeline_config
                 elif v is not None:
-                    self.pipeline_config["params"][k] = v
+                    self._pipeline_config["params"][k] = v
 
     @classmethod
     def _find_subclasses_in_modules(

@@ -661,46 +661,43 @@ def test_save_to_deepset_cloud():
         )
 
 
-# @pytest.mark.slow
-# @pytest.mark.elasticsearch
-# @pytest.mark.parametrize(
-#     "retriever_with_docs, document_store_with_docs",
-#     [("elasticsearch", "elasticsearch")],
-#     indirect=True,
-# )
-@pytest.mark.parametrize(
-    "retriever_with_docs,document_store_with_docs",
-    [
-        ("dpr", "elasticsearch"),
-        ("dpr", "faiss"),
-        ("dpr", "memory"),
-        ("dpr", "milvus1"),
-        ("embedding", "elasticsearch"),
-        ("embedding", "faiss"),
-        ("embedding", "memory"),
-        ("embedding", "milvus1"),
-        ("elasticsearch", "elasticsearch"),
-        ("es_filter_only", "elasticsearch"),
-        ("tfidf", "memory"),
-    ],
-    indirect=True,
-)
-def test_graph_creation(retriever_with_docs, document_store_with_docs):
+def test_graph_creation_invalid_edge():
+    docstore = MockDocumentStore()
+    retriever= DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
-    pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["Query"])
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
-    with pytest.raises(AssertionError):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["ES.output_2"])
+    with pytest.raises(PipelineConfigError, match="'output_2' from 'DocStore'"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.output_2"])
 
-    with pytest.raises(AssertionError):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["ES.wrong_edge_label"])
 
-    with pytest.raises(Exception):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["InvalidNode"])
+def test_graph_creation_non_existing_edge():
+    docstore = MockDocumentStore()
+    retriever= DummyRetriever(document_store=docstore)
+    pipeline = Pipeline()
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
-    with pytest.raises(Exception):
-        pipeline = Pipeline()
-        pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["InvalidNode"])
+    with pytest.raises(PipelineConfigError, match="'wrong_edge_label' is not a valid edge name"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.wrong_edge_label"])
+
+
+def test_graph_creation_invalid_node():
+    docstore = MockDocumentStore()
+    retriever= DummyRetriever(document_store=docstore)
+    pipeline = Pipeline()
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
+
+    with pytest.raises(PipelineConfigError, match="Cannot find node 'InvalidNode'"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["InvalidNode"])
+
+
+def test_graph_creation_invalid_root_node():
+    docstore = MockDocumentStore()
+    pipeline = Pipeline()
+
+    with pytest.raises(PipelineConfigError, match="Root node 'InvalidNode' is invalid"):
+        pipeline.add_node(name="DocStore", component=docstore, inputs=["InvalidNode"])
+
 
 
 def test_parallel_paths_in_pipeline_graph():

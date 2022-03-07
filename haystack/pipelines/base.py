@@ -450,9 +450,9 @@ class Pipeline(BasePipeline):
             self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
-        for i in inputs:
-            if "." in i:
-                [input_node_name, input_edge_name] = i.split(".")
+        for input_node in inputs:
+            if "." in input_node:
+                [input_node_name, input_edge_name] = input_node.split(".")
                 if not "output_" in input_edge_name:
                     raise PipelineConfigError(f"'{input_edge_name}' is not a valid edge name.")
 
@@ -464,20 +464,21 @@ class Pipeline(BasePipeline):
                     )
             else:
                 try:
-                    outgoing_edges_input_node = self.graph.nodes[i]["component"].outgoing_edges
+                    outgoing_edges_input_node = self.graph.nodes[input_node]["component"].outgoing_edges
                 except KeyError as e:
                     raise PipelineConfigError(
-                        message=f"Cannot find node '{name}'. Make sure you're not using more "
-                        f"than one root node ({valid_root_nodes}) in the same pipeline.",
+                        message=f"Cannot find node '{input_node}'. Make sure you're not using more "
+                        f"than one root node ({valid_root_nodes}) in the same pipeline and that a node "
+                        f"called '{input_node}' is defined.",
                         source=e,
                     )
 
                 if not outgoing_edges_input_node == 1:
                     raise PipelineConfigError(
-                        f"Adding an edge from {i} to {name} is ambiguous as {i} has {outgoing_edges_input_node} edges. "
+                        f"Adding an edge from {input_node} to {name} is ambiguous as {input_node} has {outgoing_edges_input_node} edges. "
                         f"Please specify the output explicitly."
                     )
-                input_node_name = i
+                input_node_name = input_node
                 input_edge_name = "output_1"
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
 
@@ -1051,9 +1052,6 @@ class Pipeline(BasePipeline):
         :param components: dict containing component objects.
         """
         try:
-
-            print(name, components)
-
             if name in components.keys():  # check if component is already loaded.
                 return components[name]
 
@@ -1113,10 +1111,9 @@ class Pipeline(BasePipeline):
             if node == self.root_node:
                 continue
             component_instance = self.graph.nodes.get(node)["component"]
-            print(vars(component_instance))
 
-            component_type = component_instance.pipeline_config["type"]
-            component_params = component_instance.pipeline_config["params"]
+            component_type = component_instance._pipeline_config["type"]
+            component_params = component_instance._pipeline_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
 
             component_parent_classes = inspect.getmro(type(component_instance))

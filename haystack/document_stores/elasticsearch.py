@@ -357,7 +357,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
                             f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
                             f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                            f"In this case deleting the index with `curl -X DELETE \"{self._pipeline_config['params']['host']}:{self._pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
                             f"Note, that all data stored in the index will be lost!"
                         )
             if self.embedding_field:
@@ -1850,7 +1850,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mappings['properties'][search_field]['type']}' "
                             f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
                             f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                            f"In this case deleting the index with `curl -X DELETE \"{self._pipeline_config['params']['host']}:{self._pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
                             f"Note, that all data stored in the index will be lost!"
                         )
 

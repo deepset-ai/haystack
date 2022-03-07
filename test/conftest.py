@@ -153,6 +153,8 @@ def pytest_collection_modifyitems(config, items):
 
 
 class MockDocumentStore(BaseDocumentStore):
+    outgoing_edges = 1
+
     def _create_document_field_map(self, *a, **k):
         pass
 
@@ -194,11 +196,15 @@ class MockDocumentStore(BaseDocumentStore):
 
 
 class MockRetriever(BaseRetriever):
+    outgoing_edges = 1
+
     def retrieve(self, *a, **k):
         pass
 
 
 class MockReader(BaseReader):
+    outgoing_edges = 1
+    
     def predict(self, *a, **k):
         pass
 
