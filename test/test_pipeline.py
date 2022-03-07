@@ -2,11 +2,14 @@ from pathlib import Path
 
 import os
 import json
+from typing import Tuple
 from unittest.mock import Mock
 
 import pandas as pd
 import pytest
+from requests import PreparedRequest
 import responses
+import yaml
 
 from haystack import __version__, Document, Answer, JoinAnswers
 from haystack.document_stores.base import BaseDocumentStore
@@ -793,6 +796,23 @@ def test_save_to_deepset_cloud():
 @responses.activate
 def test_save_nonexisting_pipeline_to_deepset_cloud():
     if MOCK_DC:
+
+        def dc_document_store_matcher(request: PreparedRequest) -> Tuple[bool, str]:
+            matches = False
+            reason = "No DeepsetCloudDocumentStore found."
+            request_body = request.body or ""
+            json_body = yaml.safe_load(request_body)
+            components = json_body["components"]
+            for component in components:
+                if component["type"].endswith("DocumentStore"):
+                    if component["type"] == "DeepsetCloudDocumentStore":
+                        matches = True
+                    else:
+                        matches = False
+                        reason = f"Component {component['name']} is of type {component['type']} and not DeepsetCloudDocumentStore"
+                        break
+            return matches, reason
+
         responses.add(
             method=responses.GET,
             url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
@@ -805,6 +825,7 @@ def test_save_nonexisting_pipeline_to_deepset_cloud():
             url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
             json={"name": "test_new_non_existing_pipeline"},
             status=201,
+            match=[dc_document_store_matcher],
         )
 
     es_document_store = ElasticsearchDocumentStore()
