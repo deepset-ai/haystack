@@ -43,6 +43,7 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: bool = True,
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
+        remove_substrings: List[str] = [],
         split_by: str = "word",
         split_length: int = 200,
         split_overlap: int = 0,
@@ -56,6 +57,7 @@ class PreProcessor(BasePreProcessor):
                                      or similar.
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
         :param clean_empty_lines: Remove more than two empty lines in the text.
+        :param remove_substrings: Remove specified substrings from the text.
         :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
@@ -76,6 +78,7 @@ class PreProcessor(BasePreProcessor):
             clean_whitespace=clean_whitespace,
             clean_header_footer=clean_header_footer,
             clean_empty_lines=clean_empty_lines,
+            remove_substrings=remove_substrings,
             split_by=split_by,
             split_length=split_length,
             split_overlap=split_overlap,
@@ -90,6 +93,7 @@ class PreProcessor(BasePreProcessor):
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
+        self.remove_substrings = remove_substrings
         self.split_by = split_by
         self.split_length = split_length
         self.split_overlap = split_overlap
@@ -103,6 +107,7 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
+        remove_substrings: List[str] = [],
         split_by: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
@@ -117,6 +122,7 @@ class PreProcessor(BasePreProcessor):
             "clean_whitespace": clean_whitespace,
             "clean_header_footer": clean_header_footer,
             "clean_empty_lines": clean_empty_lines,
+            "remove_substrings": remove_substrings,
             "split_by": split_by,
             "split_length": split_length,
             "split_overlap": split_overlap,
@@ -141,6 +147,7 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
+        remove_substrings: List[str] = [],
         split_by: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
@@ -153,6 +160,8 @@ class PreProcessor(BasePreProcessor):
             clean_header_footer = self.clean_header_footer
         if clean_empty_lines is None:
             clean_empty_lines = self.clean_empty_lines
+        if not remove_substrings:
+            remove_substrings = self.remove_substrings
         if split_by is None:
             split_by = self.split_by
         if split_length is None:
@@ -167,6 +176,7 @@ class PreProcessor(BasePreProcessor):
             clean_whitespace=clean_whitespace,
             clean_header_footer=clean_header_footer,
             clean_empty_lines=clean_empty_lines,
+            remove_substrings=remove_substrings,
         )
         split_documents = self.split(
             document=cleaned_document,
@@ -181,7 +191,14 @@ class PreProcessor(BasePreProcessor):
         nested_docs = [self._process_single(d, **kwargs) for d in tqdm(documents, unit="docs")]
         return [d for x in nested_docs for d in x]
 
-    def clean(self, document: dict, clean_whitespace: bool, clean_header_footer: bool, clean_empty_lines: bool) -> dict:
+    def clean(
+        self,
+        document: dict,
+        clean_whitespace: bool,
+        clean_header_footer: bool,
+        clean_empty_lines: bool,
+        remove_substrings: List[str],
+    ) -> dict:
         """
         Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
         and empty lines. Its exact functionality is defined by the parameters passed into PreProcessor.__init__().
@@ -203,6 +220,9 @@ class PreProcessor(BasePreProcessor):
 
         if clean_empty_lines:
             text = re.sub(r"\n\n+", "\n\n", text)
+
+        for substring in remove_substrings:
+            text = text.replace(substring, "")
 
         document["content"] = text
         return document
