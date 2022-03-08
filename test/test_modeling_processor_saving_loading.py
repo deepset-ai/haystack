@@ -9,7 +9,7 @@ import torch
 from .conftest import SAMPLES_PATH
 
 
-def test_processor_saving_loading(tmpdir, caplog):
+def test_processor_saving_loading(tmp_path, caplog):
     if caplog is not None:
         caplog.set_level(logging.CRITICAL)
 
@@ -31,7 +31,7 @@ def test_processor_saving_loading(tmpdir, caplog):
     dicts = processor.file_to_dicts(file=SAMPLES_PATH / "qa" / "dev-sample.json")
     data, tensor_names, _ = processor.dataset_from_dicts(dicts=dicts, indices=[1])
 
-    save_dir = tmpdir / Path("testsave/processor")
+    save_dir = tmp_path / Path("testsave/processor")
     processor.save(save_dir)
 
     processor = processor.load_from_dir(save_dir)
