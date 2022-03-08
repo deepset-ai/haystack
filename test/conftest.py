@@ -103,22 +103,28 @@ def pytest_collection_modifyitems(config, items):
 
         # add pytest markers for tests that are not explicitly marked but include some keywords
         # in the test name (e.g. test_elasticsearch_client would get the "elasticsearch" marker)
+        # TODO evaluate if we need all of there (the non document store ones seems to be unused)
         if "generator" in item.nodeid:
             item.add_marker(pytest.mark.generator)
         elif "summarizer" in item.nodeid:
             item.add_marker(pytest.mark.summarizer)
         elif "tika" in item.nodeid:
             item.add_marker(pytest.mark.tika)
-        elif "elasticsearch" in item.nodeid:
-            item.add_marker(pytest.mark.elasticsearch)
-        elif "graphdb" in item.nodeid:
-            item.add_marker(pytest.mark.graphdb)
         elif "pipeline" in item.nodeid:
             item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
             item.add_marker(pytest.mark.slow)
+        elif "elasticsearch" in item.nodeid:
+            item.add_marker(pytest.mark.elasticsearch)
+        elif "graphdb" in item.nodeid:
+            item.add_marker(pytest.mark.graphdb)
         elif "weaviate" in item.nodeid:
             item.add_marker(pytest.mark.weaviate)
+        elif "faiss" in item.nodeid:
+            item.add_marker(pytest.mark.faiss)
+        elif "milvus" in item.nodeid:
+            item.add_marker(pytest.mark.milvus)
+            item.add_marker(pytest.mark.milvus1)
 
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
