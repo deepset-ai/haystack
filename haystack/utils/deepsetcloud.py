@@ -1,6 +1,7 @@
 import logging
 import os
-from typing import Any, Dict, Generator, List, Optional, Union
+import time
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 
 try:
     from typing import Literal
@@ -11,6 +12,18 @@ import requests
 import yaml
 
 DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1"  # TODO
+PIPELINE_STATE_TRANSITION_INFOS: Dict[str, Dict[str, List[str]]] = {
+    "UNDEPLOYED": {
+        "satisfied_states": ["UNDEPLOYED"],
+        "valid_initial_states": ["DEPLOYED", "DEPLOYED_UNHEALTHY"],
+        "valid_transitioning_states": ["UNDEPLOYMENT_SCHEDULED", "UNDEPLOYMENT_IN_PROGRESS"],
+    },
+    "DEPLOYED": {
+        "satisfied_states": ["DEPLOYED", "DEPLOYED_UNHEALTHY"],
+        "valid_initial_states": ["UNDEPLOYED"],
+        "valid_transitioning_states": ["DEPLOYMENT_SCHEDULED", "DEPLOYMENT_IN_PROGRESS"],
+    },
+}
 
 logger = logging.getLogger(__name__)
 
@@ -421,6 +434,150 @@ class PipelineClient:
             logger.warning(f"Unexpected response from updating pipeline config: {response}")
 
     def deploy(
+        self, pipeline_config_name: Optional[str] = None, workspace: str = None, headers: dict = None, timeout: int = 60
+    ):
+        """
+        Deploys the pipelines of a pipeline config on Deepset Cloud.
+        Blocks until pipelines are successfully deployed or deployment failed.
+        If pipelines are already deployed it does nothing.
+        If deployment fails an error will be raised.
+
+        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+        :param workspace: workspace in Deepset Cloud
+        :param headers: Headers to pass to API call
+        :param timeout: The time in seconds to wait until deployment completes.
+                        If the timeout is exceeded an error will be raised.
+        """
+        status, changed = self._transition_pipeline_state(
+            target_state="DEPLOYED",
+            timeout=timeout,
+            pipeline_config_name=pipeline_config_name,
+            workspace=workspace,
+            headers=headers,
+        )
+
+        if status == "DEPLOYED":
+            if changed:
+                logger.info(f"Pipeline config '{pipeline_config_name}' successfully deployed.")
+            else:
+                logger.info(f"Pipeline config '{pipeline_config_name}' is already deployed.")
+        elif status == "DEPLOYED_UNHEALTHY":
+            logger.warning(
+                f"Deployment of pipeline config '{pipeline_config_name}' succeeded. But '{pipeline_config_name}' is unhealthy."
+            )
+        elif status in ["UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYMENT_SCHEDULED"]:
+            raise DeepsetCloudError(
+                f"Deployment of pipline config '{pipeline_config_name}' aborted. Undeployment was requested."
+            )
+        elif status == "UNDEPLOYED":
+            raise DeepsetCloudError(f"Deployment of pipeline config '{pipeline_config_name}' failed.")
+        else:
+            raise DeepsetCloudError(
+                f"Deployment of pipeline config '{pipeline_config_name} ended in unexpected status: {status}"
+            )
+
+    def undeploy(
+        self, pipeline_config_name: Optional[str] = None, workspace: str = None, headers: dict = None, timeout: int = 60
+    ):
+        """
+        Undeploys the pipelines of a pipeline config on Deepset Cloud.
+        Blocks until pipelines are successfully undeployed or undeployment failed.
+        If pipelines are already undeployed it does nothing.
+        If undeployment fails an error will be raised.
+
+        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+        :param workspace: workspace in Deepset Cloud
+        :param headers: Headers to pass to API call
+        :param timeout: The time in seconds to wait until undeployment completes.
+                        If the timeout is exceeded an error will be raised.
+        """
+        status, changed = self._transition_pipeline_state(
+            target_state="UNDEPLOYED",
+            timeout=timeout,
+            pipeline_config_name=pipeline_config_name,
+            workspace=workspace,
+            headers=headers,
+        )
+
+        if status == "UNDEPLOYED":
+            if changed:
+                logger.info(f"Pipeline config '{pipeline_config_name}' successfully undeployed.")
+            else:
+                logger.info(f"Pipeline config '{pipeline_config_name}' is already undeployed.")
+        elif status in ["DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_SCHEDULED"]:
+            raise DeepsetCloudError(
+                f"Undeployment of pipline config '{pipeline_config_name}' aborted. Deployment was requested."
+            )
+        elif status in ["DEPLOYED", "DEPLOYED_UNHEALTHY"]:
+            raise DeepsetCloudError(f"Undeployment of pipeline config '{pipeline_config_name}' failed.")
+        else:
+            raise DeepsetCloudError(
+                f"Undeployment of pipeline config '{pipeline_config_name} ended in unexpected status: {status}"
+            )
+
+    def _transition_pipeline_state(
+        self,
+        target_state: Literal["DEPLOYED", "UNDEPLOYED"],
+        timeout: int = 60,
+        pipeline_config_name: Optional[str] = None,
+        workspace: str = None,
+        headers: dict = None,
+    ) -> Tuple[str, bool]:
+        """
+        Transitions the pipeline config to desired target_state on Deepset Cloud.
+
+        :param target_state: the target state of the Pipeline config.
+        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
+        :param workspace: workspace in Deepset Cloud
+        :param headers: Headers to pass to API call
+        :param timeout: The time in seconds to wait until undeployment completes.
+                        If the timeout is exceeded an error will be raised.
+        """
+        pipeline_info = self.get_pipeline_config_info(
+            pipeline_config_name=pipeline_config_name, workspace=workspace, headers=headers
+        )
+        if pipeline_info is None:
+            raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
+
+        transition_info = PIPELINE_STATE_TRANSITION_INFOS[target_state]
+        satisfied_states = transition_info["satisfied_states"]
+        valid_transitioning_states = transition_info["valid_transitioning_states"]
+        valid_initial_states = transition_info["valid_initial_states"]
+
+        status = pipeline_info["status"]
+        if status in satisfied_states:
+            return status, False
+
+        if status not in valid_initial_states:
+            raise DeepsetCloudError(
+                f"Pipeline config '{pipeline_config_name}' is in invalid state '{status}' to be transitioned to '{target_state}'."
+            )
+
+        if target_state == "DEPLOYED":
+            res = self._deploy(pipeline_config_name=pipeline_config_name, workspace=workspace, headers=headers)
+            status = res["status"]
+        elif target_state == "UNDEPLOYED":
+            res = self._undeploy(pipeline_config_name=pipeline_config_name, workspace=workspace, headers=headers)
+            status = res["status"]
+        else:
+            raise NotImplementedError(f"Transitioning to state '{target_state}' is not implemented.")
+
+        start_time = time.time()
+        while status in valid_transitioning_states:
+            if time.time() - start_time > timeout:
+                raise TimeoutError(f"Transitioning of '{pipeline_config_name}' to state '{target_state}' timed out.")
+            pipeline_info = self.get_pipeline_config_info(
+                pipeline_config_name=pipeline_config_name, workspace=workspace, headers=headers
+            )
+            if pipeline_info is None:
+                raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist anymore.")
+            status = pipeline_info["status"]
+            logger.info(f"Current status of '{pipeline_config_name}' is: '{status}'")
+            time.sleep(5)
+
+        return status, True
+
+    def _deploy(
         self, pipeline_config_name: Optional[str] = None, workspace: Optional[str] = None, headers: dict = None
     ) -> dict:
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
@@ -428,7 +585,7 @@ class PipelineClient:
         response = self.client.post(url=deploy_url, headers=headers).json()
         return response
 
-    def undeploy(
+    def _undeploy(
         self, pipeline_config_name: Optional[str] = None, workspace: Optional[str] = None, headers: dict = None
     ) -> dict:
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
