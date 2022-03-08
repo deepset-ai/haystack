@@ -91,7 +91,7 @@ def test_faiss_index_save_and_load(tmp_path, sql_url):
     assert not reloaded_document_store.progress_bar
 
     # test loading the index via init
-    new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss")
+    new_document_store = FAISSDocumentStore(faiss_index_path=str(tmp_path / "haystack_test_faiss"))
 
     # check faiss index is restored
     assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
