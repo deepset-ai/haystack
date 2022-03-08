@@ -20,8 +20,8 @@ def shutdown_ray():
 
 
 @pytest.mark.integration
-@pytest.mark.elasticsearch
-def test_load_pipeline():
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_load_pipeline(document_store_with_docs):
     pipeline = RayPipeline.load_from_yaml(
         SAMPLES_PATH / "pipeline" / "test_ray_pipeline.yaml",
         pipeline_name="ray_query_pipeline",
