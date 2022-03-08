@@ -386,7 +386,8 @@ class Seq2SeqGenerator(BaseGenerator):
     def _register_converters(cls, model_name_or_path: str, custom_converter: Optional[Callable]):
         # init if empty
         if not cls._model_input_converters:
-            cls._model_input_converters["yjernite/bart_eli5"] = _BartEli5Converter()
+            for c in ["yjernite/bart_eli5", "vblagoje/bart_lfqa"]:
+                cls._model_input_converters[c] = _BartEli5Converter()
 
         # register user provided custom converter
         if model_name_or_path and custom_converter:
