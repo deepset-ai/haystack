@@ -23,6 +23,9 @@ def exportable_to_yaml(init_func):
     @wraps(init_func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
 
+        # Call the actuall __init__ function with all the arguments
+        init_func(self, *args, **kwargs)
+
         # Warn for unnamed input params - should be rare
         if args:
             logger.warning(
@@ -40,9 +43,6 @@ def exportable_to_yaml(init_func):
                 self._pipeline_config["params"][k] = v._pipeline_config
             elif v is not None:
                 self._pipeline_config["params"][k] = v
-
-        # Call the actuall __init__ function with all the arguments
-        init_func(self, *args, **kwargs)
 
     return wrapper_exportable_to_yaml
 
