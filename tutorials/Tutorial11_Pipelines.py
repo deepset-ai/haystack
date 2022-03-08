@@ -39,9 +39,11 @@ def tutorial11_pipelines():
     es_retriever = ElasticsearchRetriever(document_store=document_store)
 
     # Initialize dense retriever
-    embedding_retriever = EmbeddingRetriever(document_store,
-                                             model_format="sentence_transformers",
-                                             embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1")
+    embedding_retriever = EmbeddingRetriever(
+        document_store,
+        model_format="sentence_transformers",
+        embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+    )
     document_store.update_embeddings(embedding_retriever, update_existing_embeddings=False)
 
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
@@ -133,7 +135,9 @@ def tutorial11_pipelines():
     p_ensemble.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
     p_ensemble.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])
     p_ensemble.add_node(
-        component=JoinDocuments(join_mode="concatenate"), name="JoinResults", inputs=["ESRetriever", "EmbeddingRetriever"]
+        component=JoinDocuments(join_mode="concatenate"),
+        name="JoinResults",
+        inputs=["ESRetriever", "EmbeddingRetriever"],
     )
     p_ensemble.add_node(component=reader, name="Reader", inputs=["JoinResults"])
     p_ensemble.draw("pipeline_ensemble.png")
@@ -141,7 +145,8 @@ def tutorial11_pipelines():
     # Run pipeline
     query = "Who is the father of Arya Stark?"
     res = p_ensemble.run(
-        query="Who is the father of Arya Stark?", params={"ESRetriever": {"top_k": 5}, "EmbeddingRetriever": {"top_k": 5}}
+        query="Who is the father of Arya Stark?",
+        params={"ESRetriever": {"top_k": 5}, "EmbeddingRetriever": {"top_k": 5}},
     )
     print("\nQuery: ", query)
     print("Answers:")
