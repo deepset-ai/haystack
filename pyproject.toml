@@ -102,8 +102,8 @@ markers = [
     "pipeline: tests with pipelines",
     "summarizer: summarizer tests",
     "weaviate: require weaviate container",
-    "faiss": uses FAISS",
-    "milvus": requires a Milvus 2 setup",
+    "faiss: uses FAISS",
+    "milvus: requires a Milvus 2 setup",
     "milvus1: requires a Milvus 1 container",
     "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
 ]
