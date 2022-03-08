@@ -16,11 +16,7 @@ from conftest import DOCS_WITH_EMBEDDINGS
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [("embedding", "memory")],
-    indirect=True,
-)
+@pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
 def test_generator_pipeline_with_translator(
     document_store, retriever, rag_generator, en_to_de_translator, de_to_en_translator
 ):

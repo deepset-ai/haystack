@@ -152,8 +152,7 @@ class Evaluator:
                     if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
                         if isinstance(metric_val, numbers.Number):
                             MlLogger.log_metrics(
-                                metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val},
-                                step=steps,
+                                metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val}, step=steps
                             )
                 # print via standard python logger
                 if print:

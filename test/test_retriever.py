@@ -10,7 +10,7 @@ from haystack.document_stores import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.milvus import MilvusDocumentStore
+from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
@@ -56,11 +56,11 @@ def docs():
         ("dpr", "elasticsearch"),
         ("dpr", "faiss"),
         ("dpr", "memory"),
-        ("dpr", "milvus"),
+        ("dpr", "milvus1"),
         ("embedding", "elasticsearch"),
         ("embedding", "faiss"),
         ("embedding", "memory"),
-        ("embedding", "milvus"),
+        ("embedding", "milvus1"),
         ("elasticsearch", "elasticsearch"),
         ("es_filter_only", "elasticsearch"),
         ("tfidf", "memory"),
@@ -150,6 +150,9 @@ def test_elasticsearch_custom_query():
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store, retriever, docs):
 
@@ -178,6 +181,9 @@ def test_dpr_embedding(document_store, retriever, docs):
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
 def test_retribert_embedding(document_store, retriever, docs):

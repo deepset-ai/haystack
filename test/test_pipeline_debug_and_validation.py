@@ -3,14 +3,8 @@ from pathlib import Path
 import json
 import pytest
 
-from haystack.pipelines import (
-    Pipeline,
-    RootNode,
-)
-from haystack.nodes import (
-    FARMReader,
-    ElasticsearchRetriever,
-)
+from haystack.pipelines import Pipeline, RootNode
+from haystack.nodes import FARMReader, ElasticsearchRetriever
 
 from conftest import SAMPLES_PATH
 
@@ -88,8 +82,7 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
     pipeline.add_node(component=reader, name="Reader", inputs=["ESRetriever"])
 
     prediction = pipeline.run(
-        query="Who lives in Berlin?",
-        params={"ESRetriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3}},
+        query="Who lives in Berlin?", params={"ESRetriever": {"top_k": 10, "debug": True}, "Reader": {"top_k": 3}}
     )
     assert "_debug" in prediction.keys()
     assert "ESRetriever" in prediction["_debug"].keys()

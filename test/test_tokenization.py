@@ -40,11 +40,7 @@ TEXTS = [
 def test_basic_loading(caplog):
     caplog.set_level(logging.CRITICAL)
     # slow tokenizers
-    tokenizer = Tokenizer.load(
-        pretrained_model_name_or_path="bert-base-cased",
-        do_lower_case=True,
-        use_fast=False,
-    )
+    tokenizer = Tokenizer.load(pretrained_model_name_or_path="bert-base-cased", do_lower_case=True, use_fast=False)
     assert type(tokenizer) == BertTokenizer
     assert tokenizer.basic_tokenizer.do_lower_case == True
 
@@ -227,13 +223,7 @@ def test_save_load(caplog):
         assert data_before == data_after
 
 
-@pytest.mark.parametrize(
-    "model_name",
-    [
-        "bert-base-german-cased",
-        "google/electra-small-discriminator",
-    ],
-)
+@pytest.mark.parametrize("model_name", ["bert-base-german-cased", "google/electra-small-discriminator"])
 def test_fast_tokenizer_with_examples(caplog, model_name):
     fast_tokenizer = Tokenizer.load(model_name, lower_case=False, use_fast=True)
     tokenizer = Tokenizer.load(model_name, lower_case=False, use_fast=False)
@@ -306,10 +296,7 @@ def test_all_tokenizer_on_special_cases(caplog):
             # token offsets are originally relative to the beginning of the word
             # These lines convert them so they are relative to the beginning of the sentence
             token_offsets = []
-            for (
-                (start, end),
-                w_index,
-            ) in zip(encoded.offsets, encoded.words):
+            for ((start, end), w_index) in zip(encoded.offsets, encoded.words):
                 word_start_ch = word_spans[w_index][0]
                 token_offsets.append((start + word_start_ch, end + word_start_ch))
             if getattr(tokenizer, "add_prefix_space", None):
@@ -468,10 +455,7 @@ def test_fast_bert_custom_vocab(caplog):
 
 @pytest.mark.parametrize(
     "model_name, tokenizer_type",
-    [
-        ("bert-base-german-cased", BertTokenizerFast),
-        ("google/electra-small-discriminator", ElectraTokenizerFast),
-    ],
+    [("bert-base-german-cased", BertTokenizerFast), ("google/electra-small-discriminator", ElectraTokenizerFast)],
 )
 def test_fast_tokenizer_type(caplog, model_name, tokenizer_type):
     caplog.set_level(logging.CRITICAL)
