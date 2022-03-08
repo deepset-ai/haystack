@@ -34,3 +34,32 @@ The node allows multiple join modes:
          `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
 * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.
 
+<a id="join_answers"></a>
+
+# Module join\_answers
+
+<a id="join_answers.JoinAnswers"></a>
+
+## JoinAnswers
+
+```python
+class JoinAnswers(BaseComponent)
+```
+
+A node to join `Answer`s produced by multiple `Reader` nodes.
+
+<a id="route_documents"></a>
+
+# Module route\_documents
+
+<a id="route_documents.RouteDocuments"></a>
+
+## RouteDocuments
+
+```python
+class RouteDocuments(BaseComponent)
+```
+
+A node to split a list of `Document`s by `content_type` or by the values of a metadata field and route them to
+different nodes.
+
