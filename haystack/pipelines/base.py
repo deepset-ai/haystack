@@ -46,7 +46,7 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack import __version__ as VERSION
+from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.errors import PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
@@ -1161,7 +1161,7 @@ class Pipeline(BasePipeline):
         config = {
             "components": list(components.values()),
             "pipelines": list(pipelines.values()),
-            "version": VERSION,
+            "version": __version__,
         }
         return config
 
