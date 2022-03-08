@@ -304,8 +304,8 @@ def question_generator():
 
 
 @pytest.fixture(scope="function")
-def eli5_generator():
-    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", max_length=20)
+def lfqa_generator(request):
+    return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
 
 
 @pytest.fixture(scope="function")
@@ -508,6 +508,14 @@ def get_retriever(retriever_type, document_store):
             embedding_model="yjernite/retribert-base-uncased",
             model_format="retribert",
             use_gpu=False,
+        )
+    elif retriever_type == "dpr_lfqa":
+        retriever = DensePassageRetriever(
+            document_store=document_store,
+            query_embedding_model="vblagoje/dpr-question_encoder-single-lfqa-wiki",
+            passage_embedding_model="vblagoje/dpr-ctx_encoder-single-lfqa-wiki",
+            use_gpu=False,
+            embed_title=True,
         )
     elif retriever_type == "elasticsearch":
         retriever = ElasticsearchRetriever(document_store=document_store)
