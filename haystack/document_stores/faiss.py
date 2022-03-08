@@ -615,7 +615,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         faiss.write_index(self.faiss_indexes[self.index], str(index_path))
         with open(config_path, "w") as ipp:
-            json.dump(self._pipeline_config["params"], ipp)
+            json.dump(self._pipeline_config["params"], ipp, default=str)
 
     def _load_init_params_from_config(
         self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None
