@@ -1164,3 +1164,38 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
             for doc in docs_to_delete:
                 self.weaviate_client.data_object.delete(doc.id)
+
+    def delete_labels(self):
+        """
+        Implemented to respect BaseDocumentStore's contract.
+
+        Weaviate does not support labels (yet).
+        """
+        raise NotImplementedError("Weaviate does not support labels (yet).")
+    
+    
+    def get_all_labels(self):
+        """
+        Implemented to respect BaseDocumentStore's contract.
+
+        Weaviate does not support labels (yet).
+        """
+        raise NotImplementedError("Weaviate does not support labels (yet).")
+    
+
+    def get_label_count(self):
+        """
+        Implemented to respect BaseDocumentStore's contract.
+
+        Weaviate does not support labels (yet).
+        """
+        raise NotImplementedError("Weaviate does not support labels (yet).")
+    
+
+    def write_labels(self):
+        """
+        Implemented to respect BaseDocumentStore's contract.
+
+        Weaviate does not support labels (yet).
+        """
+        pass
