@@ -1,7 +1,8 @@
+from enum import Enum
 import logging
 import os
 import time
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 try:
     from typing import Literal
@@ -12,16 +13,34 @@ import requests
 import yaml
 
 DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1"  # TODO
-PIPELINE_STATE_TRANSITION_INFOS: Dict[str, Dict[str, List[str]]] = {
-    "UNDEPLOYED": {
-        "satisfied_states": ["UNDEPLOYED"],
-        "valid_initial_states": ["DEPLOYED", "DEPLOYED_UNHEALTHY"],
-        "valid_transitioning_states": ["UNDEPLOYMENT_SCHEDULED", "UNDEPLOYMENT_IN_PROGRESS"],
+
+
+class PipelineStatus(Enum):
+    UNDEPLOYED: str = "UNDEPLOYED"
+    DEPLOYED_UNHEALTHY: str = "DEPLOYED_UNHEALTHY"
+    DEPLOYED: str = "DEPLOYED"
+    DEPLOYMENT_IN_PROGRESS: str = "DEPLOYMENT_IN_PROGRESS"
+    UNDEPLOYMENT_IN_PROGRESS: str = "UNDEPLOYMENT_SCHEDULED"
+    DEPLOYMENT_SCHEDULED: str = "DEPLOYMENT_SCHEDULED"
+    UNDEPLOYMENT_SCHEDULED: str = "UNDEPLOYMENT_IN_PROGRESS"
+
+
+SATISFIED_STATES_KEY = "satisfied_states"
+VALID_INITIAL_STATES_KEY = "valid_initial_states"
+VALID_TRANSITIONING_STATES_KEY = "valid_transitioning_states"
+PIPELINE_STATE_TRANSITION_INFOS: Dict[PipelineStatus, Dict[str, List[PipelineStatus]]] = {
+    PipelineStatus.UNDEPLOYED: {
+        SATISFIED_STATES_KEY: [PipelineStatus.UNDEPLOYED],
+        VALID_INITIAL_STATES_KEY: [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY],
+        VALID_TRANSITIONING_STATES_KEY: [
+            PipelineStatus.UNDEPLOYMENT_SCHEDULED,
+            PipelineStatus.UNDEPLOYMENT_IN_PROGRESS,
+        ],
     },
-    "DEPLOYED": {
-        "satisfied_states": ["DEPLOYED", "DEPLOYED_UNHEALTHY"],
-        "valid_initial_states": ["UNDEPLOYED"],
-        "valid_transitioning_states": ["DEPLOYMENT_SCHEDULED", "DEPLOYMENT_IN_PROGRESS"],
+    PipelineStatus.DEPLOYED: {
+        SATISFIED_STATES_KEY: [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY],
+        VALID_INITIAL_STATES_KEY: [PipelineStatus.UNDEPLOYED],
+        VALID_TRANSITIONING_STATES_KEY: [PipelineStatus.DEPLOYMENT_SCHEDULED, PipelineStatus.DEPLOYMENT_IN_PROGRESS],
     },
 }
 
@@ -449,27 +468,27 @@ class PipelineClient:
                         If the timeout is exceeded an error will be raised.
         """
         status, changed = self._transition_pipeline_state(
-            target_state="DEPLOYED",
+            target_state=PipelineStatus.DEPLOYED,
             timeout=timeout,
             pipeline_config_name=pipeline_config_name,
             workspace=workspace,
             headers=headers,
         )
 
-        if status == "DEPLOYED":
+        if status == PipelineStatus.DEPLOYED:
             if changed:
                 logger.info(f"Pipeline config '{pipeline_config_name}' successfully deployed.")
             else:
                 logger.info(f"Pipeline config '{pipeline_config_name}' is already deployed.")
-        elif status == "DEPLOYED_UNHEALTHY":
+        elif status == PipelineStatus.DEPLOYED_UNHEALTHY:
             logger.warning(
                 f"Deployment of pipeline config '{pipeline_config_name}' succeeded. But '{pipeline_config_name}' is unhealthy."
             )
-        elif status in ["UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYMENT_SCHEDULED"]:
+        elif status in [PipelineStatus.UNDEPLOYMENT_IN_PROGRESS, PipelineStatus.UNDEPLOYMENT_SCHEDULED]:
             raise DeepsetCloudError(
                 f"Deployment of pipline config '{pipeline_config_name}' aborted. Undeployment was requested."
             )
-        elif status == "UNDEPLOYED":
+        elif status == PipelineStatus.UNDEPLOYED:
             raise DeepsetCloudError(f"Deployment of pipeline config '{pipeline_config_name}' failed.")
         else:
             raise DeepsetCloudError(
@@ -492,23 +511,23 @@ class PipelineClient:
                         If the timeout is exceeded an error will be raised.
         """
         status, changed = self._transition_pipeline_state(
-            target_state="UNDEPLOYED",
+            target_state=PipelineStatus.UNDEPLOYED,
             timeout=timeout,
             pipeline_config_name=pipeline_config_name,
             workspace=workspace,
             headers=headers,
         )
 
-        if status == "UNDEPLOYED":
+        if status == PipelineStatus.UNDEPLOYED:
             if changed:
                 logger.info(f"Pipeline config '{pipeline_config_name}' successfully undeployed.")
             else:
                 logger.info(f"Pipeline config '{pipeline_config_name}' is already undeployed.")
-        elif status in ["DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_SCHEDULED"]:
+        elif status in [PipelineStatus.DEPLOYMENT_IN_PROGRESS, PipelineStatus.DEPLOYMENT_SCHEDULED]:
             raise DeepsetCloudError(
                 f"Undeployment of pipline config '{pipeline_config_name}' aborted. Deployment was requested."
             )
-        elif status in ["DEPLOYED", "DEPLOYED_UNHEALTHY"]:
+        elif status in [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY]:
             raise DeepsetCloudError(f"Undeployment of pipeline config '{pipeline_config_name}' failed.")
         else:
             raise DeepsetCloudError(
@@ -517,7 +536,7 @@ class PipelineClient:
 
     def _transition_pipeline_state(
         self,
-        target_state: Literal["DEPLOYED", "UNDEPLOYED"],
+        target_state: Literal[PipelineStatus.DEPLOYED, PipelineStatus.UNDEPLOYED],
         timeout: int = 60,
         pipeline_config_name: Optional[str] = None,
         workspace: str = None,
@@ -540,9 +559,9 @@ class PipelineClient:
             raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
 
         transition_info = PIPELINE_STATE_TRANSITION_INFOS[target_state]
-        satisfied_states = transition_info["satisfied_states"]
-        valid_transitioning_states = transition_info["valid_transitioning_states"]
-        valid_initial_states = transition_info["valid_initial_states"]
+        satisfied_states = transition_info[SATISFIED_STATES_KEY]
+        valid_transitioning_states = transition_info[VALID_TRANSITIONING_STATES_KEY]
+        valid_initial_states = transition_info[VALID_INITIAL_STATES_KEY]
 
         status = pipeline_info["status"]
         if status in satisfied_states:
@@ -553,10 +572,10 @@ class PipelineClient:
                 f"Pipeline config '{pipeline_config_name}' is in invalid state '{status}' to be transitioned to '{target_state}'."
             )
 
-        if target_state == "DEPLOYED":
+        if target_state == PipelineStatus.DEPLOYED:
             res = self._deploy(pipeline_config_name=pipeline_config_name, workspace=workspace, headers=headers)
             status = res["status"]
-        elif target_state == "UNDEPLOYED":
+        elif target_state == PipelineStatus.UNDEPLOYED:
             res = self._undeploy(pipeline_config_name=pipeline_config_name, workspace=workspace, headers=headers)
             status = res["status"]
         else:
@@ -572,8 +591,9 @@ class PipelineClient:
             if pipeline_info is None:
                 raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist anymore.")
             status = pipeline_info["status"]
-            logger.info(f"Current status of '{pipeline_config_name}' is: '{status}'")
-            time.sleep(5)
+            if status in valid_transitioning_states:
+                logger.info(f"Current status of '{pipeline_config_name}' is: '{status}'")
+                time.sleep(5)
 
         return status, True
 
