@@ -11,13 +11,14 @@ class BasePreProcessor(BaseComponent, ABC):
     def process(
         self,
         documents: Union[dict, List[dict]],
-        clean_whitespace: Optional[bool] = True,
-        clean_header_footer: Optional[bool] = False,
-        clean_empty_lines: Optional[bool] = True,
-        split_by: Optional[str] = "word",
-        split_length: Optional[int] = 1000,
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        remove_substrings: List[str] = [],
+        split_by: Optional[str] = None,
+        split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
-        split_respect_sentence_boundary: Optional[bool] = True,
+        split_respect_sentence_boundary: Optional[bool] = None
     ) -> List[dict]:
         """
         Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
@@ -26,7 +27,12 @@ class BasePreProcessor(BaseComponent, ABC):
 
     @abstractmethod
     def clean(
-        self, document: dict, clean_whitespace: bool, clean_header_footer: bool, clean_empty_lines: bool
+        self,
+        document: dict,
+        clean_whitespace: bool,
+        clean_header_footer: bool,
+        clean_empty_lines: bool,
+        remove_substrings: List[str]
     ) -> Dict[str, Any]:
         raise NotImplementedError
 

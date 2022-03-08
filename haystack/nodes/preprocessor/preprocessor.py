@@ -100,7 +100,7 @@ class PreProcessor(BasePreProcessor):
         split_by: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
-        split_respect_sentence_boundary: Optional[bool] = None,
+        split_respect_sentence_boundary: Optional[bool] = None
     ) -> List[dict]:
 
         """
@@ -140,7 +140,7 @@ class PreProcessor(BasePreProcessor):
         split_by: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
-        split_respect_sentence_boundary: Optional[bool] = None,
+        split_respect_sentence_boundary: Optional[bool] = None
     ) -> List[dict]:
 
         if clean_whitespace is None:
@@ -186,7 +186,7 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
-        remove_substrings: List[str],
+        remove_substrings: List[str]
     ) -> dict:
         """
         Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
