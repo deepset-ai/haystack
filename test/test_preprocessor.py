@@ -88,3 +88,23 @@ def test_clean_header_footer():
 
     assert "This is a header." not in documents[0]["content"]
     assert "footer" not in documents[0]["content"]
+
+
+def test_remove_substrings():
+    document = Document("This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b.")
+
+    # check that the file contains the substrings we are about to remove
+    assert "This is a header." in document["content"]
+    assert "wiki" in document["content"]
+    assert "🪲" in document["content"]
+    assert "whitespace" in document["content"]
+    assert "✨" in document["content"]
+
+    preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki", "🪲"])
+    documents = preprocessor.process(document)
+
+    assert "This is a header." not in document["content"]
+    assert "wiki" not in document["content"]
+    assert "🪲" not in document["content"]
+    assert "whitespace" in document["content"]
+    assert "✨" in document["content"]

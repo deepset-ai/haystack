@@ -1432,6 +1432,14 @@
               "default": true,
               "type": "boolean"
             },
+            "remove_substrings": {
+              "title": "Remove Substrings",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "split_by": {
               "title": "Split By",
               "default": "word",
