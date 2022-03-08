@@ -8,19 +8,80 @@ build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 120
+skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
 
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length=120
 disable = [
+
+  # Warnings
+  "fixme",
+
+  # Info
+  "c-extension-no-member",
+
+
+
+
   "missing-docstring",
   "unused-argument",
   "no-member",
   "line-too-long",
-  "fixme",
   "protected-access",
   "too-few-public-methods",
-  "raise-missing-from"
+  "raise-missing-from",
+
+  "invalid-name",
+  "logging-fstring-interpolation",
+  "wrong-import-position",
+  "too-many-locals",
+  "duplicate-code",
+  "too-many-arguments",
+  "arguments-differ",
+  "wrong-import-order",
+  "consider-using-f-string",
+  "no-else-return",
+  "unused-variable",
+  "attribute-defined-outside-init",
+  "too-many-instance-attributes",
+  "no-self-use",
+  "super-with-arguments",
+  "anomalous-backslash-in-string",
+  "redefined-builtin",
+  "logging-format-interpolation",
+  "f-string-without-interpolation",
+  "abstract-method",
+  "too-many-branches",
+  "trailing-whitespace",
+  "unspecified-encoding",
+  "unidiomatic-typecheck",
+  "no-name-in-module",
+  "dangerous-default-value",
+  "unused-import",
+  "consider-using-with",
+  "redefined-outer-name",
+  "cyclic-import",
+  "arguments-renamed",
+  "unnecessary-pass",
+  "ungrouped-imports",
+  "broad-except",
+  "unnecessary-comprehension",
+  "subprocess-run-check",
+  "singleton-comparison",
+  "import-outside-toplevel",
+  "consider-iterating-dictionary",
+  "too-many-nested-blocks",
+  "undefined-loop-variable",
+  "too-many-statements",
+  "consider-using-in",
+  "bare-except",
+  "too-many-lines",
+  "unexpected-keyword-arg",
+  "simplifiable-if-expression",
+  "use-list-literal",
+  "reimported",
+  "deprecated-method",
 ]
 [tool.pylint.'DESIGN']
 max-args=7
@@ -42,3 +103,4 @@ markers = [
     "weaviate: marks tests that require weaviate container",
     "embedding_dim: marks usage of document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
 ]
+log_cli = true

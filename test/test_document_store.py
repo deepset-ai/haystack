@@ -17,13 +17,14 @@ from conftest import (
     DC_TEST_INDEX,
     SAMPLES_PATH,
 )
-from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore
+from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.utils import es_index_to_document_store
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.nodes import EmbeddingRetriever
+from haystack.nodes import EmbeddingRetriever, PreProcessor
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.utils import DeepsetCloudError
 
@@ -124,7 +125,7 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate"], indirect=True)
 def test_write_with_duplicate_doc_ids_custom_index(document_store):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -150,6 +151,7 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store):
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
+    print("hey!")
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
     assert len(documents) == 5
@@ -216,7 +218,7 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory"], indirect=True)
 def test_extended_filter(document_store_with_docs):
     # Test comparison operators individually
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})
@@ -235,16 +237,16 @@ def test_extended_filter(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$nin": ["test1", "test2", "n.a."]}})
     assert len(documents) == 3
 
-    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$gt": 3}})
+    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$gt": 3.0}})
     assert len(documents) == 3
 
-    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$gte": 3}})
+    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$gte": 3.0}})
     assert len(documents) == 4
 
-    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$lt": 3}})
+    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$lt": 3.0}})
     assert len(documents) == 1
 
-    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$lte": 3}})
+    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$lte": 3.0}})
     assert len(documents) == 2
 
     # Test compound filters
@@ -265,29 +267,34 @@ def test_extended_filter(document_store_with_docs):
         "name": ["filename5", "filename3"],
     }
     documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
-    assert documents == documents_simplified_filter
+    # Order of returned documents might differ
+    assert len(documents) == len(documents_simplified_filter) and all(
+        doc in documents_simplified_filter for doc in documents
+    )
 
     filters = {
         "$and": {
             "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
-            "$or": {"name": {"$in": ["filename5", "filename3"]}, "numeric_field": {"$lte": 5}},
+            "$or": {"name": {"$in": ["filename5", "filename3"]}, "numeric_field": {"$lte": 5.0}},
         }
     }
     documents = document_store_with_docs.get_all_documents(filters=filters)
     assert len(documents) == 2
     filters_simplified = {
         "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
-        "$or": {"name": ["filename5", "filename3"], "numeric_field": {"$lte": 5}},
+        "$or": {"name": ["filename5", "filename3"], "numeric_field": {"$lte": 5.0}},
     }
     documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
-    assert documents == documents_simplified_filter
+    assert len(documents) == len(documents_simplified_filter) and all(
+        doc in documents_simplified_filter for doc in documents
+    )
 
     filters = {
         "$and": {
             "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
             "$or": {
                 "name": {"$in": ["filename5", "filename3"]},
-                "$and": {"numeric_field": {"$lte": 5}, "$not": {"meta_field": {"$eq": "test2"}}},
+                "$and": {"numeric_field": {"$lte": 5.0}, "$not": {"meta_field": {"$eq": "test2"}}},
             },
         }
     }
@@ -297,11 +304,28 @@ def test_extended_filter(document_store_with_docs):
         "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
         "$or": {
             "name": ["filename5", "filename3"],
-            "$and": {"numeric_field": {"$lte": 5}, "$not": {"meta_field": "test2"}},
+            "$and": {"numeric_field": {"$lte": 5.0}, "$not": {"meta_field": "test2"}},
         },
     }
     documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
-    assert documents == documents_simplified_filter
+    assert len(documents) == len(documents_simplified_filter) and all(
+        doc in documents_simplified_filter for doc in documents
+    )
+
+    # Test nested logical operations within "$not", important as we apply De Morgan's laws in WeaviateDocumentstore
+    filters = {
+        "$not": {
+            "$or": {
+                "$and": {"numeric_field": {"$gt": 3.0}, "meta_field": {"$ne": "test3"}},
+                "$not": {"date_field": {"$lt": "2020-01-01"}},
+            }
+        }
+    }
+    documents = document_store_with_docs.get_all_documents(filters=filters)
+    docs_meta = [doc.meta["meta_field"] for doc in documents]
+    assert len(documents) == 2
+    assert "test3" in docs_meta
+    assert "test5" in docs_meta
 
     # Test same logical operator twice on same level
     filters = {
@@ -369,13 +393,9 @@ def test_get_all_documents_generator(document_store):
 
 @pytest.mark.parametrize("update_existing_documents", [True, False])
 def test_update_existing_documents(document_store, update_existing_documents):
-    original_docs = [
-        {"content": "text1_orig", "id": "1", "meta_field_for_count": "a"},
-    ]
+    original_docs = [{"content": "text1_orig", "id": "1", "meta_field_for_count": "a"}]
 
-    updated_docs = [
-        {"content": "text1_new", "id": "1", "meta_field_for_count": "a"},
-    ]
+    updated_docs = [{"content": "text1_new", "id": "1", "meta_field_for_count": "a"}]
 
     document_store.write_documents(original_docs)
     assert document_store.get_document_count() == 1
@@ -412,10 +432,7 @@ def test_write_document_meta(document_store):
 
 
 def test_write_document_index(document_store):
-    documents = [
-        {"content": "text1", "id": "1"},
-        {"content": "text2", "id": "2"},
-    ]
+    documents = [{"content": "text1", "id": "1"}, {"content": "text2", "id": "2"}]
     document_store.write_documents([documents[0]], index="haystack_test_one")
     assert len(document_store.get_all_documents(index="haystack_test_one")) == 1
 
@@ -426,6 +443,9 @@ def test_write_document_index(document_store):
     assert len(document_store.get_all_documents()) == 0
 
 
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 def test_document_with_embeddings(document_store):
     documents = [
         {"content": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -447,6 +467,9 @@ def test_document_with_embeddings(document_store):
     assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
 
 
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
@@ -462,9 +485,7 @@ def test_update_embeddings(document_store, retriever):
         assert type(doc.embedding) is np.ndarray
 
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_0"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_0"]}, return_embedding=True
     )
     assert len(documents) == 2
     for doc in documents:
@@ -472,9 +493,7 @@ def test_update_embeddings(document_store, retriever):
     np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding, decimal=4)
 
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_0", "value_5"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_0", "value_5"]}, return_embedding=True
     )
     documents_with_value_0 = [doc for doc in documents if doc.meta["meta_field"] == "value_0"]
     documents_with_value_5 = [doc for doc in documents if doc.meta["meta_field"] == "value_5"]
@@ -558,6 +577,7 @@ def test_update_embeddings(document_store, retriever):
         assert document_store.get_embedding_count(index="haystack_test_one") == 14
 
 
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.embedding_dim(512)
 def test_update_embeddings_table_text_retriever(document_store, retriever):
@@ -593,9 +613,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with same content (text) get same embedding
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_text_0"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_text_0"]}, return_embedding=True
     )
     assert len(documents) == 2
     for doc in documents:
@@ -604,9 +622,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with same content (table) get same embedding
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_table_0"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_table_0"]}, return_embedding=True
     )
     assert len(documents) == 2
     for doc in documents:
@@ -615,9 +631,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents wih different content (text) get different embedding
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_text_1", "value_text_2"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_text_1", "value_text_2"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -625,9 +639,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with different content (table) get different embeddings
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_table_1", "value_table_2"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_table_1", "value_table_2"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -635,9 +647,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with different content (table + text) get different embeddings
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_text_1", "value_table_1"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_text_1", "value_table_1"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -668,10 +678,15 @@ def test_delete_documents_with_filters(document_store_with_docs):
 
 
 def test_delete_documents_by_id(document_store_with_docs):
+    import logging
+
+    logging.info(len(document_store_with_docs.get_all_documents()))
     docs_to_delete = document_store_with_docs.get_all_documents(
         filters={"meta_field": ["test1", "test2", "test4", "test5"]}
     )
+    logging.info(len(docs_to_delete))
     docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test3"]})
+    logging.info(len(docs_not_to_delete))
 
     document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete])
     all_docs_left = document_store_with_docs.get_all_documents()
@@ -697,7 +712,7 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_labels(document_store):
     label = Label(
         query="question1",
@@ -785,7 +800,7 @@ def test_labels(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_multilabel(document_store):
     labels = [
         Label(
@@ -901,7 +916,7 @@ def test_multilabel(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_multilabel_no_answer(document_store):
     labels = [
         Label(
@@ -968,7 +983,195 @@ def test_multilabel_no_answer(document_store):
     assert len(multi_labels[0].answers) == 1
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus", "weaviate"], indirect=True)
+# exclude weaviate because it does not support storing labels
+# exclude faiss and milvus as label metadata is not implemented
+@pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
+def test_multilabel_filter_aggregations(document_store):
+    labels = [
+        Label(
+            id="standard",
+            query="question",
+            answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+            filters={"name": ["123"]},
+        ),
+        # different answer in same doc
+        Label(
+            id="diff-answer-same-doc",
+            query="question",
+            answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+            filters={"name": ["123"]},
+        ),
+        # answer in different doc
+        Label(
+            id="diff-answer-diff-doc",
+            query="question",
+            answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some other", id="333"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+            filters={"name": ["333"]},
+        ),
+        # 'no answer', should be excluded from MultiLabel
+        Label(
+            id="4-no-answer",
+            query="question",
+            answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+            document=Document(content="some", id="777"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=True,
+            origin="gold-label",
+            filters={"name": ["777"]},
+        ),
+        # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
+        Label(
+            id="5-negative",
+            query="question",
+            answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=False,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+            filters={"name": ["123"]},
+        ),
+    ]
+    document_store.write_labels(labels, index="haystack_test_multilabel")
+    # regular labels - not aggregated
+    list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
+    assert list_labels == labels
+    assert len(list_labels) == 5
+
+    # Multi labels (open domain)
+    multi_labels_open = document_store.get_all_labels_aggregated(
+        index="haystack_test_multilabel", open_domain=True, drop_negative_labels=True
+    )
+
+    # for open-domain we group all together as long as they have the same question and filters
+    assert len(multi_labels_open) == 3
+    label_counts = set([len(ml.labels) for ml in multi_labels_open])
+    assert label_counts == set([2, 1, 1])
+    # all labels are in there except the negative one and the no_answer
+    assert "5-negative" not in [l.id for multi_label in multi_labels_open for l in multi_label.labels]
+
+    assert len(multi_labels_open[0].answers) == len(multi_labels_open[0].document_ids)
+
+    # for closed domain we group by document so we expect the same as with filters
+    multi_labels = document_store.get_all_labels_aggregated(
+        index="haystack_test_multilabel", open_domain=False, drop_negative_labels=True
+    )
+    assert len(multi_labels) == 3
+    label_counts = set([len(ml.labels) for ml in multi_labels])
+    assert label_counts == set([2, 1, 1])
+
+    assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+
+
+# exclude weaviate because it does not support storing labels
+# exclude faiss and milvus as label metadata is not implemented
+@pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
+def test_multilabel_meta_aggregations(document_store):
+    labels = [
+        Label(
+            id="standard",
+            query="question",
+            answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+            meta={"file_id": ["123"]},
+        ),
+        # different answer in same doc
+        Label(
+            id="diff-answer-same-doc",
+            query="question",
+            answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+            meta={"file_id": ["123"]},
+        ),
+        # answer in different doc
+        Label(
+            id="diff-answer-diff-doc",
+            query="question",
+            answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some other", id="333"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+            meta={"file_id": ["333"]},
+        ),
+        # 'no answer', should be excluded from MultiLabel
+        Label(
+            id="4-no-answer",
+            query="question",
+            answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+            document=Document(content="some", id="777"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=True,
+            origin="gold-label",
+            meta={"file_id": ["777"]},
+        ),
+        # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
+        Label(
+            id="5-888",
+            query="question",
+            answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+            meta={"file_id": ["888"]},
+        ),
+    ]
+    document_store.write_labels(labels, index="haystack_test_multilabel")
+    # regular labels - not aggregated
+    list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
+    assert list_labels == labels
+    assert len(list_labels) == 5
+
+    # Multi labels (open domain)
+    multi_labels_open = document_store.get_all_labels_aggregated(
+        index="haystack_test_multilabel", open_domain=True, drop_negative_labels=True
+    )
+
+    # for open-domain we group all together as long as they have the same question and filters
+    assert len(multi_labels_open) == 1
+    assert len(multi_labels_open[0].labels) == 5
+
+    multi_labels = document_store.get_all_labels_aggregated(
+        index="haystack_test_multilabel", open_domain=True, drop_negative_labels=True, aggregate_by_meta="file_id"
+    )
+    assert len(multi_labels) == 4
+    label_counts = set([len(ml.labels) for ml in multi_labels])
+    assert label_counts == set([2, 1, 1, 1])
+    for multi_label in multi_labels:
+        for l in multi_label.labels:
+            assert l.filters == l.meta
+            assert multi_label.filters == l.filters
+
+
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
@@ -1058,6 +1261,23 @@ def test_elasticsearch_delete_index():
     # the index was deleted and should not exist
     index_exists = client.indices.exists(index=index_name)
     assert not index_exists
+
+
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store):
+    document_store.write_documents(DOCUMENTS)
+    document_without_embedding = Document(
+        content="Doc without embedding", meta={"name": "name_7", "year": "2021", "month": "04"}
+    )
+    document_store.write_documents([document_without_embedding])
+    filters = {"year": "2021"}
+    document_store.skip_missing_embeddings = False
+    with pytest.raises(RequestError):
+        document_store.query_by_embedding(np.random.rand(768), filters=filters)
+
+    document_store.skip_missing_embeddings = True
+    documents = document_store.query_by_embedding(np.random.rand(768), filters=filters)
+    assert len(documents) == 3
 
 
 @pytest.mark.elasticsearch
@@ -1167,7 +1387,7 @@ def test_elasticsearch_synonyms():
 
 
 @pytest.mark.parametrize(
-    "document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True
+    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score(document_store_with_docs):
@@ -1184,7 +1404,7 @@ def test_similarity_score(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus", "elasticsearch"], indirect=True
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product(document_store_dot_product_with_docs):
@@ -1486,3 +1706,45 @@ def test_elasticsearch_search_field_mapping():
 
     assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["content"]["type"] == "text"
     assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["sub_content"]["type"] == "text"
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_elasticsearch_brownfield_support(document_store_with_docs):
+    new_document_store = InMemoryDocumentStore()
+    new_document_store = es_index_to_document_store(
+        document_store=new_document_store,
+        original_index_name="haystack_test",
+        original_content_field="content",
+        original_name_field="name",
+        included_metadata_fields=["date_field"],
+        index="test_brownfield_support",
+    )
+
+    original_documents = document_store_with_docs.get_all_documents(index="haystack_test")
+    transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support")
+    assert len(original_documents) == len(transferred_documents)
+    assert all("name" in doc.meta for doc in transferred_documents)
+    assert all("date_field" in doc.meta for doc in transferred_documents)
+    assert all("meta_field" not in doc.meta for doc in transferred_documents)
+    assert all("numeric_field" not in doc.meta for doc in transferred_documents)
+
+    original_content = set([doc.content for doc in original_documents])
+    transferred_content = set([doc.content for doc in transferred_documents])
+    assert original_content == transferred_content
+
+    # Test transferring docs with PreProcessor
+    new_document_store = es_index_to_document_store(
+        document_store=new_document_store,
+        original_index_name="haystack_test",
+        original_content_field="content",
+        excluded_metadata_fields=["date_field"],
+        index="test_brownfield_support_2",
+        preprocessor=PreProcessor(split_length=1, split_respect_sentence_boundary=False),
+    )
+    transferred_documents = new_document_store.get_all_documents(index="test_brownfield_support_2")
+    assert all("date_field" not in doc.meta for doc in transferred_documents)
+    assert all("name" in doc.meta for doc in transferred_documents)
+    assert all("meta_field" in doc.meta for doc in transferred_documents)
+    assert all("numeric_field" in doc.meta for doc in transferred_documents)
+    # Check if number of transferred_documents is equal to number of unique words.
+    assert len(transferred_documents) == len(set(" ".join(original_content).split()))

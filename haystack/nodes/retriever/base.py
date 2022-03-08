@@ -124,7 +124,7 @@ class BaseRetriever(BaseComponent):
         """
 
         # Extract all questions for evaluation
-        filters = {"origin": [label_origin]}
+        filters: Dict = {"origin": [label_origin]}
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
@@ -151,7 +151,7 @@ class BaseRetriever(BaseComponent):
                     # here are no no_answer '' included if there are other actual answers
                     question_label_dict[id_question_tuple] = label.answers
                 else:
-                    deduplicated_doc_ids = list(set([str(x) for x in label.document_ids]))
+                    deduplicated_doc_ids = list({str(x) for x in label.document_ids})
                     question_label_dict[id_question_tuple] = deduplicated_doc_ids
 
         predictions = []

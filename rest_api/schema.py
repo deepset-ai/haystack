@@ -35,17 +35,37 @@ class AnswerSerialized(Answer):
 @pydantic_dataclass
 class DocumentSerialized(Document):
     content: str
-    embedding: Optional[List[float]]
+    embedding: Optional[List[float]]  # type: ignore
 
 
 @pydantic_dataclass
-class LabelSerialized(Label):
+class LabelSerialized(Label, BaseModel):
     document: DocumentSerialized
     answer: Optional[AnswerSerialized] = None
 
 
+class CreateLabelSerialized(BaseModel):
+    id: Optional[str] = None
+    query: str
+    document: DocumentSerialized
+    is_correct_answer: bool
+    is_correct_document: bool
+    origin: Literal["user-feedback", "gold-label"]
+    answer: Optional[AnswerSerialized] = None
+    no_answer: Optional[bool] = None
+    pipeline_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    meta: Optional[dict] = None
+    filters: Optional[dict] = None
+
+    class Config:
+        # Forbid any extra fields in the request to avoid silent failures
+        extra = Extra.forbid
+
+
 class QueryResponse(BaseModel):
     query: str
-    answers: List[AnswerSerialized]
-    documents: Optional[List[DocumentSerialized]]
+    answers: List[AnswerSerialized] = []
+    documents: List[DocumentSerialized] = []
     debug: Optional[Dict] = Field(None, alias="_debug")

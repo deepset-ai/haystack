@@ -5,34 +5,25 @@ logger = logging.getLogger(__name__)
 logging.getLogger("elasticsearch").setLevel(logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
 
-try:
-    import uvicorn
-    from fastapi import FastAPI, HTTPException
-    from fastapi.routing import APIRoute
-    from fastapi.openapi.utils import get_openapi
-    from starlette.middleware.cors import CORSMiddleware
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.routing import APIRoute
+from fastapi.openapi.utils import get_openapi
+from starlette.middleware.cors import CORSMiddleware
 
-    from rest_api.controller.errors.http_error import http_error_handler
-    from rest_api.config import ROOT_PATH
-    from rest_api.controller.router import router as api_router
-
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed("rest_api", "rest", ie)
+from rest_api.controller.errors.http_error import http_error_handler
+from rest_api.config import ROOT_PATH
+from rest_api.controller.router import router as api_router
+from haystack import __version__ as haystack_version
 
 
 def get_application() -> FastAPI:
-    application = FastAPI(title="Haystack-API", debug=True, version="1.0.0", root_path=ROOT_PATH)
+    application = FastAPI(title="Haystack REST API", debug=True, version=haystack_version, root_path=ROOT_PATH)
 
     # This middleware enables allow all cross-domain requests to the API from a browser. For production
     # deployments, it could be made more restrictive.
     application.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
     )
     application.add_exception_handler(HTTPException, http_error_handler)
     application.include_router(api_router)
@@ -48,11 +39,11 @@ def get_openapi_specs() -> dict:
     """
     app = get_application()
     return get_openapi(
-        title=app.title if app.title else None,
-        version=app.version if app.version else None,
-        openapi_version=app.openapi_version if app.openapi_version else None,
-        description=app.description if app.description else None,
-        routes=app.routes if app.routes else None,
+        title=app.title,
+        version=app.version,
+        openapi_version=app.openapi_version,
+        description=app.description,
+        routes=app.routes,
     )
 
 

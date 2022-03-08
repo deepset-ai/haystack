@@ -31,6 +31,8 @@ except (ImportError, ModuleNotFoundError) as ie:
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore
 
+from haystack.document_stores.filter_utils import LogicalFilterClause
+
 
 logger = logging.getLogger(__name__)
 Base = declarative_base()  # type: Any
@@ -215,7 +217,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -233,7 +235,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -255,11 +257,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
-        result = self._query(
-            index=index,
-            filters=filters,
-            batch_size=batch_size,
-        )
+        result = self._query(index=index, filters=filters, batch_size=batch_size)
         yield from result
 
     def _create_document_field_map(self) -> Dict:
@@ -271,7 +269,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def _query(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         vector_ids: Optional[List[str]] = None,
         only_documents_without_embedding: bool = False,
         batch_size: int = 10_000,
@@ -294,11 +292,9 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
-            for key, values in filters.items():
-                documents_query = documents_query.join(MetaDocumentORM, aliased=True).filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
-                )
+            parsed_filter = LogicalFilterClause.parse(filters)
+            select_ids = parsed_filter.convert_to_sql(MetaDocumentORM)
+            documents_query = documents_query.filter(DocumentORM.id.in_(select_ids))
 
         if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
@@ -482,13 +478,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index = index or self.index
         for chunk_map in self.chunked_dict(vector_id_map, size=batch_size):
             self.session.query(DocumentORM).filter(DocumentORM.id.in_(chunk_map), DocumentORM.index == index).update(
-                {
-                    DocumentORM.vector_id: case(
-                        chunk_map,
-                        value=DocumentORM.id,
-                    )
-                },
-                synchronize_session=False,
+                {DocumentORM.vector_id: case(chunk_map, value=DocumentORM.id)}, synchronize_session=False
             )
             try:
                 self.session.commit()
@@ -521,7 +511,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -538,8 +528,7 @@ class SQLDocumentStore(BaseDocumentStore):
         if filters:
             for key, values in filters.items():
                 query = query.join(MetaDocumentORM, aliased=True).filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
+                    MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values)
                 )
 
         if only_documents_without_embedding:
@@ -609,7 +598,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -634,7 +623,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -658,8 +647,7 @@ class SQLDocumentStore(BaseDocumentStore):
             if filters:
                 for key, values in filters.items():
                     document_ids_to_delete = document_ids_to_delete.join(MetaDocumentORM, aliased=True).filter(
-                        MetaDocumentORM.name == key,
-                        MetaDocumentORM.value.in_(values),
+                        MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values)
                     )
             if ids:
                 document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
@@ -674,7 +662,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """

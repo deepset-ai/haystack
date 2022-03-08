@@ -156,10 +156,15 @@ class PredictionHead(nn.Module):
         This function compares the output dimensionality of the language model against the input dimensionality
         of the prediction head. If there is a mismatch, the prediction head will be resized to fit.
         """
+        # Note on pylint disable
+        # self.feed_forward's existence seems to be a condition for its own initialization
+        # within this class, which is clearly wrong. The only way this code could ever be called is
+        # thanks to subclasses initializing self.feed_forward somewhere else; however, this is a
+        # very implicit requirement for subclasses, and in general bad design. FIXME when possible.
         if "feed_forward" not in dir(self):
             return
         else:
-            old_dims = self.feed_forward.layer_dims
+            old_dims = self.feed_forward.layer_dims  # pylint: disable=access-member-before-definition
             if input_dim == old_dims[0]:
                 return
             new_dims = [input_dim] + old_dims[1:]
@@ -512,37 +517,35 @@ class QuestionAnsweringHead(PredictionHead):
         for candidate_idx in range(n_candidates):
             if len(top_candidates) == self.n_best_per_sample:
                 break
-            else:
-                # Retrieve candidate's indices
-                start_idx = sorted_candidates[candidate_idx, 0].item()
-                end_idx = sorted_candidates[candidate_idx, 1].item()
-                # Ignore no_answer scores which will be extracted later in this method
-                if start_idx == 0 and end_idx == 0:
-                    continue
-                if self.duplicate_filtering > -1 and (
-                    start_idx in start_idx_candidates or end_idx in end_idx_candidates
-                ):
-                    continue
-                score = start_end_matrix[start_idx, end_idx].item()
-                confidence = (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
-                top_candidates.append(
-                    QACandidate(
-                        offset_answer_start=start_idx,
-                        offset_answer_end=end_idx,
-                        score=score,
-                        answer_type="span",
-                        offset_unit="token",
-                        aggregation_level="passage",
-                        passage_id=str(sample_idx),
-                        confidence=confidence,
-                    )
+
+            # Retrieve candidate's indices
+            start_idx = sorted_candidates[candidate_idx, 0].item()
+            end_idx = sorted_candidates[candidate_idx, 1].item()
+            # Ignore no_answer scores which will be extracted later in this method
+            if start_idx == 0 and end_idx == 0:
+                continue
+            if self.duplicate_filtering > -1 and (start_idx in start_idx_candidates or end_idx in end_idx_candidates):
+                continue
+            score = start_end_matrix[start_idx, end_idx].item()
+            confidence = (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
+            top_candidates.append(
+                QACandidate(
+                    offset_answer_start=start_idx,
+                    offset_answer_end=end_idx,
+                    score=score,
+                    answer_type="span",
+                    offset_unit="token",
+                    aggregation_level="passage",
+                    passage_id=str(sample_idx),
+                    confidence=confidence,
                 )
-                if self.duplicate_filtering > -1:
-                    for i in range(0, self.duplicate_filtering + 1):
-                        start_idx_candidates.add(start_idx + i)
-                        start_idx_candidates.add(start_idx - i)
-                        end_idx_candidates.add(end_idx + i)
-                        end_idx_candidates.add(end_idx - i)
+            )
+            if self.duplicate_filtering > -1:
+                for i in range(0, self.duplicate_filtering + 1):
+                    start_idx_candidates.add(start_idx + i)
+                    start_idx_candidates.add(start_idx - i)
+                    end_idx_candidates.add(end_idx + i)
+                    end_idx_candidates.add(end_idx - i)
 
         no_answer_score = start_end_matrix[0, 0].item()
         no_answer_confidence = (start_matrix_softmax_start[0].item() + end_matrix_softmax_end[0].item()) / 2
@@ -959,6 +962,10 @@ class TextSimilarityHead(PredictionHead):
             return TextSimilarityHead.dot_product_scores
         elif "cosine" in self.similarity_function:
             return TextSimilarityHead.cosine_scores
+        else:
+            raise AttributeError(
+                f"The similarity function can only be 'dot_product' or 'cosine', not '{self.similarity_function}'"
+            )
 
     def forward(self, query_vectors: torch.Tensor, passage_vectors: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """

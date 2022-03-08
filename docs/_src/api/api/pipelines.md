@@ -23,6 +23,114 @@ class BasePipeline()
 Base class for pipelines, providing the most basic methods to load and save them in different ways.
 See also the `Pipeline` class for the actual pipeline logic.
 
+<a id="base.BasePipeline.get_config"></a>
+
+#### get\_config
+
+```python
+def get_config(return_defaults: bool = False) -> dict
+```
+
+Returns a configuration for the Pipeline that can be used with `BasePipeline.load_from_config()`.
+
+**Arguments**:
+
+- `return_defaults`: whether to output parameters that have the default values.
+
+<a id="base.BasePipeline.to_code"></a>
+
+#### to\_code
+
+```python
+def to_code(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False) -> str
+```
+
+Returns the code to create this pipeline as string.
+
+**Arguments**:
+
+- `pipeline_variable_name`: The variable name of the generated pipeline.
+Default value is 'pipeline'.
+- `generate_imports`: Whether to include the required import statements into the code.
+Default value is True.
+- `add_comment`: Whether to add a preceding comment that this code has been generated.
+Default value is False.
+
+<a id="base.BasePipeline.to_notebook_cell"></a>
+
+#### to\_notebook\_cell
+
+```python
+def to_notebook_cell(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True)
+```
+
+Creates a new notebook cell with the code to create this pipeline.
+
+**Arguments**:
+
+- `pipeline_variable_name`: The variable name of the generated pipeline.
+Default value is 'pipeline'.
+- `generate_imports`: Whether to include the required import statements into the code.
+Default value is True.
+- `add_comment`: Whether to add a preceding comment that this code has been generated.
+Default value is True.
+
+<a id="base.BasePipeline.load_from_config"></a>
+
+#### load\_from\_config
+
+```python
+@classmethod
+def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+```
+
+Load Pipeline from a config dict defining the individual components and how they're tied together to form
+
+a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+    ```python
+    |   {
+    |       "version": "1.0",
+    |       "components": [
+    |           {  # define all the building-blocks for Pipeline
+    |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
+    |               "type": "FARMReader",  # Haystack Class name for the component
+    |               "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
+    |           },
+    |           {
+    |               "name": "MyESRetriever",
+    |               "type": "ElasticsearchRetriever",
+    |               "params": {
+    |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
+    |                   "custom_query": None,
+    |               },
+    |           },
+    |           {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
+    |       ],
+    |       "pipelines": [
+    |           {  # multiple Pipelines can be defined using the components from above
+    |               "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
+    |               "nodes": [
+    |                   {"name": "MyESRetriever", "inputs": ["Query"]},
+    |                   {"name": "MyReader", "inputs": ["MyESRetriever"]},
+    |               ],
+    |           }
+    |       ],
+    |   }
+    ```
+
+**Arguments**:
+
+- `pipeline_config`: the pipeline config as dict
+- `pipeline_name`: if the config contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
+
 <a id="base.BasePipeline.load_from_yaml"></a>
 
 #### load\_from\_yaml
@@ -40,7 +148,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.9'
+    |   version: '1.0'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -66,6 +174,9 @@ Here's a sample configuration:
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
 
 **Arguments**:
 
@@ -144,6 +255,31 @@ Returns:
                 'indexing': {'status': 'IN_PROGRESS',
                 'pending_file_count': 3,
                 'total_file_count': 31}}]
+
+<a id="base.BasePipeline.save_to_deepset_cloud"></a>
+
+#### save\_to\_deepset\_cloud
+
+```python
+@classmethod
+def save_to_deepset_cloud(cls, query_pipeline: BasePipeline, index_pipeline: BasePipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
+```
+
+Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
+
+a Pipeline. A single config must declare a query pipeline and a index pipeline.
+
+**Arguments**:
+
+- `query_pipeline`: the query pipeline to save.
+- `index_pipeline`: the index pipeline to save.
+- `pipeline_config_name`: name of the config file inside the Deepset Cloud workspace.
+- `workspace`: workspace in Deepset Cloud
+- `api_key`: Secret value of the API key.
+If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+- `api_endpoint`: The URL of the Deepset Cloud API.
+If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+- `overwrite`: Whether to overwrite the config if it already exists. Otherwise an error is being raised.
 
 <a id="base.Pipeline"></a>
 
@@ -242,7 +378,7 @@ then be found in the dict returned by this method under the key "_debug"
 #### eval
 
 ```python
-def eval(labels: List[MultiLabel], documents: Optional[List[Optional[List[Document]]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
+def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -325,55 +461,58 @@ Create a Graphviz visualization of the pipeline.
 
 - `path`: the path to save the image.
 
-<a id="base.Pipeline.load_from_yaml"></a>
+<a id="base.Pipeline.load_from_config"></a>
 
-#### load\_from\_yaml
+#### load\_from\_config
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
 ```
 
-Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+Load Pipeline from a config dict defining the individual components and how they're tied together to form
 
-a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
 be passed.
 
 Here's a sample configuration:
 
-    ```yaml
-    |   version: '0.8'
-    |
-    |    components:    # define all the building-blocks for Pipeline
-    |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-    |      type: FARMReader    # Haystack Class name for the component
-    |      params:
-    |        no_ans_boost: -10
-    |        model_name_or_path: deepset/roberta-base-squad2
-    |    - name: MyESRetriever
-    |      type: ElasticsearchRetriever
-    |      params:
-    |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-    |        custom_query: null
-    |    - name: MyDocumentStore
-    |      type: ElasticsearchDocumentStore
-    |      params:
-    |        index: haystack_test
-    |
-    |    pipelines:    # multiple Pipelines can be defined using the components from above
-    |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-    |      nodes:
-    |      - name: MyESRetriever
-    |        inputs: [Query]
-    |      - name: MyReader
-    |        inputs: [MyESRetriever]
+    ```python
+    |   {
+    |       "version": "0.9",
+    |       "components": [
+    |           {  # define all the building-blocks for Pipeline
+    |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
+    |               "type": "FARMReader",  # Haystack Class name for the component
+    |               "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
+    |           },
+    |           {
+    |               "name": "MyESRetriever",
+    |               "type": "ElasticsearchRetriever",
+    |               "params": {
+    |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
+    |                   "custom_query": None,
+    |               },
+    |           },
+    |           {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
+    |       ],
+    |       "pipelines": [
+    |           {  # multiple Pipelines can be defined using the components from above
+    |               "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
+    |               "nodes": [
+    |                   {"name": "MyESRetriever", "inputs": ["Query"]},
+    |                   {"name": "MyReader", "inputs": ["MyESRetriever"]},
+    |               ],
+    |           }
+    |       ],
+    |   }
     ```
 
 **Arguments**:
 
-- `path`: path of the YAML file.
-- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+- `pipeline_config`: the pipeline config as dict
+- `pipeline_name`: if the config contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the configuration with environment variables. For example,
 to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
@@ -391,6 +530,20 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 **Arguments**:
 
 - `path`: path of the output YAML file.
+- `return_defaults`: whether to output parameters that have the default values.
+
+<a id="base.Pipeline.get_config"></a>
+
+#### get\_config
+
+```python
+def get_config(return_defaults: bool = False) -> dict
+```
+
+Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
+
+**Arguments**:
+
 - `return_defaults`: whether to output parameters that have the default values.
 
 <a id="base.Pipeline.print_eval_report"></a>
@@ -492,6 +645,10 @@ Here's a sample configuration:
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
+
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
 
 **Arguments**:
 

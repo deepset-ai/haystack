@@ -554,9 +554,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         if language_model_class not in ["Bert", "Roberta", "XLMRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
-        task_type_to_pipeline_map = {
-            "question_answering": "question-answering",
-        }
+        task_type_to_pipeline_map = {"question_answering": "question-answering"}
 
         convert(
             pipeline_name=task_type_to_pipeline_map[task_type],
@@ -629,6 +627,8 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         :param device: The device on which this model will operate. Either "cpu" or "cuda".
         """
         import onnxruntime
+
+        super().__init__(prediction_heads)
 
         if str(device) == "cuda" and onnxruntime.get_device() != "GPU":
             raise Exception(
