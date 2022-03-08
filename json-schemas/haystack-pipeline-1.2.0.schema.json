@@ -1307,12 +1307,12 @@
             },
             "preceding_context_len": {
               "title": "Preceding Context Len",
-              "default": 3,
+              "default": 1,
               "type": "integer"
             },
             "following_context_len": {
               "title": "Following Context Len",
-              "default": 3,
+              "default": 1,
               "type": "integer"
             },
             "remove_page_headers": {
