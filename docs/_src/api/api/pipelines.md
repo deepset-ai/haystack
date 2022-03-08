@@ -292,9 +292,10 @@ def deploy_on_deepset_cloud(cls, pipeline_config_name: str, workspace: str = "de
 
 Deploys the pipelines of a pipeline config on Deepset Cloud.
 
-Blocks until pipelines are successfully deployed or deployment failed.
-If pipelines are already deployed it does nothing.
-If deployment fails an error will be raised.
+Blocks until pipelines are successfully deployed, deployment failed or timeout exceeds.
+If pipelines are already deployed no action will be taken and an info will be logged.
+If timeout exceeds a TimeoutError will be raised.
+If deployment fails a DeepsetCloudError will be raised.
 
 Pipeline config must be present on Deepset Cloud. See save_to_deepset_cloud() for more information.
 
@@ -320,9 +321,10 @@ def undeploy_on_deepset_cloud(cls, pipeline_config_name: str, workspace: str = "
 
 Undeploys the pipelines of a pipeline config on Deepset Cloud.
 
-Blocks until pipelines are successfully undeployed or undeployment failed.
-If pipelines are already undeployed it does nothing.
-If undeployment fails an error will be raised.
+Blocks until pipelines are successfully undeployed, undeployment failed or timeout exceeds.
+If pipelines are already undeployed no action will be taken and an info will be logged.
+If timeout exceeds a TimeoutError will be raised.
+If deployment fails a DeepsetCloudError will be raised.
 
 Pipeline config must be present on Deepset Cloud. See save_to_deepset_cloud() for more information.
 
