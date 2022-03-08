@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 import subprocess
 import time
 import json
@@ -198,17 +200,17 @@ class MockDocumentStore(BaseDocumentStore):
 class MockRetriever(BaseRetriever):
     outgoing_edges = 1
 
-    def retrieve(self, *a, **k):
+    def retrieve(self, query: str, top_k: int):
         pass
 
 
 class MockReader(BaseReader):
     outgoing_edges = 1
     
-    def predict(self, *a, **k):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         pass
 
-    def predict_batch(self, *a, **k):
+    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         pass
 
 

@@ -10,8 +10,15 @@ from .conftest import SAMPLES_PATH, MockRetriever as BaseMockRetriever, MockRead
 
 
 class MockRetriever(BaseMockRetriever):
-    def retrieve(self, top_k: int):
-        if not isinstance(top_k, int):
+
+    def retrieve(self, *args, **kwargs):
+        top_k = None
+        if "top_k" in kwargs.keys():
+            top_k = kwargs["top_k"]
+        elif len(args) > 0:
+            top_k = args[-1]
+
+        if top_k and not isinstance(top_k, int):
             raise ValueError("TEST ERROR!")
 
 
@@ -145,7 +152,7 @@ def test_missing_top_level_arg():
 
     with pytest.raises(Exception) as exc:
         pipeline.run(params={"Retriever": {"top_k": 10}})
-    assert "run() missing 1 required positional argument: 'query'" in str(exc.value)
+    assert "Must provide a 'query' parameter" in str(exc.value)
 
 
 def test_unexpected_top_level_arg():

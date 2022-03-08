@@ -225,25 +225,3 @@ class BaseComponent(ABC, metaclass=Meta):
                     self._pipeline_config["params"][k] = v._pipeline_config
                 elif v is not None:
                     self._pipeline_config["params"][k] = v
-
-    @classmethod
-    def _find_subclasses_in_modules(
-        cls, include_base_classes: bool = False, importable_modules=["haystack.document_stores", "haystack.nodes"]
-    ):
-        """
-        This function returns a list `(module, class)` of all the classes that can be imported
-        dynamically, for example from a pipeline YAML definition or to generate documentation.
-
-        By default it won't include Base classes, which should be abstract.
-        """
-        return [
-            (module, clazz)
-            for module in importable_modules
-            for _, clazz in inspect.getmembers(sys.modules[module])
-            if (
-                inspect.isclass(clazz)
-                and not inspect.isabstract(clazz)
-                and issubclass(clazz, BaseComponent)
-                and (include_base_classes or not clazz.__name__.startswith("Base"))
-            )
-        ]

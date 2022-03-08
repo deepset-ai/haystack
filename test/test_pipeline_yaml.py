@@ -1,12 +1,10 @@
 import pytest
 import json
 import networkx as nx
-from transformers import pipelines
 
 import haystack
-from haystack import BaseComponent
-from haystack.nodes._json_schema import get_json_schema
-from haystack.pipelines import Pipeline
+from haystack import Pipeline
+from haystack.nodes import _json_schema
 from haystack.nodes import FileTypeClassifier
 from haystack.errors import PipelineConfigError
 
@@ -18,37 +16,31 @@ from . import conftest
 # Fixtures
 #
 
-
 @pytest.fixture(autouse=True)
-def mock_importable_nodes_list(request, monkeypatch):
+def mock_json_schema(request, monkeypatch, tmp_path):
+    """
+    JSON schema with the unstable version and only mocked nodes.
+    """
     # Do not patch integration tests
     if "integration" in request.keywords:
         return
 
+    # Mock the subclasses list to make it very small, containing only mock nodes
     monkeypatch.setattr(
-        BaseComponent,
-        "_find_subclasses_in_modules",
+        haystack.nodes._json_schema,
+        "find_subclasses_in_modules",
         lambda *a, **k: [
             (conftest, MockDocumentStore),
             (conftest, MockReader),
             (conftest, MockRetriever),
         ],
     )
+    # Point the JSON schema path to tmpdir
+    monkeypatch.setattr(haystack.pipelines.config, "JSON_SCHEMAS_PATH", tmp_path)
 
-
-@pytest.fixture(autouse=True)
-def mock_json_schema(request, monkeypatch, mock_importable_nodes_list, tmp_path):
-    """
-    JSON schema with the unstable version but all mocked nodes
-    """
-    # Do not patch integration tests
-    if "integration" in request.keywords:
-        return
-
-    monkeypatch.setattr(haystack.pipelines.base, "JSON_SCHEMAS_PATH", tmp_path)
-
+    # Generate mock schema in tmpdir
     filename = f"haystack-pipeline-unstable.schema.json"
-    test_schema = get_json_schema(filename=filename, compatible_versions=["unstable"])
+    test_schema = _json_schema.get_json_schema(filename=filename, compatible_versions=["unstable"])
 
     with open(tmp_path / filename, "w") as schema_file:
         json.dump(test_schema, schema_file, indent=4)
@@ -57,7 +49,6 @@ def mock_json_schema(request, monkeypatch, mock_importable_nodes_list, tmp_path)
 #
 # Integration
 #
-
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
@@ -115,7 +106,6 @@ def test_load_and_save_from_yaml(tmp_path):
 # Unit
 #
 
-
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -144,7 +134,7 @@ def test_load_yaml(tmp_path):
 
 
 def test_load_yaml_non_existing_file():
-    with pytest.raises(PipelineConfigError):
+    with pytest.raises(FileNotFoundError):
         Pipeline.load_from_yaml(path=SAMPLES_PATH / "pipeline" / "I_dont_exist.yml")
 
 
@@ -192,7 +182,7 @@ def test_load_yaml_non_existing_version(tmp_path):
         """
         )
     with pytest.raises(PipelineConfigError) as e:
-        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", version="random")
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "version" in str(e) and "random" in str(e)
 
 
@@ -213,7 +203,7 @@ def test_load_yaml_incompatible_version(tmp_path):
         """
         )
     with pytest.raises(PipelineConfigError) as e:
-        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", version="random")
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "version" in str(e) and "1.1.0" in str(e)
 
 
@@ -422,7 +412,7 @@ def test_save_yaml(tmp_path):
         assert content.count("retriever") == 2
         assert "MockRetriever" in content
         assert "Query" in content
-        assert f"version: unstable" in content
+        assert f"version: {haystack.__version__}" in content
 
 
 def test_save_yaml_overwrite(tmp_path):
@@ -430,7 +420,7 @@ def test_save_yaml_overwrite(tmp_path):
     retriever = MockRetriever()
     pipeline.add_node(component=retriever, name="retriever", inputs=["Query"])
 
-    with open(tmp_path / "saved_pipeline.yml", "w") as another_file:
+    with open(tmp_path / "saved_pipeline.yml", "w") as _:
         pass
 
     pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")

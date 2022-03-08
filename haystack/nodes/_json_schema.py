@@ -2,13 +2,12 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import os
 import re
+import sys
 import json
 import inspect
 from pathlib import Path
 from copy import deepcopy
 import logging
-
-import haystack
 
 logging.basicConfig(level=logging.INFO)
 
@@ -105,6 +104,28 @@ class Config(BaseConfig):
     extra = "forbid"  # type: ignore
 
 
+def find_subclasses_in_modules(
+    include_base_classes: bool = False, importable_modules=["haystack.document_stores", "haystack.nodes"]
+):
+    """
+    This function returns a list `(module, class)` of all the classes that can be imported
+    dynamically, for example from a pipeline YAML definition or to generate documentation.
+
+    By default it won't include Base classes, which should be abstract.
+    """
+    return [
+        (module, clazz)
+        for module in importable_modules
+        for _, clazz in inspect.getmembers(sys.modules[module])
+        if (
+            inspect.isclass(clazz)
+            and not inspect.isabstract(clazz)
+            and issubclass(clazz, BaseComponent)
+            and (include_base_classes or not clazz.__name__.startswith("Base"))
+        )
+    ]
+
+
 def get_json_schema(filename: str, compatible_versions: List[str]):
     """
     Generate JSON schema for Haystack pipelines.
@@ -112,7 +133,7 @@ def get_json_schema(filename: str, compatible_versions: List[str]):
     schema_definitions = {}
     additional_definitions = {}
 
-    possible_nodes = BaseComponent._find_subclasses_in_modules()
+    possible_nodes = find_subclasses_in_modules()
     for _, node in possible_nodes:
         logging.info(f"Processing node: {node.__name__}")
         init_method = getattr(node, "__init__", None)
