@@ -92,7 +92,7 @@ class PreProcessor(BasePreProcessor):
 
     def process(
         self,
-        documents: Union[dict, List[dict]],
+        documents: Union[dict, List[dict], Document, List[Document]],
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
@@ -120,9 +120,13 @@ class PreProcessor(BasePreProcessor):
 
         ret = []
 
-        if type(documents) == dict:
+        if isinstance(documents, dict):
             ret = self._process_single(document=documents, **kwargs)  # type: ignore
-        elif type(documents) == list:
+        elif isinstance(documents, Document):
+            ret = self._process_single(document=documents.to_dict(), **kwargs)  # type: ignore
+        elif isinstance(documents, list):
+            if all(isinstance(document, Document) for document in documents):
+                documents = [d.to_dict() for d in documents]
             ret = self._process_batch(documents=list(documents), **kwargs)
 
         else:
