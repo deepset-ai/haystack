@@ -369,7 +369,8 @@ class SQLDocumentStore(BaseDocumentStore):
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    overwrite: Update any existing documents with the same ID when adding documents
+                                    but is considerably slower (default).
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
 
@@ -392,24 +393,30 @@ class SQLDocumentStore(BaseDocumentStore):
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
         for i in range(0, len(document_objects), batch_size):
+            docs_orm = []
             for doc in document_objects[i : i + batch_size]:
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
-                doc_orm = DocumentORM(
-                    id=doc.id,
-                    content=doc.to_dict()["content"],
-                    content_type=doc.content_type,
-                    vector_id=vector_id,
-                    meta=meta_orms,
-                    index=index,
-                )
+                doc_mapping = {
+                    "id": doc.id,
+                    "content": doc.to_dict()["content"],
+                    "content_type": doc.content_type,
+                    "vector_id": vector_id,
+                    "meta": meta_orms,
+                    "index": index,
+                }
                 if duplicate_documents == "overwrite":
+                    doc_orm = DocumentORM(**doc_mapping)
                     # First old meta data cleaning is required
                     self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)
                 else:
-                    self.session.add(doc_orm)
+                    docs_orm.append(doc_mapping)
+
+            if docs_orm:
+                self.session.bulk_insert_mappings(DocumentORM, docs_orm)
+
             try:
                 self.session.commit()
             except Exception as ex:
