@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
 from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
