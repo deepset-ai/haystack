@@ -10,7 +10,6 @@ from .conftest import SAMPLES_PATH, MockRetriever as BaseMockRetriever, MockRead
 
 
 class MockRetriever(BaseMockRetriever):
-
     def retrieve(self, *args, **kwargs):
         top_k = None
         if "top_k" in kwargs.keys():

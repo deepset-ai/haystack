@@ -80,10 +80,7 @@ def get_typed_signature(call: Callable[..., Any]) -> inspect.Signature:
     globalns = getattr(call, "__globals__", {})
     typed_params = [
         inspect.Parameter(
-            name=param.name,
-            kind=param.kind,
-            default=param.default,
-            annotation=get_typed_annotation(param, globalns),
+            name=param.name, kind=param.kind, default=param.default, annotation=get_typed_annotation(param, globalns)
         )
         for param in signature.parameters.values()
     ]
@@ -160,11 +157,7 @@ def get_json_schema(filename: str, compatible_versions: List[str]):
                     # logging.info(f"       default: {default}")
                 param_fields_kwargs[param.name] = (annotation, default)
 
-            model = create_model(
-                f"{node.__name__}ComponentParams",
-                __config__=Config,
-                **param_fields_kwargs,
-            )
+            model = create_model(f"{node.__name__}ComponentParams", __config__=Config, **param_fields_kwargs)
 
             model.update_forward_refs(**model.__dict__)
             params_schema = model.schema()
@@ -228,11 +221,7 @@ def get_json_schema(filename: str, compatible_versions: List[str]):
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name": {
-                            "title": "Name",
-                            "description": "Name of the pipeline.",
-                            "type": "string",
-                        },
+                        "name": {"title": "Name", "description": "Name of the pipeline.", "type": "string"},
                         "nodes": {
                             "title": "Nodes",
                             "description": "Nodes to be used by this particular pipeline",

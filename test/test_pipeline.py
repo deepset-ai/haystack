@@ -26,7 +26,16 @@ from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments, PreProcessor, TextConverter
 
-from .conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, MockDocumentStore, MockRetriever, deepset_cloud_fixture
+from .conftest import (
+    MOCK_DC,
+    DC_API_ENDPOINT,
+    DC_API_KEY,
+    DC_TEST_INDEX,
+    SAMPLES_PATH,
+    MockDocumentStore,
+    MockRetriever,
+    deepset_cloud_fixture,
+)
 
 
 class ParentComponent(BaseComponent):
@@ -73,7 +82,6 @@ class JoinNode(RootNode):
             for input_dict in inputs:
                 output += input_dict["output"]
         return {"output": output}, "output_1"
-
 
 
 @pytest.mark.integration
@@ -312,7 +320,7 @@ def test_generate_code_is_component_order_invariant():
                     {"name": "JoinResults", "inputs": ["EsRetriever", "EmbeddingRetriever"]},
                 ],
             }
-        ]
+        ],
     }
 
     doc_store = {"name": "ElasticsearchDocumentStore", "type": "ElasticsearchDocumentStore"}
@@ -390,17 +398,7 @@ def test_validate_pipeline_config_invalid_component_param_key():
 
 def test_validate_pipeline_config_invalid_pipeline_name():
     with pytest.raises(PipelineConfigError, match="is not a valid config variable name"):
-        validate_config_strings(
-            {
-                "components": [
-                    {
-                        "name": "test",
-                        "type": "test",
-                    }
-                ],
-                "pipelines": [{"name": "\btest"}],
-            }
-        )
+        validate_config_strings({"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_node_name():
@@ -696,9 +694,10 @@ def test_save_nonexisting_pipeline_to_deepset_cloud():
         api_key=DC_API_KEY,
     )
 
+
 def test_graph_creation_invalid_edge():
     docstore = MockDocumentStore()
-    retriever= DummyRetriever(document_store=docstore)
+    retriever = DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
     pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
@@ -708,7 +707,7 @@ def test_graph_creation_invalid_edge():
 
 def test_graph_creation_non_existing_edge():
     docstore = MockDocumentStore()
-    retriever= DummyRetriever(document_store=docstore)
+    retriever = DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
     pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
@@ -718,7 +717,7 @@ def test_graph_creation_non_existing_edge():
 
 def test_graph_creation_invalid_node():
     docstore = MockDocumentStore()
-    retriever= DummyRetriever(document_store=docstore)
+    retriever = DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
     pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
@@ -732,7 +731,6 @@ def test_graph_creation_invalid_root_node():
 
     with pytest.raises(PipelineConfigError, match="Root node 'InvalidNode' is invalid"):
         pipeline.add_node(name="DocStore", component=docstore, inputs=["InvalidNode"])
-
 
 
 def test_parallel_paths_in_pipeline_graph():

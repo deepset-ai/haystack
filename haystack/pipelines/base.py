@@ -33,10 +33,7 @@ from haystack.pipelines.config import (
     validate_config_strings,
     validate_config,
 )
-from haystack.pipelines.utils import (
-    generate_code,
-    print_eval_report,
-)
+from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
 
 try:
@@ -919,12 +916,7 @@ class Pipeline(BasePipeline):
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(
-        cls,
-        path: Path,
-        pipeline_name: Optional[str] = None,
-        overwrite_with_env_variables: bool = True,
-    ):
+    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must

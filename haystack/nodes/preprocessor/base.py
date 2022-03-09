@@ -18,7 +18,7 @@ class BasePreProcessor(BaseComponent, ABC):
         split_by: Optional[str] = "word",
         split_length: Optional[int] = 1000,
         split_overlap: Optional[int] = None,
-        split_respect_sentence_boundary: Optional[bool] = None
+        split_respect_sentence_boundary: Optional[bool] = None,
     ) -> List[dict]:
         """
         Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.

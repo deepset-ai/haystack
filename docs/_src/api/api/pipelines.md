@@ -31,7 +31,7 @@ See also the `Pipeline` class for the actual pipeline logic.
 def get_config(return_defaults: bool = False) -> dict
 ```
 
-Returns a configuration for the Pipeline that can be used with `BasePipeline.load_from_config()`.
+Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
 
 **Arguments**:
 

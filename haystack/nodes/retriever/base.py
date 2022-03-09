@@ -242,7 +242,9 @@ class BaseRetriever(BaseComponent, ABC):
     ):
         if root_node == "Query":
             if not query:
-                raise HaystackError("Must provide a 'query' parameter for retrievers in pipelines where Query is the root node.")
+                raise HaystackError(
+                    "Must provide a 'query' parameter for retrievers in pipelines where Query is the root node."
+                )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
             output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index, headers=headers)

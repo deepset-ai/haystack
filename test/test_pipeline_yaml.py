@@ -16,6 +16,7 @@ from . import conftest
 # Fixtures
 #
 
+
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, tmp_path):
     """
@@ -29,11 +30,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
     monkeypatch.setattr(
         haystack.nodes._json_schema,
         "find_subclasses_in_modules",
-        lambda *a, **k: [
-            (conftest, MockDocumentStore),
-            (conftest, MockReader),
-            (conftest, MockRetriever),
-        ],
+        lambda *a, **k: [(conftest, MockDocumentStore), (conftest, MockReader), (conftest, MockRetriever)],
     )
     # Point the JSON schema path to tmp_path
     monkeypatch.setattr(haystack.pipelines.config, "JSON_SCHEMAS_PATH", tmp_path)
@@ -49,6 +46,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 #
 # Integration
 #
+
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
@@ -105,6 +103,7 @@ def test_load_and_save_from_yaml(tmp_path):
 #
 # Unit
 #
+
 
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:

@@ -1172,8 +1172,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Weaviate does not support labels (yet).
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
-    
-    
+
     def get_all_labels(self):
         """
         Implemented to respect BaseDocumentStore's contract.
@@ -1181,7 +1180,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Weaviate does not support labels (yet).
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
-    
 
     def get_label_count(self):
         """
@@ -1190,7 +1188,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Weaviate does not support labels (yet).
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
-    
 
     def write_labels(self):
         """

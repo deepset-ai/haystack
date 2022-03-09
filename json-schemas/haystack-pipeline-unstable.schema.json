@@ -52,6 +52,9 @@
             "$ref": "#/definitions/SQLDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/WeaviateDocumentStoreComponent"
+          },
+          {
             "$ref": "#/definitions/AzureConverterComponent"
           },
           {
@@ -1014,6 +1017,136 @@
             },
             "isolation_level": {
               "title": "Isolation Level",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "WeaviateDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "WeaviateDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "host": {
+              "title": "Host",
+              "default": "http://localhost",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "port": {
+              "title": "Port",
+              "default": 8080,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              ]
+            },
+            "timeout_config": {
+              "title": "Timeout Config",
+              "default": [
+                5,
+                15
+              ],
+              "type": "array",
+              "items": {}
+            },
+            "username": {
+              "title": "Username",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "Document",
+              "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "content_field": {
+              "title": "Content Field",
+              "default": "content",
+              "type": "string"
+            },
+            "name_field": {
+              "title": "Name Field",
+              "default": "name",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "cosine",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "hnsw",
+              "type": "string"
+            },
+            "custom_schema": {
+              "title": "Custom Schema",
+              "type": "object"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
               "type": "string"
             }
           },
@@ -2263,6 +2396,14 @@
               "title": "Clean Empty Lines",
               "default": true,
               "type": "boolean"
+            },
+            "remove_substrings": {
+              "title": "Remove Substrings",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "split_by": {
               "title": "Split By",

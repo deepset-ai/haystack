@@ -212,7 +212,7 @@ class MockRetriever(BaseRetriever):
 
 class MockReader(BaseReader):
     outgoing_edges = 1
-    
+
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         pass
 

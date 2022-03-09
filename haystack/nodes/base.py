@@ -17,9 +17,10 @@ logger = logging.getLogger(__name__)
 
 def exportable_to_yaml(init_func):
     """
-    Decorator that saves the init parameters of a node that later can 
+    Decorator that saves the init parameters of a node that later can
     be used with exporting YAML configuration of a Pipeline.
     """
+
     @wraps(init_func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
 
@@ -51,12 +52,11 @@ def exportable_to_yaml(init_func):
 # __new__ is called when a class is created (not an instance!)
 # Inherits from ABCMeta to avoid metaclass conflicts with ABC
 class Meta(ABCMeta):
-
     def __new__(cls, name, bases, dct):
         subclass = super().__new__(cls, name, bases, dct)
 
         # Automatically registers all the init parameters in
-        # an instance attribute called `_pipeline_config`, 
+        # an instance attribute called `_pipeline_config`,
         # used tosave this component to YAML. See exportable_to_yaml()
         subclass.__init__ = exportable_to_yaml(subclass.__init__)
 
