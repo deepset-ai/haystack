@@ -9,6 +9,7 @@ import nltk
 from more_itertools import windowed
 from tqdm import tqdm
 
+from haystack import Document
 from haystack.nodes.preprocessor import BasePreProcessor
 
 
