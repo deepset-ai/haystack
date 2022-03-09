@@ -116,16 +116,8 @@ def pytest_collection_modifyitems(config, items):
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
-        document_store_types_to_run = document_store_types_to_run.split(",")
+        document_store_types_to_run = document_store_types_to_run.split(", ")
         keywords = []
-
-        if "milvus1" in document_store_types_to_run and not os.getenv("MILVUS1_ENABLED"):
-            document_store_types_to_run.remove("milvus1")
-            document_store_types_to_run.append("milvus")
-            if not milvus1:
-                raise Exception(
-                    "Milvus1 is enabled, but your pymilvus version only supports Milvus 2. Please select the correct pymilvus version."
-                )
 
         for i in item.keywords:
             if "-" in i:
@@ -138,6 +130,13 @@ def pytest_collection_modifyitems(config, items):
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
                 )
                 item.add_marker(skip_docstore)
+
+        if "milvus1" in keywords and not milvus1:
+            skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
+            item.add_marker(skip_milvus1)
+        elif "milvus" in keywords and milvus1:
+            skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
+            item.add_marker(skip_milvus)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -305,8 +304,8 @@ def question_generator():
 
 
 @pytest.fixture(scope="function")
-def eli5_generator():
-    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", max_length=20)
+def lfqa_generator(request):
+    return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
 
 
 @pytest.fixture(scope="function")
@@ -316,16 +315,12 @@ def summarizer():
 
 @pytest.fixture(scope="function")
 def en_to_de_translator():
-    return TransformersTranslator(
-        model_name_or_path="Helsinki-NLP/opus-mt-en-de",
-    )
+    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
 
 
 @pytest.fixture(scope="function")
 def de_to_en_translator():
-    return TransformersTranslator(
-        model_name_or_path="Helsinki-NLP/opus-mt-de-en",
-    )
+    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
 
 
 @pytest.fixture(scope="function")
@@ -401,16 +396,12 @@ def table_reader(request):
 
 @pytest.fixture(scope="function")
 def ranker_two_logits():
-    return SentenceTransformersRanker(
-        model_name_or_path="deepset/gbert-base-germandpr-reranking",
-    )
+    return SentenceTransformersRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
 
 
 @pytest.fixture(scope="function")
 def ranker():
-    return SentenceTransformersRanker(
-        model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
-    )
+    return SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
 
 
 @pytest.fixture(scope="function")
@@ -518,6 +509,14 @@ def get_retriever(retriever_type, document_store):
             model_format="retribert",
             use_gpu=False,
         )
+    elif retriever_type == "dpr_lfqa":
+        retriever = DensePassageRetriever(
+            document_store=document_store,
+            query_embedding_model="vblagoje/dpr-question_encoder-single-lfqa-wiki",
+            passage_embedding_model="vblagoje/dpr-ctx_encoder-single-lfqa-wiki",
+            use_gpu=False,
+            embed_title=True,
+        )
     elif retriever_type == "elasticsearch":
         retriever = ElasticsearchRetriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
@@ -562,6 +561,10 @@ def document_store(request, tmp_path):
     )
     yield document_store
     document_store.delete_documents()
+
+    # Make sure to drop Milvus2 collection, required for tests using different embedding dimensions
+    if isinstance(document_store, MilvusDocumentStore) and not milvus1:
+        document_store.collection.drop()
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
@@ -731,10 +734,7 @@ def get_document_store(
 
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
-            weaviate_url="http://localhost:8080",
-            index=index,
-            similarity=similarity,
-            embedding_dim=embedding_dim,
+            weaviate_url="http://localhost:8080", index=index, similarity=similarity, embedding_dim=embedding_dim
         )
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()

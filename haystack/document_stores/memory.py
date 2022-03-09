@@ -150,9 +150,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][document.id] = document
 
     def _create_document_field_map(self):
-        return {
-            self.embedding_field: "embedding",
-        }
+        return {self.embedding_field: "embedding"}
 
     def write_labels(
         self,
