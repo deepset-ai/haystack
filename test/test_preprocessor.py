@@ -102,10 +102,10 @@ def test_remove_substrings():
     assert "✨" in document.content
 
     preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki", "🪲"])
-    documents = preprocessor.process(document)
+    documents = preprocessor.process(document.to_dict())
 
-    assert "This is a header." not in document.content
-    assert "wiki" not in document.content
-    assert "🪲" not in document.content
-    assert "whitespace" in document.content
-    assert "✨" in document.content
+    assert all("This is a header." not in document["content"] for document in documents)
+    assert all("wiki" not in document["content"] for document in documents)
+    assert all("🪲" not in document["content"] for document in documents)
+    assert all("whitespace" in document["content"] for document in documents)
+    assert all("✨" in document["content"] for document in documents)
