@@ -11,12 +11,12 @@ class BasePreProcessor(BaseComponent, ABC):
     def process(
         self,
         documents: Union[dict, List[dict]],
-        clean_whitespace: Optional[bool] = None,
-        clean_header_footer: Optional[bool] = None,
-        clean_empty_lines: Optional[bool] = None,
+        clean_whitespace: Optional[bool] = True,
+        clean_header_footer: Optional[bool] = False,
+        clean_empty_lines: Optional[bool] = True,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = None,
-        split_length: Optional[int] = None,
+        split_by: Optional[str] = "word",
+        split_length: Optional[int] = 1000,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None
     ) -> List[dict]:
@@ -32,7 +32,7 @@ class BasePreProcessor(BaseComponent, ABC):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
-        remove_substrings: List[str]
+        remove_substrings: List[str],
     ) -> Dict[str, Any]:
         raise NotImplementedError
 
