@@ -322,6 +322,7 @@ def update_json_schema(
         logging.info("No difference in the schema, won't create a new file.")
 
         if haystack_version in supported_versions:
+            unstable_versions_block = supported_versions_block
             logging.info(
                 f"Version {haystack_version} was already supported " f"(supported versions: {supported_versions})"
             )
