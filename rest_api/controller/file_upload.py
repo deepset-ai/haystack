@@ -11,6 +11,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 
 from haystack.pipelines.base import Pipeline
+from haystack.pipelines.config import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml
 from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
 from rest_api.controller.utils import as_form
 
@@ -19,11 +20,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 try:
-    pipeline_config = Pipeline._read_pipeline_config_from_yaml(Path(PIPELINE_YAML_PATH))
-    pipeline_definition = Pipeline._get_pipeline_definition(
-        pipeline_config=pipeline_config, pipeline_name=INDEXING_PIPELINE_NAME
-    )
-    definitions = Pipeline._get_component_definitions(
+    pipeline_config = read_pipeline_config_from_yaml(Path(PIPELINE_YAML_PATH))
+    pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=INDEXING_PIPELINE_NAME)
+    component_definitions = get_component_definitions(
         pipeline_config=pipeline_config, overwrite_with_env_variables=True
     )
     # Since each instance of FAISSDocumentStore creates an in-memory FAISS index, the Indexing & Query Pipelines would
@@ -32,8 +31,8 @@ try:
     is_faiss_or_inmemory_present = False
     for node in pipeline_definition["nodes"]:
         if (
-            definitions[node["name"]]["type"] == "FAISSDocumentStore"
-            or definitions[node["name"]]["type"] == "InMemoryDocumentStore"
+            component_definitions[node["name"]]["type"] == "FAISSDocumentStore"
+            or component_definitions[node["name"]]["type"] == "InMemoryDocumentStore"
         ):
             is_faiss_or_inmemory_present = True
             break

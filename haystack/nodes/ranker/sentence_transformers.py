@@ -54,11 +54,7 @@ class SentenceTransformersRanker(BaseRanker):
         """
 
         # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            top_k=top_k,
-        )
+        self.set_config(model_name_or_path=model_name_or_path, model_version=model_version, top_k=top_k)
 
         self.top_k = top_k
 

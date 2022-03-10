@@ -12,6 +12,7 @@ class BasePreProcessor(BaseComponent):
         clean_whitespace: Optional[bool] = True,
         clean_header_footer: Optional[bool] = False,
         clean_empty_lines: Optional[bool] = True,
+        remove_substrings: List[str] = [],
         split_by: Optional[str] = "word",
         split_length: Optional[int] = 1000,
         split_overlap: Optional[int] = None,
@@ -28,6 +29,7 @@ class BasePreProcessor(BaseComponent):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
+        remove_substrings: List[str],
     ) -> Dict[str, Any]:
         raise NotImplementedError
 
