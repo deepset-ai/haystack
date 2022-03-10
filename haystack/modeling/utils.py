@@ -55,34 +55,38 @@ def initialize_device_settings(
     Returns a list of available devices.
 
     :param use_cuda: Whether to make use of CUDA GPUs (if available).
-    :param local_rank: Ordinal of device to be used. If -1 and multi_gpu is True, all devices will be used.
-    :param multi_gpu: Whether to make use of all GPUs (if available).
+    :param local_rank: Ordinal of device to be used. If -1 and `multi_gpu` is True, all devices will be used. 
+                       Unused if `devices` is set or `use_cuda` is False.
+    :param multi_gpu: Whether to make use of all GPUs (if available). 
+                      Unused if `devices` is set or `use_cuda` is False.
+    :param devices: an explicit list of which GPUs to use. Unused if `use_cuda` is False.
     """
-    if devices:
-        n_gpu = sum([1 for device in devices if "cpu" not in device.type])
-    elif not use_cuda:
-        devices = [torch.device("cpu")]
+    if not use_cuda:
+        devices_to_use = [torch.device("cpu")]
         n_gpu = 0
+    elif devices:
+        devices_to_use = devices
+        n_gpu = sum([1 for device in devices if "cpu" not in device.type])
     elif local_rank == -1:
         if torch.cuda.is_available():
             if multi_gpu:
-                devices = [torch.device(device) for device in range(torch.cuda.device_count())]
+                devices_to_use = [torch.device(device) for device in range(torch.cuda.device_count())]
                 n_gpu = torch.cuda.device_count()
             else:
-                devices = [torch.device("cuda")]
+                devices_to_use = [torch.device("cuda")]
                 n_gpu = 1
         else:
-            devices = [torch.device("cpu")]
+            devices_to_use = [torch.device("cpu")]
             n_gpu = 0
     else:
-        devices = [torch.device("cuda", local_rank)]
-        torch.cuda.set_device(devices[0])
+        devices_to_use = [torch.device("cuda", local_rank)]
+        torch.cuda.set_device(devices_to_use[0])
         n_gpu = 1
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.distributed.init_process_group(backend="nccl")
-    logger.info(f"Using devices: {', '.join([str(device) for device in devices]).upper()}")
+    logger.info(f"Using devices: {', '.join([str(device) for device in devices_to_use]).upper()}")
     logger.info(f"Number of GPUs: {n_gpu}")
-    return devices, n_gpu
+    return devices_to_use, n_gpu
 
 
 def flatten_list(nested_list):

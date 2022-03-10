@@ -44,6 +44,7 @@ class FARMReader(BaseReader):
         model_version: Optional[str] = None,
         context_window_size: int = 150,
         batch_size: int = 50,
+        use_gpu: bool = True,
         devices: List[torch.device] = [],
         no_ans_boost: float = 0.0,
         return_no_answer: bool = False,
@@ -73,7 +74,9 @@ class FARMReader(BaseReader):
         :param batch_size: Number of samples the model receives in one batch for inference.
                            Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
                            to a value so only a single batch is used.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+        :param use_gpu: Whether to use GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]). 
+                        Unused if `use_gpu` is False.
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
         If set to 0 (default), the no_answer logit is not changed.
         If a negative number, there is a lower chance of "no_answer" being predicted.
@@ -119,6 +122,7 @@ class FARMReader(BaseReader):
             model_version=model_version,
             context_window_size=context_window_size,
             batch_size=batch_size,
+            use_gpu=use_gpu,
             devices=devices,
             no_ans_boost=no_ans_boost,
             return_no_answer=return_no_answer,
@@ -137,14 +141,14 @@ class FARMReader(BaseReader):
             **kwargs,
         )
 
-        self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=True, multi_gpu=True)
+        self.devices, self.n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
         self.return_no_answers = return_no_answer
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = QAInferencer.load(
             model_name_or_path,
             batch_size=batch_size,
-            gpu=n_gpu>0,
+            gpu=self.n_gpu>0,
             task_type="question_answering",
             max_seq_len=max_seq_len,
             doc_stride=doc_stride,
@@ -180,7 +184,8 @@ class FARMReader(BaseReader):
         train_filename: str,
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
-        use_gpu: Optional[bool] = None,
+        use_gpu: bool = True,
+        devices: List[torch.device] = [],
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -214,12 +219,14 @@ class FARMReader(BaseReader):
 
         # For these variables, by default, we use the value set when initializing the FARMReader.
         # These can also be manually set when train() is called if you want a different value at train vs inference
+        if devices is None:
+            devices = self.devices
         if use_gpu is None:
             use_gpu = self.use_gpu
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
 
-        devices, n_gpu = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -350,6 +357,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -381,6 +389,8 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]). 
+                        Unused if `use_gpu` is False.
         :param batch_size: Number of samples the model receives in one batch for training
         :param n_epochs: Number of iterations on the whole training data set
         :param learning_rate: Learning rate of the optimizer
@@ -416,6 +426,7 @@ class FARMReader(BaseReader):
             dev_filename=dev_filename,
             test_filename=test_filename,
             use_gpu=use_gpu,
+            devices=devices,
             batch_size=batch_size,
             n_epochs=n_epochs,
             learning_rate=learning_rate,
@@ -441,6 +452,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
         student_batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
@@ -487,6 +499,8 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]). 
+                        Unused if `use_gpu` is False.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
@@ -530,6 +544,7 @@ class FARMReader(BaseReader):
             dev_filename=dev_filename,
             test_filename=test_filename,
             use_gpu=use_gpu,
+            devices=devices,
             batch_size=student_batch_size,
             n_epochs=n_epochs,
             learning_rate=learning_rate,
@@ -560,6 +575,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
         batch_size: int = 10,
         n_epochs: int = 5,
         learning_rate: float = 5e-5,
@@ -601,6 +617,8 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]). 
+                        Unused if `use_gpu` is False.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
@@ -640,6 +658,7 @@ class FARMReader(BaseReader):
             dev_filename=dev_filename,
             test_filename=test_filename,
             use_gpu=use_gpu,
+            devices=devices,
             batch_size=batch_size,
             n_epochs=n_epochs,
             learning_rate=learning_rate,
