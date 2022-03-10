@@ -63,6 +63,37 @@ We currently recommend using OPUS models (see __init__() for details)
 |    res = translator.translate(documents=DOCS, query=None)
 ```
 
+<a id="transformers.TransformersTranslator.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True, use_gpu: bool = True)
+```
+
+Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
+
+models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
+of different models, usually one model per language pair and translation direction.
+They have a pretty standardized naming that should help you find the right model:
+- "Helsinki-NLP/opus-mt-en-de" => translating from English to German
+- "Helsinki-NLP/opus-mt-de-en" => translating from German to English
+- "Helsinki-NLP/opus-mt-fr-en" => translating from French to English
+- "Helsinki-NLP/opus-mt-hi-en"=> translating from Hindi to English
+...
+
+They also have a few multilingual models that support multiple languages at once.
+
+**Arguments**:
+
+- `model_name_or_path`: Name of the seq2seq model that shall be used for translation.
+Can be a remote name from Huggingface's modelhub or a local path.
+- `tokenizer_name`: Optional tokenizer name. If not supplied, `model_name_or_path` will also be used for the
+tokenizer.
+- `max_seq_len`: The maximum sentence length the model accepts. (Optional)
+- `clean_up_tokenization_spaces`: Whether or not to clean up the tokenization spaces. (default True)
+- `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+
 <a id="transformers.TransformersTranslator.translate"></a>
 
 #### translate

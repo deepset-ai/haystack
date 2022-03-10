@@ -2,11 +2,14 @@ from pathlib import Path
 
 import os
 import json
+from typing import Tuple
 from unittest.mock import Mock
 
 import pandas as pd
 import pytest
+from requests import PreparedRequest
 import responses
+import yaml
 
 from haystack import __version__, Document, Answer, JoinAnswers
 from haystack.document_stores.base import BaseDocumentStore
@@ -19,9 +22,10 @@ from haystack.nodes.retriever.sparse import ElasticsearchRetriever
 from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode, ExtractiveQAPipeline
 from haystack.pipelines.config import _validate_user_input, validate_config
 from haystack.pipelines.utils import generate_code
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments, PreProcessor, TextConverter
 
 from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
+from haystack.utils.deepsetcloud import DeepsetCloudError
 
 
 class ParentComponent(BaseComponent):
@@ -743,6 +747,468 @@ def test_save_to_deepset_cloud():
             api_endpoint=DC_API_ENDPOINT,
             api_key=DC_API_KEY,
             overwrite=True,
+        )
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_save_nonexisting_pipeline_to_deepset_cloud():
+    if MOCK_DC:
+
+        def dc_document_store_matcher(request: PreparedRequest) -> Tuple[bool, str]:
+            matches = False
+            reason = "No DeepsetCloudDocumentStore found."
+            request_body = request.body or ""
+            json_body = yaml.safe_load(request_body)
+            components = json_body["components"]
+            for component in components:
+                if component["type"].endswith("DocumentStore"):
+                    if component["type"] == "DeepsetCloudDocumentStore":
+                        matches = True
+                    else:
+                        matches = False
+                        reason = f"Component {component['name']} is of type {component['type']} and not DeepsetCloudDocumentStore"
+                        break
+            return matches, reason
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+            json={"errors": ["Pipeline with the name test_pipeline_config_copy does not exists."]},
+            status=404,
+        )
+
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            json={"name": "test_new_non_existing_pipeline"},
+            status=201,
+            match=[dc_document_store_matcher],
+        )
+
+    es_document_store = ElasticsearchDocumentStore()
+    es_retriever = ElasticsearchRetriever(document_store=es_document_store)
+    file_converter = TextConverter()
+    preprocessor = PreProcessor()
+
+    query_pipeline = Pipeline()
+    query_pipeline.add_node(component=es_retriever, name="Retriever", inputs=["Query"])
+    index_pipeline = Pipeline()
+    index_pipeline.add_node(component=file_converter, name="FileConverter", inputs=["File"])
+    index_pipeline.add_node(component=preprocessor, name="Preprocessor", inputs=["FileConverter"])
+    index_pipeline.add_node(component=es_document_store, name="DocumentStore", inputs=["Preprocessor"])
+
+    Pipeline.save_to_deepset_cloud(
+        query_pipeline=query_pipeline,
+        index_pipeline=index_pipeline,
+        pipeline_config_name="test_new_non_existing_pipeline",
+        api_endpoint=DC_API_ENDPOINT,
+        api_key=DC_API_KEY,
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_non_existing_pipeline():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+            json={"errors": ["Pipeline with the name test_pipeline_config_copy does not exists."]},
+            status=404,
+        )
+
+    with pytest.raises(DeepsetCloudError, match="Pipeline config 'test_new_non_existing_pipeline' does not exist."):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_non_existing_pipeline():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+            json={"errors": ["Pipeline with the name test_pipeline_config_copy does not exists."]},
+            status=404,
+        )
+
+    with pytest.raises(DeepsetCloudError, match="Pipeline config 'test_new_non_existing_pipeline' does not exist."):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    Pipeline.deploy_on_deepset_cloud(
+        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED", "UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    Pipeline.undeploy_on_deepset_cloud(
+        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_sate_already_satisfied():
+    if MOCK_DC:
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    Pipeline.deploy_on_deepset_cloud(
+        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_sate_already_satisfied():
+    if MOCK_DC:
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    Pipeline.undeploy_on_deepset_cloud(
+        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_failed():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress and the third time undeployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "UNDEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with pytest.raises(
+        DeepsetCloudError, match="Deployment of pipeline config 'test_new_non_existing_pipeline' failed."
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_failed():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress and the third time undeployed
+        status_flow = ["DEPLOYED", "UNDEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with pytest.raises(
+        DeepsetCloudError, match="Undeployment of pipeline config 'test_new_non_existing_pipeline' failed."
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_invalid_initial_state():
+    if MOCK_DC:
+        status_flow = ["UNDEPLOYMENT_SCHEDULED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Pipeline config 'test_new_non_existing_pipeline' is in invalid state 'UNDEPLOYMENT_SCHEDULED' to be transitioned to 'DEPLOYED'.",
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_invalid_initial_state():
+    if MOCK_DC:
+        status_flow = ["DEPLOYMENT_SCHEDULED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Pipeline config 'test_new_non_existing_pipeline' is in invalid state 'DEPLOYMENT_SCHEDULED' to be transitioned to 'UNDEPLOYED'.",
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_invalid_state_in_progress():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "UNDEPLOYMENT_IN_PROGRESS"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Deployment of pipline config 'test_new_non_existing_pipeline' aborted. Undeployment was requested.",
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_invalid_state_in_progress():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED", "DEPLOYMENT_IN_PROGRESS"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Undeployment of pipline config 'test_new_non_existing_pipeline' aborted. Deployment was requested.",
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_unknown_state_in_progress():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "ASKDHFASJDF"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Deployment of pipeline config 'test_new_non_existing_pipeline ended in unexpected status: UNKNOWN",
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_unknown_state_in_progress():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED", "ASKDHFASJDF"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Undeployment of pipeline config 'test_new_non_existing_pipeline ended in unexpected status: UNKNOWN",
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_timeout():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        TimeoutError, match="Transitioning of 'test_new_non_existing_pipeline' to state 'DEPLOYED' timed out."
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+            timeout=5,
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_timeout():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED", "UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        TimeoutError, match="Transitioning of 'test_new_non_existing_pipeline' to state 'UNDEPLOYED' timed out."
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+            timeout=5,
         )
 
 
