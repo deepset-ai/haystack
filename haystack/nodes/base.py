@@ -52,18 +52,18 @@ def exportable_to_yaml(init_func):
 # Inherits from ABCMeta to avoid metaclass conflicts with ABC
 class Meta(ABCMeta):
     def __new__(cls, name, bases, dct):
-        subclass = super().__new__(cls, name, bases, dct)
+        class_ = super().__new__(cls, name, bases, dct)
 
         # Automatically registers all the init parameters in
         # an instance attribute called `_pipeline_config`,
-        # used tosave this component to YAML. See exportable_to_yaml()
-        subclass.__init__ = exportable_to_yaml(subclass.__init__)
+        # used to save this component to YAML. See exportable_to_yaml()
+        class_.__init__ = exportable_to_yaml(class_.__init__)
 
         # Keeps track of all available subclasses by name.
         # Enables generic load() for all specific component implementations.
-        subclass.subclasses[subclass.__name__] = subclass
+        class_.subclasses[class_.__name__] = class_
 
-        return subclass
+        return class_
 
 
 class BaseComponent(metaclass=Meta):
