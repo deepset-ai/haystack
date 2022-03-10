@@ -44,7 +44,7 @@ class FARMReader(BaseReader):
         model_version: Optional[str] = None,
         context_window_size: int = 150,
         batch_size: int = 50,
-        use_gpu: bool = True,
+        devices: List[torch.device] = [],
         no_ans_boost: float = 0.0,
         return_no_answer: bool = False,
         top_k: int = 10,
@@ -73,7 +73,7 @@ class FARMReader(BaseReader):
         :param batch_size: Number of samples the model receives in one batch for inference.
                            Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
                            to a value so only a single batch is used.
-        :param use_gpu: Whether to use GPU (if available)
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
         If set to 0 (default), the no_answer logit is not changed.
         If a negative number, there is a lower chance of "no_answer" being predicted.
@@ -113,14 +113,12 @@ class FARMReader(BaseReader):
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-
         # save init parameters to enable export of component config as YAML
         self.set_config(
             model_name_or_path=model_name_or_path,
             model_version=model_version,
             context_window_size=context_window_size,
             batch_size=batch_size,
-            use_gpu=use_gpu,
             no_ans_boost=no_ans_boost,
             return_no_answer=return_no_answer,
             top_k=top_k,
@@ -137,15 +135,15 @@ class FARMReader(BaseReader):
             use_confidence_scores=use_confidence_scores,
             **kwargs,
         )
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
+        self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=True, multi_gpu=True)
         self.return_no_answers = return_no_answer
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = QAInferencer.load(
             model_name_or_path,
             batch_size=batch_size,
-            gpu=use_gpu,
+            gpu=n_gpu>0,
             task_type="question_answering",
             max_seq_len=max_seq_len,
             doc_stride=doc_stride,
@@ -172,7 +170,6 @@ class FARMReader(BaseReader):
         except:
             logger.warning("Could not set `duplicate_filtering` in FARM. Please update FARM version.")
         self.max_seq_len = max_seq_len
-        self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
 

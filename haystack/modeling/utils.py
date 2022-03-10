@@ -1,4 +1,4 @@
-from typing import Any, Iterator, Tuple, List
+from typing import Any, Iterator, Tuple, List, Optional
 
 import logging
 import os
@@ -49,7 +49,7 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
 
 
 def initialize_device_settings(
-    use_cuda: bool, local_rank: int = -1, multi_gpu: bool = True
+    use_cuda: bool, local_rank: int = -1, multi_gpu: bool = True, devices: Optional[List[torch.devices]] = None
 ) -> Tuple[List[torch.device], int]:
     """
     Returns a list of available devices.
@@ -58,7 +58,9 @@ def initialize_device_settings(
     :param local_rank: Ordinal of device to be used. If -1 and multi_gpu is True, all devices will be used.
     :param multi_gpu: Whether to make use of all GPUs (if available).
     """
-    if not use_cuda:
+    if devices:
+        n_gpu = sum([1 for device in devices if "cpu" not in device.type])
+    elif not use_cuda:
         devices = [torch.device("cpu")]
         n_gpu = 0
     elif local_rank == -1:
