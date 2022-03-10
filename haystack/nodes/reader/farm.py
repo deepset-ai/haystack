@@ -119,6 +119,7 @@ class FARMReader(BaseReader):
             model_version=model_version,
             context_window_size=context_window_size,
             batch_size=batch_size,
+            devices=devices,
             no_ans_boost=no_ans_boost,
             return_no_answer=return_no_answer,
             top_k=top_k,
