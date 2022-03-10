@@ -3678,7 +3678,7 @@ and filter_utils.py.
 
 <a id="utils.elasticsearch_index_to_document_store"></a>
 
-#### elastic\_search\_index\_to\_document\_store
+#### elasticsearch\_index\_to\_document\_store
 
 ```python
 def elasticsearch_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
