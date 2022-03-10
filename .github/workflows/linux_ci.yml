@@ -37,24 +37,24 @@ jobs:
         with:
           python-version: 3.7
 
-      # - name: Cache
-      #   id: cache-python-env
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: ${{ env.pythonLocation }}
-      #     # The cache will be rebuild every day and at every change of the dependency files
-      #     key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+      - name: Cache
+        id: cache-python-env
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          # The cache will be rebuild every day and at every change of the dependency files
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
-      # - name: Install dependencies
-      #   if: steps.cache-python-env.outputs.cache-hit != 'true'
-      #   run: |
-      #     pip install --upgrade pip
-      #     pip install .[test]
-      #     pip install rest_api/
-      #     pip install ui/
-      #     pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
-      #     echo "=== pip freeze ==="
-      #     pip freeze
+      - name: Install dependencies
+        if: steps.cache-python-env.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          echo "=== pip freeze ==="
+          pip freeze
 
 
   type-check:
@@ -103,16 +103,16 @@ jobs:
         with:
           python-version: 3.7
 
-      # - name: Cache Python
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: ${{ env.pythonLocation }}
-      #     key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+      - name: Cache Python
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Install Dependencies (on cache miss only)
         # The cache might miss during the execution of an action: there should always be a fallback step to
         # rebuild it in case it goes missing
-        #if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
           pip install .[all]
@@ -148,16 +148,16 @@ jobs:
         with:
           python-version: 3.7
 
-      # - name: Cache Python
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: ${{ env.pythonLocation }}
-      #     key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+      - name: Cache Python
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Install Dependencies (on cache miss only)
         # The cache might miss during the execution of an action: there should always be a fallback step to
         # rebuild it in case it goes missing
-        #if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
           pip install .[all]
@@ -247,11 +247,11 @@ jobs:
       with:
         python-version: 3.7
 
-    # - name: Cache Python
-    #   uses: actions/cache@v2
-    #   with:
-    #     path: ${{ env.pythonLocation }}
-    #     key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+    - name: Cache Python
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -284,7 +284,7 @@ jobs:
     - name: Install Dependencies (on cache miss only)
       # The cache might miss during the execution of an action: there should always be a fallback step to
       # rebuild it in case it goes missing
-      #if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         pip install --upgrade pip
         pip install .[all]
@@ -317,11 +317,11 @@ jobs:
       with:
         python-version: 3.7
 
-    # - name: Cache Python
-    #   uses: actions/cache@v2
-    #   with:
-    #     path: ${{ env.pythonLocation }}
-    #     key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+    - name: Cache Python
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
     - name: Run Milvus 1
       run: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
@@ -332,7 +332,7 @@ jobs:
     - name: Install Dependencies (on cache miss only)
       # The cache might miss during the execution of an action: there should always be a fallback step to
       # rebuild it in case it goes missing
-      #if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         pip install --upgrade pip
         pip install .[test]
