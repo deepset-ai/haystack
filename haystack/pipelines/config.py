@@ -18,7 +18,7 @@ from haystack.errors import PipelineConfigError
 logger = logging.getLogger(__name__)
 
 
-VALID_CODE_GEN_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/.:]+$")
+VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/.:]+$")
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
 
 
