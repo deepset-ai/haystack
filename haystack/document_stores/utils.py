@@ -280,7 +280,7 @@ def convert_date_to_rfc3339(date: str) -> str:
 
     return converted_date
 
-def os_index_to_document_store(
+def open_search_index_to_document_store(
     document_store: "BaseDocumentStore",
     original_index_name: str,
     original_content_field: str,
@@ -293,61 +293,61 @@ def os_index_to_document_store(
     batch_size: int = 10_000,
     host: Union[str, List[str]] = "localhost",
     port: Union[int, List[int]] = 9200,
-    username: str = "",
-    password: str = "",
+    username: str = "admin",
+    password: str = "admin",
     api_key_id: Optional[str] = None,
     api_key: Optional[str] = None,
     aws4auth=None,
-    scheme: str = "http",
+    scheme: str = "https",
     ca_certs: Optional[str] = None,
-    verify_certs: bool = True,
+    verify_certs: bool = False,
     timeout: int = 30,
     use_system_proxy: bool = False,
     ) -> "BaseDocumentStore":
     """
-    This function provides brownfield support of existing Opensearch indexes by converting each of the records in
+    This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
     the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
-    on a regular basis in order to add new records of the Opensearch index to the `DocumentStore`.
+    on a regular basis in order to add new records of the OpenSearch index to the `DocumentStore`.
 
     :param document_store: The haystack `DocumentStore` to write the converted `Document` objects to.
-    :param original_index_name: Opensearch index containing the records to be converted.
-    :param original_content_field: Opensearch field containing the text to be put in the `content` field of the
+    :param original_index_name: OpenSearch index containing the records to be converted.
+    :param original_content_field: OpenSearch field containing the text to be put in the `content` field of the
         resulting haystack `Document` objects.
-    :param original_name_field: Optional Opensearch field containing the title of the Document.
-    :param included_metadata_fields: List of Opensearch fields that shall be stored in the `meta` field of the
+    :param original_name_field: Optional OpenSearch field containing the title of the Document.
+    :param included_metadata_fields: List of OpenSearch fields that shall be stored in the `meta` field of the
         resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-        all the fields found in the Opensearch records will be kept as metadata. You can specify only one of the
+        all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
         `included_metadata_fields` and `excluded_metadata_fields` parameters.
-    :param excluded_metadata_fields: List of Opensearch fields that shall be excluded from the `meta` field of the
+    :param excluded_metadata_fields: List of OpenSearch fields that shall be excluded from the `meta` field of the
         resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-        all the fields found in the Opensearch records will be kept as metadata. You can specify only one of the
+        all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
         `included_metadata_fields` and `excluded_metadata_fields` parameters.
-    :param store_original_ids: Whether to store the ID a record had in the original Opensearch index at the
+    :param store_original_ids: Whether to store the ID a record had in the original OpenSearch index at the
         `"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
-        if you want to continuously update the `DocumentStore` with new records inside your Opensearch index. If this
-        parameter was set to `False` on the first call of `es_index_to_document_store`,
+        if you want to continuously update the `DocumentStore` with new records inside your OpenSearch index. If this
+        parameter was set to `False` on the first call of `open_search_index_to_document_store`,
         all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
     :param index: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
-    :param preprocessor: Optional PreProcessor that will be applied on the content field of the original Opensearch
+    :param preprocessor: Optional PreProcessor that will be applied on the content field of the original OpenSearch
         record.
     :param batch_size: Number of records to process at once.
-    :param host: URL(s) of Opensearch nodes.
-    :param port: Ports(s) of Opensearch nodes.
+    :param host: URL(s) of OpenSearch nodes.
+    :param port: Ports(s) of OpenSearch nodes.
     :param username: Username (standard authentication via http_auth).
     :param password: Password (standard authentication via http_auth).
     :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
     :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
-    :param aws4auth: Authentication for usage with AWS Opensearch
+    :param aws4auth: Authentication for usage with AWS OpenSearch
         (can be generated with the requests-aws4auth package).
-    :param scheme: `"https"` or `"http"`, protocol used to connect to your Opensearch instance.
+    :param scheme: `"https"` or `"http"`, protocol used to connect to your OpenSearch instance.
     :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
         You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
     :param verify_certs: Whether to be strict about ca certificates.
-    :param timeout: Number of seconds after which an Opensearch request times out.
+    :param timeout: Number of seconds after which an OpenSearch request times out.
     :param use_system_proxy: Whether to use system proxy.
     """
 
-    return es_index_to_document_store(document_store,
+    return elasticsearch_index_to_document_store(document_store,
                                     original_index_name,
                                     original_content_field,
                                     original_name_field,
@@ -370,7 +370,7 @@ def os_index_to_document_store(
                                     timeout,
                                     use_system_proxy)
 
-def es_index_to_document_store(
+def elasticsearch_index_to_document_store(
     document_store: "BaseDocumentStore",
     original_index_name: str,
     original_content_field: str,
@@ -415,7 +415,7 @@ def es_index_to_document_store(
     :param store_original_ids: Whether to store the ID a record had in the original Elasticsearch index at the
         `"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
         if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
-        parameter was set to `False` on the first call of `es_index_to_document_store`,
+        parameter was set to `False` on the first call of `elasticsearch_index_to_document_store`,
         all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
     :param index: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
     :param preprocessor: Optional PreProcessor that will be applied on the content field of the original Elasticsearch

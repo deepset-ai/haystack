@@ -3676,12 +3676,12 @@ and UTC as default time zone.
 This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
 and filter_utils.py.
 
-<a id="utils.es_index_to_document_store"></a>
+<a id="utils.elasticsearch_index_to_document_store"></a>
 
-#### es\_index\_to\_document\_store
+#### elastic\_search\_index\_to\_document\_store
 
 ```python
-def es_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
+def elasticsearch_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
 ```
 
 This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
@@ -3707,7 +3707,7 @@ all the fields found in the Elasticsearch records will be kept as metadata. You 
 - `store_original_ids`: Whether to store the ID a record had in the original Elasticsearch index at the
 `"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
 if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
-parameter was set to `False` on the first call of `es_index_to_document_store`,
+parameter was set to `False` on the first call of `elasticsearch_index_to_document_store`,
 all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
 - `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
 - `preprocessor`: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
