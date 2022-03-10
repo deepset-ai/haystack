@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [ master ]
-#  pull_request:
-#    branches: [ master ]
 
 jobs:
   type-check:
@@ -20,42 +18,42 @@ jobs:
           pip install mypy==0.910 types-Markdown types-requests types-PyYAML pydantic
           mypy haystack
 
-  build-cache:
-    needs: type-check
-    runs-on: windows-latest
+#   build-cache:
+#     needs: type-check
+#     runs-on: windows-latest
 
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
+#     steps:
+#       - uses: actions/checkout@v2
+#       - uses: actions/setup-python@v2
+#         with:
+#           python-version: 3.7
 
-      - name: Cache
-        id: cache-python-env
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          # The cache currently misses at every change in the Python files to ensure
-          # that the code changes to Haystack are not being cached along with the dependencies.
-          # TODO for the tests refactoring: We could speed up the process by caching only 
-          # the dependencies and installing Haystack again separately for each test runner.
-          key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+#       - name: Cache
+#         id: cache-python-env
+#         uses: actions/cache@v2
+#         with:
+#           path: ${{ env.pythonLocation }}
+#           # The cache currently misses at every change in the Python files to ensure
+#           # that the code changes to Haystack are not being cached along with the dependencies.
+#           # TODO for the tests refactoring: We could speed up the process by caching only 
+#           # the dependencies and installing Haystack again separately for each test runner.
+#           key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
       
-      - name: Install Pytorch on windows
-        run: |
-          pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+#       - name: Install Pytorch on windows
+#         run: |
+#           pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
       
-      - name: Install dependencies
-        if: steps.cache-python-env.outputs.cache-hit != 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade --upgrade-strategy eager .[test]
-          pip install --upgrade --upgrade-strategy eager rest_api/
-          pip install --upgrade --upgrade-strategy eager ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+#       - name: Install dependencies
+#         if: steps.cache-python-env.outputs.cache-hit != 'true'
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install --upgrade --upgrade-strategy eager .[test]
+#           pip install --upgrade --upgrade-strategy eager rest_api/
+#           pip install --upgrade --upgrade-strategy eager ui/
+#           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
   prepare-build:
-    needs: build-cache
+#     needs: build-cache
     # With Windows it gives error, also this step only listing test files only
     runs-on: ubuntu-20.04
     steps:
@@ -80,11 +78,11 @@ jobs:
       with:
         python-version: 3.7
 
-    - name: Cache
-      uses: actions/cache@v2
-      with:
-        path: ${{ env.pythonLocation }}
-        key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+#     - name: Cache
+#       uses: actions/cache@v2
+#       with:
+#         path: ${{ env.pythonLocation }}
+#         key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows test env
