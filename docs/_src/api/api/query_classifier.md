@@ -64,6 +64,24 @@ and the further processing can be customized. You can define this by connecting 
   
   See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
+<a id="sklearn.SklearnQueryClassifier.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(model_name_or_path: Union[
+            str, Any
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
+            str, Any
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle")
+```
+
+**Arguments**:
+
+- `model_name_or_path`: Gradient boosting based binary classifier to classify between keyword vs statement/question
+queries or statement vs question queries.
+- `vectorizer_name_or_path`: A ngram based Tfidf vectorizer for extracting features from query.
+
 <a id="transformers"></a>
 
 # Module transformers
@@ -117,4 +135,17 @@ from this node.
   
   
   See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
+
+<a id="transformers.TransformersQueryClassifier.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", use_gpu: bool = True)
+```
+
+**Arguments**:
+
+- `model_name_or_path`: Transformer based fine tuned mini bert model for query classification
+- `use_gpu`: Whether to use GPU (if available).
 
