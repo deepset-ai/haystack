@@ -27,15 +27,15 @@ on:
 
 jobs:
 
-  build-cache:
-    runs-on: ubuntu-20.04
-    steps:
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+#   build-cache:
+#     runs-on: ubuntu-20.04
+#     steps:
+#       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
+#       - uses: actions/checkout@v2
+#       - uses: actions/setup-python@v2
+#         with:
+#           python-version: 3.7
 
 #       - name: Cache
 #         id: cache-python-env
@@ -45,16 +45,16 @@ jobs:
 #           # The cache will be rebuild every day and at every change of the dependency files
 #           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
-      - name: Install dependencies
+#       - name: Install dependencies
 #         if: steps.cache-python-env.outputs.cache-hit != 'true'
-        run: |
-          pip install --upgrade pip
-          pip install .[test]
-          pip install rest_api/
-          pip install ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
-          echo "=== pip freeze ==="
-          pip freeze
+#         run: |
+#           pip install --upgrade pip
+#           pip install .[test]
+#           pip install rest_api/
+#           pip install ui/
+#           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+#           echo "=== pip freeze ==="
+#           pip freeze
 
 
   type-check:
@@ -130,7 +130,7 @@ jobs:
 
   
   code-and-docs-check:
-    needs: build-cache
+#     needs: build-cache
     runs-on: ubuntu-latest
     if: ${{ github.event_name }} != "push"
 
@@ -218,7 +218,7 @@ jobs:
 
 
   prepare-matrix:
-    needs: build-cache
+#     needs: build-cache
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -304,7 +304,7 @@ jobs:
 
 
   test-milvus1:
-    needs: build-cache
+#     needs: build-cache
     runs-on: ubuntu-20.04
 
     steps:
