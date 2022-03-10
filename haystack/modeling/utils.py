@@ -55,9 +55,9 @@ def initialize_device_settings(
     Returns a list of available devices.
 
     :param use_cuda: Whether to make use of CUDA GPUs (if available).
-    :param local_rank: Ordinal of device to be used. If -1 and `multi_gpu` is True, all devices will be used. 
+    :param local_rank: Ordinal of device to be used. If -1 and `multi_gpu` is True, all devices will be used.
                        Unused if `devices` is set or `use_cuda` is False.
-    :param multi_gpu: Whether to make use of all GPUs (if available). 
+    :param multi_gpu: Whether to make use of all GPUs (if available).
                       Unused if `devices` is set or `use_cuda` is False.
     :param devices: an explicit list of which GPUs to use. Unused if `use_cuda` is False.
     """

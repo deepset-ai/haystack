@@ -55,7 +55,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"))
+def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"))
 ```
 
 Fine-tune a model on a QA dataset. Options:
@@ -75,6 +75,8 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+Unused if `use_gpu` is False.
 - `batch_size`: Number of samples the model receives in one batch for training
 - `n_epochs`: Number of iterations on the whole training data set
 - `learning_rate`: Learning rate of the optimizer
@@ -112,7 +114,7 @@ None
 #### distil\_prediction\_layer\_from
 
 ```python
-def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 3e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0)
+def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 3e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0)
 ```
 
 Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -143,6 +145,8 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+Unused if `use_gpu` is False.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
 - `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
@@ -188,7 +192,7 @@ None
 #### distil\_intermediate\_layers\_from
 
 ```python
-def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None)
+def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None)
 ```
 
 The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -215,6 +219,8 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+Unused if `use_gpu` is False.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
 - `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
