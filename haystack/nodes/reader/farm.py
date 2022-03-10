@@ -75,7 +75,7 @@ class FARMReader(BaseReader):
                            Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
                            to a value so only a single batch is used.
         :param use_gpu: Whether to use GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]). 
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
                         Unused if `use_gpu` is False.
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
         If set to 0 (default), the no_answer logit is not changed.
@@ -148,7 +148,7 @@ class FARMReader(BaseReader):
         self.inferencer = QAInferencer.load(
             model_name_or_path,
             batch_size=batch_size,
-            gpu=self.n_gpu>0,
+            gpu=self.n_gpu > 0,
             task_type="question_answering",
             max_seq_len=max_seq_len,
             doc_stride=doc_stride,
@@ -389,7 +389,7 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]). 
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
                         Unused if `use_gpu` is False.
         :param batch_size: Number of samples the model receives in one batch for training
         :param n_epochs: Number of iterations on the whole training data set
@@ -499,7 +499,7 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]). 
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
                         Unused if `use_gpu` is False.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
@@ -617,7 +617,7 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]). 
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
                         Unused if `use_gpu` is False.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
