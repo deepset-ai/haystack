@@ -75,16 +75,20 @@ class BasePipeline(ABC):
     See also the `Pipeline` class for the actual pipeline logic.
     """
 
+    @abstractmethod
     def run(self, **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
+
+    @abstractmethod
     def get_config(self, return_defaults: bool = False) -> dict:
         """
         Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
 
         :param return_defaults: whether to output parameters that have the default values.
         """
-        raise NotImplementedError
+        raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
+
 
     def to_code(
         self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
