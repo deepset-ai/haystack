@@ -71,7 +71,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
             Can be helpful to disable in production deployments to keep the logs clean.
-        :param duplicate_documents: Handle duplicates document based on parameter options.\
+        :param duplicate_documents: Handle duplicate documents based on parameter options.\
 
             Parameter options:
                 - `"skip"`: Ignore the duplicate documents.
@@ -233,17 +233,18 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         Add new documents to the DocumentStore.
 
-        :param documents: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
-            them right away in Pinecone. If not, you can later call `update_embeddings()` to create & index them.
-        :param index: (SQL) index name for storing the docs and metadata.
-        :param batch_size: Number of Documents to process at a time. When working with large number of documents,
-            batching can help reduce memory footprint.
-       :param duplicate_documents: Handle duplicates document based on parameter options.\
+        :param documents: List of `Dicts` or list of `Documents`. If they already contain embeddings, we'll index them
+            right away in Pinecone. If not, you can later call `update_embeddings()` to create & index them.
+        :param index: Index name for storing the docs and metadata.
+        :param batch_size: Number of documents to process at a time. When working with large number of documents,
+            batching can help to reduce the memory footprint.
+        :param duplicate_documents: handle duplicate documents based on parameter options.
 
             Parameter options:
                 - `"skip"`: Ignore the duplicate documents.
                 - `"overwrite"`: Update any existing documents with the same ID when adding documents.
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
+
         :raises DuplicateDocumentError: Exception trigger on duplicate document.
         """
         if headers:
