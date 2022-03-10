@@ -33,17 +33,16 @@ def exportable_to_yaml(init_func):
                 "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
             )
 
-        # with super().__init__() this method might be executed many times
-        # FIXME it would be better to decorate only non-abstract classes though!
-        if not self._pipeline_config:
+        # Make sure it runs only on the __init__of the concrete implementation, not in abstract superclasses
+        if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
             self._pipeline_config = {"params": {}, "type": type(self).__name__}
 
-        # Store all the named input parameters in self._pipeline_config
-        for k, v in kwargs.items():
-            if isinstance(v, BaseComponent):
-                self._pipeline_config["params"][k] = v._pipeline_config
-            elif v is not None:
-                self._pipeline_config["params"][k] = v
+            # Store all the named input parameters in self._pipeline_config
+            for k, v in kwargs.items():
+                if isinstance(v, BaseComponent):
+                    self._pipeline_config["params"][k] = v._pipeline_config
+                elif v is not None:
+                    self._pipeline_config["params"][k] = v
 
     return wrapper_exportable_to_yaml
 
