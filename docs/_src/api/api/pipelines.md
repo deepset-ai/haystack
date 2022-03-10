@@ -281,6 +281,64 @@ If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 - `overwrite`: Whether to overwrite the config if it already exists. Otherwise an error is being raised.
 
+<a id="base.BasePipeline.deploy_on_deepset_cloud"></a>
+
+#### deploy\_on\_deepset\_cloud
+
+```python
+@classmethod
+def deploy_on_deepset_cloud(cls, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, timeout: int = 60)
+```
+
+Deploys the pipelines of a pipeline config on Deepset Cloud.
+
+Blocks until pipelines are successfully deployed, deployment failed or timeout exceeds.
+If pipelines are already deployed no action will be taken and an info will be logged.
+If timeout exceeds a TimeoutError will be raised.
+If deployment fails a DeepsetCloudError will be raised.
+
+Pipeline config must be present on Deepset Cloud. See save_to_deepset_cloud() for more information.
+
+**Arguments**:
+
+- `pipeline_config_name`: name of the config file inside the Deepset Cloud workspace.
+- `workspace`: workspace in Deepset Cloud
+- `api_key`: Secret value of the API key.
+If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+- `api_endpoint`: The URL of the Deepset Cloud API.
+If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+- `timeout`: The time in seconds to wait until deployment completes.
+If the timeout is exceeded an error will be raised.
+
+<a id="base.BasePipeline.undeploy_on_deepset_cloud"></a>
+
+#### undeploy\_on\_deepset\_cloud
+
+```python
+@classmethod
+def undeploy_on_deepset_cloud(cls, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, timeout: int = 60)
+```
+
+Undeploys the pipelines of a pipeline config on Deepset Cloud.
+
+Blocks until pipelines are successfully undeployed, undeployment failed or timeout exceeds.
+If pipelines are already undeployed no action will be taken and an info will be logged.
+If timeout exceeds a TimeoutError will be raised.
+If deployment fails a DeepsetCloudError will be raised.
+
+Pipeline config must be present on Deepset Cloud. See save_to_deepset_cloud() for more information.
+
+**Arguments**:
+
+- `pipeline_config_name`: name of the config file inside the Deepset Cloud workspace.
+- `workspace`: workspace in Deepset Cloud
+- `api_key`: Secret value of the API key.
+If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+- `api_endpoint`: The URL of the Deepset Cloud API.
+If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+- `timeout`: The time in seconds to wait until undeployment completes.
+If the timeout is exceeded an error will be raised.
+
 <a id="base.Pipeline"></a>
 
 ## Pipeline
