@@ -224,7 +224,10 @@ class PreProcessor(BasePreProcessor):
         for substring in remove_substrings:
             text = text.replace(substring, "")
 
-        document["content"] = text
+        if text != document["content"]:
+            document = deepcopy(document)
+            document["content"] = text
+
         return document
 
     def split(
