@@ -50,6 +50,65 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
  - directly get predictions via predict()
  - fine-tune the model on QA data via train()
 
+<a id="farm.FARMReader.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None, **kwargs, ,)
+```
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
+See https://huggingface.co/models for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `context_window_size`: The size, in characters, of the window around the answer span that is used when
+displaying the context around the answer.
+- `batch_size`: Number of samples the model receives in one batch for inference.
+Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
+to a value so only a single batch is used.
+- `use_gpu`: Whether to use GPU (if available)
+- `no_ans_boost`: How much the no_answer logit is boosted/increased.
+If set to 0 (default), the no_answer logit is not changed.
+If a negative number, there is a lower chance of "no_answer" being predicted.
+If a positive number, there is an increased chance of "no_answer"
+- `return_no_answer`: Whether to include no_answer predictions in the results.
+- `top_k`: The maximum number of answers to return
+- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+Note that this is not the number of "final answers" you will receive
+(see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+and that FARM includes no_answer in the sorted list of predictions.
+- `top_k_per_sample`: How many answers to extract from each small text passage that the model can process at once
+(one "candidate doc" is usually split into many smaller "passages").
+You usually want a very small value here, as it slows down inference
+and you don't gain much of quality by having multiple answers from one passage.
+Note that this is not the number of "final answers" you will receive
+(see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+and that FARM includes no_answer in the sorted list of predictions.
+- `num_processes`: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
+multiprocessing. Set to None to let Inferencer determine optimum number. If you
+want to debug the Language Model, you might need to disable multiprocessing!
+- `max_seq_len`: Max sequence length of one input text for the model
+- `doc_stride`: Length of striding window for splitting long texts (used if ``len(text) > max_seq_len``)
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_filtering`: Answers are filtered based on their position. Both start and end position of the answers are considered.
+The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
+- `use_confidence_scores`: Sets the type of score that is returned with every predicted answer.
+`True` => a scaled confidence / relevance score between [0, 1].
+This score can also be further calibrated on your dataset via self.eval()
+(see https://haystack.deepset.ai/components/reader#confidence-scores) .
+`False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
+from the model for the predicted span.
+- `proxies`: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
+- `local_files_only`: Whether to force checking for local files only (and forbid downloads)
+- `force_download`: Whether fo force a (re-)download even if the model exists locally in the cache.
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+the local token will be used, which must be previously created via `transformer-cli login`.
+Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
 <a id="farm.FARMReader.train"></a>
 
 #### train
@@ -483,6 +542,45 @@ Transformer based model for extractive Question Answering using the HuggingFace'
 While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
 With this reader, you can directly get predictions via predict()
 
+<a id="transformers.TransformersReader.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+```
+
+Load a QA model from Transformers.
+
+Available models include:
+
+- ``'distilbert-base-uncased-distilled-squad`'``
+- ``'bert-large-cased-whole-word-masking-finetuned-squad``'
+- ``'bert-large-uncased-whole-word-masking-finetuned-squad``'
+
+See https://huggingface.co/models for full list of available QA models
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bert-base-cased',
+'deepset/bert-base-cased-squad2', 'deepset/bert-base-cased-squad2', 'distilbert-base-uncased-distilled-squad'.
+See https://huggingface.co/models for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `context_window_size`: Num of chars (before and after the answer) to return as "context" for each answer.
+The context usually helps users to understand if the answer really makes sense.
+- `use_gpu`: Whether to use GPU (if available).
+- `top_k`: The maximum number of answers to return
+- `top_k_per_candidate`: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
+Note that this is not the number of "final answers" you will receive
+(see `top_k` in TransformersReader.predict() or Finder.get_answers() for that)
+and that no_answer can be included in the sorted list of predictions.
+- `return_no_answers`: If True, the HuggingFace Transformers model could return a "no_answer" (i.e. when there is an unanswerable question)
+If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortunately not available with TransformersReader.
+If you would like to set no_answer_boost, use a `FARMReader`.
+- `max_seq_len`: max sequence length of one input text for the model
+- `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
+
 <a id="transformers.TransformersReader.predict"></a>
 
 #### predict
@@ -558,6 +656,48 @@ prediction = table_reader.predict(query=query, documents=[document])
 answer = prediction["answers"][0].answer  # "10 june 1996"
 ```
 
+<a id="table.TableReader.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256)
+```
+
+Load a TableQA model from Transformers.
+
+Available models include:
+
+- ``'google/tapas-base-finetuned-wtq`'``
+- ``'google/tapas-base-finetuned-wikisql-supervised``'
+- ``'deepset/tapas-large-nq-hn-reader'``
+- ``'deepset/tapas-large-nq-reader'``
+
+See https://huggingface.co/models?pipeline_tag=table-question-answering
+for full list of available TableQA models.
+
+The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
+over multiple cells. The returned answers are sorted first by a general table score and then by answer span
+scores.
+All the other models can handle aggregation questions, but don't provide reasonable confidence scores.
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
+See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
+or commit hash.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `use_gpu`: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
+- `top_k`: The maximum number of answers to return
+- `top_k_per_candidate`: How many answers to extract for each candidate table that is coming from
+the retriever.
+- `return_no_answer`: Whether to include no_answer predictions in the results.
+(Only applicable with nq-reader models.)
+- `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
+query + table exceed max_seq_len, the table will be truncated by removing rows until the
+input size fits the model.
+
 <a id="table.TableReader.predict"></a>
 
 #### predict
@@ -607,6 +747,37 @@ Pros and Cons of RCIReader compared to TableReader:
 + Allows larger tables as input
 - Does not support aggregation over table cells
 - Slower
+
+<a id="table.RCIReader.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row", column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col", row_model_version: Optional[str] = None, column_model_version: Optional[str] = None, row_tokenizer: Optional[str] = None, column_tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
+```
+
+Load an RCI model from Transformers.
+
+Available models include:
+
+- ``'michaelrglass/albert-base-rci-wikisql-row'`` + ``'michaelrglass/albert-base-rci-wikisql-col'``
+- ``'michaelrglass/albert-base-rci-wtq-row'`` + ``'michaelrglass/albert-base-rci-wtq-col'``
+
+**Arguments**:
+
+- `row_model_name_or_path`: Directory of a saved row scoring model or the name of a public model
+- `column_model_name_or_path`: Directory of a saved column scoring model or the name of a public model
+- `row_model_version`: The version of row model to use from the HuggingFace model hub.
+Can be tag name, branch name, or commit hash.
+- `column_model_version`: The version of column model to use from the HuggingFace model hub.
+Can be tag name, branch name, or commit hash.
+- `row_tokenizer`: Name of the tokenizer for the row model (usually the same as model)
+- `column_tokenizer`: Name of the tokenizer for the column model (usually the same as model)
+- `use_gpu`: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
+- `top_k`: The maximum number of answers to return
+- `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
+query + table exceed max_seq_len, the table will be truncated by removing rows until the
+input size fits the model.
 
 <a id="table.RCIReader.predict"></a>
 
