@@ -102,6 +102,83 @@ contains the keys "predictions" and "metrics".
 class ElasticsearchRetriever(BaseRetriever)
 ```
 
+<a id="sparse.ElasticsearchRetriever.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(document_store: KeywordDocumentStore, top_k: int = 10, custom_query: str = None)
+```
+
+**Arguments**:
+
+- `document_store`: an instance of an ElasticsearchDocumentStore to retrieve documents from.
+- `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
+ Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
+ that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
+ names must match with the filters dict supplied in self.retrieve().
+ ::
+
+     **An example custom_query:**
+     ```python
+    |    {
+    |        "size": 10,
+    |        "query": {
+    |            "bool": {
+    |                "should": [{"multi_match": {
+    |                    "query": ${query},                 // mandatory query placeholder
+    |                    "type": "most_fields",
+    |                    "fields": ["content", "title"]}}],
+    |                "filter": [                                 // optional custom filters
+    |                    {"terms": {"year": ${years}}},
+    |                    {"terms": {"quarter": ${quarters}}},
+    |                    {"range": {"date": {"gte": ${date}}}}
+    |                    ],
+    |            }
+    |        },
+    |    }
+     ```
+
+ **For this custom_query, a sample retrieve() could be:**
+ ```python
+|    self.retrieve(query="Why did the revenue increase?",
+|                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+```
+
+ Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+ See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
+ You will find the highlighted output in the returned Document's meta field by key "highlighted".
+ ::
+
+     **Example custom_query with highlighting:**
+     ```python
+    |    {
+    |        "size": 10,
+    |        "query": {
+    |            "bool": {
+    |                "should": [{"multi_match": {
+    |                    "query": ${query},                 // mandatory query placeholder
+    |                    "type": "most_fields",
+    |                    "fields": ["content", "title"]}}],
+    |            }
+    |        },
+    |        "highlight": {             // enable highlighting
+    |            "fields": {            // for fields content and title
+    |                "content": {},
+    |                "title": {}
+    |            }
+    |        },
+    |    }
+     ```
+
+     **For this custom_query, highlighting info can be accessed by:**
+    ```python
+    |    docs = self.retrieve(query="Why did the revenue increase?")
+    |    highlighted_content = docs[0].meta["highlighted"]["content"]
+    |    highlighted_title = docs[0].meta["highlighted"]["title"]
+    ```
+- `top_k`: How many documents to return per query.
+
 <a id="sparse.ElasticsearchRetriever.retrieve"></a>
 
 #### retrieve
@@ -170,6 +247,20 @@ computations when text is passed on to a Reader for QA.
 
 It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 
+<a id="sparse.TfidfRetriever.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
+```
+
+**Arguments**:
+
+- `document_store`: an instance of a DocumentStore to retrieve documents from.
+- `top_k`: How many documents to return per query.
+- `auto_fit`: Whether to automatically update tf-idf matrix by calling fit() after new documents have been added
+
 <a id="sparse.TfidfRetriever.retrieve"></a>
 
 #### retrieve
@@ -215,6 +306,67 @@ Retriever that uses a bi-encoder (one transformer for query, one transformer for
 See the original paper for more details:
 Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Question Answering."
 (https://arxiv.org/abs/2004.04906).
+
+<a id="dense.DensePassageRetriever.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+```
+
+Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
+
+The checkpoint format matches huggingface transformers' model format
+
+**Example:**
+
+        ```python
+        |    # remote model from FAIR
+        |    DensePassageRetriever(document_store=your_doc_store,
+        |                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        |                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
+        |    # or from local path
+        |    DensePassageRetriever(document_store=your_doc_store,
+        |                          query_embedding_model="model_directory/question-encoder",
+        |                          passage_embedding_model="model_directory/context-encoder")
+        ```
+
+**Arguments**:
+
+- `document_store`: An instance of DocumentStore from which to retrieve documents.
+- `query_embedding_model`: Local path or remote name of question encoder checkpoint. The format equals the
+one used by hugging-face transformers' modelhub models
+Currently available remote names: ``"facebook/dpr-question_encoder-single-nq-base"``
+- `passage_embedding_model`: Local path or remote name of passage encoder checkpoint. The format equals the
+one used by hugging-face transformers' modelhub models
+Currently available remote names: ``"facebook/dpr-ctx_encoder-single-nq-base"``
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
+- `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
+- `top_k`: How many documents to return per query.
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+- `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+- `embed_title`: Whether to concatenate title and passage to a text pair that is then used to create the embedding.
+This is the approach used in the original paper and is likely to improve performance if your
+titles contain meaningful information for retrieval (topic, entities etc.) .
+The title is expected to be present in doc.meta["name"] and can be supplied in the documents
+before writing them to the DocumentStore like this:
+{"text": "my text", "meta": {"name": "my title"}}.
+- `use_fast_tokenizers`: Whether to use fast Rust tokenizers
+- `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
+If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
+- `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
+Options: `dot_product` (Default) or `cosine`
+- `global_loss_buffer_size`: Buffer size for all_gather() in DDP.
+Increase if errors like "encoded data exceeds max_size ..." come up
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+the local token will be used, which must be previously created via `transformer-cli login`.
+Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="dense.DensePassageRetriever.retrieve"></a>
 
@@ -363,6 +515,53 @@ See the original paper for more details:
 Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using Tri-encoder Models"
 (https://arxiv.org/abs/2108.04049),
 
+<a id="dense.TableTextRetriever.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+```
+
+Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
+
+The checkpoint format matches huggingface transformers' model format
+
+**Arguments**:
+
+- `document_store`: An instance of DocumentStore from which to retrieve documents.
+- `query_embedding_model`: Local path or remote name of question encoder checkpoint. The format equals the
+one used by hugging-face transformers' modelhub models.
+- `passage_embedding_model`: Local path or remote name of passage encoder checkpoint. The format equals the
+one used by hugging-face transformers' modelhub models.
+- `table_embedding_model`: Local path or remote name of table encoder checkpoint. The format equala the
+one used by hugging-face transformers' modelhub models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `max_seq_len_query`: Longest length of each query sequence. Maximum number of tokens for the query text. Longer ones will be cut down."
+- `max_seq_len_passage`: Longest length of each passage/context sequence. Maximum number of tokens for the passage text. Longer ones will be cut down."
+- `top_k`: How many documents to return per query.
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+- `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+- `embed_meta_fields`: Concatenate the provided meta fields and text passage / table to a text pair that is
+then  used to create the embedding.
+This is the approach used in the original paper and is likely to improve
+performance if your titles contain meaningful information for retrieval
+(topic, entities etc.).
+- `use_fast_tokenizers`: Whether to use fast Rust tokenizers
+- `infer_tokenizer_classes`: Whether to infer tokenizer class from the model config / name.
+If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
+- `similarity_function`: Which function to apply for calculating the similarity of query and passage embeddings during training.
+Options: `dot_product` (Default) or `cosine`
+- `global_loss_buffer_size`: Buffer size for all_gather() in DDP.
+Increase if errors like "encoded data exceeds max_size ..." come up
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+the local token will be used, which must be previously created via `transformer-cli login`.
+Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
 <a id="dense.TableTextRetriever.embed_queries"></a>
 
 #### embed\_queries
@@ -491,6 +690,43 @@ Load TableTextRetriever from the specified directory.
 class EmbeddingRetriever(BaseRetriever)
 ```
 
+<a id="dense.EmbeddingRetriever.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+```
+
+**Arguments**:
+
+- `document_store`: An instance of DocumentStore from which to retrieve documents.
+- `embedding_model`: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+- `batch_size`: Number of documents to encode at once.
+- `max_seq_len`: Longest length of each document sequence. Maximum number of tokens for the document text. Longer ones will be cut down.
+- `model_format`: Name of framework that was used for saving the model. Options:
+- ``'farm'``
+- ``'transformers'``
+- ``'sentence_transformers'``
+- `pooling_strategy`: Strategy for combining the embeddings from the model (for farm / transformers models only).
+Options:
+
+- ``'cls_token'`` (sentence vector)
+- ``'reduce_mean'`` (sentence vector)
+- ``'reduce_max'`` (sentence vector)
+- ``'per_token'`` (individual token vectors)
+- `emb_extraction_layer`: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
+Default: -1 (very last layer).
+- `top_k`: How many documents to return per query.
+- `progress_bar`: If true displays progress bar during embedding.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
+the local token will be used, which must be previously created via `transformer-cli login`.
+Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
 <a id="dense.EmbeddingRetriever.retrieve"></a>
 
 #### retrieve
@@ -561,6 +797,22 @@ class Text2SparqlRetriever(BaseGraphRetriever)
 Graph retriever that uses a pre-trained Bart model to translate natural language questions
 given in text form to queries in SPARQL format.
 The generated SPARQL query is executed on a knowledge graph.
+
+<a id="text2sparql.Text2SparqlRetriever.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(knowledge_graph, model_name_or_path, top_k: int = 1)
+```
+
+Init the Retriever by providing a knowledge graph and a pre-trained BART model
+
+**Arguments**:
+
+- `knowledge_graph`: An instance of BaseKnowledgeGraph on which to execute SPARQL queries.
+- `model_name_or_path`: Name of or path to a pre-trained BartForConditionalGeneration model.
+- `top_k`: How many SPARQL queries to generate per text query.
 
 <a id="text2sparql.Text2SparqlRetriever.retrieve"></a>
 
