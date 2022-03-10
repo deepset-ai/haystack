@@ -29,13 +29,13 @@ jobs:
         with:
           python-version: 3.7
 
-      - name: Cache
-        id: cache-python-env
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          # The cache will be rebuild every day and at every change of the dependency files
-          key: haystack-ci-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+#       - name: Cache
+#         id: cache-python-env
+#         uses: actions/cache@v2
+#         with:
+#           path: ${{ env.pythonLocation }}
+#           # The cache will be rebuild every day and at every change of the dependency files
+#           key: haystack-ci-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Install Dependencies
         run: |
