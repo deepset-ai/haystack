@@ -184,7 +184,7 @@ class FARMReader(BaseReader):
         train_filename: str,
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
-        use_gpu: bool = True,
+        use_gpu: Optional[bool] = None,
         devices: List[torch.device] = [],
         batch_size: int = 10,
         n_epochs: int = 2,
