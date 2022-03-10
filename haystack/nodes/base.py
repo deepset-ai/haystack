@@ -67,7 +67,7 @@ class Meta(ABCMeta):
         return subclass
 
 
-class BaseComponent(ABC, metaclass=Meta):
+class BaseComponent(metaclass=Meta):
     """
     A base class for implementing nodes in a Pipeline.
     """
