@@ -40,15 +40,12 @@ jobs:
           # TODO for the tests refactoring: We could speed up the process by caching only 
           # the dependencies and installing Haystack again separately for each test runner.
           key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
-      
-      - name: Install Pytorch on windows
-        run: |
-          pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
-      
+
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
+          pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
           pip install --upgrade --upgrade-strategy eager .[test]
           pip install --upgrade --upgrade-strategy eager rest_api/
           pip install --upgrade --upgrade-strategy eager ui/
@@ -85,6 +82,16 @@ jobs:
       with:
         path: ${{ env.pythonLocation }}
         key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+        
+    - name: Install Haystack (on cacne miss)
+      if: steps.cache-python-env.outputs.cache-hit != 'true'
+      run: |
+        pip install --upgrade pip
+        pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+        pip install --upgrade --upgrade-strategy eager .[test]
+        pip install --upgrade --upgrade-strategy eager rest_api/
+        pip install --upgrade --upgrade-strategy eager ui/
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows test env
