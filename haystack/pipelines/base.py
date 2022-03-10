@@ -528,18 +528,18 @@ class Pipeline(BasePipeline):
             else:
                 try:
                     outgoing_edges_input_node = self.graph.nodes[input_node]["component"].outgoing_edges
+                    if not outgoing_edges_input_node == 1:
+                        raise PipelineConfigError(
+                            f"Adding an edge from {input_node} to {name} is ambiguous as {input_node} has {outgoing_edges_input_node} edges. "
+                            f"Please specify the output explicitly."
+                        )
+
                 except KeyError as e:
                     raise PipelineConfigError(
                         message=f"Cannot find node '{input_node}'. Make sure you're not using more "
                         f"than one root node ({valid_root_nodes}) in the same pipeline and that a node "
                         f"called '{input_node}' is defined.",
                         source=e,
-                    )
-
-                if not outgoing_edges_input_node == 1:
-                    raise PipelineConfigError(
-                        f"Adding an edge from {input_node} to {name} is ambiguous as {input_node} has {outgoing_edges_input_node} edges. "
-                        f"Please specify the output explicitly."
                     )
                 input_node_name = input_node
                 input_edge_name = "output_1"
