@@ -22,6 +22,27 @@ Crawl texts from a website so that we can use them later in Haystack as a corpus
 |                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
 ```
 
+<a id="crawler.Crawler.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(output_dir: str, urls: Optional[List[str]] = None, crawler_depth: int = 1, filter_urls: Optional[List] = None, overwrite_existing_files=True)
+```
+
+Init object with basic params for crawling (can be overwritten later).
+
+**Arguments**:
+
+- `output_dir`: Path for the directory to store files
+- `urls`: List of http(s) address(es) (can also be supplied later when calling crawl())
+- `crawler_depth`: How many sublinks to follow from the initial list of URLs. Current options:
+0: Only initial list of urls
+1: Follow links found on the initial URLs (but no further)
+- `filter_urls`: Optional list of regular expressions that the crawled URLs must comply with.
+All URLs not matching at least one of the regular expressions will be dropped.
+- `overwrite_existing_files`: Whether to overwrite existing files in output_dir with new content
+
 <a id="crawler.Crawler.crawl"></a>
 
 #### crawl

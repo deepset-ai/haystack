@@ -600,13 +600,26 @@ A RayPipeline can only be created with a YAML Pipeline config.
 By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
 set the `address` parameter when creating the RayPipeline instance.
 
+<a id="base.RayPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(address: str = None, **kwargs)
+```
+
+**Arguments**:
+
+- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+- `kwargs`: Optional parameters for initializing Ray.
+
 <a id="base.RayPipeline.load_from_yaml"></a>
 
 #### load\_from\_yaml
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, **kwargs)
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, **kwargs, ,)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -659,6 +672,47 @@ to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+
+<a id="base._RayDeploymentWrapper"></a>
+
+## \_RayDeploymentWrapper
+
+```python
+class _RayDeploymentWrapper()
+```
+
+Ray Serve supports calling of __init__ methods on the Classes to create "deployment" instances.
+
+In case of Haystack, some Components like Retrievers have complex init methods that needs objects
+like Document Stores.
+
+This wrapper class encapsulates the initialization of Components. Given a Component Class
+name, it creates an instance using the YAML Pipeline config.
+
+<a id="base._RayDeploymentWrapper.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(pipeline_config: dict, component_name: str)
+```
+
+Create an instance of Component.
+
+**Arguments**:
+
+- `pipeline_config`: Pipeline YAML parsed as a dict.
+- `component_name`: Component Class name.
+
+<a id="base._RayDeploymentWrapper.__call__"></a>
+
+#### \_\_call\_\_
+
+```python
+def __call__(*args, **kwargs)
+```
+
+Ray calls this method which is then re-directed to the corresponding component's run().
 
 <a id="standard_pipelines"></a>
 
@@ -876,6 +930,19 @@ class ExtractiveQAPipeline(BaseStandardPipeline)
 
 Pipeline for Extractive Question Answering.
 
+<a id="standard_pipelines.ExtractiveQAPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(reader: BaseReader, retriever: BaseRetriever)
+```
+
+**Arguments**:
+
+- `reader`: Reader instance
+- `retriever`: Retriever instance
+
 <a id="standard_pipelines.ExtractiveQAPipeline.run"></a>
 
 #### run
@@ -905,6 +972,18 @@ class DocumentSearchPipeline(BaseStandardPipeline)
 
 Pipeline for semantic document search.
 
+<a id="standard_pipelines.DocumentSearchPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(retriever: BaseRetriever)
+```
+
+**Arguments**:
+
+- `retriever`: Retriever instance
+
 <a id="standard_pipelines.DocumentSearchPipeline.run"></a>
 
 #### run
@@ -932,6 +1011,19 @@ class GenerativeQAPipeline(BaseStandardPipeline)
 ```
 
 Pipeline for Generative Question Answering.
+
+<a id="standard_pipelines.GenerativeQAPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(generator: BaseGenerator, retriever: BaseRetriever)
+```
+
+**Arguments**:
+
+- `generator`: Generator instance
+- `retriever`: Retriever instance
 
 <a id="standard_pipelines.GenerativeQAPipeline.run"></a>
 
@@ -962,6 +1054,22 @@ class SearchSummarizationPipeline(BaseStandardPipeline)
 
 Pipeline that retrieves documents for a query and then summarizes those documents.
 
+<a id="standard_pipelines.SearchSummarizationPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False)
+```
+
+**Arguments**:
+
+- `summarizer`: Summarizer instance
+- `retriever`: Retriever instance
+- `return_in_answer_format`: Whether the results should be returned as documents (False) or in the answer
+format used in other QA pipelines (True). With the latter, you can use this
+pipeline as a "drop-in replacement" for other QA pipelines.
+
 <a id="standard_pipelines.SearchSummarizationPipeline.run"></a>
 
 #### run
@@ -991,6 +1099,18 @@ class FAQPipeline(BaseStandardPipeline)
 
 Pipeline for finding similar FAQs using semantic document search.
 
+<a id="standard_pipelines.FAQPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(retriever: BaseRetriever)
+```
+
+**Arguments**:
+
+- `retriever`: Retriever instance
+
 <a id="standard_pipelines.FAQPipeline.run"></a>
 
 #### run
@@ -1019,6 +1139,23 @@ class TranslationWrapperPipeline(BaseStandardPipeline)
 
 Takes an existing search pipeline and adds one "input translation node" after the Query and one
 "output translation" node just before returning the results
+
+<a id="standard_pipelines.TranslationWrapperPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(input_translator: BaseTranslator, output_translator: BaseTranslator, pipeline: BaseStandardPipeline)
+```
+
+Wrap a given `pipeline` with the `input_translator` and `output_translator`.
+
+**Arguments**:
+
+- `input_translator`: A Translator node that shall translate the input query from language A to B
+- `output_translator`: A Translator node that shall translate the pipeline results from language B to A
+- `pipeline`: The pipeline object (e.g. ExtractiveQAPipeline) you want to "wrap".
+Note that pipelines with split or merge nodes are currently not supported.
 
 <a id="standard_pipelines.QuestionGenerationPipeline"></a>
 
@@ -1060,6 +1197,22 @@ this document, and then performs question answering of this questions using that
 ```python
 class MostSimilarDocumentsPipeline(BaseStandardPipeline)
 ```
+
+<a id="standard_pipelines.MostSimilarDocumentsPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(document_store: BaseDocumentStore)
+```
+
+Initialize a Pipeline for finding the most similar documents to a given document.
+
+This pipeline can be helpful if you already show a relevant document to your end users and they want to search for just similar ones.
+
+**Arguments**:
+
+- `document_store`: Document Store instance with already stored embeddings.
 
 <a id="standard_pipelines.MostSimilarDocumentsPipeline.run"></a>
 
