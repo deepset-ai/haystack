@@ -206,7 +206,7 @@ def tutorial11_pipelines():
     result = p_classifier.run(query="Who is the father of Arya Stark?", params={"ESRetriever": {"debug": True}})
 
     # 3) You can provide the `debug` parameter to all nodes in your pipeline
-    result = p_classifier.run(query="Who is the father of Arya Stark?", params={"QAReader": {"debug": True}})
+    result = p_classifier.run(query="Who is the father of Arya Stark?", params={"debug": True})
 
     pprint(result["_debug"])
 
