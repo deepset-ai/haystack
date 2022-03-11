@@ -590,7 +590,7 @@ class Pipeline(BasePipeline):
 
                 # Might be a non-targeted param. Verify that too
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
-                valid_global_params = set()
+                valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
                 for node_id in self.graph.nodes:
                     run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
                     valid_global_params |= set(run_signature_args)
