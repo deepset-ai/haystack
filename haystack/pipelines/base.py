@@ -1170,8 +1170,8 @@ class Pipeline(BasePipeline):
                 continue
             component_instance = self.graph.nodes.get(node)["component"]
 
-            component_type = type(component_instance).__name__
-            component_params = component_instance._component_configuration
+            component_type = component_instance._component_configuration["type"]
+            component_params = component_instance._component_configuration["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
 
             component_parent_classes = inspect.getmro(type(component_instance))
@@ -1190,7 +1190,7 @@ class Pipeline(BasePipeline):
                     sub_component = param_value
                     sub_component_type_name = sub_component["type"]
                     sub_component_signature = inspect.signature(
-                        BaseComponent.subclasses[sub_component_type_name]
+                        BaseComponent._subclasses[sub_component_type_name]
                     ).parameters
                     sub_component_params = {
                         k: v

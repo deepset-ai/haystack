@@ -3,7 +3,7 @@ from typing import Any, Optional, Dict, List, Tuple, Optional
 
 import sys
 from copy import deepcopy
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from functools import wraps
 import inspect
 import logging
@@ -32,54 +32,51 @@ def exportable_to_yaml(init_func):
                 "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
             )
 
-        # Make sure it runs only on the __init__of the concrete implementation, not in abstract superclasses
+        # Make sure it runs only on the __init__of the implementations, not in superclasses
         if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
-            self._component_configuration = {}
+            self._component_configuration = {"params": {}, "type": type(self).__name__}
 
             # Store all the named input parameters in self._component_configuration
             for k, v in kwargs.items():
                 if isinstance(v, BaseComponent):
-                    self._component_configuration[k] = v._component_configuration
+                    self._component_configuration["params"][k] = v._component_configuration
                 elif v is not None:
-                    self._component_configuration[k] = v
+                    self._component_configuration["params"][k] = v
 
     return wrapper_exportable_to_yaml
 
 
-# Metaclasses are like decorators for classes
-# __new__ is called when a class is created (not an instance!)
-# Inherits from ABCMeta to make the class abstract
-class Meta(ABCMeta):
-    def __new__(cls, name, bases, dct):
-        class_ = super().__new__(cls, name, bases, dct)
-
-        # Automatically registers all the init parameters in
-        # an instance attribute called `_component_configuration`,
-        # used to save this component to YAML. See exportable_to_yaml()
-        class_.__init__ = exportable_to_yaml(class_.__init__)
-
-        # Keeps track of all available subclasses by name.
-        # Enables generic load() for all specific component implementations.
-        class_.subclasses[class_.__name__] = class_
-
-        return class_
-
-
-class BaseComponent(metaclass=Meta):
+class BaseComponent(ABC):
     """
     A base class for implementing nodes in a Pipeline.
     """
 
     outgoing_edges: int
-    subclasses: dict = {}
     name: Optional[str] = None
+    _subclasses: dict = {}
     _component_configuration: dict = {}
+
+
+    # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_
+    # (not instantiated). It works approximately as a metaclass.
+    def __init_subclass__(cls, **kwargs):
+
+        super().__init_subclass__(**kwargs)
+
+        # Automatically registers all the init parameters in
+        # an instance attribute called `_component_configuration`,
+        # used to save this component to YAML. See exportable_to_yaml()
+        cls.__init__ = exportable_to_yaml(cls.__init__)
+
+        # Keeps track of all available subclasses by name.
+        # Enables generic load() for all specific component implementations.
+        cls._subclasses[cls.__name__] = cls
 
     @classmethod
     def get_subclass(cls, component_type: str):
-        if component_type not in cls.subclasses.keys():
+        if component_type not in cls._subclasses.keys():
             raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
-        subclass = cls.subclasses[component_type]
+        subclass = cls._subclasses[component_type]
         return subclass
 
     @classmethod
