@@ -1,13 +1,13 @@
 from typing import List, Optional, Dict, Any, Union
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from pathlib import Path
 import langdetect
 
 from haystack.nodes.base import BaseComponent
 
 
-class BaseConverter(BaseComponent, ABC):
+class BaseConverter(BaseComponent):
     """
     Base class for implementing file converts to transform input documents to text format for ingestion in DocumentStore.
     """

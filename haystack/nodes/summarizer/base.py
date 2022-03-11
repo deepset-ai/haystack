@@ -1,12 +1,12 @@
 from typing import List, Dict, Optional
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 
 
-class BaseSummarizer(BaseComponent, ABC):
+class BaseSummarizer(BaseComponent):
     """
     Abstract class for Summarizer
     """

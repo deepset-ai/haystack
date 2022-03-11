@@ -1,7 +1,7 @@
 from typing import List, Union
 
 import logging
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from functools import wraps
 from time import perf_counter
 
@@ -12,7 +12,7 @@ from haystack.nodes.base import BaseComponent
 logger = logging.getLogger(__name__)
 
 
-class BaseDocumentClassifier(BaseComponent, ABC):
+class BaseDocumentClassifier(BaseComponent):
     outgoing_edges = 1
     query_count = 0
     query_time = 0

@@ -1,11 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import List, Optional
 
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 
 
-class BaseQueryClassifier(BaseComponent, ABC):
+class BaseQueryClassifier(BaseComponent):
     """
     Abstract class for Query Classifiers
     """

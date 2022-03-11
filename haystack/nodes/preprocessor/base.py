@@ -1,10 +1,10 @@
 from typing import List, Dict, Any, Optional, Union
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from haystack.nodes.base import BaseComponent
 
 
-class BasePreProcessor(BaseComponent, ABC):
+class BasePreProcessor(BaseComponent):
     outgoing_edges = 1
 
     @abstractmethod

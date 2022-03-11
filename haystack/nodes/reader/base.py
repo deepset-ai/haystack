@@ -2,7 +2,7 @@ from typing import List, Optional, Sequence, Dict, Tuple
 
 import numpy as np
 from scipy.special import expit
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from copy import deepcopy
 from functools import wraps
 from time import perf_counter
@@ -11,7 +11,7 @@ from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
 
 
-class BaseReader(BaseComponent, ABC):
+class BaseReader(BaseComponent):
     return_no_answers: bool
     outgoing_edges = 1
     query_count = 0

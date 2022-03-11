@@ -3,13 +3,12 @@ from typing import Any, Optional, Dict, List, Tuple, Optional
 
 import sys
 from copy import deepcopy
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod
 from functools import wraps
 import inspect
 import logging
 
 from haystack.schema import Document, MultiLabel
-from haystack.errors import PipelineError
 
 
 logger = logging.getLogger(__name__)
