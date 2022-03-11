@@ -61,7 +61,7 @@ def match_context(
                       For very long iterables using a large value for chunksize can make the job complete much faster than using the default value of 1.
     """
     with Pool(processes=num_processes) as pool:
-        score_candidate_args =((context, candidate) for candidate in candidates)
+        score_candidate_args = ((context, candidate) for candidate in candidates)
         candidate_scores = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
         if show_progress:
             candidate_scores = tqdm(candidate_scores)
