@@ -9,6 +9,7 @@ import inspect
 import logging
 
 from haystack.schema import Document, MultiLabel
+from haystack.errors import HaystackError
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,7 @@ class BaseComponent(ABC):
     @classmethod
     def get_subclass(cls, component_type: str):
         if component_type not in cls._subclasses.keys():
-            raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
+            raise HaystackError(f"Haystack component with the name '{component_type}' does not exist.")
         subclass = cls._subclasses[component_type]
         return subclass
 

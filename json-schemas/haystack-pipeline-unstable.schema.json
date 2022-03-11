@@ -14,7 +14,16 @@
           "const": "unstable"
         },
         {
-          "const": "1.2.1rc0"
+          "const": "1.0.0"
+        },
+        {
+          "const": "1.1.0"
+        },
+        {
+          "const": "1.2.0"
+        },
+        {
+          "const": "1.2.1.rc0"
         }
       ]
     },
@@ -177,7 +186,7 @@
         "type",
         "name"
       ],
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "pipelines": {
       "title": "Pipelines",
@@ -2600,6 +2609,16 @@
       ],
       "additionalProperties": false
     },
+    "RAGeneratorType": {
+      "title": "RAGeneratorType",
+      "description": "An enumeration.",
+      "enum": [
+        [
+          1
+        ],
+        2
+      ]
+    },
     "RCIReaderComponent": {
       "type": "object",
       "properties": {
@@ -3640,16 +3659,6 @@
         "name"
       ],
       "additionalProperties": false
-    },
-    "RAGeneratorType": {
-      "title": "RAGeneratorType",
-      "description": "An enumeration.",
-      "enum": [
-        [
-          1
-        ],
-        2
-      ]
     }
   }
 }

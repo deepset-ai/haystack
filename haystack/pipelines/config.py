@@ -12,14 +12,15 @@ from jsonschema.validators import Draft7Validator
 from jsonschema.exceptions import ValidationError
 
 from haystack import __version__
-from haystack.errors import PipelineConfigError, PipelineError
+from haystack.nodes.base import BaseComponent
+from haystack.nodes._json_schema import inject_definition_in_schema, JSON_SCHEMAS_PATH
+from haystack.errors import HaystackError, PipelineConfigError, PipelineError
 
 
 logger = logging.getLogger(__name__)
 
 
 VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/.:]+$")
-JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
 
 
 def get_pipeline_definition(pipeline_config: Dict[str, Any], pipeline_name: Optional[str] = None) -> Dict[str, Any]:
@@ -157,41 +158,59 @@ def validate_config(pipeline_config: Dict) -> None:
         schema = json.load(schema_file)
 
     compatible_versions = [version["const"].replace('"', "") for version in schema["properties"]["version"]["oneOf"]]
-    try:
-        Draft7Validator(schema).validate(instance=pipeline_config)
 
-        if pipeline_config["version"] == "unstable":
-            logging.warning(
-                "You seem to be using the 'unstable' version of the schema to validate "
-                "your pipeline configuration.\n"
-                "This is NOT RECOMMENDED in production environments, as pipelines "
-                "might manage to load and then misbehave without warnings.\n"
-                f"Please pin your configurations to '{__version__}' to ensure stability."
-            )
+    while True:
 
-        elif pipeline_config["version"] not in compatible_versions:
+        try:
+            Draft7Validator(schema).validate(instance=pipeline_config)
+
+            if pipeline_config["version"] == "unstable":
+                logging.warning(
+                    "You seem to be using the 'unstable' version of the schema to validate "
+                    "your pipeline configuration.\n"
+                    "This is NOT RECOMMENDED in production environments, as pipelines "
+                    "might manage to load and then misbehave without warnings.\n"
+                    f"Please pin your configurations to '{__version__}' to ensure stability."
+                )
+
+            elif pipeline_config["version"] not in compatible_versions:
+                raise PipelineConfigError(
+                    f"Cannot load pipeline configuration of version {pipeline_config['version']} "
+                    f"in Haystack version {__version__} (compatible versions are {compatible_versions}).\n"
+                    "Please check out the documentation "
+                    "(https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
+                    "and fix your configuration accordingly."
+                )
+            break
+
+        except ValidationError as validation:
+
+            # If the validation comes from an unknown node, try to find it and retry:
+            if list(validation.relative_schema_path) == ["properties", "components", "items", "anyOf"]:
+                try:
+                    missing_component = BaseComponent.get_subclass(validation.instance["type"])
+                    schema = inject_definition_in_schema(node=missing_component, schema=schema)
+                    
+                except HaystackError:
+                    # A node with the given name does not exist or was not imported.
+                    raise PipelineConfigError(
+                        message=f"No custom node called '{validation.instance['type']}' seems to be defined. "
+                        "See the stacktrace for more information."
+                    ) from validation
+
+            # Format the error to make it as clear as possible
+            error_path = [
+                i for i in list(validation.relative_schema_path)[:-1] if repr(i) != "'items'" and repr(i) != "'properties'"
+            ]
+            error_location = "->".join(repr(index) for index in error_path)
+            if error_location:
+                error_location = f"The error is in {error_location}."
+
             raise PipelineConfigError(
-                f"Cannot load pipeline configuration of version {pipeline_config['version']} "
-                f"in Haystack version {__version__} (compatible versions are {compatible_versions}).\n"
-                "Please check out the documentation "
-                "(https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
-                "and fix your configuration accordingly."
-            )
+                message=f"Validation failed. {validation.message}. {error_location} "
+                "See the stacktrace for more information."
+            ) from validation
 
-    except ValidationError as validation:
-
-        # Format the error to make it as clear as possible
-        error_path = [
-            i for i in list(validation.relative_schema_path)[:-1] if repr(i) != "'items'" and repr(i) != "'properties'"
-        ]
-        error_location = "->".join(repr(index) for index in error_path)
-        if error_location:
-            error_location = f"The error is in {error_location}."
-
-        raise PipelineConfigError(
-            message=f"Validation failed. {validation.message}. {error_location} "
-            "See the stacktrace for more information."
-        ) from validation
 
     logging.debug(f"Pipeline configuration is valid.")
 

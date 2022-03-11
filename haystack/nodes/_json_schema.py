@@ -25,9 +25,9 @@ from pydantic.schema import (
 
 from haystack import __version__ as haystack_version
 from haystack.nodes.base import BaseComponent
-from haystack.pipelines.config import JSON_SCHEMAS_PATH
 
 
+JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
 SCHEMA_URL = "https://haystack.deepset.ai/json-schemas/"
 
 
@@ -102,7 +102,7 @@ class Config(BaseConfig):
 
 
 def find_subclasses_in_modules(
-    include_base_classes: bool = False, importable_modules=["haystack.document_stores", "haystack.nodes"]
+    importable_modules: List[str], include_base_classes: bool = False
 ):
     """
     This function returns a list `(module, class)` of all the classes that can be imported
@@ -123,52 +123,56 @@ def find_subclasses_in_modules(
     ]
 
 
-def get_json_schema(filename: str, compatible_versions: List[str]):
+def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    Generate JSON schema for Haystack pipelines.
+    Create the JSON schema for a single BaseComponent subclass,
+    including all accessory classes.
+
+    :returns: the schema for the node and all accessory classes, 
+              and a dict with the reference to the node only.
     """
-    schema_definitions = {}
-    additional_definitions = {}
+    logging.info(f"Processing node: {node.__name__}")
+    
+    # Read the relevant init parameters from __init__'s signature
+    init_method = getattr(node, "__init__", None)
+    if init_method:
+        signature = get_typed_signature(init_method)
+        param_fields = [
+            param
+            for param in signature.parameters.values()
+            if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
+        ]
+        # Remove self parameter
+        param_fields.pop(0)
+        param_fields_kwargs: Dict[str, Any] = {}
 
-    possible_nodes = find_subclasses_in_modules()
-    for _, node in possible_nodes:
-        logging.info(f"Processing node: {node.__name__}")
-        init_method = getattr(node, "__init__", None)
-        if init_method:
-            signature = get_typed_signature(init_method)
-            param_fields = [
-                param
-                for param in signature.parameters.values()
-                if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
-            ]
-            # Remove self parameter
-            param_fields.pop(0)
-            param_fields_kwargs: Dict[str, Any] = {}
+        # Read all the paramteres extracted from the __init__ method with type and default value
+        for param in param_fields:
+            annotation = Any
+            if param.annotation != param.empty:
+                annotation = param.annotation
+            default = Required
+            if param.default != param.empty:
+                default = param.default
+            param_fields_kwargs[param.name] = (annotation, default)
 
-            for param in param_fields:
-                # logging.info(f"--- processing param: {param.name}")
-                annotation = Any
-                if param.annotation != param.empty:
-                    annotation = param.annotation
-                    # logging.info(f"       annotation: {annotation}")
-                default = Required
-                if param.default != param.empty:
-                    default = param.default
-                    # logging.info(f"       default: {default}")
-                param_fields_kwargs[param.name] = (annotation, default)
+        # Create the model with Pydantic and extract the schema
+        model = create_model(f"{node.__name__}ComponentParams", __config__ = Config, **param_fields_kwargs)
+        model.update_forward_refs(**model.__dict__)
+        params_schema = model.schema()
+        params_schema["title"] = "Parameters"
+        desc = "Each parameter can reference other components defined in the same YAML file."
+        params_schema["description"] = desc
 
-            model = create_model(f"{node.__name__}ComponentParams", __config__=Config, **param_fields_kwargs)
+        # Definitions for accessory classes will show up here
+        params_definitions = {}
+        if "definitions" in params_schema:
+            params_definitions = params_schema.pop("definitions")
 
-            model.update_forward_refs(**model.__dict__)
-            params_schema = model.schema()
-            params_schema["title"] = "Parameters"
-            params_schema[
-                "description"
-            ] = "Each parameter can reference other components defined in the same YAML file."
-            if "definitions" in params_schema:
-                params_definitions = params_schema.pop("definitions")
-                additional_definitions.update(params_definitions)
-            component_schema = {
+        # Write out the schema and ref and return them
+        component_name = f"{node.__name__}Component"
+        component_schema = {
+            component_name: {
                 "type": "object",
                 "properties": {
                     "name": {
@@ -186,12 +190,28 @@ def get_json_schema(filename: str, compatible_versions: List[str]):
                 },
                 "required": ["type", "name"],
                 "additionalProperties": False,
-            }
-            schema_definitions[f"{node.__name__}Component"] = component_schema
+            },
+            **params_definitions
+        }
+        return component_schema, {"$ref": f"#/definitions/{component_name}"}
 
-    all_definitions = {**schema_definitions, **additional_definitions}
-    component_refs = [{"$ref": f"#/definitions/{name}"} for name in schema_definitions]
-    compatible_version_strings = [{"const": version} for version in compatible_versions]
+
+
+def get_json_schema(filename: str, compatible_versions: List[str], modules: Optional[List[str]] = ["haystack.document_stores", "haystack.nodes"]):
+    """
+    Generate JSON schema for Haystack pipelines.
+    """
+    schema_definitions = {}  # All the schemas for the node and accessory classes
+    node_refs = []   # References to the nodes only (accessory classes cannot be listed among the nodes in a config)
+
+    # List all known nodes in the given modules
+    possible_nodes = find_subclasses_in_modules(importable_modules=modules)
+
+    # Build the definitions and refs for the nodes
+    for _, node in possible_nodes:
+        node_definition, node_ref = create_schema_for_node(node)
+        schema_definitions.update(node_definition)
+        node_refs.append(node_ref)
 
     pipeline_schema = {
         "$schema": "http://json-schema.org/draft-07/schema",
@@ -204,15 +224,15 @@ def get_json_schema(filename: str, compatible_versions: List[str]):
                 "title": "Version",
                 "description": "Version of the Haystack Pipeline file.",
                 "type": "string",
-                "oneOf": compatible_version_strings,
+                "oneOf": [{"const": version} for version in compatible_versions],
             },
             "components": {
                 "title": "Components",
                 "description": "Component nodes and their configurations, to later be used in the pipelines section. Define here all the building blocks for the pipelines.",
                 "type": "array",
-                "items": {"anyOf": component_refs},
+                "items": {"anyOf": node_refs},
                 "required": ["type", "name"],
-                "additionalProperties": False,
+                "additionalProperties": True,    # To allow for custom components in IDEs - will be set to False at validation time.
             },
             "pipelines": {
                 "title": "Pipelines",
@@ -255,9 +275,22 @@ def get_json_schema(filename: str, compatible_versions: List[str]):
         },
         "required": ["version", "components", "pipelines"],
         "additionalProperties": False,
-        "definitions": all_definitions,
+        "definitions": schema_definitions,
     }
     return pipeline_schema
+
+
+def inject_definition_in_schema(node: BaseComponent, schema: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Given a node and a schema in dict form, injects the JSON schema for the new component
+    so that pipelines containing such note can be validated against it.
+
+    :returns: the updated schema
+    """
+    schema_definition, node_ref = create_schema_for_node(node)
+    schema["definitions"].update(schema_definition)
+    schema["properties"]["components"]["items"]["anyOf"].append(node_ref)
+    return schema
 
 
 def natural_sort(list_to_sort: List[str]) -> List[str]:
