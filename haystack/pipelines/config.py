@@ -190,6 +190,7 @@ def validate_config(pipeline_config: Dict) -> None:
                 try:
                     missing_component = BaseComponent.get_subclass(validation.instance["type"])
                     schema = inject_definition_in_schema(node=missing_component, schema=schema)
+                    continue
                     
                 except HaystackError:
                     # A node with the given name does not exist or was not imported.

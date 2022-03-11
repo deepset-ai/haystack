@@ -1,5 +1,6 @@
 import pytest
 import json
+import numpy as np
 import networkx as nx
 
 import haystack
@@ -241,6 +242,69 @@ def test_load_yaml_wrong_component(tmp_path):
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "ImaginaryDocumentStore" in str(e)
+
+
+def test_load_yaml_custom_component(tmp_path):
+
+    class CustomDocumentStore(MockDocumentStore):
+         def __init__(self, param: int):
+             self.param = param
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: docstore
+              type: CustomDocumentStore
+              params:
+                param: 1
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """)
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+@pytest.mark.skip("TO BE DISCUSSED")
+def test_load_yaml_custom_component_with_helper_class(tmp_path):
+    """
+    This test can work from the perspective of YAML schema validation. 
+    HelperClass is picked up correctly and everything gets loaded.
+    
+    However, the class creation does not pass the "dumb" string validation
+    step due to the parenthesis. 
+    
+    To be decided what we want to do in this case.
+    """
+    class HelperClass:
+        def __init__(self, another_param: str):
+            self.param = another_param
+          
+    class CustomDocumentStore(MockDocumentStore):
+         def __init__(self, some_exotic_parameter: HelperClass):
+             self.param = some_exotic_parameter
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: docstore
+              type: CustomDocumentStore
+              params:
+                some_exotic_parameter: HelperClass("hello")
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """)
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
 def test_load_yaml_no_pipelines(tmp_path):
