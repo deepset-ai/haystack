@@ -34,21 +34,21 @@ def exportable_to_yaml(init_func):
 
         # Make sure it runs only on the __init__of the concrete implementation, not in abstract superclasses
         if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
-            self._component_configuration = {"params": {}, "type": type(self).__name__}
+            self._component_configuration = {}
 
             # Store all the named input parameters in self._component_configuration
             for k, v in kwargs.items():
                 if isinstance(v, BaseComponent):
-                    self._component_configuration["params"][k] = v._component_configuration
+                    self._component_configuration[k] = v._component_configuration
                 elif v is not None:
-                    self._component_configuration["params"][k] = v
+                    self._component_configuration[k] = v
 
     return wrapper_exportable_to_yaml
 
 
 # Metaclasses are like decorators for classes
 # __new__ is called when a class is created (not an instance!)
-# Inherits from ABCMeta to avoid metaclass conflicts with ABC
+# Inherits from ABCMeta to make the class abstract
 class Meta(ABCMeta):
     def __new__(cls, name, bases, dct):
         class_ = super().__new__(cls, name, bases, dct)
@@ -208,18 +208,3 @@ class BaseComponent(metaclass=Meta):
 
         output["params"] = params
         return output, stream
-
-    def set_config(self, **kwargs):
-        """
-        Save the init parameters of a component that later can be used with exporting
-        YAML configuration of a Pipeline.
-
-        :param kwargs: all parameters passed to the __init__() of the Component.
-        """
-        if not self._component_configuration:
-            self._component_configuration = {"params": {}, "type": type(self).__name__}
-            for k, v in kwargs.items():
-                if isinstance(v, BaseComponent):
-                    self._component_configuration["params"][k] = v._component_configuration
-                elif v is not None:
-                    self._component_configuration["params"][k] = v

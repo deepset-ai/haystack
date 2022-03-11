@@ -599,7 +599,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         faiss.write_index(self.faiss_indexes[self.index], str(index_path))
 
-        config_to_save = deepcopy(self._init_parameters["params"])
+        config_to_save = deepcopy(self._component_configuration)
         keys_to_remove = ["faiss_index", "faiss_index_path"]
         for key in keys_to_remove:
             if key in config_to_save.keys():
