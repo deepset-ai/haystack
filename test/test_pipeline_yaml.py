@@ -274,6 +274,7 @@ def test_load_yaml_custom_component_with_helper_class(tmp_path):
     """
     This test can work from the perspective of YAML schema validation. 
     HelperClass is picked up correctly and everything gets loaded.
+    (Try commenting out `validate_config_strings` in `validate_config` to verify).
     
     However, the class creation does not pass the "dumb" string validation
     step due to the parenthesis. 
