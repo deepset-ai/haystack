@@ -377,8 +377,8 @@ def update_json_schema(
         logging.info(f"The schemas are NOT backwards compatible. This is the list of INCOMPATIBLE changes only:")
         for tag, i1, i2, j1, j2 in schema_diff:
             if tag not in ["equal", "insert"]:
-                logging.info('{:7} {!r:>8} --> {!r}'.format(
-                    tag, latest_schema_string[i1:i2], new_schema_string[j1:j2]))
+                logging.info('{!r:>8} --> {!r}'.format(
+                    latest_schema_string[i1:i2], new_schema_string[j1:j2]))
 
         filename = f"haystack-pipeline-{haystack_version}.schema.json"
         logging.info(f"Adding {filename} to the schema folder.")
@@ -426,12 +426,15 @@ def update_json_schema(
         if not schema_diff or all(tag[0] == "equal" for tag in schema_diff):
             logging.info("The schemas are identical, won't create a new file.")
         else:
-            logging.info("The schemas are backwards compatible, won't create a new file.")
+            logging.info("The schemas are backwards compatible, overwriting the latest schema.")
             logging.info("This is the list of changes:")
             for tag, i1, i2, j1, j2 in schema_diff:
                 if tag not in "equal":
-                    logging.info('{:7} {!r:>8} --> {!r}'.format(
-                        tag, latest_schema_string[i1:i2], new_schema_string[j1:j2]))
+                    logging.info('{!r:>8} --> {!r}'.format(
+                        latest_schema_string[i1:i2], new_schema_string[j1:j2]))
+
+        # Overwrite the latest schema (safe to do for additions)
+        dump(new_schema, latest_schema_path)
 
         if haystack_version in supported_versions:
             unstable_versions_block = supported_versions_block
