@@ -34,8 +34,6 @@ class PDFToTextConverter(BaseConverter):
                                 in garbled text.
         """
         super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         verify_installation = subprocess.run(["pdftotext -v"], shell=True)
         if verify_installation.returncode == 127:
@@ -170,9 +168,7 @@ class PDFToTextOCRConverter(BaseConverter):
         """
         # init image to text instance
         self.image_2_text = ImageToTextConverter(remove_numeric_tables, valid_languages)
-
-        # save init parameters to enable export of component config as YAML
-        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        
         super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(
