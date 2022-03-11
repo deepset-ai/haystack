@@ -35,14 +35,14 @@ def exportable_to_yaml(init_func):
 
         # Make sure it runs only on the __init__of the concrete implementation, not in abstract superclasses
         if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
-            self._pipeline_config = {"params": {}, "type": type(self).__name__}
+            self._init_parameters = {"params": {}, "type": type(self).__name__}
 
-            # Store all the named input parameters in self._pipeline_config
+            # Store all the named input parameters in self._init_parameters
             for k, v in kwargs.items():
                 if isinstance(v, BaseComponent):
-                    self._pipeline_config["params"][k] = v._pipeline_config
+                    self._init_parameters["params"][k] = v._init_parameters
                 elif v is not None:
-                    self._pipeline_config["params"][k] = v
+                    self._init_parameters["params"][k] = v
 
     return wrapper_exportable_to_yaml
 
@@ -55,7 +55,7 @@ class Meta(ABCMeta):
         class_ = super().__new__(cls, name, bases, dct)
 
         # Automatically registers all the init parameters in
-        # an instance attribute called `_pipeline_config`,
+        # an instance attribute called `_init_parameters`,
         # used to save this component to YAML. See exportable_to_yaml()
         class_.__init__ = exportable_to_yaml(class_.__init__)
 
@@ -74,7 +74,7 @@ class BaseComponent(metaclass=Meta):
     outgoing_edges: int
     subclasses: dict = {}
     name: Optional[str] = None
-    _pipeline_config: dict = {}
+    _init_parameters: dict = {}
 
     @classmethod
     def get_subclass(cls, component_type: str):
@@ -217,10 +217,10 @@ class BaseComponent(metaclass=Meta):
 
         :param kwargs: all parameters passed to the __init__() of the Component.
         """
-        if not self._pipeline_config:
-            self._pipeline_config = {"params": {}, "type": type(self).__name__}
+        if not self._init_parameters:
+            self._init_parameters = {"params": {}, "type": type(self).__name__}
             for k, v in kwargs.items():
                 if isinstance(v, BaseComponent):
-                    self._pipeline_config["params"][k] = v._pipeline_config
+                    self._init_parameters["params"][k] = v._init_parameters
                 elif v is not None:
-                    self._pipeline_config["params"][k] = v
+                    self._init_parameters["params"][k] = v
