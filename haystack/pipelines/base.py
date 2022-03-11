@@ -1170,6 +1170,10 @@ class Pipeline(BasePipeline):
                 continue
             component_instance = self.graph.nodes.get(node)["component"]
 
+            print("---------------------------------------")
+            print(component_instance._component_configuration)
+            print("---------------------------------------")
+
             component_type = component_instance._component_configuration["type"]
             component_params = component_instance._component_configuration["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}

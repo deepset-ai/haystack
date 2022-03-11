@@ -33,15 +33,15 @@ def exportable_to_yaml(init_func):
             )
 
         # Make sure it runs only on the __init__of the implementations, not in superclasses
-        if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
+        if not self._component_configuration:
             self._component_configuration = {"params": {}, "type": type(self).__name__}
 
-            # Store all the named input parameters in self._component_configuration
-            for k, v in kwargs.items():
-                if isinstance(v, BaseComponent):
-                    self._component_configuration["params"][k] = v._component_configuration
-                elif v is not None:
-                    self._component_configuration["params"][k] = v
+        # Store all the named input parameters in self._component_configuration
+        for k, v in kwargs.items():
+            if isinstance(v, BaseComponent):
+                self._component_configuration["params"][k] = v._component_configuration
+            elif v is not None:
+                self._component_configuration["params"][k] = v
 
     return wrapper_exportable_to_yaml
 
