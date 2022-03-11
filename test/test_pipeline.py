@@ -421,6 +421,14 @@ def test_validate_pipeline_config_invalid_pipeline_node_inputs():
             }
         )
 
+def test_validate_pipeline_config_recursive_config():
+    pipeline_config = {}
+    node = {"config": pipeline_config}
+    pipeline_config["node"] = node
+
+    with pytest.raises(PipelineConfigError, match="recursive"):
+        validate_config_strings(pipeline_config)
+
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
