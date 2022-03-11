@@ -2,10 +2,8 @@ from typing import List, Optional
 
 import subprocess
 import time
-import json
 from subprocess import run
 from sys import platform
-import os
 import gc
 import uuid
 import logging
@@ -42,29 +40,26 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed("test", "test", ie)
 
-import haystack
-from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
-from haystack.nodes._json_schema import get_json_schema
+from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
-from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-
-from haystack.document_stores import BaseDocumentStore
 from haystack.nodes import BaseReader, BaseRetriever
-
+from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
-from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
 from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
-from haystack.schema import Document
-
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader, RCIReader
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
+
+from haystack.modeling.infer import Inferencer, QAInferencer
+
+from haystack.schema import Document
+
 
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
