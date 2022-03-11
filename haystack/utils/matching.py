@@ -6,6 +6,16 @@ from multiprocessing import Pool
 from tqdm import tqdm
 
 
+_CandidateScore = namedtuple("_CandidateScore", ["candidate_id", "score"])
+
+
+def _score_candidate(args: Tuple[str, Tuple[object, str]]):
+    context, candidate = args
+    candidate_id, candidate_text = candidate
+    score = calculate_context_similarity(context, candidate_text)
+    return _CandidateScore(candidate_id, score)
+
+
 def normalize_white_space_and_case(str):
     return re.sub(r"\s+", " ", str).lower().strip()
 
@@ -33,7 +43,7 @@ def match_context(
     threshold: float = 60.0,
     show_progress: bool = False,
     num_processes: int = None,
-    chunksize: int = None,
+    chunksize: int = 1,
 ) -> List[Tuple[object, float]]:
     """
     Matches the context against multiple candidates. Candidates consist of a tuple of an id and its string representation.
@@ -50,15 +60,9 @@ def match_context(
                       If not specified chunksize is 1.
                       For very long iterables using a large value for chunksize can make the job complete much faster than using the default value of 1.
     """
-    CandidateScore = namedtuple("CandidateScore", ["candidate_id", "score"])
-
-    def score_candidate(candidate: Tuple[object, str]):
-        candidate_id, candidate_text = candidate
-        score = calculate_context_similarity(context, candidate_text)
-        return CandidateScore(candidate_id, score)
-
     with Pool(processes=num_processes) as pool:
-        candidate_scores = pool.imap_unordered(score_candidate, candidates, chunksize=chunksize)
+        score_candidate_args =((context, candidate) for candidate in candidates)
+        candidate_scores = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
         if show_progress:
             candidate_scores = tqdm(candidate_scores)
 
