@@ -213,11 +213,21 @@ class Trainer:
 
         if self.logging_wandb:
             try:
-                wandb.init(project="DPR training",
-                           config={
-                               "epochs": self.epochs,
-                               "evaluate_every": self.evaluate_every
-                           })
+                if early_stopping is not None:
+                    wandb.init(project="DPR training",
+                               config={
+                                   "epochs": self.epochs,
+                                   "evaluate_every": self.evaluate_every,
+                                   "patience": self.early_stopping.patience,
+                                   "metric": self.early_stopping.metric,
+                                   "min_delta": self.early_stopping.min_delta,
+                               })
+                else:
+                    wandb.init(project="DPR training",
+                               config={
+                                   "epochs": self.epochs,
+                                   "evaluate_every": self.evaluate_every,
+                               })
             except:
                 logger.error("Failed to start wandb")
 
