@@ -174,8 +174,10 @@ class PineconeDocumentStore(SQLDocumentStore):
                     name=index, dimension=embedding_dim, metric=metric_type, replicas=replicas, shards=shards
                 )
             index_connection = pinecone.Index(index)
-            # Wait until index has been created
-            time.sleep(5)
+            # Wait until index has been created and is ready
+            index_description = pinecone.describe_index(index)
+            while not index_description.status["ready"]:
+                index_description = pinecone.describe_index(index)
 
         # Get index statistics
         stats = index_connection.describe_index_stats()
