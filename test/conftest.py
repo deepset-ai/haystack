@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict
 
 import subprocess
 import time
@@ -15,6 +15,8 @@ import numpy as np
 import psutil
 import pytest
 import requests
+
+from haystack.nodes.base import BaseComponent, MultiLabel
 
 try:
     from milvus import Milvus
@@ -152,6 +154,12 @@ def pytest_collection_modifyitems(config, items):
 # Monkeypatch the methods you need with either a mock implementation
 # or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
 #
+
+class MockNode(BaseComponent):
+    outgoing_edges = 1
+
+    def run(self, *a, **k):
+        pass
 
 
 class MockDocumentStore(BaseDocumentStore):

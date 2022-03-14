@@ -4,7 +4,8 @@ import logging
 
 from sqlalchemy import schema
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 import os
 import re
@@ -28,7 +29,7 @@ from pydantic.schema import (
 )
 
 from haystack import __version__ as haystack_version
-from haystack.errors import HaystackError, PipelineConfigError
+from haystack.errors import HaystackError, PipelineSchemaError
 from haystack.nodes.base import BaseComponent
 
 
@@ -142,12 +143,17 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
     :returns: the schema for the node and all accessory classes, 
               and a dict with the reference to the node only.
     """
-    logging.info(f"Processing node: {node.__class__.__name__}")
+    if not hasattr(node, "__name__"):
+        raise PipelineSchemaError(f"Node {node} has no __name__ attribute, cannot create a schema for it.")
+
+    node_name = getattr(node, "__name__")
+
+    logger.info(f"Processing node: {node_name}")
     
     # Read the relevant init parameters from __init__'s signature
     init_method = getattr(node, "__init__", None)
     if  not init_method:
-        raise HaystackError(f"Could not read the __init__ method of {node.__class__.__name__} to create its schema.")        
+        raise PipelineSchemaError(f"Could not read the __init__ method of {node_name} to create its schema.")        
 
     signature = get_typed_signature(init_method)
     param_fields = [
@@ -170,7 +176,7 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
         param_fields_kwargs[param.name] = (annotation, default)
 
     # Create the model with Pydantic and extract the schema
-    model = create_model(f"{node.__class__.__name__}ComponentParams", __config__ = Config, **param_fields_kwargs)
+    model = create_model(f"{node_name}ComponentParams", __config__ = Config, **param_fields_kwargs)
     model.update_forward_refs(**model.__dict__)
     params_schema = model.schema()
     params_schema["title"] = "Parameters"
@@ -183,12 +189,12 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
         if ALLOW_ACCESSORY_CLASSES:
             params_definitions = params_schema.pop("definitions")
         else:
-            raise HaystackError(f"Node {node.__class__.__name__} takes object instances as parameters "
-                                 "in its __init__ function. This is currently not allowed: "
-                                 "please use only Python primitives")
+            raise PipelineSchemaError(f"Node {node_name} takes object instances as parameters "
+                                       "in its __init__ function. This is currently not allowed: "
+                                       "please use only Python primitives")
 
     # Write out the schema and ref and return them
-    component_name = f"{node.__class__.__name__}Component"
+    component_name = f"{node_name}Component"
     component_schema = {
         component_name: {
             "type": "object",
@@ -202,7 +208,7 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
                     "title": "Type",
                     "description": "Haystack Class name for the component.",
                     "type": "string",
-                    "const": f"{node.__class__.__name__}",
+                    "const": f"{node_name}",
                 },
                 "params": params_schema,
             },
@@ -308,6 +314,7 @@ def inject_definition_in_schema(node: BaseComponent, schema: Dict[str, Any]) -> 
     schema_definition, node_ref = create_schema_for_node(node)
     schema["definitions"].update(schema_definition)
     schema["properties"]["components"]["items"]["anyOf"].append(node_ref)
+    logger.info(f"Added definition for {getattr(node, '__name__')}")
     return schema
 
 
@@ -354,13 +361,13 @@ def update_json_schema(
     latest_schema_path = destination_path / Path(
         natural_sort(os.listdir(destination_path))[-3]
     )  # -1 is index, -2 is unstable
-    logging.info(f"Latest schema: {latest_schema_path}")
+    logger.info(f"Latest schema: {latest_schema_path}")
     latest_schema = load(latest_schema_path)
 
     # List the versions supported by the last schema
     supported_versions_block = deepcopy(latest_schema["properties"]["version"]["oneOf"])
     supported_versions = [entry["const"].replace('"', "") for entry in supported_versions_block]
-    logging.info(f"Versions supported by this schema: {supported_versions}")
+    logger.info(f"Versions supported by this schema: {supported_versions}")
 
     # Create new schema with the same filename and versions embedded, to be identical to the latest one.
     new_schema = get_json_schema(latest_schema_path.name, supported_versions)
@@ -388,18 +395,18 @@ def update_json_schema(
     if is_backwards_incompatible:
 
         # Print a quick diff to explain the differences
-        logging.info(f"The schemas are NOT backwards compatible. This is the list of INCOMPATIBLE changes only:")
+        logger.info(f"The schemas are NOT backwards compatible. This is the list of INCOMPATIBLE changes only:")
         for tag, i1, i2, j1, j2 in schema_diff:
             if tag not in ["equal", "insert"]:
-                logging.info('{!r:>8} --> {!r}'.format(
+                logger.info('{!r:>8} --> {!r}'.format(
                     latest_schema_string[i1:i2], new_schema_string[j1:j2]))
 
         filename = f"haystack-pipeline-{haystack_version}.schema.json"
-        logging.info(f"Adding {filename} to the schema folder.")
+        logger.info(f"Adding {filename} to the schema folder.")
 
         # Let's check if the schema changed without a version change
         if haystack_version in supported_versions and len(supported_versions) > 1:
-            logging.info(
+            logger.info(
                 f"Version {haystack_version} was supported by the latest schema"
                 f"(supported versions: {supported_versions}). "
                 f"Removing support for version {haystack_version} from it."
@@ -438,13 +445,13 @@ def update_json_schema(
 
         # Print a quick diff to explain the differences
         if not schema_diff or all(tag[0] == "equal" for tag in schema_diff):
-            logging.info("The schemas are identical, won't create a new file.")
+            logger.info("The schemas are identical, won't create a new file.")
         else:
-            logging.info("The schemas are backwards compatible, overwriting the latest schema.")
-            logging.info("This is the list of changes:")
+            logger.info("The schemas are backwards compatible, overwriting the latest schema.")
+            logger.info("This is the list of changes:")
             for tag, i1, i2, j1, j2 in schema_diff:
                 if tag not in "equal":
-                    logging.info('{!r:>8} --> {!r}'.format(
+                    logger.info('{!r:>8} --> {!r}'.format(
                         latest_schema_string[i1:i2], new_schema_string[j1:j2]))
 
         # Overwrite the latest schema (safe to do for additions)
@@ -452,11 +459,11 @@ def update_json_schema(
 
         if haystack_version in supported_versions:
             unstable_versions_block = supported_versions_block
-            logging.info(
+            logger.info(
                 f"Version {haystack_version} was already supported " f"(supported versions: {supported_versions})"
             )
         else:
-            logging.info(
+            logger.info(
                 f"This version ({haystack_version}) was not listed "
                 f"(supported versions: {supported_versions}): "
                 "updating the supported versions list."

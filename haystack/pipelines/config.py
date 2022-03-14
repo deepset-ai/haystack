@@ -14,7 +14,7 @@ from jsonschema.exceptions import ValidationError
 from haystack import __version__
 from haystack.nodes.base import BaseComponent
 from haystack.nodes._json_schema import inject_definition_in_schema, JSON_SCHEMAS_PATH
-from haystack.errors import HaystackError, PipelineConfigError, PipelineError
+from haystack.errors import PipelineConfigError, PipelineSchemaError, HaystackError
 
 
 logger = logging.getLogger(__name__)
@@ -158,6 +158,7 @@ def validate_config(pipeline_config: Dict) -> None:
         schema = json.load(schema_file)
 
     compatible_versions = [version["const"].replace('"', "") for version in schema["properties"]["version"]["oneOf"]]
+    loaded_custom_nodes = []
 
     while True:
 
@@ -187,17 +188,20 @@ def validate_config(pipeline_config: Dict) -> None:
 
             # If the validation comes from an unknown node, try to find it and retry:
             if list(validation.relative_schema_path) == ["properties", "components", "items", "anyOf"]:
-                try:
+                if validation.instance['type'] not in loaded_custom_nodes:
+
+                    logger.info(f"Missing definition for node of type {validation.instance['type']}. Looking into local classes...")
                     missing_component = BaseComponent.get_subclass(validation.instance["type"])
                     schema = inject_definition_in_schema(node=missing_component, schema=schema)
+                    loaded_custom_nodes.append(validation.instance["type"])
                     continue
-                    
-                except HaystackError:
-                    # A node with the given name does not exist or was not imported.
-                    raise PipelineConfigError(
-                        message=f"No custom node called '{validation.instance['type']}' seems to be defined. "
-                        "See the stacktrace for more information."
-                    ) from validation
+
+                # A node with the given name was imported, but something else is wrong with it.
+                # Probably it references unknown classes in its init parameters.
+                raise PipelineSchemaError(
+                    message=f"Cannot process node of type {validation.instance['type']}. Make sure its __init__ function "
+                             "does not reference external classes, but uses only Python primitive types."
+                ) from validation
 
             # Format the error to make it as clear as possible
             error_path = [

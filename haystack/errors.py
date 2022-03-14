@@ -60,6 +60,10 @@ class PipelineError(HaystackError):
         super().__init__(message=message, source=source, docs_link=docs_link)
 
 
+class PipelineSchemaError(PipelineError):
+    pass
+
+
 class PipelineConfigError(PipelineError):
     """Exception for issues raised within a pipeline's config file"""
 
