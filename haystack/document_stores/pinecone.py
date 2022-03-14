@@ -174,17 +174,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                     name=index, dimension=embedding_dim, metric=metric_type, replicas=replicas, shards=shards
                 )
             index_connection = pinecone.Index(index)
-            # Wait until index has been created and is ready
-            index_description = pinecone.describe_index(index)
-            while not index_description.status["ready"]:
-                index_description = pinecone.describe_index(index)
 
-        # Get index statistics
-        stats = index_connection.describe_index_stats()
-        dims = stats["dimension"]
-        count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
-        logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
-        # return index connection
         return index_connection
 
     def _convert_pinecone_result_to_document(self, result: dict, return_embedding: bool) -> Document:
