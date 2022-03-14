@@ -28,6 +28,7 @@ from pydantic.schema import (
 )
 
 from haystack import __version__ as haystack_version
+from haystack.errors import HaystackError
 from haystack.nodes.base import BaseComponent
 
 
@@ -135,69 +136,71 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
     :returns: the schema for the node and all accessory classes, 
               and a dict with the reference to the node only.
     """
-    logging.info(f"Processing node: {node.__name__}")
+    logging.info(f"Processing node: {node.__class__.__name__}")
     
     # Read the relevant init parameters from __init__'s signature
     init_method = getattr(node, "__init__", None)
-    if init_method:
-        signature = get_typed_signature(init_method)
-        param_fields = [
-            param
-            for param in signature.parameters.values()
-            if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
-        ]
-        # Remove self parameter
-        param_fields.pop(0)
-        param_fields_kwargs: Dict[str, Any] = {}
+    if  not init_method:
+        raise HaystackError(f"Could not read the __init__ method of {node.__class__.__name__} to create its schema.")        
 
-        # Read all the paramteres extracted from the __init__ method with type and default value
-        for param in param_fields:
-            annotation = Any
-            if param.annotation != param.empty:
-                annotation = param.annotation
-            default = Required
-            if param.default != param.empty:
-                default = param.default
-            param_fields_kwargs[param.name] = (annotation, default)
+    signature = get_typed_signature(init_method)
+    param_fields = [
+        param
+        for param in signature.parameters.values()
+        if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
+    ]
+    # Remove self parameter
+    param_fields.pop(0)
+    param_fields_kwargs: Dict[str, Any] = {}
 
-        # Create the model with Pydantic and extract the schema
-        model = create_model(f"{node.__name__}ComponentParams", __config__ = Config, **param_fields_kwargs)
-        model.update_forward_refs(**model.__dict__)
-        params_schema = model.schema()
-        params_schema["title"] = "Parameters"
-        desc = "Each parameter can reference other components defined in the same YAML file."
-        params_schema["description"] = desc
+    # Read all the paramteres extracted from the __init__ method with type and default value
+    for param in param_fields:
+        annotation = Any
+        if param.annotation != param.empty:
+            annotation = param.annotation
+        default = Required
+        if param.default != param.empty:
+            default = param.default
+        param_fields_kwargs[param.name] = (annotation, default)
 
-        # Definitions for accessory classes will show up here
-        params_definitions = {}
-        if "definitions" in params_schema:
-            params_definitions = params_schema.pop("definitions")
+    # Create the model with Pydantic and extract the schema
+    model = create_model(f"{node.__name__}ComponentParams", __config__ = Config, **param_fields_kwargs)
+    model.update_forward_refs(**model.__dict__)
+    params_schema = model.schema()
+    params_schema["title"] = "Parameters"
+    desc = "Each parameter can reference other components defined in the same YAML file."
+    params_schema["description"] = desc
 
-        # Write out the schema and ref and return them
-        component_name = f"{node.__name__}Component"
-        component_schema = {
-            component_name: {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "title": "Name",
-                        "description": "Custom name for the component. Helpful for visualization and debugging.",
-                        "type": "string",
-                    },
-                    "type": {
-                        "title": "Type",
-                        "description": "Haystack Class name for the component.",
-                        "type": "string",
-                        "const": f"{node.__name__}",
-                    },
-                    "params": params_schema,
+    # Definitions for accessory classes will show up here
+    params_definitions = {}
+    if "definitions" in params_schema:
+        params_definitions = params_schema.pop("definitions")
+
+    # Write out the schema and ref and return them
+    component_name = f"{node.__class__.__name__}Component"
+    component_schema = {
+        component_name: {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "title": "Name",
+                    "description": "Custom name for the component. Helpful for visualization and debugging.",
+                    "type": "string",
                 },
-                "required": ["type", "name"],
-                "additionalProperties": False,
+                "type": {
+                    "title": "Type",
+                    "description": "Haystack Class name for the component.",
+                    "type": "string",
+                    "const": f"{node.__class__.__name__}",
+                },
+                "params": params_schema,
             },
-            **params_definitions
-        }
-        return component_schema, {"$ref": f"#/definitions/{component_name}"}
+            "required": ["type", "name"],
+            "additionalProperties": False,
+        },
+        **params_definitions
+    }
+    return component_schema, {"$ref": f"#/definitions/{component_name}"}
 
 
 
