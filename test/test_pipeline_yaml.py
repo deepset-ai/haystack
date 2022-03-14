@@ -7,6 +7,8 @@ from pydantic.dataclasses import dataclass
 
 import haystack
 from haystack import Pipeline
+from haystack import document_stores
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes import _json_schema
 from haystack.nodes import FileTypeClassifier
 from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError
@@ -422,7 +424,7 @@ def test_load_yaml_custom_component_with_enum_in_yaml(tmp_path):
 
 def test_load_yaml_custom_component_with_external_constant(tmp_path):
     """
-    This is a potential bug. The code should work as described here.
+    This is a potential pitfall. The code should work as described here.
     """
 
     class AnotherClass:
@@ -452,6 +454,34 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     node = pipeline.get_node("custom_node")
     node.some_exotic_parameter == "AnotherClass.CLASS_CONSTANT"
+
+
+def test_load_yaml_custom_component_with_superclass(tmp_path):
+    class BaseCustomNode(MockNode):
+        pass
+
+    class CustomNode(BaseCustomNode):
+        def __init__(self, some_exotic_parameter: str):
+            self.some_exotic_parameter = some_exotic_parameter
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomNode
+              params:
+                some_exotic_parameter: value
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
 def test_load_yaml_no_pipelines(tmp_path):

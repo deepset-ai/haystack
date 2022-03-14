@@ -194,6 +194,32 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
         assert expected_component in config["components"]
 
 
+def test_get_config_component_with_superclass_arguments():
+   
+    class CustomBaseDocumentStore(MockDocumentStore):
+        def __init__(self, base_parameter: str):
+            self.base_parameter = base_parameter
+    
+    class CustomDocumentStore(CustomBaseDocumentStore):
+        def __init__(self, sub_parameter: int):
+            super().__init__(base_parameter="something")
+            self.sub_parameter = sub_parameter
+
+    class CustomRetriever(MockRetriever):
+        def __init__(self, document_store):
+            super().__init__()
+            self.document_store = document_store
+
+    document_store = CustomDocumentStore(sub_parameter=10)
+    retriever = CustomRetriever(document_store=document_store)
+    pipeline = Pipeline()
+    pipeline.add_node(retriever, name="Retriever", inputs=["Query"])
+    
+    pipeline.get_config()
+    assert pipeline.get_document_store().sub_parameter == 10
+    assert pipeline.get_document_store().base_parameter == "something"
+
+
 def test_generate_code_simple_pipeline():
     config = {
         "version": "unstable",
