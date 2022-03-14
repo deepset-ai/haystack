@@ -577,7 +577,7 @@ def document_store(request, tmp_path):
     if isinstance(document_store, PineconeDocumentStore):
         for index in document_store.pinecone_indexes:
             pinecone.delete_index(index)
-        time.sleep(30)
+        time.sleep(60)
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
