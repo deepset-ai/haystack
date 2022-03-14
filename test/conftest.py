@@ -378,7 +378,7 @@ def deepset_cloud_document_store(deepset_cloud_fixture):
 
 @pytest.fixture(scope="function")
 def rag_generator():
-    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type=RAGeneratorType.TOKEN, max_length=20)
+    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
 
 @pytest.fixture(scope="function")
