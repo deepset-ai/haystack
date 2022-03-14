@@ -1333,7 +1333,7 @@ class RayPipeline(Pipeline):
         return pipeline
 
     @classmethod
-    def load_from_yaml(  # type: ignore
+    def load_from_yaml(
         cls,
         path: Path,
         pipeline_name: Optional[str] = None,
