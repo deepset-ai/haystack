@@ -178,12 +178,10 @@ class PineconeDocumentStore(SQLDocumentStore):
             index_connection = pinecone.Index(index)
 
         # Get index statistics
-        # stats_endpoint = index_connection.configuration.host + "/describe_index_stats"
-        # stats_request = requests.get(stats_endpoint, headers={"Api-Key": self._api_key})
-        # stats = json.loads(stats_request.content)
-        # dims = stats["dimension"]
-        # count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
-        # logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
+        stats = index_connection.describe_index_stats()
+        dims = stats["dimension"]
+        count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
+        logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
         # return index connection
         return index_connection
 
@@ -506,21 +504,18 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         Return the count of embeddings in the document store.
         """
-        raise NotImplementedError()
-        # if filters:
-        #     raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
-        #
-        # index = index or self.index
-        # index = self._sanitize_index_name(index)
-        # if not self.pinecone_indexes.get(index, False):
-        #     raise ValueError(f"No index named {index} found in Pinecone.")
-        #
-        # stats_endpoint = self.pinecone_indexes[index].configuration.host + "/describe_index_stats"
-        # stats_request = requests.get(stats_endpoint, headers={"Api-Key": self._api_key})
-        # stats = json.loads(stats_request.content)
-        # # if no namespace return zero
-        # count = stats["namespaces"][""]["vector_count"] if "" in stats["namespaces"] else 0
-        # return count
+        if filters:
+            raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
+
+        index = index or self.index
+        index = self._sanitize_index_name(index)
+        if not self.pinecone_indexes.get(index, False):
+            raise ValueError(f"No index named {index} found in Pinecone.")
+
+        stats = self.pinecone_indexes[index].describe_index_stats()
+        # if no namespace return zero
+        count = stats["namespaces"][""]["vector_count"] if "" in stats["namespaces"] else 0
+        return count
 
     def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
         """
