@@ -2,6 +2,7 @@ import pytest
 import json
 import numpy as np
 import networkx as nx
+from enum import Enum
 
 import haystack
 from haystack import Pipeline
@@ -16,7 +17,6 @@ from . import conftest
 #
 # Fixtures
 #
-
 
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, tmp_path):
@@ -47,7 +47,6 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 #
 # Integration
 #
-
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
@@ -104,7 +103,6 @@ def test_load_and_save_from_yaml(tmp_path):
 #
 # Unit
 #
-
 
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -269,17 +267,13 @@ def test_load_yaml_custom_component(tmp_path):
     Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
-@pytest.mark.skip("TO BE DISCUSSED")
 def test_load_yaml_custom_component_with_helper_class(tmp_path):
     """
-    This test can work from the perspective of YAML schema validation. 
+    This test can work from the perspective of YAML schema validation:
     HelperClass is picked up correctly and everything gets loaded.
-    (Try commenting out `validate_config_strings` in `validate_config` to verify).
-    
-    However, the class creation does not pass the "dumb" string validation
-    step due to the parenthesis. 
-    
-    To be decided what we want to do in this case.
+
+    However, for now we decide to disable this feature. 
+    See haystack/_json_schema.py for details.
     """
     class HelperClass:
         def __init__(self, another_param: str):
@@ -287,7 +281,7 @@ def test_load_yaml_custom_component_with_helper_class(tmp_path):
           
     class CustomDocumentStore(MockDocumentStore):
          def __init__(self, some_exotic_parameter: HelperClass):
-             self.param = some_exotic_parameter
+             self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -305,7 +299,76 @@ def test_load_yaml_custom_component_with_helper_class(tmp_path):
                 inputs:
                 - Query
         """)
-        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+        with pytest.raises(PipelineConfigError, match="not a valid variable name or value"):
+            Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_custom_component_with_enum(tmp_path):
+    """
+    This test can work from the perspective of YAML schema validation:
+    Flags is picked up correctly and everything gets loaded.
+
+    However, for now we decide to disable this feature. 
+    See haystack/_json_schema.py for details.
+    """
+    class Flags(Enum):
+        FIRST_VALUE = 1
+        SECOND_VALUE = 2
+          
+    class CustomDocumentStore(MockDocumentStore):
+         def __init__(self, some_exotic_parameter: Flags):
+             self.some_exotic_parameter = some_exotic_parameter
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: docstore
+              type: CustomDocumentStore
+              params:
+                some_exotic_parameter: Flags.SECOND_VALUE
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """)
+        with pytest.raises(PipelineConfigError, match="takes object instances as parameters"):
+            Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_custom_component_with_external_constant(tmp_path):
+    """
+    This is a potential bug. The code should work as described here.
+    """
+    class AnotherClass:
+      CLASS_CONSTANT = "str"
+
+    class CustomDocumentStore(MockDocumentStore):
+         def __init__(self, some_exotic_parameter: str):
+             self.some_exotic_parameter = some_exotic_parameter
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: docstore
+              type: CustomDocumentStore
+              params:
+                some_exotic_parameter: AnotherClass.CLASS_CONSTANT  # Will *NOT* be resolved
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """)
+        pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+        node = pipeline.get_node("docstore")
+        node.some_exotic_parameter == "AnotherClass.CLASS_CONSTANT"
 
 
 def test_load_yaml_no_pipelines(tmp_path):

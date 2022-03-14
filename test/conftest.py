@@ -28,7 +28,6 @@ try:
     from elasticsearch import Elasticsearch
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
     import weaviate
-
     from haystack.document_stores.weaviate import WeaviateDocumentStore
     from haystack.document_stores import MilvusDocumentStore
     from haystack.document_stores.graphdb import GraphDBKnowledgeGraph

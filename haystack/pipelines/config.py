@@ -91,7 +91,7 @@ def validate_config_strings(pipeline_config: Any):
         else:
             if not VALID_INPUT_REGEX.match(str(pipeline_config)):
                 raise PipelineConfigError(
-                    f"'{pipeline_config}' is not a valid config variable name. "
+                    f"'{pipeline_config}' is not a valid variable name or value. "
                     "Use alphanumeric characters or dash, underscore and colon only."
                 )
     except RecursionError as e:

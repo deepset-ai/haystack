@@ -28,12 +28,18 @@ from pydantic.schema import (
 )
 
 from haystack import __version__ as haystack_version
-from haystack.errors import HaystackError
+from haystack.errors import HaystackError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 
 
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
 SCHEMA_URL = "https://haystack.deepset.ai/json-schemas/"
+
+# Allows accessory classes (like enums and helpers) to be registered as valid input for
+# custom node's init parameters. For now we disable this feature, but flipping this variables
+# re-enables it. Mind that string validation will still cut out most attempts to load anything
+# else than enums and class constants: see Pipeline.load_from_config()
+ALLOW_ACCESSORY_CLASSES = False 
 
 
 class Settings(BaseSettings):
@@ -174,7 +180,12 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
     # Definitions for accessory classes will show up here
     params_definitions = {}
     if "definitions" in params_schema:
-        params_definitions = params_schema.pop("definitions")
+        if ALLOW_ACCESSORY_CLASSES:
+            params_definitions = params_schema.pop("definitions")
+        else:
+            raise HaystackError(f"Node {node.__class__.__name__} takes object instances as parameters "
+                                 "in its __init__ function. This is currently not allowed: "
+                                 "please use only Python primitives")
 
     # Write out the schema and ref and return them
     component_name = f"{node.__class__.__name__}Component"
