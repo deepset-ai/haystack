@@ -40,7 +40,8 @@ def get_pipeline_definition(pipeline_config: Dict[str, Any], pipeline_name: Opti
         pipelines_in_definitions = list(filter(lambda p: p["name"] == pipeline_name, pipeline_config["pipelines"]))
         if not pipelines_in_definitions:
             raise PipelineConfigError(
-                f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file."
+                f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file. "
+                f"Existing pipelines: {[p['name'] for p in pipeline_config['pipelines']]}"
             )
         pipeline_definition = pipelines_in_definitions[0]
 

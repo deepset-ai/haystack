@@ -47,7 +47,7 @@ try:
 
 except PipelineConfigError as e:
     INDEXING_PIPELINE = None
-    logger.exception(f"{e.message}. File Upload API will not be available.")
+    logger.error(f"{e.message}. File Upload API will not be available.")
 
 # create directory for uploading files
 os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)

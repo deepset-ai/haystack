@@ -2,7 +2,6 @@
 """Custom Errors for Haystack"""
 
 from typing import Optional
-from jsonschema.exceptions import ValidationError
 
 
 class HaystackError(Exception):
@@ -14,20 +13,11 @@ class HaystackError(Exception):
     `HaystackError.message` will exist and have the expected content.
     """
 
-    def __init__(self, message: str = "", docs_link: Optional[str] = None):
+    def __init__(self, message: Optional[str] = None, docs_link: Optional[str] = None):
         super().__init__()
-        self.message = message
+        if message:
+            self.message = message
         self.docs_link = None
-
-        try:
-            source_string = str(getattr(self.__cause__, "message"))
-        except AttributeError:
-            source_string = str(self.__cause__)
-
-        if message and message.strip() != "" and source_string != "":
-            self.message = f"{message} ({source_string})"
-        else:
-            self.message = source_string
 
     def __getattr__(self, attr):
         # If self.__cause__ is None, it will raise the expected AttributeError
@@ -48,7 +38,7 @@ class PipelineError(HaystackError):
 
     def __init__(
         self,
-        message: str = "",
+        message: Optional[str] = None,
         docs_link: Optional[str] = "https://haystack.deepset.ai/pipelines",
     ):
         super().__init__(message=message, docs_link=docs_link)
@@ -56,6 +46,7 @@ class PipelineError(HaystackError):
 
 class PipelineSchemaError(PipelineError):
     """Exception for issues arising when reading/building the JSON schema of pipelines"""
+
     pass
 
 
@@ -64,7 +55,7 @@ class PipelineConfigError(PipelineError):
 
     def __init__(
         self,
-        message: str = "",
+        message: Optional[str] = None,
         docs_link: Optional[str] = "https://haystack.deepset.ai/pipelines#yaml-file-definitions",
     ):
         super().__init__(message=message, docs_link=docs_link)
