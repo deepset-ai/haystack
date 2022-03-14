@@ -684,6 +684,8 @@ class Pipeline(BasePipeline):
         documents: Optional[List[List[Document]]] = None,
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
     ) -> EvaluationResult:
         """
@@ -749,7 +751,8 @@ class Pipeline(BasePipeline):
                     gold_labels = df["gold_answers"].values
                     predictions = [[a] for a in df["answer"].values]
                     sas, _ = semantic_answer_similarity(
-                        predictions=predictions, gold_labels=gold_labels, sas_model_name_or_path=sas_model_name_or_path
+                        predictions=predictions, gold_labels=gold_labels, sas_model_name_or_path=sas_model_name_or_path,
+                        sas_batch_size=sas_batch_size, sas_use_gpu=sas_use_gpu
                     )
                     df["sas"] = sas
 
