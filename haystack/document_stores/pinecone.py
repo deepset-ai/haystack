@@ -178,7 +178,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             index_connection = pinecone.Index(index)
 
         # Get index statistics
-        stats_endpoint = self.pinecone_indexes[index].configuration.host + "/describe_index_stats"
+        stats_endpoint = index_connection.configuration.host + "/describe_index_stats"
         stats_request = requests.get(stats_endpoint, headers={"Api-Key": self._api_key})
         stats = json.loads(stats_request.content)
         dims = stats["dimension"]
