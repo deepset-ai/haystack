@@ -164,7 +164,7 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
         param_fields_kwargs[param.name] = (annotation, default)
 
     # Create the model with Pydantic and extract the schema
-    model = create_model(f"{node.__name__}ComponentParams", __config__ = Config, **param_fields_kwargs)
+    model = create_model(f"{node.__class__.__name__}ComponentParams", __config__ = Config, **param_fields_kwargs)
     model.update_forward_refs(**model.__dict__)
     params_schema = model.schema()
     params_schema["title"] = "Parameters"
@@ -204,7 +204,7 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
 
 
 
-def get_json_schema(filename: str, compatible_versions: List[str], modules: Optional[List[str]] = ["haystack.document_stores", "haystack.nodes"]):
+def get_json_schema(filename: str, compatible_versions: List[str], modules: List[str] = ["haystack.document_stores", "haystack.nodes"]):
     """
     Generate JSON schema for Haystack pipelines.
     """
