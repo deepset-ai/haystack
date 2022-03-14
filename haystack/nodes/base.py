@@ -34,11 +34,11 @@ def exportable_to_yaml(init_func):
             )
         # Create the configuration dictionary if it doesn't exist yet
         if not self._component_configuration:
-                self._component_configuration = {"params": {}, "type": type(self).__name__}
+            self._component_configuration = {"params": {}, "type": type(self).__name__}
 
         # Make sure it runs only on the __init__of the implementations, not in superclasses
         if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
-            
+
             # Store all the named input parameters in self._component_configuration
             for k, v in kwargs.items():
                 if isinstance(v, BaseComponent):
