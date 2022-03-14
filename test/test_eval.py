@@ -1,11 +1,8 @@
 import pytest
 import sys
-from pathlib import Path
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
-from haystack.nodes.retriever.dense import EmbeddingRetriever
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
@@ -19,7 +16,6 @@ from haystack.pipelines.standard_pipelines import (
     RetrieverQuestionGenerationPipeline,
     TranslationWrapperPipeline,
 )
-from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
 
 from .conftest import SAMPLES_PATH
