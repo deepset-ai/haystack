@@ -141,7 +141,7 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_milvus)
 
         # Skip PineconeDocumentStore if PINECONE_API_KEY not in environment variables
-        if "PINECONE_API_KEY" not in os.environ and "pinecone" in keywords:
+        if not os.environ.get("PINECONE_API_KEY", False) and "pinecone" in keywords:
             skip_pinecone = pytest.mark.skip(reason="PINECONE_API_KEY not in environment variables.")
             item.add_marker(skip_pinecone)
 
