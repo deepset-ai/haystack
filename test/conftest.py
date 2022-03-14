@@ -45,7 +45,7 @@ from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStor
 
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
+from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
 from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
