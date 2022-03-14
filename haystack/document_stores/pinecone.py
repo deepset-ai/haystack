@@ -6,7 +6,8 @@ if TYPE_CHECKING:
 import logging
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
-import time
+import requests
+import json
 
 import pinecone
 import numpy as np
@@ -97,6 +98,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
+        self._api_key = api_key
 
         # Formal similarity string
         if similarity in ("dot_product", "cosine"):
@@ -175,6 +177,14 @@ class PineconeDocumentStore(SQLDocumentStore):
                 )
             index_connection = pinecone.Index(index)
 
+        # Get index statistics
+        stats_endpoint = self.pinecone_indexes[index].configuration.host + "/describe_index_stats"
+        stats_request = requests.get(stats_endpoint, headers={"Api-Key": self._api_key})
+        stats = json.loads(stats_request.content)
+        dims = stats["dimension"]
+        count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
+        logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
+        # return index connection
         return index_connection
 
     def _convert_pinecone_result_to_document(self, result: dict, return_embedding: bool) -> Document:
@@ -504,7 +514,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         if not self.pinecone_indexes.get(index, False):
             raise ValueError(f"No index named {index} found in Pinecone.")
 
-        stats = self.pinecone_indexes[index].describe_index_stats()
+        stats_endpoint = self.pinecone_indexes[index].configuration.host + "/describe_index_stats"
+        stats_request = requests.get(stats_endpoint, headers={"Api-Key": self._api_key})
+        stats = json.loads(stats_request.content)
         # if no namespace return zero
         count = stats["namespaces"][""]["vector_count"] if "" in stats["namespaces"] else 0
         return count
