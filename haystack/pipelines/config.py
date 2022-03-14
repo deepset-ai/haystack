@@ -177,9 +177,10 @@ def validate_config(pipeline_config: Dict) -> None:
             elif pipeline_config["version"] not in compatible_versions:
                 raise PipelineConfigError(
                     f"Cannot load pipeline configuration of version {pipeline_config['version']} "
-                    f"in Haystack version {__version__} (compatible versions are {compatible_versions}).\n"
-                    "Please check out the documentation "
-                    "(https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
+                    f"in Haystack version {__version__} "
+                    f"(only versions {compatible_versions} are compatible with this Haystack release).\n"
+                    "Please check out the release notes (https://github.com/deepset-ai/haystack/releases/latest), "
+                    "the documentation (https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
                     "and fix your configuration accordingly."
                 )
             break
@@ -199,7 +200,7 @@ def validate_config(pipeline_config: Dict) -> None:
                 # A node with the given name was imported, but something else is wrong with it.
                 # Probably it references unknown classes in its init parameters.
                 raise PipelineSchemaError(
-                    message=f"Cannot process node of type {validation.instance['type']}. Make sure its __init__ function "
+                    f"Cannot process node of type {validation.instance['type']}. Make sure its __init__ function "
                              "does not reference external classes, but uses only Python primitive types."
                 ) from validation
 
@@ -212,7 +213,7 @@ def validate_config(pipeline_config: Dict) -> None:
                 error_location = f"The error is in {error_location}."
 
             raise PipelineConfigError(
-                message=f"Validation failed. {validation.message}. {error_location} "
+                f"Validation failed. {validation.message}. {error_location} "
                 "See the stacktrace for more information."
             ) from validation
 

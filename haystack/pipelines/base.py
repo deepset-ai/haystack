@@ -536,11 +536,10 @@ class Pipeline(BasePipeline):
 
                 except KeyError as e:
                     raise PipelineConfigError(
-                        message=f"Cannot find node '{input_node}'. Make sure you're not using more "
+                        f"Cannot find node '{input_node}'. Make sure you're not using more "
                         f"than one root node ({valid_root_nodes}) in the same pipeline and that a node "
-                        f"called '{input_node}' is defined.",
-                        source=e,
-                    )
+                        f"called '{input_node}' is defined.") from e
+
                 input_node_name = input_node
                 input_edge_name = "output_1"
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
@@ -1134,12 +1133,12 @@ class Pipeline(BasePipeline):
 
         except KeyError as ke:
             raise PipelineConfigError(
-                message=f"Failed loading pipeline component '{name}': "
+                f"Failed loading pipeline component '{name}': "
                 "seems like the component does not exist. Did you spell its name correctly?"
             ) from ke
         except Exception as e:
             raise PipelineConfigError(
-                message=f"Failed loading pipeline component '{name}'. "
+                f"Failed loading pipeline component '{name}'. "
                 "See the stacktrace above for more informations."
             ) from e
         return instance
