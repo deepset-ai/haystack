@@ -168,7 +168,7 @@ class PDFToTextOCRConverter(BaseConverter):
         """
         # init image to text instance
         self.image_2_text = ImageToTextConverter(remove_numeric_tables, valid_languages)
-        
+
         super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
     def convert(

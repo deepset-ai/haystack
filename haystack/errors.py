@@ -37,9 +37,7 @@ class PipelineError(HaystackError):
     """Exception for issues raised within a pipeline"""
 
     def __init__(
-        self,
-        message: Optional[str] = None,
-        docs_link: Optional[str] = "https://haystack.deepset.ai/pipelines",
+        self, message: Optional[str] = None, docs_link: Optional[str] = "https://haystack.deepset.ai/pipelines"
     ):
         super().__init__(message=message, docs_link=docs_link)
 

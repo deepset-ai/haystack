@@ -190,9 +190,11 @@ def validate_config(pipeline_config: Dict) -> None:
 
             # If the validation comes from an unknown node, try to find it and retry:
             if list(validation.relative_schema_path) == ["properties", "components", "items", "anyOf"]:
-                if validation.instance['type'] not in loaded_custom_nodes:
+                if validation.instance["type"] not in loaded_custom_nodes:
 
-                    logger.info(f"Missing definition for node of type {validation.instance['type']}. Looking into local classes...")
+                    logger.info(
+                        f"Missing definition for node of type {validation.instance['type']}. Looking into local classes..."
+                    )
                     missing_component = BaseComponent.get_subclass(validation.instance["type"])
                     schema = inject_definition_in_schema(node=missing_component, schema=schema)
                     loaded_custom_nodes.append(validation.instance["type"])
@@ -202,22 +204,22 @@ def validate_config(pipeline_config: Dict) -> None:
                 # Probably it references unknown classes in its init parameters.
                 raise PipelineSchemaError(
                     f"Cannot process node of type {validation.instance['type']}. Make sure its __init__ function "
-                             "does not reference external classes, but uses only Python primitive types."
+                    "does not reference external classes, but uses only Python primitive types."
                 ) from validation
 
             # Format the error to make it as clear as possible
             error_path = [
-                i for i in list(validation.relative_schema_path)[:-1] if repr(i) != "'items'" and repr(i) != "'properties'"
+                i
+                for i in list(validation.relative_schema_path)[:-1]
+                if repr(i) != "'items'" and repr(i) != "'properties'"
             ]
             error_location = "->".join(repr(index) for index in error_path)
             if error_location:
                 error_location = f"The error is in {error_location}."
 
             raise PipelineConfigError(
-                f"Validation failed. {validation.message}. {error_location} "
-                "See the stacktrace for more information."
+                f"Validation failed. {validation.message}. {error_location} " "See the stacktrace for more information."
             ) from validation
-
 
     logging.debug(f"Pipeline configuration is valid.")
 

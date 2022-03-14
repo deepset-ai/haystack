@@ -7,7 +7,7 @@
 ## BaseReader
 
 ```python
-class BaseReader(BaseComponent,  ABC)
+class BaseReader(BaseComponent)
 ```
 
 <a id="base.BaseReader.run_batch"></a>

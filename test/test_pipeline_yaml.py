@@ -19,6 +19,7 @@ from . import conftest
 # Fixtures
 #
 
+
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, tmp_path):
     """
@@ -48,6 +49,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 #
 # Integration
 #
+
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
@@ -104,6 +106,7 @@ def test_load_and_save_from_yaml(tmp_path):
 #
 # Unit
 #
+
 
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -244,10 +247,9 @@ def test_load_yaml_wrong_component(tmp_path):
 
 
 def test_load_yaml_custom_component(tmp_path):
-
     class CustomNode(MockNode):
-         def __init__(self, param: int):
-             self.param = param
+        def __init__(self, param: int):
+            self.param = param
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -264,7 +266,8 @@ def test_load_yaml_custom_component(tmp_path):
               - name: custom_node
                 inputs:
                 - Query
-        """)      
+        """
+        )
     Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
@@ -273,17 +276,18 @@ def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
     This test can work from the perspective of YAML schema validation:
     HelperClass is picked up correctly and everything gets loaded.
 
-    However, for now we decide to disable this feature. 
+    However, for now we decide to disable this feature.
     See haystack/_json_schema.py for details.
     """
-    @dataclass   # Makes this test class JSON serializable
+
+    @dataclass  # Makes this test class JSON serializable
     class HelperClass:
         def __init__(self, another_param: str):
             self.param = another_param
-          
+
     class CustomNode(MockNode):
-         def __init__(self, some_exotic_parameter: HelperClass = HelperClass(1)):
-             self.some_exotic_parameter = some_exotic_parameter
+        def __init__(self, some_exotic_parameter: HelperClass = HelperClass(1)):
+            self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -298,7 +302,8 @@ def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
               - name: custom_node
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineSchemaError, match="takes object instances as parameters in its __init__ function"):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
@@ -308,16 +313,17 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
     This test can work from the perspective of YAML schema validation:
     HelperClass is picked up correctly and everything gets loaded.
 
-    However, for now we decide to disable this feature. 
+    However, for now we decide to disable this feature.
     See haystack/_json_schema.py for details.
     """
+
     class HelperClass:
         def __init__(self, another_param: str):
             self.param = another_param
-          
+
     class CustomNode(MockNode):
-         def __init__(self, some_exotic_parameter: HelperClass):
-             self.some_exotic_parameter = some_exotic_parameter
+        def __init__(self, some_exotic_parameter: HelperClass):
+            self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -334,7 +340,8 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
               - name: custom_node
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineConfigError, match="not a valid variable name or value"):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
@@ -344,16 +351,17 @@ def test_load_yaml_custom_component_with_enum_in_init(tmp_path):
     This test can work from the perspective of YAML schema validation:
     Flags is picked up correctly and everything gets loaded.
 
-    However, for now we decide to disable this feature. 
+    However, for now we decide to disable this feature.
     See haystack/_json_schema.py for details.
     """
+
     class Flags(Enum):
         FIRST_VALUE = 1
         SECOND_VALUE = 2
-          
+
     class CustomNode(MockNode):
-         def __init__(self, some_exotic_parameter: Flags = None):
-             self.some_exotic_parameter = some_exotic_parameter
+        def __init__(self, some_exotic_parameter: Flags = None):
+            self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -368,7 +376,8 @@ def test_load_yaml_custom_component_with_enum_in_init(tmp_path):
               - name: custom_node
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineSchemaError, match="takes object instances as parameters in its __init__ function"):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
@@ -378,16 +387,17 @@ def test_load_yaml_custom_component_with_enum_in_yaml(tmp_path):
     This test can work from the perspective of YAML schema validation:
     Flags is picked up correctly and everything gets loaded.
 
-    However, for now we decide to disable this feature. 
+    However, for now we decide to disable this feature.
     See haystack/_json_schema.py for details.
     """
+
     class Flags(Enum):
         FIRST_VALUE = 1
         SECOND_VALUE = 2
-          
+
     class CustomNode(MockNode):
-         def __init__(self, some_exotic_parameter: Flags):
-             self.some_exotic_parameter = some_exotic_parameter
+        def __init__(self, some_exotic_parameter: Flags):
+            self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -404,7 +414,8 @@ def test_load_yaml_custom_component_with_enum_in_yaml(tmp_path):
               - name: custom_node
                 inputs:
                 - Query
-        """)
+        """
+        )
     with pytest.raises(PipelineSchemaError, match="takes object instances as parameters in its __init__ function"):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
@@ -413,12 +424,13 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
     """
     This is a potential bug. The code should work as described here.
     """
+
     class AnotherClass:
-      CLASS_CONSTANT = "str"
+        CLASS_CONSTANT = "str"
 
     class CustomNode(MockNode):
-         def __init__(self, some_exotic_parameter: str):
-             self.some_exotic_parameter = some_exotic_parameter
+        def __init__(self, some_exotic_parameter: str):
+            self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -435,7 +447,8 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
               - name: custom_node
                 inputs:
                 - Query
-        """)
+        """
+        )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     node = pipeline.get_node("custom_node")
     node.some_exotic_parameter == "AnotherClass.CLASS_CONSTANT"

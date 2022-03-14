@@ -57,7 +57,6 @@ class BaseComponent(ABC):
     _subclasses: dict = {}
     _component_configuration: dict = {}
 
-
     # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_
     # (not instantiated). It works approximately as a metaclass.
     def __init_subclass__(cls, **kwargs):

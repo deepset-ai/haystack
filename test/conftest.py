@@ -62,7 +62,6 @@ from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.schema import Document
 
 
-
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
@@ -154,6 +153,7 @@ def pytest_collection_modifyitems(config, items):
 # Monkeypatch the methods you need with either a mock implementation
 # or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
 #
+
 
 class MockNode(BaseComponent):
     outgoing_edges = 1

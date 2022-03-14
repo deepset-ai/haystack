@@ -7,7 +7,7 @@
 ## BaseDocumentClassifier
 
 ```python
-class BaseDocumentClassifier(BaseComponent,  ABC)
+class BaseDocumentClassifier(BaseComponent)
 ```
 
 <a id="base.BaseDocumentClassifier.timing"></a>

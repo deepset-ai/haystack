@@ -127,7 +127,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
         super().__init__()
-        
+
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
 

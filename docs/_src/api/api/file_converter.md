@@ -7,7 +7,7 @@
 ## BaseConverter
 
 ```python
-class BaseConverter(BaseComponent,  ABC)
+class BaseConverter(BaseComponent)
 ```
 
 Base class for implementing file converts to transform input documents to text format for ingestion in DocumentStore.

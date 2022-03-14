@@ -79,7 +79,6 @@ class BasePipeline(ABC):
     def run(self, **kwargs):
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
-
     @abstractmethod
     def get_config(self, return_defaults: bool = False) -> dict:
         """
@@ -88,7 +87,6 @@ class BasePipeline(ABC):
         :param return_defaults: whether to output parameters that have the default values.
         """
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
-
 
     def to_code(
         self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
@@ -538,7 +536,8 @@ class Pipeline(BasePipeline):
                     raise PipelineConfigError(
                         f"Cannot find node '{input_node}'. Make sure you're not using more "
                         f"than one root node ({valid_root_nodes}) in the same pipeline and that a node "
-                        f"called '{input_node}' is defined.") from e
+                        f"called '{input_node}' is defined."
+                    ) from e
 
                 input_node_name = input_node
                 input_edge_name = "output_1"
@@ -1138,8 +1137,7 @@ class Pipeline(BasePipeline):
             ) from ke
         except Exception as e:
             raise PipelineConfigError(
-                f"Failed loading pipeline component '{name}'. "
-                "See the stacktrace above for more informations."
+                f"Failed loading pipeline component '{name}'. " "See the stacktrace above for more informations."
             ) from e
         return instance
 

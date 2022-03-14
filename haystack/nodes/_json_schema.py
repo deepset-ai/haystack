@@ -40,7 +40,7 @@ SCHEMA_URL = "https://haystack.deepset.ai/json-schemas/"
 # custom node's init parameters. For now we disable this feature, but flipping this variables
 # re-enables it. Mind that string validation will still cut out most attempts to load anything
 # else than enums and class constants: see Pipeline.load_from_config()
-ALLOW_ACCESSORY_CLASSES = False 
+ALLOW_ACCESSORY_CLASSES = False
 
 
 class Settings(BaseSettings):
@@ -113,9 +113,7 @@ class Config(BaseConfig):
     extra = "forbid"  # type: ignore
 
 
-def find_subclasses_in_modules(
-    importable_modules: List[str], include_base_classes: bool = False
-):
+def find_subclasses_in_modules(importable_modules: List[str], include_base_classes: bool = False):
     """
     This function returns a list `(module, class)` of all the classes that can be imported
     dynamically, for example from a pipeline YAML definition or to generate documentation.
@@ -140,7 +138,7 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
     Create the JSON schema for a single BaseComponent subclass,
     including all accessory classes.
 
-    :returns: the schema for the node and all accessory classes, 
+    :returns: the schema for the node and all accessory classes,
               and a dict with the reference to the node only.
     """
     if not hasattr(node, "__name__"):
@@ -149,17 +147,15 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
     node_name = getattr(node, "__name__")
 
     logger.info(f"Processing node: {node_name}")
-    
+
     # Read the relevant init parameters from __init__'s signature
     init_method = getattr(node, "__init__", None)
-    if  not init_method:
-        raise PipelineSchemaError(f"Could not read the __init__ method of {node_name} to create its schema.")        
+    if not init_method:
+        raise PipelineSchemaError(f"Could not read the __init__ method of {node_name} to create its schema.")
 
     signature = get_typed_signature(init_method)
     param_fields = [
-        param
-        for param in signature.parameters.values()
-        if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
+        param for param in signature.parameters.values() if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
     ]
     # Remove self parameter
     param_fields.pop(0)
@@ -176,7 +172,7 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
         param_fields_kwargs[param.name] = (annotation, default)
 
     # Create the model with Pydantic and extract the schema
-    model = create_model(f"{node_name}ComponentParams", __config__ = Config, **param_fields_kwargs)
+    model = create_model(f"{node_name}ComponentParams", __config__=Config, **param_fields_kwargs)
     model.update_forward_refs(**model.__dict__)
     params_schema = model.schema()
     params_schema["title"] = "Parameters"
@@ -189,9 +185,11 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
         if ALLOW_ACCESSORY_CLASSES:
             params_definitions = params_schema.pop("definitions")
         else:
-            raise PipelineSchemaError(f"Node {node_name} takes object instances as parameters "
-                                       "in its __init__ function. This is currently not allowed: "
-                                       "please use only Python primitives")
+            raise PipelineSchemaError(
+                f"Node {node_name} takes object instances as parameters "
+                "in its __init__ function. This is currently not allowed: "
+                "please use only Python primitives"
+            )
 
     # Write out the schema and ref and return them
     component_name = f"{node_name}Component"
@@ -215,18 +213,19 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
             "required": ["type", "name"],
             "additionalProperties": False,
         },
-        **params_definitions
+        **params_definitions,
     }
     return component_schema, {"$ref": f"#/definitions/{component_name}"}
 
 
-
-def get_json_schema(filename: str, compatible_versions: List[str], modules: List[str] = ["haystack.document_stores", "haystack.nodes"]):
+def get_json_schema(
+    filename: str, compatible_versions: List[str], modules: List[str] = ["haystack.document_stores", "haystack.nodes"]
+):
     """
     Generate JSON schema for Haystack pipelines.
     """
     schema_definitions = {}  # All the schemas for the node and accessory classes
-    node_refs = []   # References to the nodes only (accessory classes cannot be listed among the nodes in a config)
+    node_refs = []  # References to the nodes only (accessory classes cannot be listed among the nodes in a config)
 
     # List all known nodes in the given modules
     possible_nodes = find_subclasses_in_modules(importable_modules=modules)
@@ -256,7 +255,7 @@ def get_json_schema(filename: str, compatible_versions: List[str], modules: List
                 "type": "array",
                 "items": {"anyOf": node_refs},
                 "required": ["type", "name"],
-                "additionalProperties": True,    # To allow for custom components in IDEs - will be set to False at validation time.
+                "additionalProperties": True,  # To allow for custom components in IDEs - will be set to False at validation time.
             },
             "pipelines": {
                 "title": "Pipelines",
@@ -372,7 +371,7 @@ def update_json_schema(
     # Create new schema with the same filename and versions embedded, to be identical to the latest one.
     new_schema = get_json_schema(latest_schema_path.name, supported_versions)
 
-    # Check for backwards compatibility with difflib's SequenceMatcher 
+    # Check for backwards compatibility with difflib's SequenceMatcher
     # (https://docs.python.org/3/library/difflib.html#difflib.SequenceMatcher)
     # If the opcodes contain only "insert" and "equal", that means the new schema
     # only added lines and did not remove anything from the previous schema.
@@ -390,7 +389,7 @@ def update_json_schema(
 
     unstable_versions_block = []
 
-    # If the two schemas are incompatible, we need a new file. 
+    # If the two schemas are incompatible, we need a new file.
     # Update the schema's filename and supported versions, then save it.
     if is_backwards_incompatible:
 
@@ -398,8 +397,7 @@ def update_json_schema(
         logger.info(f"The schemas are NOT backwards compatible. This is the list of INCOMPATIBLE changes only:")
         for tag, i1, i2, j1, j2 in schema_diff:
             if tag not in ["equal", "insert"]:
-                logger.info('{!r:>8} --> {!r}'.format(
-                    latest_schema_string[i1:i2], new_schema_string[j1:j2]))
+                logger.info("{!r:>8} --> {!r}".format(latest_schema_string[i1:i2], new_schema_string[j1:j2]))
 
         filename = f"haystack-pipeline-{haystack_version}.schema.json"
         logger.info(f"Adding {filename} to the schema folder.")
@@ -451,8 +449,7 @@ def update_json_schema(
             logger.info("This is the list of changes:")
             for tag, i1, i2, j1, j2 in schema_diff:
                 if tag not in "equal":
-                    logger.info('{!r:>8} --> {!r}'.format(
-                        latest_schema_string[i1:i2], new_schema_string[j1:j2]))
+                    logger.info("{!r:>8} --> {!r}".format(latest_schema_string[i1:i2], new_schema_string[j1:j2]))
 
         # Overwrite the latest schema (safe to do for additions)
         dump(new_schema, latest_schema_path)

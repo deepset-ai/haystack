@@ -28,6 +28,7 @@ See also the `Pipeline` class for the actual pipeline logic.
 #### get\_config
 
 ```python
+@abstractmethod
 def get_config(return_defaults: bool = False) -> dict
 ```
 

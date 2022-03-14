@@ -7,7 +7,7 @@
 ## BaseSummarizer
 
 ```python
-class BaseSummarizer(BaseComponent,  ABC)
+class BaseSummarizer(BaseComponent)
 ```
 
 Abstract class for Summarizer

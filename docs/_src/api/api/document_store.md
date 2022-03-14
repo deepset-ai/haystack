@@ -7,7 +7,7 @@
 ## BaseKnowledgeGraph
 
 ```python
-class BaseKnowledgeGraph(BaseComponent,  ABC)
+class BaseKnowledgeGraph(BaseComponent)
 ```
 
 Base class for implementing Knowledge Graphs.
@@ -17,7 +17,7 @@ Base class for implementing Knowledge Graphs.
 ## BaseDocumentStore
 
 ```python
-class BaseDocumentStore(BaseComponent,  ABC)
+class BaseDocumentStore(BaseComponent)
 ```
 
 Base class for implementing Document Stores.
@@ -277,7 +277,7 @@ If None, the DocumentStore's default index (self.index) will be used.
 ## KeywordDocumentStore
 
 ```python
-class KeywordDocumentStore(BaseDocumentStore,  ABC)
+class KeywordDocumentStore(BaseDocumentStore)
 ```
 
 Base class for implementing Document Stores that support keyword searches.

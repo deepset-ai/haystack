@@ -18,9 +18,6 @@
         },
         {
           "const": "1.2.0"
-        },
-        {
-          "const": "1.2.1rc0"
         }
       ]
     },
@@ -3656,16 +3653,6 @@
         "name"
       ],
       "additionalProperties": false
-    },
-    "RAGeneratorType": {
-      "title": "RAGeneratorType",
-      "description": "An enumeration.",
-      "enum": [
-        [
-          1
-        ],
-        2
-      ]
     }
   }
 }

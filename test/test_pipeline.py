@@ -421,6 +421,7 @@ def test_validate_pipeline_config_invalid_pipeline_node_inputs():
             }
         )
 
+
 def test_validate_pipeline_config_recursive_config():
     pipeline_config = {}
     node = {"config": pipeline_config}

@@ -7,7 +7,7 @@
 ## BaseTranslator
 
 ```python
-class BaseTranslator(BaseComponent,  ABC)
+class BaseTranslator(BaseComponent)
 ```
 
 Abstract class for a Translator component that translates either a query or a doc from language A to language B.
