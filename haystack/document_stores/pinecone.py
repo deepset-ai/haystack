@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 import logging
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
+import time
 
 import pinecone
 import numpy as np
@@ -173,6 +174,8 @@ class PineconeDocumentStore(SQLDocumentStore):
                     name=index, dimension=embedding_dim, metric=metric_type, replicas=replicas, shards=shards
                 )
             index_connection = pinecone.Index(index)
+            # Wait until index has been created
+            time.sleep(5)
 
         # Get index statistics
         stats = index_connection.describe_index_stats()
