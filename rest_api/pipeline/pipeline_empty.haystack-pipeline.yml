@@ -10,5 +10,3 @@ pipelines:
     nodes:
       - name: FileTypeClassifier
         inputs: [File]
-
-

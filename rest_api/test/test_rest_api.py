@@ -45,7 +45,7 @@ def exclude_no_answer(responses):
 @pytest.fixture()
 def client() -> TestClient:
     os.environ["PIPELINE_YAML_PATH"] = str(
-        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
+        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.haystack-pipeline.yml").absolute()
     )
     os.environ["INDEXING_PIPELINE_NAME"] = "test-indexing"
     os.environ["QUERY_PIPELINE_NAME"] = "test-query"
