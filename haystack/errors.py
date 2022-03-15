@@ -50,7 +50,7 @@ class PipelineSchemaError(PipelineError):
 
     @send_event
     def __init__(self):
-        pass
+        super().__init__()
 
 
 class PipelineConfigError(PipelineError):
@@ -70,7 +70,7 @@ class DocumentStoreError(HaystackError):
 
     @send_event
     def __init__(self):
-        pass
+        super().__init__()
 
 
 class DuplicateDocumentError(DocumentStoreError, ValueError):
@@ -78,4 +78,4 @@ class DuplicateDocumentError(DocumentStoreError, ValueError):
 
     @send_event
     def __init__(self):
-        pass
+        super().__init__()
