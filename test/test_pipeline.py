@@ -112,12 +112,14 @@ def test_to_code_can_handle_weak_cyclic_pipelines():
     pipeline.add_node(component=parent, name="parent", inputs=["Query"])
     pipeline.add_node(component=child, name="child", inputs=["parent"])
     code = pipeline.to_code(generate_imports=False)
-    assert code == ("child = ChildComponent()\n"
-                    "parent = ParentComponent(dependent=child)\n"
-                    "\n"
-                    "pipeline = Pipeline()\n"
-                    "pipeline.add_node(component=parent, name=\"parent\", inputs=[\"Query\"])\n"
-                    "pipeline.add_node(component=child, name=\"child\", inputs=[\"parent\"])")
+    assert code == (
+        "child = ChildComponent()\n"
+        "parent = ParentComponent(dependent=child)\n"
+        "\n"
+        "pipeline = Pipeline()\n"
+        'pipeline.add_node(component=parent, name="parent", inputs=["Query"])\n'
+        'pipeline.add_node(component=child, name="child", inputs=["parent"])'
+    )
 
 
 def test_get_config_creates_dependent_component():
