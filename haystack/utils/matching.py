@@ -30,7 +30,7 @@ def calculate_context_similarity(context: str, candidate: str, min_words: int = 
     :param context: The context to match.
     :param candidate: The candidate to match the context.
     :param min_words: The minimum number of words context and candidate need to have in order to be scored.
-                      Returns 0.0 otherwise. 
+                      Returns 0.0 otherwise.
     """
     # we need to handle short contexts/contents (e.g single word)
     # as they produce high scores by matching if the chars of the word are contained in the other one
@@ -48,7 +48,7 @@ def match_context(
     show_progress: bool = False,
     num_processes: int = None,
     chunksize: int = 1,
-    min_words: int = 25
+    min_words: int = 25,
 ) -> List[Tuple[str, float]]:
     """
     Matches the context against multiple candidates. Candidates consist of a tuple of an id and its text.
@@ -65,7 +65,7 @@ def match_context(
                       If not specified chunksize is 1.
                       For very long iterables using a large value for chunksize can make the job complete much faster than using the default value of 1.
     :param min_words: The minimum number of words context and candidate need to have in order to be scored.
-                      Score will be 0.0 otherwise. 
+                      Score will be 0.0 otherwise.
     """
     with Pool(processes=num_processes) as pool:
         score_candidate_args = ((context, candidate, min_words) for candidate in candidates)
@@ -87,7 +87,7 @@ def match_contexts(
     show_progress: bool = False,
     num_processes: int = None,
     chunksize: int = 1,
-    min_words: int = 25
+    min_words: int = 25,
 ) -> List[List[Tuple[str, float]]]:
     """
     Matches the contexts against multiple candidates. Candidates consist of a tuple of an id and its string text.
@@ -105,10 +105,12 @@ def match_contexts(
                       If not specified chunksize is 1.
                       For very long iterables using a large value for chunksize can make the job complete much faster than using the default value of 1.
     :param min_words: The minimum number of words context and candidate need to have in order to be scored.
-                      Score will be 0.0 otherwise. 
+                      Score will be 0.0 otherwise.
     """
     with Pool(processes=num_processes) as pool:
-        score_candidate_args = ((context, candidate, min_words) for candidate in candidates for context in enumerate(contexts))
+        score_candidate_args = (
+            (context, candidate, min_words) for candidate in candidates for context in enumerate(contexts)
+        )
         candidate_scores = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
         if show_progress:
             candidate_scores = tqdm(candidate_scores)
