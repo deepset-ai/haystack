@@ -1196,7 +1196,7 @@ class Pipeline(BasePipeline):
                     }
 
                     # search for existing components that match the subcomponent
-                    sub_component_name: str = None
+                    sub_component_name: Optional[str] = None
                     for existing_node in self.graph.nodes:
                         node_component = self.graph.nodes.get(existing_node)["component"]._component_config
                         if (
