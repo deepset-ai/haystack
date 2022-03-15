@@ -1167,8 +1167,8 @@ class Pipeline(BasePipeline):
                 continue
             component_instance = self.graph.nodes.get(node)["component"]
 
-            component_type = component_instance._component_configuration["type"]
-            component_params = component_instance._component_configuration["params"]
+            component_type = component_instance._component_config["type"]
+            component_params = component_instance._component_config["params"]
             components[node] = {"name": node, "type": component_type, "params": {}}
 
             component_parent_classes = inspect.getmro(type(component_instance))

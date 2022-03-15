@@ -33,18 +33,18 @@ def exportable_to_yaml(init_func):
                 "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
             )
         # Create the configuration dictionary if it doesn't exist yet
-        if not self._component_configuration:
-            self._component_configuration = {"params": {}, "type": type(self).__name__}
+        if not self._component_config:
+            self._component_config = {"params": {}, "type": type(self).__name__}
 
         # Make sure it runs only on the __init__of the implementations, not in superclasses
         if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
 
-            # Store all the named input parameters in self._component_configuration
+            # Store all the named input parameters in self._component_config
             for k, v in kwargs.items():
                 if isinstance(v, BaseComponent):
-                    self._component_configuration["params"][k] = v._component_configuration
+                    self._component_config["params"][k] = v._component_config
                 elif v is not None:
-                    self._component_configuration["params"][k] = v
+                    self._component_config["params"][k] = v
 
     return wrapper_exportable_to_yaml
 
@@ -57,7 +57,7 @@ class BaseComponent(ABC):
     outgoing_edges: int
     name: Optional[str] = None
     _subclasses: dict = {}
-    _component_configuration: dict = {}
+    _component_config: dict = {}
 
     # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_
     # (not instantiated). It works approximately as a metaclass.
@@ -66,7 +66,7 @@ class BaseComponent(ABC):
         super().__init_subclass__(**kwargs)
 
         # Automatically registers all the init parameters in
-        # an instance attribute called `_component_configuration`,
+        # an instance attribute called `_component_config`,
         # used to save this component to YAML. See exportable_to_yaml()
         cls.__init__ = exportable_to_yaml(cls.__init__)
 
