@@ -67,7 +67,6 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         super().__init__()
 
-        
     def get_all_documents(
         self,
         index: Optional[str] = None,

@@ -102,7 +102,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param classification_field: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
         """
         super().__init__()
-        
+
         if labels and task == "text-classification":
             logger.warning(
                 f"Provided labels {labels} will be ignored for task text-classification. Set task to "
