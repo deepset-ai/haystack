@@ -177,9 +177,9 @@ def send_tutorial_event(url: str):
     """
     dataset_url_to_tutorial = {
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip": "1",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip": "2",  # replaces wget in tutorial 2
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip": "2",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt3.zip": "3",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/faq_covidbert.csv.zip": "4",  # replaces wget in tutorial 4
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/faq_covidbert.csv.zip": "4",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v2.json.zip": "5",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt6.zip": "6",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/small_generator_dataset.csv.zip": "7",
@@ -189,7 +189,7 @@ def send_tutorial_event(url: str):
         "https://fandom-qa.s3-eu-west-1.amazonaws.com/saved_models/hp_v3.4.zip": "10",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt11.zip": "11",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt12.zip": "12",
-        # Tutorial 13 # no dataset available yet. maybe we can package a few examples in a downloadable file
+        # Tutorial 13: no dataset available yet
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt14.zip": "14",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/ottqa_tables_sample.json.zip": "15",
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
@@ -250,7 +250,7 @@ def _get_execution_environment():
         execution_env = "test"
     else:
         try:
-            shell = get_ipython().__class__.__name__
+            shell = get_ipython().__class__.__name__  # pylint: disable=undefined-variable
             execution_env = shell
         except Exception:
             execution_env = "script"
