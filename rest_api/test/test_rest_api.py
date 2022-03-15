@@ -45,9 +45,10 @@ def exclude_no_answer(responses):
 @pytest.fixture()
 def client() -> TestClient:
     os.environ["PIPELINE_YAML_PATH"] = str(
-        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
+        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.haystack-pipeline.yml").absolute()
     )
-    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
+    os.environ["INDEXING_PIPELINE_NAME"] = "test-indexing"
+    os.environ["QUERY_PIPELINE_NAME"] = "test-query"
     client = TestClient(app)
 
     client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
@@ -217,15 +218,7 @@ def test_query_with_invalid_filter(populated_client: TestClient):
     assert len(response_json["answers"]) == 0
 
 
-def test_query_with_no_documents_and_no_answers():
-    os.environ["PIPELINE_YAML_PATH"] = str(
-        (Path(__file__).parent / "samples" / "pipeline" / "test_pipeline.yaml").absolute()
-    )
-    os.environ["INDEXING_PIPELINE_NAME"] = "indexing_text_pipeline"
-    client = TestClient(app)
-
-    # Clean up to make sure the docstore is empty
-    client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+def test_query_with_no_documents_and_no_answers(client: TestClient):
     query = {"query": "Who made the PDF specification?"}
     response = client.post(url="/query", json=query)
     assert 200 == response.status_code

@@ -126,29 +126,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
+        super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            sql_url=sql_url,
-            host=host,
-            port=port,
-            connection_pool=connection_pool,
-            index=index,
-            vector_dim=vector_dim,
-            embedding_dim=embedding_dim,
-            index_file_size=index_file_size,
-            similarity=similarity,
-            index_type=index_type,
-            index_param=index_param,
-            search_param=search_param,
-            duplicate_documents=duplicate_documents,
-            id_field=id_field,
-            return_embedding=return_embedding,
-            embedding_field=embedding_field,
-            progress_bar=progress_bar,
-            custom_fields=custom_fields,
-            isolation_level=isolation_level,
-        )
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
 

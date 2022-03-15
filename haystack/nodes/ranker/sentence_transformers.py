@@ -52,9 +52,7 @@ class SentenceTransformersRanker(BaseRanker):
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
         """
-
-        # save init parameters to enable export of component config as YAML
-        self.set_config(model_name_or_path=model_name_or_path, model_version=model_version, top_k=top_k)
+        super().__init__()
 
         self.top_k = top_k
 

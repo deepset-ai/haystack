@@ -1,15 +1,15 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union, List, Optional, Dict, Generator
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
 
 import json
 import logging
-from pathlib import Path
-from typing import Union, List, Optional, Dict, Generator
-from tqdm.auto import tqdm
 import warnings
 import numpy as np
+from copy import deepcopy
+from pathlib import Path
+from tqdm.auto import tqdm
 from inspect import Signature, signature
 
 try:
@@ -21,7 +21,6 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "faiss", ie)
-
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
@@ -47,7 +46,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_dim: int = None,
         embedding_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
-        faiss_index: "Optional[faiss.swigfaiss.Index]" = None,
+        faiss_index: Optional[faiss.swigfaiss.Index] = None,
         return_embedding: bool = False,
         index: str = "document",
         similarity: str = "dot_product",
@@ -111,21 +110,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
             self.__class__.__init__(self, **init_params)  # pylint: disable=non-parent-init-called
             return
-
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            sql_url=sql_url,
-            vector_dim=vector_dim,
-            embedding_dim=embedding_dim,
-            faiss_index_factory_str=faiss_index_factory_str,
-            return_embedding=return_embedding,
-            duplicate_documents=duplicate_documents,
-            index=index,
-            similarity=similarity,
-            embedding_field=embedding_field,
-            progress_bar=progress_bar,
-            isolation_level=isolation_level,
-        )
 
         if similarity in ("dot_product", "cosine"):
             self.similarity = similarity
@@ -614,8 +598,15 @@ class FAISSDocumentStore(SQLDocumentStore):
             config_path = index_path.with_suffix(".json")
 
         faiss.write_index(self.faiss_indexes[self.index], str(index_path))
+
+        config_to_save = deepcopy(self._component_config["params"])
+        keys_to_remove = ["faiss_index", "faiss_index_path"]
+        for key in keys_to_remove:
+            if key in config_to_save.keys():
+                del config_to_save[key]
+
         with open(config_path, "w") as ipp:
-            json.dump(self.pipeline_config["params"], ipp)
+            json.dump(config_to_save, ipp, default=str)
 
     def _load_init_params_from_config(
         self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None

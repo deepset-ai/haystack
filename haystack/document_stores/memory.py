@@ -66,17 +66,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
                                    when running on CPU.
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            index=index,
-            label_index=label_index,
-            embedding_field=embedding_field,
-            embedding_dim=embedding_dim,
-            return_embedding=return_embedding,
-            similarity=similarity,
-            progress_bar=progress_bar,
-            duplicate_documents=duplicate_documents,
-        )
+        super().__init__()
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index

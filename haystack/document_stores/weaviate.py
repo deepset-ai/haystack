@@ -105,25 +105,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         if similarity != "cosine":
             raise ValueError(f"Weaviate only supports cosine similarity, but you provided {similarity}")
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            host=host,
-            port=port,
-            timeout_config=timeout_config,
-            username=username,
-            password=password,
-            index=index,
-            embedding_dim=embedding_dim,
-            content_field=content_field,
-            name_field=name_field,
-            similarity=similarity,
-            index_type=index_type,
-            custom_schema=custom_schema,
-            return_embedding=return_embedding,
-            embedding_field=embedding_field,
-            progress_bar=progress_bar,
-            duplicate_documents=duplicate_documents,
-        )
+
+        super().__init__()
 
         # Connect to Weaviate server using python binding
         weaviate_url = f"{host}:{port}"
@@ -1162,3 +1145,35 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
             for doc in docs_to_delete:
                 self.weaviate_client.data_object.delete(doc.id)
+
+    def delete_labels(self):
+        """
+        Implemented to respect BaseDocumentStore's contract.
+
+        Weaviate does not support labels (yet).
+        """
+        raise NotImplementedError("Weaviate does not support labels (yet).")
+
+    def get_all_labels(self):
+        """
+        Implemented to respect BaseDocumentStore's contract.
+
+        Weaviate does not support labels (yet).
+        """
+        raise NotImplementedError("Weaviate does not support labels (yet).")
+
+    def get_label_count(self):
+        """
+        Implemented to respect BaseDocumentStore's contract.
+
+        Weaviate does not support labels (yet).
+        """
+        raise NotImplementedError("Weaviate does not support labels (yet).")
+
+    def write_labels(self):
+        """
+        Implemented to respect BaseDocumentStore's contract.
+
+        Weaviate does not support labels (yet).
+        """
+        pass
