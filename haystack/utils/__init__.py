@@ -18,4 +18,4 @@ from haystack.utils.export_utils import (
     convert_labels_to_squad,
 )
 from haystack.utils.squad_data import SquadData
-from haystack.utils.matching import calculate_context_similarity, match_context
+from haystack.utils.matching import calculate_context_similarity, match_context, match_contexts
