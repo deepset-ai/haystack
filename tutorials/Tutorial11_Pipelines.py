@@ -11,7 +11,7 @@ from haystack import Pipeline
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes import (
     ElasticsearchRetriever,
-    DensePassageRetriever,
+    EmbeddingRetriever,
     FARMReader,
     RAGenerator,
     BaseComponent,
@@ -39,8 +39,12 @@ def tutorial11_pipelines():
     es_retriever = ElasticsearchRetriever(document_store=document_store)
 
     # Initialize dense retriever
-    dpr_retriever = DensePassageRetriever(document_store)
-    document_store.update_embeddings(dpr_retriever, update_existing_embeddings=False)
+    embedding_retriever = EmbeddingRetriever(
+        document_store,
+        model_format="sentence_transformers",
+        embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+    )
+    document_store.update_embeddings(embedding_retriever, update_existing_embeddings=False)
 
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
 
@@ -83,7 +87,7 @@ def tutorial11_pipelines():
 
     # Generative QA
     query = "Who is the father of Arya Stark?"
-    p_generator = GenerativeQAPipeline(generator=rag_generator, retriever=dpr_retriever)
+    p_generator = GenerativeQAPipeline(generator=rag_generator, retriever=embedding_retriever)
     res = p_generator.run(query=query, params={"Retriever": {"top_k": 10}})
     print()
     print_answers(res, details="minimum")
@@ -129,9 +133,11 @@ def tutorial11_pipelines():
     # Create ensembled pipeline
     p_ensemble = Pipeline()
     p_ensemble.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    p_ensemble.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["Query"])
+    p_ensemble.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])
     p_ensemble.add_node(
-        component=JoinDocuments(join_mode="concatenate"), name="JoinResults", inputs=["ESRetriever", "DPRRetriever"]
+        component=JoinDocuments(join_mode="concatenate"),
+        name="JoinResults",
+        inputs=["ESRetriever", "EmbeddingRetriever"],
     )
     p_ensemble.add_node(component=reader, name="Reader", inputs=["JoinResults"])
     p_ensemble.draw("pipeline_ensemble.png")
@@ -139,7 +145,8 @@ def tutorial11_pipelines():
     # Run pipeline
     query = "Who is the father of Arya Stark?"
     res = p_ensemble.run(
-        query="Who is the father of Arya Stark?", params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
+        query="Who is the father of Arya Stark?",
+        params={"ESRetriever": {"top_k": 5}, "EmbeddingRetriever": {"top_k": 5}},
     )
     print("\nQuery: ", query)
     print("Answers:")
@@ -167,8 +174,8 @@ def tutorial11_pipelines():
     p_classifier = Pipeline()
     p_classifier.add_node(component=CustomQueryClassifier(), name="QueryClassifier", inputs=["Query"])
     p_classifier.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_1"])
-    p_classifier.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_2"])
-    p_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "DPRRetriever"])
+    p_classifier.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_2"])
+    p_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"])
     p_classifier.draw("pipeline_classifier.png")
 
     # Run only the dense retriever on the full sentence query
@@ -176,7 +183,7 @@ def tutorial11_pipelines():
     res_1 = p_classifier.run(query=query)
     print()
     print("\nQuery: ", query)
-    print(" * DPR Answers:")
+    print(" * Embedding Retriever Answers:")
     print_answers(res_1, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
@@ -198,7 +205,7 @@ def tutorial11_pipelines():
     # 2) You can provide `debug` as a parameter when running your pipeline
     result = p_classifier.run(query="Who is the father of Arya Stark?", params={"ESRetriever": {"debug": True}})
 
-    # 3) You can provide the `debug` paramter to all nodes in your pipeline
+    # 3) You can provide the `debug` parameter to all nodes in your pipeline
     result = p_classifier.run(query="Who is the father of Arya Stark?", params={"debug": True})
 
     pprint(result["_debug"])
