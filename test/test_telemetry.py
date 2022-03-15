@@ -41,6 +41,6 @@ def test_send_event_via_decorator(mock_posthog_capture):
     test_class = TestClass()
     test_class.run(add_isolated_node_eval=True)
     sleep(1)
-    #todo replace [1] with .kwargs when moving from python 3.7 to 3.8 in CI
-    assert mock_posthog_capture.call_args[1]['event'] == 'TestClass.run executed'
-    assert mock_posthog_capture.call_args[1]['properties']['add_isolated_node_eval']
+    # todo replace [1] with .kwargs when moving from python 3.7 to 3.8 in CI
+    assert mock_posthog_capture.call_args[1]["event"] == "TestClass.run executed"
+    assert mock_posthog_capture.call_args[1]["properties"]["add_isolated_node_eval"]
