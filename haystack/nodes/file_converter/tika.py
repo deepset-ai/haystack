@@ -59,9 +59,7 @@ class TikaConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
-
-        # save init parameters to enable export of component config as YAML
-        self.set_config(tika_url=tika_url, remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         ping = requests.get(tika_url)
         if ping.status_code != 200:

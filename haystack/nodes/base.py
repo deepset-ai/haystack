@@ -1,42 +1,84 @@
 from __future__ import annotations
-from typing import Any, Callable, Optional, Dict, List, Tuple, Optional
+from typing import Any, Optional, Dict, List, Tuple, Optional
 
-import io
-from functools import wraps
+import sys
 from copy import deepcopy
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+from functools import wraps
 import inspect
 import logging
 
 from haystack.schema import Document, MultiLabel
+from haystack.errors import HaystackError
 
 
 logger = logging.getLogger(__name__)
 
 
-class BaseComponent:
+def exportable_to_yaml(init_func):
+    """
+    Decorator that saves the init parameters of a node that later can
+    be used with exporting YAML configuration of a Pipeline.
+    """
+
+    @wraps(init_func)
+    def wrapper_exportable_to_yaml(self, *args, **kwargs):
+
+        # Call the actuall __init__ function with all the arguments
+        init_func(self, *args, **kwargs)
+
+        # Warn for unnamed input params - should be rare
+        if args:
+            logger.warning(
+                "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
+            )
+        # Create the configuration dictionary if it doesn't exist yet
+        if not self._component_config:
+            self._component_config = {"params": {}, "type": type(self).__name__}
+
+        # Make sure it runs only on the __init__of the implementations, not in superclasses
+        if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
+
+            # Store all the named input parameters in self._component_config
+            for k, v in kwargs.items():
+                if isinstance(v, BaseComponent):
+                    self._component_config["params"][k] = v._component_config
+                elif v is not None:
+                    self._component_config["params"][k] = v
+
+    return wrapper_exportable_to_yaml
+
+
+class BaseComponent(ABC):
     """
     A base class for implementing nodes in a Pipeline.
     """
 
     outgoing_edges: int
-    subclasses: dict = {}
-    pipeline_config: dict = {}
     name: Optional[str] = None
+    _subclasses: dict = {}
+    _component_config: dict = {}
 
+    # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_
+    # (not instantiated). It works approximately as a metaclass.
     def __init_subclass__(cls, **kwargs):
-        """
-        Automatically keeps track of all available subclasses.
-        Enables generic load() for all specific component implementations.
-        """
+
         super().__init_subclass__(**kwargs)
-        cls.subclasses[cls.__name__] = cls
+
+        # Automatically registers all the init parameters in
+        # an instance attribute called `_component_config`,
+        # used to save this component to YAML. See exportable_to_yaml()
+        cls.__init__ = exportable_to_yaml(cls.__init__)
+
+        # Keeps track of all available subclasses by name.
+        # Enables generic load() for all specific component implementations.
+        cls._subclasses[cls.__name__] = cls
 
     @classmethod
     def get_subclass(cls, component_type: str):
-        if component_type not in cls.subclasses.keys():
-            raise Exception(f"Haystack component with the name '{component_type}' does not exist.")
-        subclass = cls.subclasses[component_type]
+        if component_type not in cls._subclasses.keys():
+            raise HaystackError(f"Haystack component with the name '{component_type}' does not exist.")
+        subclass = cls._subclasses[component_type]
         return subclass
 
     @classmethod
@@ -165,18 +207,3 @@ class BaseComponent:
 
         output["params"] = params
         return output, stream
-
-    def set_config(self, **kwargs):
-        """
-        Save the init parameters of a component that later can be used with exporting
-        YAML configuration of a Pipeline.
-
-        :param kwargs: all parameters passed to the __init__() of the Component.
-        """
-        if not self.pipeline_config:
-            self.pipeline_config = {"params": {}, "type": type(self).__name__}
-            for k, v in kwargs.items():
-                if isinstance(v, BaseComponent):
-                    self.pipeline_config["params"][k] = v.pipeline_config
-                elif v is not None:
-                    self.pipeline_config["params"][k] = v

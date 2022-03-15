@@ -603,7 +603,7 @@ def test_dpr_context_only():
     assert tensor_names == ["passage_input_ids", "passage_segment_ids", "passage_attention_mask", "label_ids"]
 
 
-def test_dpr_processor_save_load():
+def test_dpr_processor_save_load(tmp_path):
     d = {
         "query": "big little lies season 2 how many episodes ?",
         "passages": [
@@ -646,9 +646,9 @@ def test_dpr_processor_save_load():
         metric="text_similarity_metric",
         shuffle_negatives=False,
     )
-    processor.save(save_dir="testsave/dpr_processor")
+    processor.save(save_dir=f"{tmp_path}/testsave/dpr_processor")
     dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir="testsave/dpr_processor")
+    loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=f"{tmp_path}/testsave/dpr_processor")
     dataset2, tensor_names, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
@@ -667,7 +667,7 @@ def test_dpr_processor_save_load():
         {"query": "facebook/dpr-question_encoder-single-nq-base", "passage": "facebook/dpr-ctx_encoder-single-nq-base"},
     ],
 )
-def test_dpr_processor_save_load_non_bert_tokenizer(query_and_passage_model):
+def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_model):
     """
     This test compares 1) a model that was loaded from model hub with
     2) a model from model hub that was saved to disk and then loaded from disk and
@@ -729,7 +729,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(query_and_passage_model):
     model.connect_heads_with_processor(processor.tasks, require_labels=False)
 
     # save model that was loaded from model hub to disk
-    save_dir = "testsave/dpr_model"
+    save_dir = f"{tmp_path}/testsave/dpr_model"
     query_encoder_dir = "query_encoder"
     passage_encoder_dir = "passage_encoder"
     model.save(Path(save_dir), lm1_name=query_encoder_dir, lm2_name=passage_encoder_dir)
@@ -841,7 +841,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(query_and_passage_model):
     assert np.array_equal(all_embeddings["query"][0], all_embeddings2["query"][0])
 
     # save the model that was loaded from disk to disk
-    save_dir = "testsave/dpr_model"
+    save_dir = f"{tmp_path}/testsave/dpr_model"
     query_encoder_dir = "query_encoder"
     passage_encoder_dir = "passage_encoder"
     loaded_model.save(Path(save_dir), lm1_name=query_encoder_dir, lm2_name=passage_encoder_dir)

@@ -58,6 +58,8 @@ class Crawler(BaseComponent):
             All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         """
+        super().__init__()
+
         IN_COLAB = "google.colab" in sys.modules
 
         options = webdriver.chrome.options.Options()

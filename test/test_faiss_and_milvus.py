@@ -13,7 +13,7 @@ from haystack.document_stores.weaviate import WeaviateDocumentStore
 from haystack.pipelines import Pipeline
 from haystack.nodes.retriever.dense import EmbeddingRetriever
 
-from conftest import ensure_ids_are_correct_uuids
+from .conftest import ensure_ids_are_correct_uuids
 
 
 DOCUMENTS = [

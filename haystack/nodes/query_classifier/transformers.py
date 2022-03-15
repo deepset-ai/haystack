@@ -63,8 +63,8 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
         :param use_gpu: Whether to use GPU (if available).
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(model_name_or_path=model_name_or_path)
+        super().__init__()
+
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
         device = 0 if self.devices[0].type == "cuda" else -1
 

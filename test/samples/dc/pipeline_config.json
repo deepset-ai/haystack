@@ -1,5 +1,5 @@
 {
-    "version": "0.9",
+    "version": "unstable",
     "name": "document_retrieval_1",
     "components": [
         {
@@ -40,7 +40,6 @@
     "pipelines": [
         {
             "name": "query",
-            "type": "Query",
             "nodes": [
                 {
                     "name": "Retriever",
@@ -52,7 +51,6 @@
         },
         {
             "name": "indexing",
-            "type": "Indexing",
             "nodes": [
                 {
                     "name": "TextFileConverter",
