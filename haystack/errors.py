@@ -1,7 +1,7 @@
 # coding: utf8
 """Custom Errors for Haystack"""
 
-from haystack.telemetry import send_event
+from haystack.telemetry import send_custom_event
 from typing import Optional
 
 
@@ -14,8 +14,8 @@ class HaystackError(Exception):
     `HaystackError.message` will exist and have the expected content.
     """
 
-    @send_event
     def __init__(self, message: Optional[str] = None, docs_link: Optional[str] = None):
+        send_custom_event(event=f"{type(self).__name__} raised")
         super().__init__()
         if message:
             self.message = message
@@ -38,7 +38,6 @@ class HaystackError(Exception):
 class PipelineError(HaystackError):
     """Exception for issues raised within a pipeline"""
 
-    @send_event
     def __init__(
         self, message: Optional[str] = None, docs_link: Optional[str] = "https://haystack.deepset.ai/pipelines"
     ):
@@ -48,7 +47,6 @@ class PipelineError(HaystackError):
 class PipelineSchemaError(PipelineError):
     """Exception for issues arising when reading/building the JSON schema of pipelines"""
 
-    @send_event
     def __init__(self):
         super().__init__()
 
@@ -56,7 +54,6 @@ class PipelineSchemaError(PipelineError):
 class PipelineConfigError(PipelineError):
     """Exception for issues raised within a pipeline's config file"""
 
-    @send_event
     def __init__(
         self,
         message: Optional[str] = None,
@@ -68,7 +65,6 @@ class PipelineConfigError(PipelineError):
 class DocumentStoreError(HaystackError):
     """Exception for issues that occur in a document store"""
 
-    @send_event
     def __init__(self):
         super().__init__()
 
@@ -76,6 +72,5 @@ class DocumentStoreError(HaystackError):
 class DuplicateDocumentError(DocumentStoreError, ValueError):
     """Exception for Duplicate document"""
 
-    @send_event
     def __init__(self):
         super().__init__()

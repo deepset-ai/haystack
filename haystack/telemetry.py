@@ -144,8 +144,8 @@ def send_custom_event(event: str = "", payload: Dict = {}):
             user_id = _get_or_create_user_id()
             try:
                 posthog.capture(distinct_id=user_id, event=event, properties=event_properties)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Telemetry was not able to make a post request to posthog.", exc_info=e)
             if is_telemetry_enabled() and is_telemetry_logging_to_file_enabled():
                 _write_event_to_telemetry_log_file(distinct_id=user_id, event=event, properties=event_properties)
 
@@ -154,7 +154,7 @@ def send_custom_event(event: str = "", payload: Dict = {}):
 
         if is_telemetry_enabled():
             fire_and_forget(data=payload)
-        elif Path(CONFIG_PATH).exists():
+        elif CONFIG_PATH.exists():
             # if telemetry has just been disabled but the config file has not been deleted yet,
             # then send a final event instead of the triggered event and delete config file and log file afterward
             event = "telemetry disabled"
@@ -165,8 +165,8 @@ def send_custom_event(event: str = "", payload: Dict = {}):
             # return without sending any event, not even a final event
             return
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Telemetry was not able to send an event.", exc_info=e)
 
 
 def send_tutorial_event(url: str):
@@ -263,14 +263,14 @@ def _read_telemetry_config():
     """
     global user_id
     try:
-        if not Path(CONFIG_PATH).is_file():
+        if not CONFIG_PATH.is_file():
             return
         with open(CONFIG_PATH, "r", encoding="utf-8") as stream:
             config = yaml.safe_load(stream)
             if "user_id" in config and user_id is None:
                 user_id = config["user_id"]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Telemetry was not able to read the config file {CONFIG_PATH}.", exc_info=e)
 
 
 def _write_telemetry_config():
@@ -281,11 +281,11 @@ def _write_telemetry_config():
     global user_id
     try:
         # show a log message if telemetry config is written for the first time
-        if not Path(CONFIG_PATH).is_file():
+        if not CONFIG_PATH.is_file():
             logger.info(
                 f'Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt out at anytime by setting {HAYSTACK_TELEMETRY_ENABLED}="False" as an environment variable or by calling disable_telemetry(). More information at https://haystack.deepset.ai/guides/telemetry'
             )
-            Path(CONFIG_PATH).parents[0].mkdir(parents=True, exist_ok=True)
+            CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
         user_id = _get_or_create_user_id()
         config = {"user_id": user_id}
 
@@ -300,17 +300,17 @@ def _delete_telemetry_config():
     Deletes the telemetry config file if any exists.
     """
     try:
-        Path(CONFIG_PATH).unlink(missing_ok=True)
-    except Exception:
-        pass
+        CONFIG_PATH.unlink(missing_ok=True)
+    except Exception as e:
+        logger.debug(f"Telemetry was not able to delete the config file {CONFIG_PATH}.", exc_info=e)
 
 
 def _write_event_to_telemetry_log_file(distinct_id: str, event: str, properties: Dict[str, Any]):
     try:
         with open(LOG_PATH, "a") as file_object:
             file_object.write(f"{event}, {properties}, {distinct_id}\n")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Telemetry was not able to write event to log file {LOG_PATH}.", exc_info=e)
 
 
 def _delete_telemetry_log_file():
@@ -318,9 +318,9 @@ def _delete_telemetry_log_file():
     Deletes the telemetry log file if any exists.
     """
     try:
-        Path(LOG_PATH).unlink(missing_ok=True)
-    except Exception:
-        pass
+        LOG_PATH.unlink(missing_ok=True)
+    except Exception as e:
+        logger.debug(f"Telemetry was not able to delete the log file {LOG_PATH}.", exc_info=e)
 
 
 class NonPrivateParameters:
