@@ -31,14 +31,15 @@ def test_only_private_params():
     assert non_private_params == {}
 
 
-@patch('posthog.capture')
+@patch("posthog.capture")
 def test_send_event_via_decorator(mock_posthog_capture):
     class TestClass:
         @send_event
         def run(self, add_isolated_node_eval: bool = False):
             pass
+
     test_class = TestClass()
     test_class.run(add_isolated_node_eval=True)
     sleep(1)
-    assert mock_posthog_capture.call_args.kwargs['event'] == 'TestClass.run executed'
-    assert mock_posthog_capture.call_args.kwargs['properties']['add_isolated_node_eval']
+    assert mock_posthog_capture.call_args.kwargs["event"] == "TestClass.run executed"
+    assert mock_posthog_capture.call_args.kwargs["properties"]["add_isolated_node_eval"]

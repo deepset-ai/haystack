@@ -23,8 +23,8 @@ import os
 import platform
 from threading import Thread
 
-posthog.api_key = 'phc_uZ6c2kaqSz3u9QrYRCBbxsi6MMHiiew9dwi4LTobgV3'
-posthog.host = 'https://posthog.dpst.dev'
+posthog.api_key = "phc_uZ6c2kaqSz3u9QrYRCBbxsi6MMHiiew9dwi4LTobgV3"
+posthog.host = "https://posthog.dpst.dev"
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED = "HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED"
 HAYSTACK_EXECUTION_CONTEXT = "HAYSTACK_EXECUTION_CONTEXT"
@@ -102,12 +102,14 @@ def send_event_if_public_demo(func):
     """
     Can be used as a decorator to send an event only if HAYSTACK_EXECUTION_CONTEXT is "public_demo"
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         exec_context = os.environ.get(HAYSTACK_EXECUTION_CONTEXT, "")
         if exec_context == "public_demo":
             send_custom_event(event="demo query executed", payload=kwargs)
         return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -117,14 +119,16 @@ def send_event(func):
     with additional parameters as defined in TrackedParameters ('add_isolated_node_eval') and
     metadata, such as os_version
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         send_custom_event(event=f"{type(args[0]).__name__}.{func.__name__} executed", payload=kwargs)
         return func(*args, **kwargs)
+
     return wrapper
 
 
-def send_custom_event(event: str = '', payload: Dict = {}):
+def send_custom_event(event: str = "", payload: Dict = {}):
     """
     This method can be called directly from anywhere in Haystack to send an event.
     Enriches the given event with metadata and sends it to the posthog server if telemetry is enabled.
@@ -134,12 +138,12 @@ def send_custom_event(event: str = '', payload: Dict = {}):
     :param payload: A dictionary containing event meta data, e.g., parameter settings
     """
     try:
+
         def request_task(data):
             event_properties = {**(NonPrivateParameters.apply_filter(data)), **_get_or_create_telemetry_meta_data()}
             user_id = _get_or_create_user_id()
             try:
-                posthog.capture(distinct_id=user_id, event=event,
-                                properties=event_properties)
+                posthog.capture(distinct_id=user_id, event=event, properties=event_properties)
             except Exception:
                 pass
             if is_telemetry_enabled() and is_telemetry_logging_to_file_enabled():
@@ -173,7 +177,7 @@ def send_tutorial_event(url: str):
     """
     dataset_url_to_tutorial = {
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip": "1",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip": "2", # replaces wget in tutorial 2
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip": "2",  # replaces wget in tutorial 2
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt3.zip": "3",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/faq_covidbert.csv.zip": "4",  # replaces wget in tutorial 4
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v2.json.zip": "5",
@@ -189,8 +193,7 @@ def send_tutorial_event(url: str):
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt14.zip": "14",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/ottqa_tables_sample.json.zip": "15",
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16"
-
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
     }
     send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
 
@@ -217,16 +220,16 @@ def _get_or_create_telemetry_meta_data() -> Dict[str, Any]:
     global telemetry_meta_data
     if not telemetry_meta_data:
         telemetry_meta_data = {
-            'os_version': platform.release(),
-            'os_family': platform.system(),
-            'os_machine': platform.machine(),
-            'python_version': platform.python_version(),
-            'haystack_version': haystack.__version__,
-            'transformers_version': transformers.__version__,
-            'torch_version': torch.__version__,
-            'n_gpu': torch.cuda.device_count() if torch.cuda.is_available() else 0,
-            'context': os.environ.get(HAYSTACK_EXECUTION_CONTEXT),
-            'execution_env': _get_execution_environment()
+            "os_version": platform.release(),
+            "os_family": platform.system(),
+            "os_machine": platform.machine(),
+            "python_version": platform.python_version(),
+            "haystack_version": haystack.__version__,
+            "transformers_version": transformers.__version__,
+            "torch_version": torch.__version__,
+            "n_gpu": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+            "context": os.environ.get(HAYSTACK_EXECUTION_CONTEXT),
+            "execution_env": _get_execution_environment(),
         }
     return telemetry_meta_data
 
@@ -280,12 +283,13 @@ def _write_telemetry_config():
         # show a log message if telemetry config is written for the first time
         if not Path(CONFIG_PATH).is_file():
             logger.info(
-                f"Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt out at anytime by setting {HAYSTACK_TELEMETRY_ENABLED}=\"False\" as an environment variable or by calling disable_telemetry(). More information at https://haystack.deepset.ai/overview/faq")
+                f'Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt out at anytime by setting {HAYSTACK_TELEMETRY_ENABLED}="False" as an environment variable or by calling disable_telemetry(). More information at https://haystack.deepset.ai/overview/faq'
+            )
             Path(CONFIG_PATH).parents[0].mkdir(parents=True, exist_ok=True)
         user_id = _get_or_create_user_id()
         config = {"user_id": user_id}
 
-        with open(CONFIG_PATH, 'w') as outfile:
+        with open(CONFIG_PATH, "w") as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
     except Exception:
         send_custom_event(event="config saving failed")
