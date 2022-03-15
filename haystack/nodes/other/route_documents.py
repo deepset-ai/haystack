@@ -33,8 +33,6 @@ class RouteDocuments(BaseComponent):
         )
 
         super().__init__()
-        # Save init parameters to enable export of component config as YAML
-        # self.set_config(split_by=split_by, metadata_values=metadata_values)
 
         self.split_by = split_by
         self.metadata_values = metadata_values

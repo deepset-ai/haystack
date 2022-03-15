@@ -136,15 +136,6 @@ class SQLDocumentStore(BaseDocumentStore):
         """
         super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(
-        #     url=url,
-        #     index=index,
-        #     label_index=label_index,
-        #     duplicate_documents=duplicate_documents,
-        #     check_same_thread=check_same_thread,
-        # )
-
         create_engine_params = {}
         if isolation_level:
             create_engine_params["isolation_level"] = isolation_level

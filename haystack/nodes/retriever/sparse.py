@@ -88,8 +88,6 @@ class ElasticsearchRetriever(BaseRetriever):
         :param top_k: How many documents to return per query.
         """
         super().__init__()
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(document_store=document_store, top_k=top_k, custom_query=custom_query)
         self.document_store: KeywordDocumentStore = document_store
         self.top_k = top_k
         self.custom_query = custom_query
@@ -178,8 +176,6 @@ class TfidfRetriever(BaseRetriever):
         :param auto_fit: Whether to automatically update tf-idf matrix by calling fit() after new documents have been added
         """
         super().__init__()
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(document_store=document_store, top_k=top_k, auto_fit=auto_fit)
 
         self.vectorizer = TfidfVectorizer(
             lowercase=True, stop_words=None, token_pattern=r"(?u)\b\w\w+\b", ngram_range=(1, 1)

@@ -28,8 +28,6 @@ class BaseConverter(BaseComponent):
                                 in garbled text.
         """
         super().__init__()
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         self.remove_numeric_tables = remove_numeric_tables
         self.valid_languages = valid_languages

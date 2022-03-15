@@ -40,9 +40,6 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(host=host, port=port, username=username, password=password, index=index, prefixes=prefixes)
-
         self.url = f"http://{host}:{port}"
         self.index = index
         self.username = username

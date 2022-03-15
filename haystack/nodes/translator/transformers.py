@@ -61,13 +61,6 @@ class TransformersTranslator(BaseTranslator):
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
         super().__init__()
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(
-        #     model_name_or_path=model_name_or_path,
-        #     tokenizer_name=tokenizer_name,
-        #     max_seq_len=max_seq_len,
-        #     clean_up_tokenization_spaces=clean_up_tokenization_spaces,
-        # )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.max_seq_len = max_seq_len

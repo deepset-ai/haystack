@@ -27,8 +27,6 @@ class JoinAnswers(BaseComponent):
         ), "Weights are not compatible with 'concatenate' join_mode"
 
         super().__init__()
-        # Save init parameters to enable export of component config as YAML
-        # self.set_config(join_mode=join_mode, weights=weights, top_k_join=top_k_join)
 
         self.join_mode = join_mode
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None

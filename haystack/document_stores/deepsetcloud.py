@@ -66,15 +66,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             )
 
         super().__init__()
-        # self.set_config(
-        #     workspace=workspace,
-        #     index=index,
-        #     duplicate_documents=duplicate_documents,
-        #     api_endpoint=api_endpoint,
-        #     similarity=similarity,
-        #     return_embedding=return_embedding,
-        # )
 
+        
     def get_all_documents(
         self,
         index: Optional[str] = None,

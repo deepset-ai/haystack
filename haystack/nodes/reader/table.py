@@ -96,17 +96,6 @@ class TableReader(BaseReader):
                             input size fits the model.
         """
         super().__init__()
-        # # Save init parameters to enable export of component config as YAML
-        # self.set_config(
-        #     model_name_or_path=model_name_or_path,
-        #     model_version=model_version,
-        #     tokenizer=tokenizer,
-        #     use_gpu=use_gpu,
-        #     top_k=top_k,
-        #     top_k_per_candidate=top_k_per_candidate,
-        #     return_no_answer=return_no_answer,
-        #     max_seq_len=max_seq_len,
-        # )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         config = TapasConfig.from_pretrained(model_name_or_path)
@@ -482,18 +471,6 @@ class RCIReader(BaseReader):
                             input size fits the model.
         """
         super().__init__()
-        # Save init parameters to enable export of component config as YAML
-        # self.set_config(
-        #     row_model_name_or_path=row_model_name_or_path,
-        #     column_model_name_or_path=column_model_name_or_path,
-        #     row_model_version=row_model_version,
-        #     column_model_version=column_model_version,
-        #     row_tokenizer=row_tokenizer,
-        #     column_tokenizer=column_tokenizer,
-        #     use_gpu=use_gpu,
-        #     top_k=top_k,
-        #     max_seq_len=max_seq_len,
-        # )
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.row_model = AutoModelForSequenceClassification.from_pretrained(

@@ -52,17 +52,6 @@ class QuestionGenerator(BaseComponent):
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         self.model.to(str(self.devices[0]))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        # self.set_config(
-        #     model_name_or_path=model_name_or_path,
-        #     model_version=model_version,
-        #     max_length=max_length,
-        #     num_beams=num_beams,
-        #     no_repeat_ngram_size=no_repeat_ngram_size,
-        #     length_penalty=length_penalty,
-        #     early_stopping=early_stopping,
-        #     split_length=split_length,
-        #     split_overlap=split_overlap,
-        # )
         self.num_beams = num_beams
         self.max_length = max_length
         self.no_repeat_ngram_size = no_repeat_ngram_size

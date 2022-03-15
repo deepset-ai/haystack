@@ -24,8 +24,6 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         :param top_k: How many SPARQL queries to generate per text query.
         """
         super().__init__()
-        # save init parameters to enable export of component config as YAML
-        # self.set_config(knowledge_graph=knowledge_graph, model_name_or_path=model_name_or_path, top_k=top_k)
 
         self.knowledge_graph = knowledge_graph
         # TODO We should extend this to any seq2seq models and use the AutoModel class
