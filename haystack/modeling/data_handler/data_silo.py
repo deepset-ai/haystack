@@ -884,7 +884,7 @@ class DistillationDataSilo(DataSilo):
             "max_seq_len": self.processor.max_seq_len,
             "dev_split": self.processor.dev_split,
             "tasks": self.processor.tasks,
-            "teacher_name_or_path": self.teacher.name,
+            "teacher_name_or_path": self.teacher.model_name_or_path,
             "data_silo_type": self.__class__.__name__,
         }
         checksum = get_dict_checksum(payload_dict)

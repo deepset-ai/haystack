@@ -153,6 +153,7 @@ class FARMReader(BaseReader):
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
+        self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
 
     def _training_procedure(
         self,
