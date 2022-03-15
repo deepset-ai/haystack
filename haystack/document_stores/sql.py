@@ -134,15 +134,8 @@ class SQLDocumentStore(BaseDocumentStore):
         :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
+        super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            url=url,
-            index=index,
-            label_index=label_index,
-            duplicate_documents=duplicate_documents,
-            check_same_thread=check_same_thread,
-        )
         create_engine_params = {}
         if isolation_level:
             create_engine_params["isolation_level"] = isolation_level

@@ -2174,7 +2174,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: "Optional[faiss.swigfaiss.Index]" = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, **kwargs, ,)
+def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -3564,6 +3564,54 @@ operation.
 **Returns**:
 
 None
+
+<a id="weaviate.WeaviateDocumentStore.delete_labels"></a>
+
+#### delete\_labels
+
+```python
+def delete_labels()
+```
+
+Implemented to respect BaseDocumentStore's contract.
+
+Weaviate does not support labels (yet).
+
+<a id="weaviate.WeaviateDocumentStore.get_all_labels"></a>
+
+#### get\_all\_labels
+
+```python
+def get_all_labels()
+```
+
+Implemented to respect BaseDocumentStore's contract.
+
+Weaviate does not support labels (yet).
+
+<a id="weaviate.WeaviateDocumentStore.get_label_count"></a>
+
+#### get\_label\_count
+
+```python
+def get_label_count()
+```
+
+Implemented to respect BaseDocumentStore's contract.
+
+Weaviate does not support labels (yet).
+
+<a id="weaviate.WeaviateDocumentStore.write_labels"></a>
+
+#### write\_labels
+
+```python
+def write_labels()
+```
+
+Implemented to respect BaseDocumentStore's contract.
+
+Weaviate does not support labels (yet).
 
 <a id="graphdb"></a>
 

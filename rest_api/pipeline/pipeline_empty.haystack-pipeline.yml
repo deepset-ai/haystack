@@ -1,6 +1,5 @@
 # Dummy pipeline, used when the CI needs to load the REST API to extract the OpenAPI specs. DO NOT USE.
-
-version: '1.1.0'
+version: 'unstable'
 
 components:
   - name: FileTypeClassifier
@@ -8,8 +7,6 @@ components:
   
 pipelines:
   - name: query
-    type: Query
     nodes:
       - name: FileTypeClassifier
         inputs: [File]
-
