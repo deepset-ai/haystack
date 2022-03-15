@@ -131,7 +131,7 @@ def build_component_dependency_graph(
                 # Special case for (actually permitted) cyclic dependencies between two components:
                 # e.g. DensePassageRetriever depends on ElasticsearchDocumentStore.
                 # In indexing pipelines ElasticsearchDocumentStore depends on DensePassageRetriever's output.
-                # But this second dependency is looser, so we neglect it. 
+                # But this second dependency is looser, so we neglect it.
                 if not graph.has_edge(node_name, input):
                     graph.add_edge(input, node_name)
     return graph
