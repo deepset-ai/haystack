@@ -273,6 +273,41 @@ def test_load_yaml_custom_component(tmp_path):
     Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
+def test_load_yaml_custom_component_referencing_other_node_in_init(tmp_path):
+
+    class OtherNode(MockNode):
+        def __init__(self, another_param: str):
+            self.param = another_param
+
+    class CustomNode(MockNode):
+        def __init__(self, other_node: OtherNode):
+            self.other_node = other_node
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: other_node
+              type: OtherNode
+              params:
+                another_param: value
+            - name: custom_node
+              type: CustomNode
+              params:
+                other_node: other_node
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert isinstance(pipeline.get_node("custom_node"), CustomNode)
+
+
 def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
     """
     This test can work from the perspective of YAML schema validation:
@@ -307,7 +342,7 @@ def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
         """
         )
     with pytest.raises(PipelineSchemaError, match="takes object instances as parameters in its __init__ function"):
-        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")\
 
 
 def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
