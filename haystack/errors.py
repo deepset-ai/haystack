@@ -47,8 +47,8 @@ class PipelineError(HaystackError):
 class PipelineSchemaError(PipelineError):
     """Exception for issues arising when reading/building the JSON schema of pipelines"""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
 
 
 class PipelineConfigError(PipelineError):
@@ -65,12 +65,12 @@ class PipelineConfigError(PipelineError):
 class DocumentStoreError(HaystackError):
     """Exception for issues that occur in a document store"""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
 
 
 class DuplicateDocumentError(DocumentStoreError, ValueError):
     """Exception for Duplicate document"""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
