@@ -1098,7 +1098,7 @@ class TextSimilarityProcessor(Processor):
             basket.samples = [sample]
         return baskets
 
-    def _convert_contexts(self, baskets: List[SampleBasket]):
+    def _convert_contexts(self, baskets: List[SampleBasket]): #TODO - Check if use CE here
         for basket in baskets:
             if "passages" in basket.raw:
                 try:

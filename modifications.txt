@@ -8,6 +8,8 @@ GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true python -m pip install -e ".[all]"
 
 test_modelling_dpr -> good to test retriever models
 
+Maybe needed for CE - haystack/modeling/data_handler/processor.py func _convert_contexts
+
 for distilled:
 - remove token input ids in
     - language_model.py
