@@ -467,7 +467,7 @@ class Pipeline(BasePipeline):
         self.root_node = None
 
     @property
-    def components(self):
+    def components(self) -> Dict[str, BaseComponent]:
         return {
             name: attributes["component"]
             for name, attributes in self.graph.nodes.items()
@@ -1159,22 +1159,17 @@ class Pipeline(BasePipeline):
         :param return_defaults: whether to output parameters that have the default values.
         """
         pipeline_name = ROOT_NODE_TO_PIPELINE_NAME[self.root_node.lower()]
-        pipelines: dict = {pipeline_name: {"name": pipeline_name, "nodes": []}}
+        pipeline_definitions: Dict[str, Dict] = {pipeline_name: {"name": pipeline_name, "nodes": []}}
 
-        components = {}
-        for node in self.graph.nodes:
-            if node == self.root_node:
+        component_definitions: Dict[str, Dict] = {}
+        for node_name, node_attributes in self.graph.nodes.items():
+            if node_name == self.root_node:
                 continue
-            component_instance = self.graph.nodes.get(node)["component"]
-
-            component_type = component_instance._component_config["type"]
-            component_params = component_instance._component_config["params"]
-            components[node] = {"name": node, "type": component_type, "params": {}}
-
-            component_parent_classes = inspect.getmro(type(component_instance))
-            component_signature: dict = {}
-            for component_parent in component_parent_classes:
-                component_signature = {**component_signature, **inspect.signature(component_parent).parameters}
+            component: BaseComponent = node_attributes["component"]
+            component_type: str = component._component_config["type"]
+            component_params: Dict[str, Any] = component._component_config["params"]
+            component_definitions[node_name] = {"name": node_name, "type": component_type, "params": {}}
+            component_signature = self._get_component_signature(component_type)
 
             for param_key, param_value in component_params.items():
                 # A parameter for a Component could be another Component. For instance, a Retriever has
@@ -1183,58 +1178,71 @@ class Pipeline(BasePipeline):
                 # other parameters like "custom_mapping" that are dicts.
                 # This currently only checks for the case single-level nesting case, wherein, "a Component has another
                 # Component as a parameter". For deeper nesting cases, this function should be made recursive.
-                if isinstance(param_value, dict) and "type" in param_value.keys():  # the parameter is a Component
+                if isinstance(param_value, dict) and "type" in param_value.keys():  
+                    # the parameter is a Component
                     sub_component = param_value
                     sub_component_type_name = sub_component["type"]
-                    sub_component_signature = inspect.signature(
-                        BaseComponent._subclasses[sub_component_type_name]
-                    ).parameters
+                    sub_component_signature = self._get_component_signature(sub_component_type_name)
                     sub_component_params = {
                         k: v
                         for k, v in sub_component["params"].items()
                         if sub_component_signature[k].default != v or return_defaults is True
                     }
 
-                    # search for existing components that match the subcomponent
-                    sub_component_name: Optional[str] = None
-                    for existing_node in self.graph.nodes:
-                        node_component = self.graph.nodes.get(existing_node)["component"]._component_config
-                        if (
-                            node_component["type"] == sub_component_type_name
-                            and node_component["params"] == sub_component_params
-                        ):
-                            sub_component_name = existing_node
-                            break
-
-                    # if there is no matching existing component we create one
+                    sub_component_name = self._find_node_name(
+                        type_name=sub_component_type_name, params=sub_component_params
+                    )
                     if sub_component_name is None:
+                        # if there is no matching existing component we create one
                         sub_component_name = self._generate_component_name(
                             type_name=sub_component_type_name,
                             params=sub_component_params,
-                            existing_components=components,
+                            existing_components=component_definitions,
                         )
-                        components[sub_component_name] = {
+                        component_definitions[sub_component_name] = {
                             "name": sub_component_name,
                             "type": sub_component_type_name,
                             "params": sub_component_params,
                         }
 
-                    components[node]["params"][param_key] = sub_component_name
-                else:
+                    component_definitions[node_name]["params"][param_key] = sub_component_name
+                else:  
+                    # normal parameter (not a Component)
                     if component_signature[param_key].default != param_value or return_defaults is True:
-                        components[node]["params"][param_key] = param_value
+                        component_definitions[node_name]["params"][param_key] = param_value
 
             # create the Pipeline definition with how the Component are connected
-            pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
+            pipeline_definitions[pipeline_name]["nodes"].append(
+                {"name": node_name, "inputs": list(self.graph.predecessors(node_name))}
+            )
 
         config = {
-            "components": list(components.values()),
-            "pipelines": list(pipelines.values()),
+            "components": list(component_definitions.values()),
+            "pipelines": list(pipeline_definitions.values()),
             "version": __version__,
         }
         return config
 
-    def _generate_component_name(self, type_name: str, params: Dict[str, Any], existing_components: Dict[str, Any]):
+    def _find_node_name(self, type_name: str, params: Dict[str, Any]) -> Optional[str]:
+        for node_name, attributes in self.graph.nodes.items():
+            component_config = attributes["component"]._component_config
+            if component_config["type"] == type_name and component_config["params"] == params:
+                return node_name
+
+        return None
+
+    def _get_component_signature(self, component_type_name: str) -> Dict[str, inspect.Parameter]:
+        component_type = BaseComponent._subclasses[component_type_name]
+        component_classes = inspect.getmro(component_type)
+        component_signature: Dict[str, inspect.Parameter] = {
+            param_key: parameter
+            for class_ in component_classes
+            for param_key, parameter in inspect.signature(class_).parameters.items()
+        }
+
+        return component_signature
+
+    def _generate_component_name(self, type_name: str, params: Dict[str, Any], existing_components: Dict[str, Any]) -> str:
         component_name: str = type_name
         # add number if there are multiple distinct ones of the same type
         while component_name in existing_components and params != existing_components[component_name]["params"]:
