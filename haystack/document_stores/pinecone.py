@@ -6,8 +6,6 @@ if TYPE_CHECKING:
 import logging
 from typing import Union, List, Optional, Dict, Generator
 from tqdm.auto import tqdm
-import requests
-import json
 
 import pinecone
 import numpy as np
