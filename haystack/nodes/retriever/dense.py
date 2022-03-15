@@ -108,25 +108,7 @@ class DensePassageRetriever(BaseRetriever):
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            query_embedding_model=query_embedding_model,
-            passage_embedding_model=passage_embedding_model,
-            model_version=model_version,
-            max_seq_len_query=max_seq_len_query,
-            max_seq_len_passage=max_seq_len_passage,
-            top_k=top_k,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            embed_title=embed_title,
-            use_fast_tokenizers=use_fast_tokenizers,
-            infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function,
-            progress_bar=progress_bar,
-            devices=devices,
-            use_auth_token=use_auth_token,
-        )
+        super().__init__()
 
         if devices is not None:
             self.devices = devices
@@ -606,27 +588,7 @@ class TableTextRetriever(BaseRetriever):
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            query_embedding_model=query_embedding_model,
-            passage_embedding_model=passage_embedding_model,
-            table_embedding_model=table_embedding_model,
-            model_version=model_version,
-            max_seq_len_query=max_seq_len_query,
-            max_seq_len_passage=max_seq_len_passage,
-            max_seq_len_table=max_seq_len_table,
-            top_k=top_k,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            embed_meta_fields=embed_meta_fields,
-            use_fast_tokenizers=use_fast_tokenizers,
-            infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function,
-            progress_bar=progress_bar,
-            devices=devices,
-            use_auth_token=use_auth_token,
-        )
+        super().__init__()
 
         if devices is not None:
             self.devices = devices
@@ -1145,19 +1107,7 @@ class EmbeddingRetriever(BaseRetriever):
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            embedding_model=embedding_model,
-            model_version=model_version,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            max_seq_len=max_seq_len,
-            model_format=model_format,
-            pooling_strategy=pooling_strategy,
-            emb_extraction_layer=emb_extraction_layer,
-            top_k=top_k,
-        )
+        super().__init__()
 
         if devices is not None:
             self.devices = devices

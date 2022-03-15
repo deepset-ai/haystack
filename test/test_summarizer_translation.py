@@ -2,7 +2,7 @@ import pytest
 
 from haystack.pipelines import TranslationWrapperPipeline, SearchSummarizationPipeline
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
-from test_summarizer import SPLIT_DOCS
+from .test_summarizer import SPLIT_DOCS
 
 # Keeping few (retriever,document_store) combination to reduce test time
 @pytest.mark.slow

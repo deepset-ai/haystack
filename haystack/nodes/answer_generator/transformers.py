@@ -23,11 +23,6 @@ from haystack.nodes.retriever.dense import DensePassageRetriever
 logger = logging.getLogger(__name__)
 
 
-class RAGeneratorType(Enum):
-    TOKEN = (1,)
-    SEQUENCE = 2
-
-
 class RAGenerator(BaseGenerator):
     """
     Implementation of Facebook's Retrieval-Augmented Generator (https://arxiv.org/abs/2005.11401) based on
@@ -76,7 +71,7 @@ class RAGenerator(BaseGenerator):
         model_name_or_path: str = "facebook/rag-token-nq",
         model_version: Optional[str] = None,
         retriever: Optional[DensePassageRetriever] = None,
-        generator_type: RAGeneratorType = RAGeneratorType.TOKEN,
+        generator_type: str = "token",
         top_k: int = 2,
         max_length: int = 200,
         min_length: int = 2,
@@ -94,7 +89,7 @@ class RAGenerator(BaseGenerator):
                                    See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param retriever: `DensePassageRetriever` used to embedded passages for the docs passed to `predict()`. This is optional and is only needed if the docs you pass don't already contain embeddings in `Document.embedding`.
-        :param generator_type: Which RAG generator implementation to use? RAG-TOKEN or RAG-SEQUENCE
+        :param generator_type: Which RAG generator implementation to use ("token" or "sequence")
         :param top_k: Number of independently generated text to return
         :param max_length: Maximum length of generated text
         :param min_length: Minimum length of generated text
@@ -103,21 +98,7 @@ class RAGenerator(BaseGenerator):
         :param prefix: The prefix used by the generator's tokenizer.
         :param use_gpu: Whether to use GPU. Falls back on CPU if no GPU is available.
         """
-
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            retriever=retriever,
-            generator_type=generator_type,
-            top_k=top_k,
-            max_length=max_length,
-            min_length=min_length,
-            num_beams=num_beams,
-            embed_title=embed_title,
-            prefix=prefix,
-            use_gpu=use_gpu,
-        )
+        super().__init__()
 
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
@@ -138,7 +119,7 @@ class RAGenerator(BaseGenerator):
 
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
 
-        if self.generator_type == RAGeneratorType.SEQUENCE:
+        if self.generator_type == "sequence":
             raise NotImplementedError("RagSequenceForGeneration is not implemented yet")
             # TODO: Enable when transformers have it. Refer https://github.com/huggingface/transformers/issues/7905
             # Also refer refer https://github.com/huggingface/transformers/issues/7829
@@ -361,7 +342,7 @@ class Seq2SeqGenerator(BaseGenerator):
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
-
+        super().__init__()
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.min_length = min_length

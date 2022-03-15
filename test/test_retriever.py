@@ -15,7 +15,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetri
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 @pytest.fixture()
@@ -244,8 +244,8 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_dpr_saving_and_loading(retriever, document_store):
-    retriever.save("test_dpr_save")
+def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
+    retriever.save(f"{tmp_path}/test_dpr_save")
 
     def sum_params(model):
         s = []
@@ -258,7 +258,7 @@ def test_dpr_saving_and_loading(retriever, document_store):
     original_sum_passage = sum_params(retriever.passage_encoder)
     del retriever
 
-    loaded_retriever = DensePassageRetriever.load("test_dpr_save", document_store)
+    loaded_retriever = DensePassageRetriever.load(f"{tmp_path}/test_dpr_save", document_store)
 
     loaded_sum_query = sum_params(loaded_retriever.query_encoder)
     loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)
@@ -292,8 +292,8 @@ def test_dpr_saving_and_loading(retriever, document_store):
 
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.embedding_dim(512)
-def test_table_text_retriever_saving_and_loading(retriever, document_store):
-    retriever.save("test_table_text_retriever_save")
+def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_store):
+    retriever.save(f"{tmp_path}/test_table_text_retriever_save")
 
     def sum_params(model):
         s = []
@@ -307,7 +307,7 @@ def test_table_text_retriever_saving_and_loading(retriever, document_store):
     original_sum_table = sum_params(retriever.table_encoder)
     del retriever
 
-    loaded_retriever = TableTextRetriever.load("test_table_text_retriever_save", document_store)
+    loaded_retriever = TableTextRetriever.load(f"{tmp_path}/test_table_text_retriever_save", document_store)
 
     loaded_sum_query = sum_params(loaded_retriever.query_encoder)
     loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)

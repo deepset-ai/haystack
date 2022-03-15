@@ -47,21 +47,11 @@ class QuestionGenerator(BaseComponent):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
+        super().__init__()
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         self.model.to(str(self.devices[0]))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            max_length=max_length,
-            num_beams=num_beams,
-            no_repeat_ngram_size=no_repeat_ngram_size,
-            length_penalty=length_penalty,
-            early_stopping=early_stopping,
-            split_length=split_length,
-            split_overlap=split_overlap,
-        )
         self.num_beams = num_beams
         self.max_length = max_length
         self.no_repeat_ngram_size = no_repeat_ngram_size

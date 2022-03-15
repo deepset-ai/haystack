@@ -17,7 +17,7 @@ RootNode feeds inputs together with corresponding params to a Pipeline.
 ## BasePipeline
 
 ```python
-class BasePipeline()
+class BasePipeline(ABC)
 ```
 
 Base class for pipelines, providing the most basic methods to load and save them in different ways.
@@ -28,10 +28,11 @@ See also the `Pipeline` class for the actual pipeline logic.
 #### get\_config
 
 ```python
+@abstractmethod
 def get_config(return_defaults: bool = False) -> dict
 ```
 
-Returns a configuration for the Pipeline that can be used with `BasePipeline.load_from_config()`.
+Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
 
 **Arguments**:
 
@@ -81,6 +82,7 @@ Default value is True.
 
 ```python
 @classmethod
+@abstractmethod
 def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
 ```
 
@@ -137,6 +139,7 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 
 ```python
 @classmethod
+@abstractmethod
 def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
 ```
 
@@ -518,6 +521,62 @@ Create a Graphviz visualization of the pipeline.
 **Arguments**:
 
 - `path`: the path to save the image.
+
+<a id="base.Pipeline.load_from_yaml"></a>
+
+#### load\_from\_yaml
+
+```python
+@classmethod
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+```
+
+Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+
+a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+    ```yaml
+    |   version: '1.0'
+    |
+    |    components:    # define all the building-blocks for Pipeline
+    |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+    |      type: FARMReader    # Haystack Class name for the component
+    |      params:
+    |        no_ans_boost: -10
+    |        model_name_or_path: deepset/roberta-base-squad2
+    |    - name: MyESRetriever
+    |      type: ElasticsearchRetriever
+    |      params:
+    |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+    |        custom_query: null
+    |    - name: MyDocumentStore
+    |      type: ElasticsearchDocumentStore
+    |      params:
+    |        index: haystack_test
+    |
+    |    pipelines:    # multiple Pipelines can be defined using the components from above
+    |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+    |      nodes:
+    |      - name: MyESRetriever
+    |        inputs: [Query]
+    |      - name: MyReader
+    |        inputs: [MyESRetriever]
+    ```
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
+
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
 
 <a id="base.Pipeline.load_from_config"></a>
 

@@ -113,30 +113,8 @@ class FARMReader(BaseReader):
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            context_window_size=context_window_size,
-            batch_size=batch_size,
-            use_gpu=use_gpu,
-            no_ans_boost=no_ans_boost,
-            return_no_answer=return_no_answer,
-            top_k=top_k,
-            top_k_per_candidate=top_k_per_candidate,
-            top_k_per_sample=top_k_per_sample,
-            num_processes=num_processes,
-            max_seq_len=max_seq_len,
-            doc_stride=doc_stride,
-            progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering,
-            proxies=proxies,
-            local_files_only=local_files_only,
-            force_download=force_download,
-            use_confidence_scores=use_confidence_scores,
-            **kwargs,
-        )
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         self.return_no_answers = return_no_answer
@@ -175,6 +153,7 @@ class FARMReader(BaseReader):
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
+        self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
 
     def _training_procedure(
         self,
