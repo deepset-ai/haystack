@@ -274,7 +274,6 @@ def test_load_yaml_custom_component(tmp_path):
 
 
 def test_load_yaml_custom_component_referencing_other_node_in_init(tmp_path):
-
     class OtherNode(MockNode):
         def __init__(self, another_param: str):
             self.param = another_param
@@ -342,7 +341,7 @@ def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
         """
         )
     with pytest.raises(PipelineSchemaError, match="takes object instances as parameters in its __init__ function"):
-        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")\
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
 def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
