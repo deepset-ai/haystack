@@ -1195,14 +1195,25 @@ class Pipeline(BasePipeline):
                         if sub_component_signature[k].default != v or return_defaults is True
                     }
 
-                    sub_component_name = self._generate_component_name(
-                        type_name=sub_component_type_name, params=sub_component_params, existing_components=components
-                    )
-                    components[sub_component_name] = {
-                        "name": sub_component_name,
-                        "type": sub_component_type_name,
-                        "params": sub_component_params,
-                    }
+                    # search for existing components that match the subcomponent
+                    sub_component_name: str = None
+                    for existing_node in self.graph.nodes:
+                        node_component = self.graph.nodes.get(existing_node)["component"]._component_config
+                        if node_component["type"] == sub_component_type_name and node_component["params"] == sub_component_params:
+                            sub_component_name = existing_node
+                            break
+                    
+                    # if there is no matching existing component we create one
+                    if sub_component_name is None:
+                        sub_component_name = self._generate_component_name(
+                            type_name=sub_component_type_name, params=sub_component_params, existing_components=components
+                        )
+                        components[sub_component_name] = {
+                            "name": sub_component_name,
+                            "type": sub_component_type_name,
+                            "params": sub_component_params,
+                        }
+                
                     components[node]["params"][param_key] = sub_component_name
                 else:
                     if component_signature[param_key].default != param_value or return_defaults is True:
@@ -1210,6 +1221,7 @@ class Pipeline(BasePipeline):
 
             # create the Pipeline definition with how the Component are connected
             pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
+
 
         config = {
             "components": list(components.values()),
