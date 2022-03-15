@@ -13,7 +13,7 @@ from haystack.nodes import (
     ParsrConverter,
 )
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 @pytest.mark.tika

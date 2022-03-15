@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 from requests import PreparedRequest
 import responses
+import logging
 import yaml
 
 from haystack import __version__, Document, Answer, JoinAnswers
@@ -19,13 +20,23 @@ from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
-from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode, ExtractiveQAPipeline
-from haystack.pipelines.config import _validate_user_input, validate_config
+from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode
+from haystack.pipelines.config import validate_config_strings
 from haystack.pipelines.utils import generate_code
+from haystack.errors import PipelineConfigError
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments, PreProcessor, TextConverter
-
-from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
 from haystack.utils.deepsetcloud import DeepsetCloudError
+
+from .conftest import (
+    MOCK_DC,
+    DC_API_ENDPOINT,
+    DC_API_KEY,
+    DC_TEST_INDEX,
+    SAMPLES_PATH,
+    MockDocumentStore,
+    MockRetriever,
+    deepset_cloud_fixture,
+)
 
 
 class ParentComponent(BaseComponent):
@@ -33,7 +44,9 @@ class ParentComponent(BaseComponent):
 
     def __init__(self, dependent: BaseComponent) -> None:
         super().__init__()
-        self.set_config(dependent=dependent)
+
+    def run(*args, **kwargs):
+        logging.info("ParentComponent run() was called")
 
 
 class ParentComponent2(BaseComponent):
@@ -41,157 +54,38 @@ class ParentComponent2(BaseComponent):
 
     def __init__(self, dependent: BaseComponent) -> None:
         super().__init__()
-        self.set_config(dependent=dependent)
+
+    def run(*args, **kwargs):
+        logging.info("ParentComponent2 run() was called")
 
 
 class ChildComponent(BaseComponent):
     def __init__(self, some_key: str = None) -> None:
         super().__init__()
-        self.set_config(some_key=some_key)
+
+    def run(*args, **kwargs):
+        logging.info("ChildComponent run() was called")
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_load_and_save_yaml(document_store, tmp_path):
-    # test correct load of indexing pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline")
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
-    )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0].answer == "Adobe Systems"
-    assert "_debug" not in prediction.keys()
+class DummyRetriever(MockRetriever):
+    def __init__(self, document_store):
+        self.document_store = document_store
 
-    # test invalid pipeline name
-    with pytest.raises(Exception):
-        Pipeline.load_from_yaml(path=SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="invalid")
-    # test config export
-    pipeline.save_to_yaml(tmp_path / "test.yaml")
-    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
-        saved_yaml = stream.read()
-    expected_yaml = f"""
-        components:
-        - name: ESRetriever
-          params:
-            document_store: ElasticsearchDocumentStore
-          type: ElasticsearchRetriever
-        - name: ElasticsearchDocumentStore
-          params:
-            index: haystack_test
-            label_index: haystack_test_label
-          type: ElasticsearchDocumentStore
-        - name: Reader
-          params:
-            model_name_or_path: deepset/roberta-base-squad2
-            no_ans_boost: -10
-            num_processes: 0
-          type: FARMReader
-        pipelines:
-        - name: query
-          nodes:
-          - inputs:
-            - Query
-            name: ESRetriever
-          - inputs:
-            - ESRetriever
-            name: Reader
-          type: Pipeline
-        version: {__version__}
-    """
-    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
+    def run(self):
+        test = "test"
+        return {"test": test}, "output_1"
 
 
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
-    # populating index
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    # test correct load of query pipeline from yaml
-    pipeline = ExtractiveQAPipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline"
-    )
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
-    )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0].answer == "Adobe Systems"
-    assert "_debug" not in prediction.keys()
-
-    # test invalid pipeline name
-    with pytest.raises(Exception):
-        ExtractiveQAPipeline.load_from_yaml(
-            path=SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="invalid"
-        )
-    # test config export
-    pipeline.save_to_yaml(tmp_path / "test.yaml")
-    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
-        saved_yaml = stream.read()
-    expected_yaml = f"""
-        components:
-        - name: ESRetriever
-          params:
-            document_store: ElasticsearchDocumentStore
-          type: ElasticsearchRetriever
-        - name: ElasticsearchDocumentStore
-          params:
-            index: haystack_test
-            label_index: haystack_test_label
-          type: ElasticsearchDocumentStore
-        - name: Reader
-          params:
-            model_name_or_path: deepset/roberta-base-squad2
-            no_ans_boost: -10
-            num_processes: 0
-          type: FARMReader
-        pipelines:
-        - name: query
-          nodes:
-          - inputs:
-            - Query
-            name: ESRetriever
-          - inputs:
-            - ESRetriever
-            name: Reader
-          type: Pipeline
-        version: {__version__}
-    """
-    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
+class JoinNode(RootNode):
+    def run(self, output=None, inputs=None):
+        if inputs:
+            output = ""
+            for input_dict in inputs:
+                output += input_dict["output"]
+        return {"output": output}, "output_1"
 
 
-def test_load_tfidfretriever_yaml(tmp_path):
-    documents = [
-        {
-            "content": "A Doc specifically talking about haystack. Haystack can be used to scale QA models to large document collections."
-        }
-    ]
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
-    )
-    with pytest.raises(Exception) as exc_info:
-        pipeline.run(
-            query="What can be used to scale QA models to large document collections?",
-            params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-        )
-    exception_raised = str(exc_info.value)
-    assert "Retrieval requires dataframe df and tf-idf matrix" in exception_raised
-
-    pipeline.get_node(name="Retriever").document_store.write_documents(documents=documents)
-    prediction = pipeline.run(
-        query="What can be used to scale QA models to large document collections?",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-    )
-    assert prediction["query"] == "What can be used to scale QA models to large document collections?"
-    assert prediction["answers"][0].answer == "haystack"
-
-
+@pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_to_code_creates_same_pipelines():
     index_pipeline = Pipeline.load_from_yaml(
@@ -202,6 +96,7 @@ def test_to_code_creates_same_pipelines():
     )
     query_pipeline_code = query_pipeline.to_code(pipeline_variable_name="query_pipeline_from_code")
     index_pipeline_code = index_pipeline.to_code(pipeline_variable_name="index_pipeline_from_code")
+
     exec(query_pipeline_code)
     exec(index_pipeline_code)
     assert locals()["query_pipeline_from_code"] is not None
@@ -216,8 +111,7 @@ def test_get_config_creates_dependent_component():
     pipeline = Pipeline()
     pipeline.add_node(component=parent, name="parent", inputs=["Query"])
 
-    expected_pipelines = [{"name": "query", "type": "Pipeline", "nodes": [{"name": "parent", "inputs": ["Query"]}]}]
-
+    expected_pipelines = [{"name": "query", "nodes": [{"name": "parent", "inputs": ["Query"]}]}]
     expected_components = [
         {"name": "parent", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
         {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
@@ -249,7 +143,6 @@ def test_get_config_creates_only_one_dependent_component_referenced_by_multiple_
     expected_pipelines = [
         {
             "name": "query",
-            "type": "Pipeline",
             "nodes": [
                 {"name": "Parent1", "inputs": ["Query"]},
                 {"name": "Parent2", "inputs": ["Query"]},
@@ -286,7 +179,6 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
     expected_pipelines = [
         {
             "name": "query",
-            "type": "Pipeline",
             "nodes": [
                 {"name": "ParentA", "inputs": ["Query"]},
                 {"name": "ParentB", "inputs": ["Query"]},
@@ -302,8 +194,34 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
         assert expected_component in config["components"]
 
 
+def test_get_config_component_with_superclass_arguments():
+    class CustomBaseDocumentStore(MockDocumentStore):
+        def __init__(self, base_parameter: str):
+            self.base_parameter = base_parameter
+
+    class CustomDocumentStore(CustomBaseDocumentStore):
+        def __init__(self, sub_parameter: int):
+            super().__init__(base_parameter="something")
+            self.sub_parameter = sub_parameter
+
+    class CustomRetriever(MockRetriever):
+        def __init__(self, document_store):
+            super().__init__()
+            self.document_store = document_store
+
+    document_store = CustomDocumentStore(sub_parameter=10)
+    retriever = CustomRetriever(document_store=document_store)
+    pipeline = Pipeline()
+    pipeline.add_node(retriever, name="Retriever", inputs=["Query"])
+
+    pipeline.get_config()
+    assert pipeline.get_document_store().sub_parameter == 10
+    assert pipeline.get_document_store().base_parameter == "something"
+
+
 def test_generate_code_simple_pipeline():
     config = {
+        "version": "unstable",
         "components": [
             {
                 "name": "retri",
@@ -316,7 +234,7 @@ def test_generate_code_simple_pipeline():
                 "params": {"index": "my-index"},
             },
         ],
-        "pipelines": [{"name": "query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+        "pipelines": [{"name": "query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
 
     code = generate_code(pipeline_config=config, pipeline_variable_name="p", generate_imports=False)
@@ -331,15 +249,15 @@ def test_generate_code_simple_pipeline():
 
 def test_generate_code_imports():
     pipeline_config = {
+        "version": "unstable",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
-            {"name": "retri2", "type": "EmbeddingRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri2", "type": "TfidfRetriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [
             {
                 "name": "Query",
-                "type": "Pipeline",
                 "nodes": [{"name": "retri", "inputs": ["Query"]}, {"name": "retri2", "inputs": ["Query"]}],
             }
         ],
@@ -348,12 +266,12 @@ def test_generate_code_imports():
     code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=True)
     assert code == (
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
-        "from haystack.nodes import ElasticsearchRetriever, EmbeddingRetriever\n"
+        "from haystack.nodes import ElasticsearchRetriever, TfidfRetriever\n"
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
         "retri = ElasticsearchRetriever(document_store=document_store)\n"
-        "retri_2 = EmbeddingRetriever(document_store=document_store)\n"
+        "retri_2 = TfidfRetriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])\n'
@@ -363,11 +281,12 @@ def test_generate_code_imports():
 
 def test_generate_code_imports_no_pipeline_cls():
     pipeline_config = {
+        "version": "unstable",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
         ],
-        "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+        "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
 
     code = generate_code(
@@ -390,11 +309,12 @@ def test_generate_code_imports_no_pipeline_cls():
 
 def test_generate_code_comment():
     pipeline_config = {
+        "version": "unstable",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
         ],
-        "pipelines": [{"name": "Query", "type": "Pipeline", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+        "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
 
     comment = "This is my comment\n...and here is a new line"
@@ -416,17 +336,17 @@ def test_generate_code_comment():
 
 def test_generate_code_is_component_order_invariant():
     pipeline_config = {
+        "version": "unstable",
         "pipelines": [
             {
                 "name": "Query",
-                "type": "Pipeline",
                 "nodes": [
                     {"name": "EsRetriever", "inputs": ["Query"]},
                     {"name": "EmbeddingRetriever", "inputs": ["Query"]},
                     {"name": "JoinResults", "inputs": ["EsRetriever", "EmbeddingRetriever"]},
                 ],
             }
-        ]
+        ],
     }
 
     doc_store = {"name": "ElasticsearchDocumentStore", "type": "ElasticsearchDocumentStore"}
@@ -471,52 +391,45 @@ def test_generate_code_is_component_order_invariant():
 
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
 def test_validate_user_input_invalid(input):
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        _validate_user_input(input)
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings(input)
 
 
 @pytest.mark.parametrize(
     "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path"]
 )
 def test_validate_user_input_valid(input):
-    _validate_user_input(input)
+    validate_config_strings(input)
 
 
 def test_validate_pipeline_config_invalid_component_name():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "\btest"}]})
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_component_type():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "test", "type": "\btest"}]})
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_component_param():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
 
 
 def test_validate_pipeline_config_invalid_component_param_key():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_name():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config({"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "\btest"}]})
-
-
-def test_validate_pipeline_config_invalid_pipeline_type():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config(
-            {"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "test", "type": "\btest"}]}
-        )
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_node_name():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config(
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings(
             {
                 "components": [{"name": "test", "type": "test"}],
                 "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "\btest"}]}],
@@ -525,13 +438,22 @@ def test_validate_pipeline_config_invalid_pipeline_node_name():
 
 
 def test_validate_pipeline_config_invalid_pipeline_node_inputs():
-    with pytest.raises(ValueError, match="is not a valid config variable name"):
-        validate_config(
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings(
             {
                 "components": [{"name": "test", "type": "test"}],
                 "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "test", "inputs": ["\btest"]}]}],
             }
         )
+
+
+def test_validate_pipeline_config_recursive_config():
+    pipeline_config = {}
+    node = {"config": pipeline_config}
+    pipeline_config["node"] = node
+
+    with pytest.raises(PipelineConfigError, match="recursive"):
+        validate_config_strings(pipeline_config)
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -1212,46 +1134,42 @@ def test_undeploy_on_deepset_cloud_timeout():
         )
 
 
-# @pytest.mark.slow
-# @pytest.mark.elasticsearch
-# @pytest.mark.parametrize(
-#     "retriever_with_docs, document_store_with_docs",
-#     [("elasticsearch", "elasticsearch")],
-#     indirect=True,
-# )
-@pytest.mark.parametrize(
-    "retriever_with_docs,document_store_with_docs",
-    [
-        ("dpr", "elasticsearch"),
-        ("dpr", "faiss"),
-        ("dpr", "memory"),
-        ("dpr", "milvus1"),
-        ("embedding", "elasticsearch"),
-        ("embedding", "faiss"),
-        ("embedding", "memory"),
-        ("embedding", "milvus1"),
-        ("elasticsearch", "elasticsearch"),
-        ("es_filter_only", "elasticsearch"),
-        ("tfidf", "memory"),
-    ],
-    indirect=True,
-)
-def test_graph_creation(retriever_with_docs, document_store_with_docs):
+def test_graph_creation_invalid_edge():
+    docstore = MockDocumentStore()
+    retriever = DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
-    pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["Query"])
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
-    with pytest.raises(AssertionError):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["ES.output_2"])
+    with pytest.raises(PipelineConfigError, match="'output_2' from 'DocStore'"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.output_2"])
 
-    with pytest.raises(AssertionError):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["ES.wrong_edge_label"])
 
-    with pytest.raises(Exception):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["InvalidNode"])
+def test_graph_creation_non_existing_edge():
+    docstore = MockDocumentStore()
+    retriever = DummyRetriever(document_store=docstore)
+    pipeline = Pipeline()
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
-    with pytest.raises(Exception):
-        pipeline = Pipeline()
-        pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["InvalidNode"])
+    with pytest.raises(PipelineConfigError, match="'wrong_edge_label' is not a valid edge name"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.wrong_edge_label"])
+
+
+def test_graph_creation_invalid_node():
+    docstore = MockDocumentStore()
+    retriever = DummyRetriever(document_store=docstore)
+    pipeline = Pipeline()
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
+
+    with pytest.raises(PipelineConfigError, match="Cannot find node 'InvalidNode'"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["InvalidNode"])
+
+
+def test_graph_creation_invalid_root_node():
+    docstore = MockDocumentStore()
+    pipeline = Pipeline()
+
+    with pytest.raises(PipelineConfigError, match="Root node 'InvalidNode' is invalid"):
+        pipeline.add_node(name="DocStore", component=docstore, inputs=["InvalidNode"])
 
 
 def test_parallel_paths_in_pipeline_graph():
@@ -1414,10 +1332,7 @@ def test_pipeline_components():
 
 
 def test_pipeline_get_document_store_from_components():
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    doc_store = DummyDocumentStore()
+    doc_store = MockDocumentStore()
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=doc_store, inputs=["File"])
 
@@ -1425,11 +1340,8 @@ def test_pipeline_get_document_store_from_components():
 
 
 def test_pipeline_get_document_store_from_components_multiple_doc_stores():
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    doc_store_a = DummyDocumentStore()
-    doc_store_b = DummyDocumentStore()
+    doc_store_a = MockDocumentStore()
+    doc_store_b = MockDocumentStore()
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=doc_store_a, inputs=["File"])
     pipeline.add_node(name="B", component=doc_store_b, inputs=["File"])
@@ -1439,18 +1351,7 @@ def test_pipeline_get_document_store_from_components_multiple_doc_stores():
 
 
 def test_pipeline_get_document_store_from_retriever():
-    class DummyRetriever(BaseRetriever):
-        def __init__(self, document_store):
-            self.document_store = document_store
-
-        def run(self):
-            test = "test"
-            return {"test": test}, "output_1"
-
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    doc_store = DummyDocumentStore()
+    doc_store = MockDocumentStore()
     retriever = DummyRetriever(document_store=doc_store)
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=retriever, inputs=["Query"])
@@ -1459,26 +1360,7 @@ def test_pipeline_get_document_store_from_retriever():
 
 
 def test_pipeline_get_document_store_from_dual_retriever():
-    class DummyRetriever(BaseRetriever):
-        def __init__(self, document_store):
-            self.document_store = document_store
-
-        def run(self):
-            test = "test"
-            return {"test": test}, "output_1"
-
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    class JoinNode(RootNode):
-        def run(self, output=None, inputs=None):
-            if inputs:
-                output = ""
-                for input_dict in inputs:
-                    output += input_dict["output"]
-            return {"output": output}, "output_1"
-
-    doc_store = DummyDocumentStore()
+    doc_store = MockDocumentStore()
     retriever_a = DummyRetriever(document_store=doc_store)
     retriever_b = DummyRetriever(document_store=doc_store)
     pipeline = Pipeline()
@@ -1490,27 +1372,8 @@ def test_pipeline_get_document_store_from_dual_retriever():
 
 
 def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
-    class DummyRetriever(BaseRetriever):
-        def __init__(self, document_store):
-            self.document_store = document_store
-
-        def run(self):
-            test = "test"
-            return {"test": test}, "output_1"
-
-    class DummyDocumentStore(BaseDocumentStore):
-        pass
-
-    class JoinNode(RootNode):
-        def run(self, output=None, inputs=None):
-            if inputs:
-                output = ""
-                for input_dict in inputs:
-                    output += input_dict["output"]
-            return {"output": output}, "output_1"
-
-    doc_store_a = DummyDocumentStore()
-    doc_store_b = DummyDocumentStore()
+    doc_store_a = MockDocumentStore()
+    doc_store_b = MockDocumentStore()
     retriever_a = DummyRetriever(document_store=doc_store_a)
     retriever_b = DummyRetriever(document_store=doc_store_b)
     pipeline = Pipeline()

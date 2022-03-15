@@ -82,18 +82,7 @@ class TransformersSummarizer(BaseSummarizer):
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            tokenizer=tokenizer,
-            max_length=max_length,
-            min_length=min_length,
-            use_gpu=use_gpu,
-            clean_up_tokenization_spaces=clean_up_tokenization_spaces,
-            separator_for_single_summary=separator_for_single_summary,
-            generate_single_summary=generate_single_summary,
-        )
+        super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
         device = 0 if self.devices[0].type == "cuda" else -1

@@ -41,6 +41,7 @@ class EvalDocuments(BaseComponent):
             "EvalDocuments node is deprecated and will be removed in a future version. "
             "Please use pipeline.eval() instead."
         )
+        super().__init__()
         self.init_counts()
         self.no_answer_warning = False
         self.debug = debug
@@ -205,6 +206,7 @@ class EvalAnswers(BaseComponent):
             "EvalAnswers node is deprecated and will be removed in a future version. "
             "Please use pipeline.eval() instead."
         )
+        super().__init__()
         self.log: List = []
         self.debug = debug
         self.skip_incorrect_retrieval = skip_incorrect_retrieval

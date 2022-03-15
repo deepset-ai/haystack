@@ -192,7 +192,7 @@ def test_bert_tokenizer_all_meta(caplog):
     ]
 
 
-def test_save_load(caplog):
+def test_save_load(tmp_path, caplog):
     caplog.set_level(logging.CRITICAL)
 
     lang_names = ["bert-base-cased", "roberta-base", "xlnet-base-cased"]
@@ -209,7 +209,7 @@ def test_save_load(caplog):
 
     for tokenizer in tokenizers:
         tokenizer_type = tokenizer.__class__.__name__
-        save_dir = f"testsave/{tokenizer_type}"
+        save_dir = f"{tmp_path}/testsave/{tokenizer_type}"
         tokenizer.save_pretrained(save_dir)
         tokenizer_loaded = Tokenizer.load(save_dir, tokenizer_class=tokenizer_type)
         encoded_before = tokenizer.encode_plus(basic_text).encodings[0]
