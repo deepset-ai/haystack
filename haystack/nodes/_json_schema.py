@@ -33,8 +33,8 @@ from haystack.errors import HaystackError, PipelineSchemaError
 from haystack.nodes.base import BaseComponent
 
 
-JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "json-schemas"
-SCHEMA_URL = "https://haystack.deepset.ai/json-schemas/"
+JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
+SCHEMA_URL = "https://haystack.deepset.ai/haystack/json-schemas/"
 
 # Allows accessory classes (like enums and helpers) to be registered as valid input for
 # custom node's init parameters. For now we disable this feature, but flipping this variables
