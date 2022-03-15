@@ -55,18 +55,7 @@ class ParsrConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            parsr_url=parsr_url,
-            extractor=extractor,
-            table_detection_mode=table_detection_mode,
-            preceding_context_len=preceding_context_len,
-            following_context_len=following_context_len,
-            remove_page_headers=remove_page_headers,
-            remove_page_footers=remove_page_footers,
-            remove_table_of_contents=remove_table_of_contents,
-            valid_languages=valid_languages,
-        )
+        super().__init__(valid_languages=valid_languages)
 
         try:
             ping = requests.get(parsr_url)

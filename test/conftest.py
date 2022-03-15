@@ -1,8 +1,9 @@
+from typing import List, Optional, Tuple, Dict
+
 import subprocess
 import time
 from subprocess import run
 from sys import platform
-import os
 import gc
 import uuid
 import logging
@@ -14,6 +15,8 @@ import numpy as np
 import psutil
 import pytest
 import requests
+
+from haystack.nodes.base import BaseComponent, MultiLabel
 
 try:
     from milvus import Milvus
@@ -27,7 +30,6 @@ try:
     from elasticsearch import Elasticsearch
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
     import weaviate
-
     from haystack.document_stores.weaviate import WeaviateDocumentStore
     from haystack.document_stores import MilvusDocumentStore
     from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
@@ -39,25 +41,25 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed("test", "test", ie)
 
+from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
-from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
-
+from haystack.nodes import BaseReader, BaseRetriever
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-
-from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
-from haystack.modeling.infer import Inferencer, QAInferencer
+from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
 from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
-from haystack.schema import Document
-
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader, RCIReader
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
+
+from haystack.modeling.infer import Inferencer, QAInferencer
+
+from haystack.schema import Document
 
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
@@ -96,22 +98,28 @@ def pytest_collection_modifyitems(config, items):
 
         # add pytest markers for tests that are not explicitly marked but include some keywords
         # in the test name (e.g. test_elasticsearch_client would get the "elasticsearch" marker)
+        # TODO evaluate if we need all of there (the non document store ones seems to be unused)
         if "generator" in item.nodeid:
             item.add_marker(pytest.mark.generator)
         elif "summarizer" in item.nodeid:
             item.add_marker(pytest.mark.summarizer)
         elif "tika" in item.nodeid:
             item.add_marker(pytest.mark.tika)
-        elif "elasticsearch" in item.nodeid:
-            item.add_marker(pytest.mark.elasticsearch)
-        elif "graphdb" in item.nodeid:
-            item.add_marker(pytest.mark.graphdb)
         elif "pipeline" in item.nodeid:
             item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
             item.add_marker(pytest.mark.slow)
+        elif "elasticsearch" in item.nodeid:
+            item.add_marker(pytest.mark.elasticsearch)
+        elif "graphdb" in item.nodeid:
+            item.add_marker(pytest.mark.graphdb)
         elif "weaviate" in item.nodeid:
             item.add_marker(pytest.mark.weaviate)
+        elif "faiss" in item.nodeid:
+            item.add_marker(pytest.mark.faiss)
+        elif "milvus" in item.nodeid:
+            item.add_marker(pytest.mark.milvus)
+            item.add_marker(pytest.mark.milvus1)
 
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
@@ -137,6 +145,81 @@ def pytest_collection_modifyitems(config, items):
         elif "milvus" in keywords and milvus1:
             skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
             item.add_marker(skip_milvus)
+
+
+#
+# Empty mocks, as a base for unit tests.
+#
+# Monkeypatch the methods you need with either a mock implementation
+# or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
+#
+
+
+class MockNode(BaseComponent):
+    outgoing_edges = 1
+
+    def run(self, *a, **k):
+        pass
+
+
+class MockDocumentStore(BaseDocumentStore):
+    outgoing_edges = 1
+
+    def _create_document_field_map(self, *a, **k):
+        pass
+
+    def delete_documents(self, *a, **k):
+        pass
+
+    def delete_labels(self, *a, **k):
+        pass
+
+    def get_all_documents(self, *a, **k):
+        pass
+
+    def get_all_documents_generator(self, *a, **k):
+        pass
+
+    def get_all_labels(self, *a, **k):
+        pass
+
+    def get_document_by_id(self, *a, **k):
+        pass
+
+    def get_document_count(self, *a, **k):
+        pass
+
+    def get_documents_by_id(self, *a, **k):
+        pass
+
+    def get_label_count(self, *a, **k):
+        pass
+
+    def query_by_embedding(self, *a, **k):
+        pass
+
+    def write_documents(self, *a, **k):
+        pass
+
+    def write_labels(self, *a, **k):
+        pass
+
+
+class MockRetriever(BaseRetriever):
+    outgoing_edges = 1
+
+    def retrieve(self, query: str, top_k: int):
+        pass
+
+
+class MockReader(BaseReader):
+    outgoing_edges = 1
+
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+        pass
+
+    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
+        pass
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -295,7 +378,7 @@ def deepset_cloud_document_store(deepset_cloud_fixture):
 
 @pytest.fixture(scope="function")
 def rag_generator():
-    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type=RAGeneratorType.TOKEN, max_length=20)
+    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
 
 @pytest.fixture(scope="function")

@@ -93,14 +93,18 @@ min-similarity-lines=6
 minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "tika: marks tests which require tika container (deselect with '-m \"not tika\"')",
-    "elasticsearch: marks tests which require elasticsearch container (deselect with '-m \"not elasticsearch\"')",
-    "graphdb: marks tests which require graphdb container (deselect with '-m \"not graphdb\"')",
-    "generator: marks generator tests (deselect with '-m \"not generator\"')",
-    "pipeline: marks tests with pipeline",
-    "summarizer: marks summarizer tests",
-    "weaviate: marks tests that require weaviate container",
-    "embedding_dim: marks usage of document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
+    "integration: integration tests (deselect with '-m \"not integration\"')",
+    "slow: slow tests (deselect with '-m \"not slow\"')",
+    "tika: require tika container (deselect with '-m \"not tika\"')",
+    "elasticsearch: require elasticsearch container (deselect with '-m \"not elasticsearch\"')",
+    "graphdb: require graphdb container (deselect with '-m \"not graphdb\"')",
+    "generator: generator tests (deselect with '-m \"not generator\"')",
+    "pipeline: tests with pipelines",
+    "summarizer: summarizer tests",
+    "weaviate: require weaviate container",
+    "faiss: uses FAISS",
+    "milvus: requires a Milvus 2 setup",
+    "milvus1: requires a Milvus 1 container",
+    "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
 ]
 log_cli = true

@@ -8,6 +8,7 @@ from tqdm import tqdm
 from copy import deepcopy
 
 from haystack.schema import Document, MultiLabel
+from haystack.errors import HaystackError
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
 
@@ -240,6 +241,10 @@ class BaseRetriever(BaseComponent):
         headers: Optional[Dict[str, str]] = None,
     ):
         if root_node == "Query":
+            if not query:
+                raise HaystackError(
+                    "Must provide a 'query' parameter for retrievers in pipelines where Query is the root node."
+                )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
             output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
