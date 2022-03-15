@@ -1178,7 +1178,7 @@ class Pipeline(BasePipeline):
                 # other parameters like "custom_mapping" that are dicts.
                 # This currently only checks for the case single-level nesting case, wherein, "a Component has another
                 # Component as a parameter". For deeper nesting cases, this function should be made recursive.
-                if isinstance(param_value, dict) and "type" in param_value.keys():  
+                if isinstance(param_value, dict) and "type" in param_value.keys():
                     # the parameter is a Component
                     sub_component = param_value
                     sub_component_type_name = sub_component["type"]
@@ -1206,7 +1206,7 @@ class Pipeline(BasePipeline):
                         }
 
                     component_definitions[node_name]["params"][param_key] = sub_component_name
-                else:  
+                else:
                     # normal parameter (not a Component)
                     if component_signature[param_key].default != param_value or return_defaults is True:
                         component_definitions[node_name]["params"][param_key] = param_value
@@ -1242,7 +1242,9 @@ class Pipeline(BasePipeline):
 
         return component_signature
 
-    def _generate_component_name(self, type_name: str, params: Dict[str, Any], existing_components: Dict[str, Any]) -> str:
+    def _generate_component_name(
+        self, type_name: str, params: Dict[str, Any], existing_components: Dict[str, Any]
+    ) -> str:
         component_name: str = type_name
         # add number if there are multiple distinct ones of the same type
         while component_name in existing_components and params != existing_components[component_name]["params"]:
