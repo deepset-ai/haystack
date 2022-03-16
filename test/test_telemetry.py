@@ -13,7 +13,7 @@ from haystack.telemetry import (
     _delete_telemetry_file,
     disable_telemetry,
     enable_telemetry,
-    TelemetryFileType
+    TelemetryFileType,
 )
 
 

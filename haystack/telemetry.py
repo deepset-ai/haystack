@@ -314,7 +314,7 @@ def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
     Deletes the telemetry config file or log file if it exists.
     """
     if not isinstance(file_type_to_delete, TelemetryFileType):
-        logger.debug('File type to delete must be either TelemetryFileType.LOG_FILE or TelemetryFileType.CONFIG_FILE.')
+        logger.debug("File type to delete must be either TelemetryFileType.LOG_FILE or TelemetryFileType.CONFIG_FILE.")
     try:
         path = LOG_PATH if file_type_to_delete is TelemetryFileType.LOG_FILE else CONFIG_PATH
         path.unlink(missing_ok=True)
