@@ -292,9 +292,7 @@ def test_get_config_multi_level_dependencies():
         {"name": "ParentComponent", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
     ]
 
-    expected_pipelines = [
-        {"name": "query", "nodes": [{"name": "Parent", "inputs": ["Query"]}]}
-    ]
+    expected_pipelines = [{"name": "query", "nodes": [{"name": "Parent", "inputs": ["Query"]}]}]
 
     config = p_ensemble.get_config()
     for expected_pipeline in expected_pipelines:
