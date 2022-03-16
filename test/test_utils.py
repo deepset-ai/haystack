@@ -161,8 +161,8 @@ def test_calculate_context_similarity_on_parts_of_whole_document_with_noise():
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    for i in range(len(whole_document)-context_size):
-        partial_context = _insert_noise(whole_document[i:i+context_size], 0.1)
+    for i in range(len(whole_document) - context_size):
+        partial_context = _insert_noise(whole_document[i : i + context_size], 0.1)
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
         assert score >= 85.0
 
