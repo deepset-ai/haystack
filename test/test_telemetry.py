@@ -1,8 +1,11 @@
+from pathlib import Path
 from time import sleep
 
 from unittest.mock import patch, PropertyMock
 
-from haystack.telemetry import NonPrivateParameters, send_event
+import haystack
+from haystack.telemetry import NonPrivateParameters, send_event, enable_writing_events_to_file, \
+    disable_writing_events_to_file, send_custom_event, _delete_telemetry_log_file
 
 
 @patch.object(
@@ -50,3 +53,34 @@ def test_send_event_via_decorator(mock_nonprivateparameters, mock_posthog_captur
     # todo replace [1] with .kwargs when moving from python 3.7 to 3.8 in CI
     assert mock_posthog_capture.call_args[1]["event"] == "TestClass.run executed"
     assert mock_posthog_capture.call_args[1]["properties"]["add_isolated_node_eval"]
+
+
+def num_lines(path: Path):
+    if path.is_file():
+        with open(path, 'r') as f:
+            return len(f.readlines())
+    return 0
+
+
+@patch("haystack.telemetry.LOG_PATH", Path("~/.haystack/telemetry_test.log").expanduser())
+def test_write_to_file():
+    num_lines_before = num_lines(haystack.telemetry.LOG_PATH)
+    send_custom_event(event="test")
+    sleep(1)
+    num_lines_after = num_lines(haystack.telemetry.LOG_PATH)
+    assert num_lines_before == num_lines_after
+
+    enable_writing_events_to_file()
+    num_lines_before = num_lines(haystack.telemetry.LOG_PATH)
+    send_custom_event(event="test")
+    sleep(1)
+    num_lines_after = num_lines(haystack.telemetry.LOG_PATH)
+    assert num_lines_before+1 == num_lines_after
+
+    disable_writing_events_to_file()
+    num_lines_before = num_lines(haystack.telemetry.LOG_PATH)
+    send_custom_event(event="test")
+    sleep(1)
+    num_lines_after = num_lines(haystack.telemetry.LOG_PATH)
+    assert num_lines_before == num_lines_after
+    _delete_telemetry_log_file()
