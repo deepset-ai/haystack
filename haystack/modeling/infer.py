@@ -128,7 +128,7 @@ class Inferencer:
         use_fast: bool = True,
         tokenizer_args: Dict = None,
         multithreading_rust: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[torch.device]] = None,
         use_auth_token: Union[bool, str] = None,
         **kwargs,
     ):

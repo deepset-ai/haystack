@@ -18,7 +18,7 @@ Arguments:
     replace_probability: Probability of replacing a word with a different word.
     glove_path: Path to the GloVe vectors. If it does not exist, it will be downloaded.
     batch_size: Batch size for MLM model.
-    device: Device to use for MLM model. Usually either "cpu:0" or "cuda:0".
+    device: Device to use for MLM model. Usually either torch.device("cpu:0") or torch.device("cuda:0").
     tokenizer: Huggingface tokenizer identifier.
     model: Huggingface MLM model identifier.
 """
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_glove(
-    glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: str = "cpu:0"
+    glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: torch.device = torch.device("cpu:0")
 ) -> Tuple[dict, dict, torch.Tensor]:
     """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
 
@@ -112,7 +112,7 @@ def get_replacements(
     text: str,
     word_possibilities: int = 20,
     batch_size: int = 16,
-    device: str = "cpu:0",
+    device: torch.device = torch.device("cpu:0"),
 ) -> List[List[str]]:
     """Returns a list of possible replacements for each word in the text."""
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
@@ -179,7 +179,7 @@ def augment(
     word_possibilities: int = 20,
     replace_probability: float = 0.4,
     batch_size: int = 16,
-    device: str = "cpu:0",
+    device: torch.device = torch.device("cpu:0"),
 ) -> List[str]:
     # returns a list of different augmented versions of the text
     replacements = get_replacements(
@@ -217,7 +217,7 @@ def augment_squad(
     multiplication_factor: int = 20,
     word_possibilities: int = 20,
     replace_probability: float = 0.4,
-    device: str = "cpu:0",
+    device: torch.device = torch.device("cpu:0"),
     batch_size: int = 16,
 ):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""

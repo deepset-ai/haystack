@@ -785,7 +785,7 @@ class DistillationDataSilo(DataSilo):
         self,
         teacher_model: "FARMReader",
         teacher_batch_size: int,
-        device: str,
+        device: torch.device,
         processor: Processor,
         batch_size: int,
         eval_batch_size: Optional[int] = None,

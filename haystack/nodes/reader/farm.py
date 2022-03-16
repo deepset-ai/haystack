@@ -777,7 +777,7 @@ class FARMReader(BaseReader):
 
         return result
 
-    def eval_on_file(self, data_dir: str, test_filename: str, device: Optional[str] = None):
+    def eval_on_file(self, data_dir: Union[Path, str], test_filename: str, device: Optional[torch.device] = None):
         """
         Performs evaluation on a SQuAD-formatted file.
         Returns a dict containing the following metrics:
@@ -786,11 +786,9 @@ class FARMReader(BaseReader):
             - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
         :param data_dir: The directory in which the test set can be found
-        :type data_dir: Path or str
         :param test_filename: The name of the file containing the test data in SQuAD format.
-        :type test_filename: str
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
-        :type device: str
+        :param device: The device on which the tensors should be processed. 
+               Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
         """
         if device is None:
             device = self.devices[0]
@@ -822,7 +820,7 @@ class FARMReader(BaseReader):
     def eval(
         self,
         document_store: BaseDocumentStore,
-        device: Optional[str] = None,
+        device: Optional[torch.device] = None,
         label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold-label",
@@ -836,7 +834,8 @@ class FARMReader(BaseReader):
               - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
         :param document_store: DocumentStore containing the evaluation documents
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+        :param device: The device on which the tensors should be processed. 
+                       Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
@@ -1012,7 +1011,7 @@ class FARMReader(BaseReader):
     def calibrate_confidence_scores(
         self,
         document_store: BaseDocumentStore,
-        device: Optional[str] = None,
+        device: Optional[torch.device] = None,
         label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold_label",
@@ -1021,7 +1020,8 @@ class FARMReader(BaseReader):
         Calibrates confidence scores on evaluation documents in the DocumentStore.
 
         :param document_store: DocumentStore containing the evaluation documents
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+        :param device: The device on which the tensors should be processed. 
+                       Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
