@@ -8,6 +8,7 @@
 """
 import sys
 import uuid
+from enum import Enum
 from functools import wraps
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -36,6 +37,11 @@ telemetry_meta_data: Dict[str, Any] = {}
 user_id: Optional[str] = None
 
 logger = logging.getLogger(__name__)
+
+
+class TelemetryFileType(Enum):
+    LOG_FILE: str = "LOG_FILE"
+    CONFIG_FILE: str = "CONFIG_FILE"
 
 
 def print_telemetry_report():
@@ -159,8 +165,8 @@ def send_custom_event(event: str = "", payload: Dict = {}):
             # then send a final event instead of the triggered event and delete config file and log file afterward
             event = "telemetry disabled"
             fire_and_forget(data={})
-            _delete_telemetry_config()
-            _delete_telemetry_log_file()
+            _delete_telemetry_file(TelemetryFileType.CONFIG_FILE)
+            _delete_telemetry_file(TelemetryFileType.LOG_FILE)
         else:
             # return without sending any event, not even a final event
             return
@@ -202,7 +208,7 @@ def _get_or_create_user_id() -> str:
     """
     Randomly generates a user id or loads the id defined in the config file and returns it.
     """
-    global user_id
+    global user_id  # pylint: disable=global-statement
     if user_id is None:
         # if user_id is not set, read it from config file
         _read_telemetry_config()
@@ -217,7 +223,7 @@ def _get_or_create_telemetry_meta_data() -> Dict[str, Any]:
     """
     Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
     """
-    global telemetry_meta_data
+    global telemetry_meta_data  # pylint: disable=global-statement
     if not telemetry_meta_data:
         telemetry_meta_data = {
             "os_version": platform.release(),
@@ -261,7 +267,7 @@ def _read_telemetry_config():
     """
     Loads the config from the file specified in CONFIG_PATH
     """
-    global user_id
+    global user_id  # pylint: disable=global-statement
     try:
         if not CONFIG_PATH.is_file():
             return
@@ -278,7 +284,7 @@ def _write_telemetry_config():
     Writes a config file storing the randomly generated user id and whether to write events to a log file.
     This method logs an info to inform the user about telemetry when it is used for the first time.
     """
-    global user_id
+    global user_id  # pylint: disable=global-statement
     try:
         # show a log message if telemetry config is written for the first time
         if not CONFIG_PATH.is_file():
@@ -295,16 +301,6 @@ def _write_telemetry_config():
         send_custom_event(event="config saving failed")
 
 
-def _delete_telemetry_config():
-    """
-    Deletes the telemetry config file if any exists.
-    """
-    try:
-        CONFIG_PATH.unlink(missing_ok=True)
-    except Exception as e:
-        logger.debug(f"Telemetry was not able to delete the config file {CONFIG_PATH}.", exc_info=e)
-
-
 def _write_event_to_telemetry_log_file(distinct_id: str, event: str, properties: Dict[str, Any]):
     try:
         with open(LOG_PATH, "a") as file_object:
@@ -313,14 +309,17 @@ def _write_event_to_telemetry_log_file(distinct_id: str, event: str, properties:
         logger.debug(f"Telemetry was not able to write event to log file {LOG_PATH}.", exc_info=e)
 
 
-def _delete_telemetry_log_file():
+def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
     """
-    Deletes the telemetry log file if any exists.
+    Deletes the telemetry config file or log file if it exists.
     """
+    if not isinstance(file_type_to_delete, TelemetryFileType):
+        logger.debug('File type to delete must be either TelemetryFileType.LOG_FILE or TelemetryFileType.CONFIG_FILE.')
     try:
-        LOG_PATH.unlink(missing_ok=True)
+        path = LOG_PATH if file_type_to_delete is TelemetryFileType.LOG_FILE else CONFIG_PATH
+        path.unlink(missing_ok=True)
     except Exception as e:
-        logger.debug(f"Telemetry was not able to delete the log file {LOG_PATH}.", exc_info=e)
+        logger.debug(f"Telemetry was not able to delete the {file_type_to_delete} at {path}.", exc_info=e)
 
 
 class NonPrivateParameters:

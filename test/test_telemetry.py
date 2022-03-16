@@ -5,7 +5,8 @@ from unittest.mock import patch, PropertyMock
 
 import haystack
 from haystack.telemetry import NonPrivateParameters, send_event, enable_writing_events_to_file, \
-    disable_writing_events_to_file, send_custom_event, _delete_telemetry_log_file, disable_telemetry, enable_telemetry
+    disable_writing_events_to_file, send_custom_event, _delete_telemetry_file, disable_telemetry, enable_telemetry, \
+    TelemetryFileType
 
 
 @patch.object(
@@ -83,7 +84,7 @@ def test_write_to_file():
     sleep(1)
     num_lines_after = num_lines(haystack.telemetry.LOG_PATH)
     assert num_lines_before == num_lines_after
-    _delete_telemetry_log_file()
+    _delete_telemetry_file(TelemetryFileType.LOG_FILE)
 
 
 @patch("posthog.capture")
