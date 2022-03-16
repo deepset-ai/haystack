@@ -94,7 +94,7 @@ class BaseComponent(ABC):
         component_signature = self._get_signature()
         params: Dict[str, Any] = {}
         for key, value in self._component_config["params"].items():
-            if value == component_signature[key].default or return_defaults:
+            if value != component_signature[key].default or return_defaults:
                 params[key] = value
         if return_defaults:
             for key, param in component_signature.items():
