@@ -1166,28 +1166,14 @@ class Pipeline(BasePipeline):
         for node_name, node_attributes in self.graph.nodes.items():
             if node_name == self.root_node:
                 continue
+
             component: BaseComponent = node_attributes["component"]
-            component_params: Dict[str, Any] = component.get_params(return_defaults)
-            component_definitions[node_name] = {"name": node_name, "type": component.type, "params": component_params}
+            if node_name != component.name:
+                raise PipelineError(f"Component name '{component.name}' does not match node name '{node_name}'.")
 
-            # special handling for subcomponents
-            for param_key, param_value in component_params.items():
-                if isinstance(param_value, BaseComponent):
-                    sub_component = param_value
-                    sub_component_params = sub_component.get_params(return_defaults)
-
-                    if sub_component.name is None:
-                        raise PipelineError(
-                            f"Subcomponent with key '{param_key}' of node '{node_name}' does not have a name."
-                        )
-
-                    component_definitions[sub_component.name] = {
-                        "name": sub_component.name,
-                        "type": sub_component.type,
-                        "params": sub_component_params,
-                    }
-
-                    component_params[param_key] = sub_component.name
+            self._add_component_to_component_definitions(
+                component=component, component_definitions=component_definitions, return_defaults=return_defaults
+            )
 
             # create the Pipeline definition with how the Component are connected
             pipeline_definitions[pipeline_name]["nodes"].append(
@@ -1200,6 +1186,26 @@ class Pipeline(BasePipeline):
             "version": __version__,
         }
         return config
+
+    def _add_component_to_component_definitions(
+        self, component: BaseComponent, component_definitions: Dict[str, Dict], return_defaults: bool = False
+    ):
+        if component.name is None:
+            raise PipelineError(f"Component with config '{component._component_config}' does not have a name.")
+
+        component_params: Dict[str, Any] = component.get_params(return_defaults)
+        # handling of subcomponents: add to definitions and substitute by reference
+        for param_key, param_value in component_params.items():
+            if isinstance(param_value, BaseComponent):
+                sub_component = param_value
+                self._add_component_to_component_definitions(sub_component, component_definitions, return_defaults)
+                component_params[param_key] = sub_component.name
+
+        component_definitions[component.name] = {
+            "name": component.name,
+            "type": component.type,
+            "params": component_params,
+        }
 
     def _get_all_component_names(self, components_to_search: Optional[List[BaseComponent]] = None) -> Set[str]:
         component_names = set()
