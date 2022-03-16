@@ -338,7 +338,10 @@ class NonPrivateParameters:
 
         # if model_name_or_path is a local file path, we reduce it to the model name
         if "model_name_or_path" in tracked_params:
-            if Path(tracked_params["model_name_or_path"]).is_file() or tracked_params["model_name_or_path"].count("/") > 1:
+            if (
+                Path(tracked_params["model_name_or_path"]).is_file()
+                or tracked_params["model_name_or_path"].count("/") > 1
+            ):
                 # if model_name_or_path points to an existing file or contains more than one / it is a path
                 tracked_params["model_name_or_path"] = Path(tracked_params["model_name_or_path"]).name
         return tracked_params
