@@ -1,6 +1,6 @@
 from __future__ import annotations
 from os import pipe
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Sequence, Set
 
 import copy
 import json
@@ -474,7 +474,7 @@ class Pipeline(BasePipeline):
             if not isinstance(attributes["component"], RootNode)
         }
 
-    def add_node(self, component, name: str, inputs: List[str]):
+    def add_node(self, component: BaseComponent, name: str, inputs: List[str]):
         """
         Add a new node to the pipeline.
 
@@ -500,6 +500,7 @@ class Pipeline(BasePipeline):
                     f"Root node '{root_node}' is invalid. Available options are {valid_root_nodes}."
                 )
         component.name = name
+        self._set_sub_component_names(component)
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
@@ -1166,50 +1167,27 @@ class Pipeline(BasePipeline):
             if node_name == self.root_node:
                 continue
             component: BaseComponent = node_attributes["component"]
-            component_type: str = component._component_config["type"]
-            component_params: Dict[str, Any] = component._component_config["params"]
-            component_definitions[node_name] = {"name": node_name, "type": component_type, "params": {}}
-            component_signature = self._get_component_signature(component_type)
+            component_params: Dict[str, Any] = component.get_params(return_defaults)
+            component_definitions[node_name] = {"name": node_name, "type": component.type, "params": component_params}
 
+            # special handling for subcomponents
             for param_key, param_value in component_params.items():
-                # A parameter for a Component could be another Component. For instance, a Retriever has
-                # the DocumentStore as a parameter.
-                # Component configs must be a dict with a "type" key. The "type" keys distinguishes between
-                # other parameters like "custom_mapping" that are dicts.
-                # This currently only checks for the case single-level nesting case, wherein, "a Component has another
-                # Component as a parameter". For deeper nesting cases, this function should be made recursive.
-                if isinstance(param_value, dict) and "type" in param_value.keys():
-                    # the parameter is a Component
+                if isinstance(param_value, BaseComponent):
                     sub_component = param_value
-                    sub_component_type_name = sub_component["type"]
-                    sub_component_signature = self._get_component_signature(sub_component_type_name)
-                    sub_component_params = {
-                        k: v
-                        for k, v in sub_component["params"].items()
-                        if sub_component_signature[k].default != v or return_defaults is True
+                    sub_component_params = sub_component.get_params(return_defaults)
+
+                    if sub_component.name is None:
+                        raise PipelineError(
+                            f"Subcomponent with key '{param_key}' of node '{node_name}' does not have a name."
+                        )
+
+                    component_definitions[sub_component.name] = {
+                        "name": sub_component.name,
+                        "type": sub_component.type,
+                        "params": sub_component_params,
                     }
 
-                    sub_component_name = self._find_node_name(
-                        type_name=sub_component_type_name, params=sub_component_params
-                    )
-                    if sub_component_name is None:
-                        # if there is no matching existing component we create one
-                        sub_component_name = self._generate_component_name(
-                            type_name=sub_component_type_name,
-                            params=sub_component_params,
-                            existing_components=component_definitions,
-                        )
-                        component_definitions[sub_component_name] = {
-                            "name": sub_component_name,
-                            "type": sub_component_type_name,
-                            "params": sub_component_params,
-                        }
-
-                    component_definitions[node_name]["params"][param_key] = sub_component_name
-                else:
-                    # normal parameter (not a Component)
-                    if component_signature[param_key].default != param_value or return_defaults is True:
-                        component_definitions[node_name]["params"][param_key] = param_value
+                    component_params[param_key] = sub_component.name
 
             # create the Pipeline definition with how the Component are connected
             pipeline_definitions[pipeline_name]["nodes"].append(
@@ -1223,31 +1201,32 @@ class Pipeline(BasePipeline):
         }
         return config
 
-    def _find_node_name(self, type_name: str, params: Dict[str, Any]) -> Optional[str]:
-        for node_name, attributes in self.graph.nodes.items():
-            component_config = attributes["component"]._component_config
-            if component_config["type"] == type_name and component_config["params"] == params:
-                return node_name
+    def _get_all_component_names(self, components_to_search: Optional[List[BaseComponent]] = None) -> Set[str]:
+        component_names = set()
+        if components_to_search is None:
+            components_to_search = list(self.components.values())
+        for component in components_to_search:
+            if component.name is not None:
+                component_names.add(component.name)
+                sub_component_names = self._get_all_component_names(component.sub_components)
+                component_names.update(sub_component_names)
+        return component_names
 
-        return None
+    def _set_sub_component_names(self, component: BaseComponent, component_names: Optional[Set[str]] = None):
+        if component_names is None:
+            component_names = self._get_all_component_names()
+        for sub_component in component.sub_components:
+            if sub_component.name is None:
+                sub_component.name = self._generate_component_name(
+                    type_name=sub_component.type, existing_component_names=component_names
+                )
+                component_names.add(sub_component.name)
+            self._set_sub_component_names(sub_component, component_names=component_names)
 
-    def _get_component_signature(self, component_type_name: str) -> Dict[str, inspect.Parameter]:
-        component_type = BaseComponent._subclasses[component_type_name]
-        component_classes = inspect.getmro(component_type)
-        component_signature: Dict[str, inspect.Parameter] = {
-            param_key: parameter
-            for class_ in component_classes
-            for param_key, parameter in inspect.signature(class_).parameters.items()
-        }
-
-        return component_signature
-
-    def _generate_component_name(
-        self, type_name: str, params: Dict[str, Any], existing_components: Dict[str, Any]
-    ) -> str:
+    def _generate_component_name(self, type_name: str, existing_component_names: Set[str]) -> str:
         component_name: str = type_name
         # add number if there are multiple distinct ones of the same type
-        while component_name in existing_components and params != existing_components[component_name]["params"]:
+        while component_name in existing_component_names:
             occupied_num = 1
             if len(component_name) > len(type_name):
                 occupied_num = int(component_name[len(type_name) + 1 :])
