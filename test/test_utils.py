@@ -7,7 +7,7 @@ from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.augment_squad import augment_squad
 from haystack.utils.squad_data import SquadData
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 def test_convert_files_to_dicts():

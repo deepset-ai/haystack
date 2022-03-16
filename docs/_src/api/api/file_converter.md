@@ -12,6 +12,27 @@ class BaseConverter(BaseComponent)
 
 Base class for implementing file converts to transform input documents to text format for ingestion in DocumentStore.
 
+<a id="base.BaseConverter.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = None)
+```
+
+**Arguments**:
+
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
+(https://en.wikipedia.org/wiki/ISO_639-1) format.
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
+
 <a id="base.BaseConverter.convert"></a>
 
 #### convert
@@ -105,6 +126,29 @@ in garbled text.
 class ImageToTextConverter(BaseConverter)
 ```
 
+<a id="image.ImageToTextConverter.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = ["eng"])
+```
+
+**Arguments**:
+
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified here
+(https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html)
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text. Run the following line of code to check available language packs:
+# List of available languages
+print(pytesseract.get_languages(config=''))
+
 <a id="image.ImageToTextConverter.convert"></a>
 
 #### convert
@@ -192,6 +236,27 @@ Converts a markdown string to plaintext
 class PDFToTextConverter(BaseConverter)
 ```
 
+<a id="pdf.PDFToTextConverter.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = None)
+```
+
+**Arguments**:
+
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
+(https://en.wikipedia.org/wiki/ISO_639-1) format.
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
+
 <a id="pdf.PDFToTextConverter.convert"></a>
 
 #### convert
@@ -231,6 +296,29 @@ Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed
 ```python
 class PDFToTextOCRConverter(BaseConverter)
 ```
+
+<a id="pdf.PDFToTextOCRConverter.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = ["eng"])
+```
+
+Extract text from image file using the pytesseract library (https://github.com/madmaze/pytesseract)
+
+**Arguments**:
+
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages supported by tessarect
+(https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html).
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
 
 <a id="pdf.PDFToTextOCRConverter.convert"></a>
 
@@ -272,6 +360,28 @@ in garbled text.
 ```python
 class TikaConverter(BaseConverter)
 ```
+
+<a id="tika.TikaConverter.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(tika_url: str = "http://localhost:9998/tika", remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = None)
+```
+
+**Arguments**:
+
+- `tika_url`: URL of the Tika server
+- `remove_numeric_tables`: This option uses heuristics to remove numeric rows from the tables.
+The tabular structures in documents might be noise for the reader model if it
+does not have table parsing capability for finding answers. However, tables
+may also have long strings that could possible candidate for searching answers.
+The rows containing strings are thus retained in this option.
+- `valid_languages`: validate languages from a list of languages specified in the ISO 639-1
+(https://en.wikipedia.org/wiki/ISO_639-1) format.
+This option can be used to add test for encoding errors. If the extracted text is
+not one of the valid languages, then it might likely be encoding error resulting
+in garbled text.
 
 <a id="tika.TikaConverter.convert"></a>
 

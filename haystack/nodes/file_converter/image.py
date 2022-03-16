@@ -20,11 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImageToTextConverter(BaseConverter):
-    def __init__(
-        self,
-        remove_numeric_tables: bool = False,
-        valid_languages: Optional[List[str]] = ["eng"],
-    ):
+    def __init__(self, remove_numeric_tables: bool = False, valid_languages: Optional[List[str]] = ["eng"]):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
                                       The tabular structures in documents might be noise for the reader model if it
@@ -39,9 +35,7 @@ class ImageToTextConverter(BaseConverter):
                                 # List of available languages
                                 print(pytesseract.get_languages(config=''))
         """
-
-        # save init parameters to enable export of component config as YAML
-        self.set_config(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
+        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
 
         verify_installation = subprocess.run(["tesseract -v"], shell=True)
         if verify_installation.returncode == 127:

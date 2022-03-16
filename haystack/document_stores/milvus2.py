@@ -126,29 +126,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
+        super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            sql_url=sql_url,
-            host=host,
-            port=port,
-            connection_pool=connection_pool,
-            index=index,
-            vector_dim=vector_dim,
-            embedding_dim=embedding_dim,
-            index_file_size=index_file_size,
-            similarity=similarity,
-            index_type=index_type,
-            index_param=index_param,
-            search_param=search_param,
-            duplicate_documents=duplicate_documents,
-            id_field=id_field,
-            return_embedding=return_embedding,
-            embedding_field=embedding_field,
-            progress_bar=progress_bar,
-            custom_fields=custom_fields,
-            isolation_level=isolation_level,
-        )
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
 
@@ -193,17 +172,11 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self.progress_bar = progress_bar
 
         super().__init__(
-            url=sql_url,
-            index=index,
-            duplicate_documents=duplicate_documents,
-            isolation_level=isolation_level,
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
         )
 
     def _create_collection_and_index_if_not_exist(
-        self,
-        index: Optional[str] = None,
-        consistency_level: int = 0,
-        index_param: Optional[Dict[str, Any]] = None,
+        self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None
     ):
         index = index or self.index
         index_param = index_param or self.index_param
@@ -240,9 +213,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         return collection
 
     def _create_document_field_map(self) -> Dict:
-        return {
-            self.index: self.embedding_field,
-        }
+        return {self.index: self.embedding_field}
 
     def write_documents(
         self,
@@ -626,8 +597,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             vector_id_map[int(vector_id)] = doc
 
         search_result: QueryResult = self.collection.query(
-            expr=f'{self.id_field} in [ {",".join(ids)} ]',
-            output_fields=[self.embedding_field],
+            expr=f'{self.id_field} in [ {",".join(ids)} ]', output_fields=[self.embedding_field]
         )
 
         for result in search_result:
