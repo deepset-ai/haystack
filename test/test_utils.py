@@ -88,8 +88,8 @@ def test_calculate_context_similarity_on_parts_of_whole_document():
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    for i in range(len(whole_document)-context_size):
-        partial_context = whole_document[i:i+context_size]
+    for i in range(len(whole_document) - context_size):
+        partial_context = whole_document[i : i + context_size]
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
         assert score == 100.0
 
@@ -99,8 +99,8 @@ def test_calculate_context_similarity_on_parts_of_whole_document_different_case(
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    for i in range(len(whole_document)-context_size):
-        partial_context = whole_document[i:i+context_size].lower()
+    for i in range(len(whole_document) - context_size):
+        partial_context = whole_document[i : i + context_size].lower()
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
         assert score == 100.0
 
@@ -110,8 +110,8 @@ def test_calculate_context_similarity_on_parts_of_whole_document_different_white
     words = whole_document.split()
     min_length = 100
     context_word_size = 20
-    for i in range(len(words)-context_word_size):
-        partial_context = "\n\t\t\t".join(words[i:i+context_word_size])
+    for i in range(len(words) - context_word_size):
+        partial_context = "\n\t\t\t".join(words[i : i + context_word_size])
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
         assert score == 100.0
 
@@ -119,9 +119,9 @@ def test_calculate_context_similarity_on_parts_of_whole_document_different_white
 def test_calculate_context_similarity_min_length():
     whole_document = TEST_CONTEXT
     min_length = 100
-    context_size = min_length-1
-    for i in range(len(whole_document)-context_size):
-        partial_context = whole_document[i:i+context_size]
+    context_size = min_length - 1
+    for i in range(len(whole_document) - context_size):
+        partial_context = whole_document[i : i + context_size]
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
         assert score == 0.0
 
@@ -131,10 +131,10 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts():
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    stride = context_size//2
-    for i in range(len(whole_document)-context_size-stride):
-        partial_context_1 = whole_document[i:i+context_size]
-        partial_context_2 = whole_document[i+stride:i+stride+context_size]
+    stride = context_size // 2
+    for i in range(len(whole_document) - context_size - stride):
+        partial_context_1 = whole_document[i : i + context_size]
+        partial_context_2 = whole_document[i + stride : i + stride + context_size]
         score = calculate_context_similarity(partial_context_1, partial_context_2, min_length=min_length)
         assert score >= 75.0
 
@@ -144,12 +144,14 @@ def test_calculate_context_similarity_on_non_matching_contexts():
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    for i in range(len(whole_document)-context_size):
-        partial_context = whole_document[i:i+context_size//2] + _get_random_chars(context_size//2)
+    for i in range(len(whole_document) - context_size):
+        partial_context = whole_document[i : i + context_size // 2] + _get_random_chars(context_size // 2)
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
         assert score < 75.0
-    for i in range(len(whole_document)-context_size):
-        partial_context = _get_random_chars(context_size//2) + whole_document[i+context_size//2:i+context_size]
+    for i in range(len(whole_document) - context_size):
+        partial_context = (
+            _get_random_chars(context_size // 2) + whole_document[i + context_size // 2 : i + context_size]
+        )
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
         assert score < 75.0
 
@@ -159,11 +161,11 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noi
     min_length = 100
     margin = 5
     context_size = min_length + margin
-    stride = context_size//2
+    stride = context_size // 2
     scores = []
-    for i in range(len(whole_document)-context_size-stride):
-        partial_context_1 = whole_document[i:i+context_size]
-        partial_context_2 = _insert_noise(whole_document[i+stride:i+stride+context_size], 0.1)
+    for i in range(len(whole_document) - context_size - stride):
+        partial_context_1 = whole_document[i : i + context_size]
+        partial_context_2 = _insert_noise(whole_document[i + stride : i + stride + context_size], 0.1)
         score = calculate_context_similarity(partial_context_1, partial_context_2, min_length=min_length)
         scores.append(score)
     accuracy = np.where(np.array(scores) >= 75, 1, 0).mean()
@@ -171,14 +173,18 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noi
 
 
 def _get_random_chars(size: int):
-    chars = np.random.choice(list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZß?/.,;:-#äöüÄÖÜ+*~1234567890$€%&!§ "), size=size)
+    chars = np.random.choice(
+        list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZß?/.,;:-#äöüÄÖÜ+*~1234567890$€%&!§ "), size=size
+    )
     return "".join(list(chars))
 
 
 def _insert_noise(input: str, ratio):
     size = int(ratio * len(input))
     insert_idxs = sorted(np.random.choice(range(len(input)), size=size, replace=False), reverse=True)
-    insert_chars = np.random.choice(list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZß?/.,;:-#äöüÄÖÜ+*~1234567890$€%&!§"), size=size)
+    insert_chars = np.random.choice(
+        list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZß?/.,;:-#äöüÄÖÜ+*~1234567890$€%&!§"), size=size
+    )
     for idx, char in zip(insert_idxs, insert_chars):
         input = input[:idx] + char + input[idx:]
     return input

@@ -55,7 +55,7 @@ def calculate_context_similarity(context: str, candidate: str, min_length: int =
         longer = context
         shorter_len = candidate_len
         longer_len = context_len
-    
+
     score_alignment = fuzz.partial_ratio_alignment(shorter, longer, processor=_no_processor)
     score = score_alignment.score
 
@@ -66,7 +66,7 @@ def calculate_context_similarity(context: str, candidate: str, min_length: int =
     if score >= 40 and score < 75:
         cut_shorter_left = score_alignment.dest_start == 0
         cut_shorter_right = score_alignment.dest_end == longer_len
-        cut_len = shorter_len//2
+        cut_len = shorter_len // 2
 
         if cut_shorter_left:
             cut_score = fuzz.partial_ratio(shorter[cut_len:], longer, processor=_no_processor)
@@ -76,9 +76,8 @@ def calculate_context_similarity(context: str, candidate: str, min_length: int =
             cut_score = fuzz.partial_ratio(shorter[:-cut_len], longer, processor=_no_processor)
             if cut_score > score:
                 score = cut_score
-    
-    return score
 
+    return score
 
 
 def match_context(
