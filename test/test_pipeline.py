@@ -105,23 +105,6 @@ def test_to_code_creates_same_pipelines():
     assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
 
 
-def test_to_code_can_handle_weak_cyclic_pipelines():
-    child = ChildComponent()
-    parent = ParentComponent(dependent=child)
-    pipeline = Pipeline()
-    pipeline.add_node(component=parent, name="parent", inputs=["Query"])
-    pipeline.add_node(component=child, name="child", inputs=["parent"])
-    code = pipeline.to_code(generate_imports=False)
-    assert code == (
-        "child = ChildComponent()\n"
-        "parent = ParentComponent(dependent=child)\n"
-        "\n"
-        "pipeline = Pipeline()\n"
-        'pipeline.add_node(component=parent, name="parent", inputs=["Query"])\n'
-        'pipeline.add_node(component=child, name="child", inputs=["parent"])'
-    )
-
-
 def test_get_config_creates_dependent_component():
     child = ChildComponent()
     parent = ParentComponent(dependent=child)
@@ -205,6 +188,29 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
     ]
 
     config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_reuses_same_dependent_components():
+    child = ChildComponent()
+    parent = ParentComponent(dependent=child)
+    pipeline = Pipeline()
+    pipeline.add_node(component=parent, name="parent", inputs=["Query"])
+    pipeline.add_node(component=child, name="child", inputs=["parent"])
+    config = pipeline.get_config()
+
+    expected_pipelines = [
+        {"name": "query", "nodes": [{"name": "parent", "inputs": ["Query"]}, {"name": "child", "inputs": ["parent"]}]}
+    ]
+    expected_components = [
+        {"name": "parent", "type": "ParentComponent", "params": {"dependent": "child"}},
+        {"name": "child", "type": "ChildComponent", "params": {}},
+    ]
+
+    config = pipeline.get_config()
     for expected_pipeline in expected_pipelines:
         assert expected_pipeline in config["pipelines"]
     for expected_component in expected_components:
@@ -404,6 +410,31 @@ def test_generate_code_is_component_order_invariant():
         pipeline_config["components"] = components
         code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=False)
         assert code == expected_code
+
+
+def test_generate_code_can_handle_weak_cyclic_pipelines():
+    config = {
+        "version": "unstable",
+        "components": [
+            {"name": "parent", "type": "ParentComponent", "params": {"dependent": "child"}},
+            {"name": "child", "type": "ChildComponent", "params": {}},
+        ],
+        "pipelines": [
+            {
+                "name": "query",
+                "nodes": [{"name": "parent", "inputs": ["Query"]}, {"name": "child", "inputs": ["parent"]}],
+            }
+        ],
+    }
+    code = generate_code(pipeline_config=config, generate_imports=False)
+    assert code == (
+        "child = ChildComponent()\n"
+        "parent = ParentComponent(dependent=child)\n"
+        "\n"
+        "pipeline = Pipeline()\n"
+        'pipeline.add_node(component=parent, name="parent", inputs=["Query"])\n'
+        'pipeline.add_node(component=child, name="child", inputs=["parent"])'
+    )
 
 
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
