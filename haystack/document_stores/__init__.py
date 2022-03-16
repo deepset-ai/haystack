@@ -28,5 +28,6 @@ from haystack.document_stores.utils import (
     eval_data_from_json,
     eval_data_from_jsonl,
     squad_json_to_jsonl,
-    es_index_to_document_store,
+    elasticsearch_index_to_document_store,
+    open_search_index_to_document_store,
 )
