@@ -280,6 +280,7 @@ def convert_date_to_rfc3339(date: str) -> str:
 
     return converted_date
 
+
 def open_search_index_to_document_store(
     document_store: "BaseDocumentStore",
     original_index_name: str,
@@ -303,7 +304,7 @@ def open_search_index_to_document_store(
     verify_certs: bool = False,
     timeout: int = 30,
     use_system_proxy: bool = False,
-    ) -> "BaseDocumentStore":
+) -> "BaseDocumentStore":
     """
     This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
     the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
@@ -347,28 +348,31 @@ def open_search_index_to_document_store(
     :param use_system_proxy: Whether to use system proxy.
     """
 
-    return elasticsearch_index_to_document_store(document_store=document_store,
-                                    original_index_name=original_index_name,
-                                    original_content_field=original_content_field,
-                                    original_name_field=original_name_field,
-                                    included_metadata_fields=included_metadata_fields,
-                                    excluded_metadata_fields=excluded_metadata_fields,
-                                    store_original_ids=store_original_ids,
-                                    index=index,
-                                    preprocessor=preprocessor,
-                                    batch_size=batch_size,
-                                    host=host,
-                                    port=port,
-                                    username=username,
-                                    password=password,
-                                    api_key_id=api_key_id,
-                                    api_key=api_key,
-                                    aws4auth=aws4auth,
-                                    scheme=scheme,
-                                    ca_certs=ca_certs,
-                                    verify_certs=verify_certs,
-                                    timeout=timeout,
-                                    use_system_proxy=use_system_proxy)
+    return elasticsearch_index_to_document_store(
+        document_store=document_store,
+        original_index_name=original_index_name,
+        original_content_field=original_content_field,
+        original_name_field=original_name_field,
+        included_metadata_fields=included_metadata_fields,
+        excluded_metadata_fields=excluded_metadata_fields,
+        store_original_ids=store_original_ids,
+        index=index,
+        preprocessor=preprocessor,
+        batch_size=batch_size,
+        host=host,
+        port=port,
+        username=username,
+        password=password,
+        api_key_id=api_key_id,
+        api_key=api_key,
+        aws4auth=aws4auth,
+        scheme=scheme,
+        ca_certs=ca_certs,
+        verify_certs=verify_certs,
+        timeout=timeout,
+        use_system_proxy=use_system_proxy,
+    )
+
 
 def elasticsearch_index_to_document_store(
     document_store: "BaseDocumentStore",
