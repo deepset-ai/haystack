@@ -5,7 +5,9 @@ from unittest.mock import patch, PropertyMock
 from haystack.telemetry import NonPrivateParameters, send_event
 
 
-@patch.object(NonPrivateParameters, "param_names", return_value=["top_k", "model_name_or_path"], new_callable=PropertyMock)
+@patch.object(
+    NonPrivateParameters, "param_names", return_value=["top_k", "model_name_or_path"], new_callable=PropertyMock
+)
 def test_private_params_not_tracked(mock_nonprivateparameters):
     params = {"hostname": "private_hostname", "top_k": 2}
     tracked_params = NonPrivateParameters.apply_filter(params)
@@ -13,7 +15,9 @@ def test_private_params_not_tracked(mock_nonprivateparameters):
     assert tracked_params == expected_params
 
 
-@patch.object(NonPrivateParameters, "param_names", return_value=["top_k", "model_name_or_path"], new_callable=PropertyMock)
+@patch.object(
+    NonPrivateParameters, "param_names", return_value=["top_k", "model_name_or_path"], new_callable=PropertyMock
+)
 def test_non_private_params_tracked(mock_nonprivateparameters):
     params = {"model_name_or_path": "test-model", "top_k": 2}
     non_private_params = NonPrivateParameters.apply_filter(params)
@@ -27,7 +31,12 @@ def test_only_non_private_params(mock_nonprivateparameters):
 
 
 @patch("posthog.capture")
-@patch.object(NonPrivateParameters, "param_names", return_value=["top_k", "model_name_or_path", "add_isolated_node_eval"], new_callable=PropertyMock)
+@patch.object(
+    NonPrivateParameters,
+    "param_names",
+    return_value=["top_k", "model_name_or_path", "add_isolated_node_eval"],
+    new_callable=PropertyMock,
+)
 # patches are applied in bottom-up order, which is why mock_nonprivateparameters is the first parameter and mock_posthog_capture is the second
 def test_send_event_via_decorator(mock_nonprivateparameters, mock_posthog_capture):
     class TestClass:
