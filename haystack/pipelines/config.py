@@ -200,11 +200,14 @@ def validate_config(pipeline_config: Dict) -> None:
                     loaded_custom_nodes.append(validation.instance["type"])
                     continue
 
-                # A node with the given name was imported, but something else is wrong with it.
+                # A node with the given name was in the schema, but something else is wrong with it.
                 # Probably it references unknown classes in its init parameters.
                 raise PipelineSchemaError(
-                    f"Cannot process node of type {validation.instance['type']}. Make sure its __init__ function "
-                    "does not reference external classes, but uses only Python primitive types."
+                    f"Node of type {validation.instance['type']} found, but it failed validation. Possible causes:\n"
+                    " - The node is missing some mandatory parameter\n"
+                    " - Wrong indentation of some parameter in YAML\n"
+                    " - If it's a custom node, its __init__ doesn't take only Python primitive types or other nodes as parameters.\n"
+                    "See the stacktrace for more information."
                 ) from validation
 
             # Format the error to make it as clear as possible
