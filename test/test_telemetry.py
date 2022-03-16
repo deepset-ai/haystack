@@ -4,9 +4,17 @@ from time import sleep
 from unittest.mock import patch, PropertyMock
 
 import haystack
-from haystack.telemetry import NonPrivateParameters, send_event, enable_writing_events_to_file, \
-    disable_writing_events_to_file, send_custom_event, _delete_telemetry_file, disable_telemetry, enable_telemetry, \
+from haystack.telemetry import (
+    NonPrivateParameters,
+    send_event,
+    enable_writing_events_to_file,
+    disable_writing_events_to_file,
+    send_custom_event,
+    _delete_telemetry_file,
+    disable_telemetry,
+    enable_telemetry,
     TelemetryFileType
+)
 
 
 @patch.object(
@@ -58,7 +66,7 @@ def test_send_event_via_decorator(mock_nonprivateparameters, mock_posthog_captur
 
 def num_lines(path: Path):
     if path.is_file():
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             return len(f.readlines())
     return 0
 
@@ -76,7 +84,7 @@ def test_write_to_file():
     send_custom_event(event="test")
     sleep(1)
     num_lines_after = num_lines(haystack.telemetry.LOG_PATH)
-    assert num_lines_before+1 == num_lines_after
+    assert num_lines_before + 1 == num_lines_after
 
     disable_writing_events_to_file()
     num_lines_before = num_lines(haystack.telemetry.LOG_PATH)
@@ -91,17 +99,17 @@ def test_write_to_file():
 def test_disable_enable_telemetry(mock_posthog_capture):
     send_custom_event(event="test")
     sleep(1)
-    assert mock_posthog_capture.call_count == 1, 'a single event should be sent'
+    assert mock_posthog_capture.call_count == 1, "a single event should be sent"
 
     disable_telemetry()
     send_custom_event(event="test")
     sleep(1)
-    assert mock_posthog_capture.call_count == 2, 'one additional final event should be sent'
+    assert mock_posthog_capture.call_count == 2, "one additional final event should be sent"
     send_custom_event(event="test")
     sleep(1)
-    assert mock_posthog_capture.call_count == 2, 'no additional event should be sent'
+    assert mock_posthog_capture.call_count == 2, "no additional event should be sent"
 
     enable_telemetry()
     send_custom_event(event="test")
     sleep(1)
-    assert mock_posthog_capture.call_count == 3, 'one additional event should be sent'
+    assert mock_posthog_capture.call_count == 3, "one additional event should be sent"
