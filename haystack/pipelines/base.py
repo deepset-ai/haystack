@@ -1171,7 +1171,7 @@ class Pipeline(BasePipeline):
             if node_name != component.name:
                 raise PipelineError(f"Component name '{component.name}' does not match node name '{node_name}'.")
 
-            self._add_component_to_component_definitions(
+            self._add_component_to_definitions(
                 component=component, component_definitions=component_definitions, return_defaults=return_defaults
             )
 
@@ -1187,7 +1187,7 @@ class Pipeline(BasePipeline):
         }
         return config
 
-    def _add_component_to_component_definitions(
+    def _add_component_to_definitions(
         self, component: BaseComponent, component_definitions: Dict[str, Dict], return_defaults: bool = False
     ):
         if component.name is None:
@@ -1198,7 +1198,7 @@ class Pipeline(BasePipeline):
         for param_key, param_value in component_params.items():
             if isinstance(param_value, BaseComponent):
                 sub_component = param_value
-                self._add_component_to_component_definitions(sub_component, component_definitions, return_defaults)
+                self._add_component_to_definitions(sub_component, component_definitions, return_defaults)
                 component_params[param_key] = sub_component.name
 
         component_definitions[component.name] = {

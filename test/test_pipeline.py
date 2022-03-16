@@ -279,6 +279,30 @@ def test_get_config_reuses_same_unnamed_dependent_components():
         assert expected_component in config["components"]
 
 
+def test_get_config_multi_level_dependencies():
+    child = ChildComponent()
+    intermediate = ParentComponent(dependent=child)
+    parent = ParentComponent(dependent=intermediate)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="Parent", inputs=["Query"])
+
+    expected_components = [
+        {"name": "Parent", "type": "ParentComponent", "params": {"dependent": "ParentComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+        {"name": "ParentComponent", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+    ]
+
+    expected_pipelines = [
+        {"name": "query", "nodes": [{"name": "Parent", "inputs": ["Query"]}]}
+    ]
+
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
 def test_get_config_component_with_superclass_arguments():
     class CustomBaseDocumentStore(MockDocumentStore):
         def __init__(self, base_parameter: str):
