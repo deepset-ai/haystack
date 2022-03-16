@@ -4196,12 +4196,64 @@ and UTC as default time zone.
 This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
 and filter_utils.py.
 
-<a id="utils.es_index_to_document_store"></a>
+<a id="utils.open_search_index_to_document_store"></a>
 
-#### es\_index\_to\_document\_store
+#### open\_search\_index\_to\_document\_store
 
 ```python
-def es_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
+def open_search_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "admin", password: str = "admin", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "https", ca_certs: Optional[str] = None, verify_certs: bool = False, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
+```
+
+This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
+
+the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
+on a regular basis in order to add new records of the OpenSearch index to the `DocumentStore`.
+
+**Arguments**:
+
+- `document_store`: The haystack `DocumentStore` to write the converted `Document` objects to.
+- `original_index_name`: OpenSearch index containing the records to be converted.
+- `original_content_field`: OpenSearch field containing the text to be put in the `content` field of the
+resulting haystack `Document` objects.
+- `original_name_field`: Optional OpenSearch field containing the title of the Document.
+- `included_metadata_fields`: List of OpenSearch fields that shall be stored in the `meta` field of the
+resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
+`included_metadata_fields` and `excluded_metadata_fields` parameters.
+- `excluded_metadata_fields`: List of OpenSearch fields that shall be excluded from the `meta` field of the
+resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
+`included_metadata_fields` and `excluded_metadata_fields` parameters.
+- `store_original_ids`: Whether to store the ID a record had in the original OpenSearch index at the
+`"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
+if you want to continuously update the `DocumentStore` with new records inside your OpenSearch index. If this
+parameter was set to `False` on the first call of `open_search_index_to_document_store`,
+all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
+- `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
+- `preprocessor`: Optional PreProcessor that will be applied on the content field of the original OpenSearch
+record.
+- `batch_size`: Number of records to process at once.
+- `host`: URL(s) of OpenSearch nodes.
+- `port`: Ports(s) of OpenSearch nodes.
+- `username`: Username (standard authentication via http_auth).
+- `password`: Password (standard authentication via http_auth).
+- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth).
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth).
+- `aws4auth`: Authentication for usage with AWS OpenSearch
+(can be generated with the requests-aws4auth package).
+- `scheme`: `"https"` or `"http"`, protocol used to connect to your OpenSearch instance.
+- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
+You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
+- `verify_certs`: Whether to be strict about ca certificates.
+- `timeout`: Number of seconds after which an OpenSearch request times out.
+- `use_system_proxy`: Whether to use system proxy.
+
+<a id="utils.elasticsearch_index_to_document_store"></a>
+
+#### elasticsearch\_index\_to\_document\_store
+
+```python
+def elasticsearch_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
 ```
 
 This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
@@ -4227,7 +4279,7 @@ all the fields found in the Elasticsearch records will be kept as metadata. You 
 - `store_original_ids`: Whether to store the ID a record had in the original Elasticsearch index at the
 `"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
 if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
-parameter was set to `False` on the first call of `es_index_to_document_store`,
+parameter was set to `False` on the first call of `elasticsearch_index_to_document_store`,
 all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
 - `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
 - `preprocessor`: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
