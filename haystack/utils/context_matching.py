@@ -115,7 +115,7 @@ def match_contexts(
         if show_progress:
             candidate_scores = tqdm(candidate_scores)
 
-        match_lists: List[List[Tuple[object, float]]] = list()
+        match_lists: List[List[Tuple[str, float]]] = list()
         matches = (candidate for candidate in candidate_scores if candidate.score > threshold)
         group_sorted_matches = sorted(matches, key=lambda candidate: candidate.context_id)
         grouped_matches = groupby(group_sorted_matches, key=lambda candidate: candidate.context_id)
