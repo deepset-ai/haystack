@@ -146,7 +146,7 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
 
     node_name = getattr(node, "__name__")
 
-    logger.info(f"Processing node: {node_name}")
+    logger.info(f"Creating schema for '{node_name}'")
 
     # Read the relevant init parameters from __init__'s signature
     init_method = getattr(node, "__init__", None)
