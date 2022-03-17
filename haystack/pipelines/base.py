@@ -754,7 +754,7 @@ class Pipeline(BasePipeline):
                     predictions = [[a] for a in df["answer"].values]
                     sas, _ = semantic_answer_similarity(
                         predictions=predictions, gold_labels=gold_labels, sas_model_name_or_path=sas_model_name_or_path,
-                        sas_batch_size=sas_batch_size, sas_use_gpu=sas_use_gpu
+                        batch_size=sas_batch_size, use_gpu=sas_use_gpu
                     )
                     df["sas"] = sas
 
