@@ -261,22 +261,23 @@ def _get_execution_environment():
     Identifies the execution environment that Haystack is running in.
     Options are: colab notebook, kubernetes, CPU/GPU docker container, test environment, jupyter notebook, python script
     """
-    if "google.colab" in sys.modules:
-        execution_env = "colab"
+    if os.environ.get("CI", "False").lower() == "true":
+        return "ci"
+    elif "google.colab" in sys.modules:
+        return "colab"
     elif "KUBERNETES_SERVICE_HOST" in os.environ:
-        execution_env = "kubernetes"
+        return "kubernetes"
     elif HAYSTACK_DOCKER_CONTAINER in os.environ:
-        execution_env = os.environ.get(HAYSTACK_DOCKER_CONTAINER)
+        return os.environ.get(HAYSTACK_DOCKER_CONTAINER)
     # check if pytest is imported
     elif "pytest" in sys.modules:
-        execution_env = "test"
+        return "test"
     else:
         try:
-            shell = get_ipython().__class__.__name__  # pylint: disable=undefined-variable
-            execution_env = shell
+            return get_ipython().__class__.__name__  # pylint: disable=undefined-variable
         except Exception:
-            execution_env = "script"
-    return execution_env
+            return "script"
+    return "script"
 
 
 def _read_telemetry_config():
