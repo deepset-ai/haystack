@@ -1224,7 +1224,7 @@ class Pipeline(BasePipeline):
                 component_names.update(sub_component_names)
         return component_names
 
-    def _set_sub_component_names(self, component: BaseComponent, component_names: Optional[Set[str]] = None):
+    def _set_sub_component_names(self, component: BaseComponent, component_names: Set[str]):
         for sub_component in component.dependencies:
             if sub_component.name is None:
                 sub_component.name = self._generate_component_name(
