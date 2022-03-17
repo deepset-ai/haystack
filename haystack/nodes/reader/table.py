@@ -370,7 +370,7 @@ class TableReader(BaseReader):
                 else:
                     raise KeyError("unknown aggregator")
 
-            return f"{answer_value}{' ' + unit if unit else ''}"
+                return f"{answer_value}{' ' + unit if unit else ''}"
 
         except KeyError as e:
             if "unknown aggregator" in str(e):
