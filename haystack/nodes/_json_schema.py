@@ -114,11 +114,7 @@ class Config(BaseConfig):
 
 
 def is_valid_component_class(clazz):
-    return (
-        inspect.isclass(clazz)
-        and not inspect.isabstract(clazz)
-        and issubclass(clazz, BaseComponent)
-    )
+    return inspect.isclass(clazz) and not inspect.isabstract(clazz) and issubclass(clazz, BaseComponent)
 
 
 def find_subclasses_in_modules(importable_modules: List[str]):
@@ -145,7 +141,9 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
               and a dict with the reference to the node only.
     """
     if not hasattr(node_class, "__name__"):
-        raise PipelineSchemaError(f"Node class '{node_class}' has no '__name__' attribute, cannot create a schema for it.")
+        raise PipelineSchemaError(
+            f"Node class '{node_class}' has no '__name__' attribute, cannot create a schema for it."
+        )
 
     node_name = getattr(node_class, "__name__")
 

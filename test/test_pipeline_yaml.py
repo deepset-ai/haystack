@@ -17,10 +17,10 @@ from .conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, Moc
 from . import conftest
 
 
-
 #
 # Fixtures
 #
+
 
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, tmp_path):
@@ -51,6 +51,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 #
 # Integration
 #
+
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
@@ -107,6 +108,7 @@ def test_load_and_save_from_yaml(tmp_path):
 #
 # Unit
 #
+
 
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -272,11 +274,12 @@ def test_load_yaml_custom_component(tmp_path):
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert pipeline.get_node("custom_node").param == 1
 
+
 def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
     class CustomNode(MockNode):
         def __init__(self):
             super().__init__()
-          
+
         @abstractmethod
         def abstract_method(self):
             pass
@@ -327,7 +330,7 @@ def test_load_yaml_custom_component_name_can_include_base(tmp_path):
 
 
 def test_load_yaml_custom_component_must_subclass_basecomponent(tmp_path):
-    class SomeCustomNode():
+    class SomeCustomNode:
         def run(self, *a, **k):
             pass
 
