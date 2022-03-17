@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 from typing import Any, Optional, Dict, List, Union
+
 try:
     from typing import Literal
 except ImportError:
@@ -27,7 +28,6 @@ if not typing.TYPE_CHECKING:
     from pydantic.dataclasses import dataclass
 else:
     from dataclasses import dataclass  # type: ignore  # pylint: disable=ungrouped-imports
-
 
 
 logger = logging.getLogger(__name__)

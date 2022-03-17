@@ -38,7 +38,6 @@ except ImportError:
     logger.info("apex not found, won't use it. " "See https://nvidia.github.io/apex/")
 
 
-
 class WrappedDataParallel(DataParallel):
     """
     A way of adapting attributes of underlying class to parallel mode. See:

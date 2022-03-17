@@ -18,7 +18,6 @@ logging.getLogger("elasticsearch").setLevel(logging.WARNING)
 logging.getLogger("haystack").setLevel(logging.INFO)
 
 
-
 def get_application() -> FastAPI:
     application = FastAPI(title="Haystack REST API", debug=True, version=haystack_version, root_path=ROOT_PATH)
 
