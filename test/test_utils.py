@@ -136,7 +136,7 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts():
         partial_context_1 = whole_document[i : i + context_size]
         partial_context_2 = whole_document[i + stride : i + stride + context_size]
         score = calculate_context_similarity(partial_context_1, partial_context_2, min_length=min_length)
-        assert score >= 75.0
+        assert score >= 65.0
 
 
 def test_calculate_context_similarity_on_non_matching_contexts():
@@ -144,16 +144,19 @@ def test_calculate_context_similarity_on_non_matching_contexts():
     min_length = 100
     margin = 5
     context_size = min_length + margin
+    scores = []
     for i in range(len(whole_document) - context_size):
         partial_context = whole_document[i : i + context_size // 2] + _get_random_chars(context_size // 2)
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
-        assert score < 75.0
+        scores.append(score)
     for i in range(len(whole_document) - context_size):
         partial_context = (
             _get_random_chars(context_size // 2) + whole_document[i + context_size // 2 : i + context_size]
         )
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
-        assert score < 75.0
+        scores.append(score)
+    accuracy = np.where(np.array(scores) < 65, 1, 0).mean()
+    assert accuracy > 0.99
 
 
 def test_calculate_context_similarity_on_parts_of_whole_document_with_noise():
@@ -179,7 +182,7 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noi
         partial_context_2 = _insert_noise(whole_document[i + stride : i + stride + context_size], 0.1)
         score = calculate_context_similarity(partial_context_1, partial_context_2, min_length=min_length)
         scores.append(score)
-    accuracy = np.where(np.array(scores) >= 75, 1, 0).mean()
+    accuracy = np.where(np.array(scores) >= 65, 1, 0).mean()
     assert accuracy > 0.99
 
 
