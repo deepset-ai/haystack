@@ -34,7 +34,7 @@ disable = [
 
   "invalid-name",
   "logging-fstring-interpolation",
-  "wrong-import-position",
+  
   "too-many-locals",
   "duplicate-code",
   "too-many-arguments",

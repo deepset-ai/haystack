@@ -19,11 +19,11 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "faiss", ie)
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
-
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
 
 
 logger = logging.getLogger(__name__)

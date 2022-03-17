@@ -8,13 +8,13 @@ import torch
 from torch.utils.data.sampler import SequentialSampler
 from transformers import AutoTokenizer, AutoModel
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import EmbeddingRetriever
-
 from haystack.schema import Document
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import EmbeddingRetriever
 
 
 logger = logging.getLogger(__name__)

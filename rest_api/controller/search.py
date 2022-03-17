@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from numpy import ndarray
 
+from pydantic import BaseConfig
 from fastapi import APIRouter
 
 import haystack
@@ -19,7 +20,6 @@ from rest_api.controller.utils import RequestLimiter
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
 logger = logging.getLogger("haystack")
 
-from pydantic import BaseConfig
 
 BaseConfig.arbitrary_types_allowed = True
 

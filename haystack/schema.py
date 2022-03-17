@@ -7,17 +7,6 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-from pydantic import BaseConfig
-from pydantic.json import pydantic_encoder
-
-if not typing.TYPE_CHECKING:
-    # We are using Pydantic dataclasses instead of vanilla Python's
-    # See #1598 for the reasons behind this choice & performance considerations
-    from pydantic.dataclasses import dataclass
-else:
-    from dataclasses import dataclass  # type: ignore
-
-from dataclasses import asdict
 from pathlib import Path
 from uuid import uuid4
 import mmh3
@@ -27,6 +16,18 @@ import time
 import json
 import pandas as pd
 import ast
+from dataclasses import asdict
+
+from pydantic import BaseConfig
+from pydantic.json import pydantic_encoder
+
+if not typing.TYPE_CHECKING:
+    # We are using Pydantic dataclasses instead of vanilla Python's
+    # See #1598 for the reasons behind this choice & performance considerations
+    from pydantic.dataclasses import dataclass
+else:
+    from dataclasses import dataclass  # type: ignore  # pylint: disable=ungrouped-imports
+
 
 
 logger = logging.getLogger(__name__)

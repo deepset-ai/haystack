@@ -17,14 +17,14 @@ from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
-if TYPE_CHECKING:
-    from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.logger import MLFlowLogger as MlLogger
 from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
 
+if TYPE_CHECKING:
+    from haystack.nodes import FARMReader
 
 logger = logging.getLogger(__name__)
 

@@ -16,12 +16,12 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "milvus2", ie)
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever.base import BaseRetriever
-
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever.base import BaseRetriever
 
 
 logger = logging.getLogger(__name__)
