@@ -1,10 +1,5 @@
 from typing import Generator, Optional, Dict, List, Set, Union
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
-
 import logging
 import collections
 import numpy as np

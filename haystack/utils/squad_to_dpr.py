@@ -68,7 +68,7 @@ from elasticsearch import Elasticsearch
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
 from haystack.document_stores.faiss import FAISSDocumentStore  # keep it here !
-from haystack.nodes.retriever import ElasticsearchRetriever, DensePassageRetriever  # keep it here !
+from haystack.nodes.retriever import ElasticsearchRetriever, DensePassageRetriever  # keep it here !  # pylint: disable=unused-import
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
 

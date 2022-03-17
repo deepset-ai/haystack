@@ -11,13 +11,10 @@ from tqdm import tqdm
 from abc import ABC, abstractmethod
 from inspect import signature
 from pathlib import Path
-from io import StringIO
 from typing import Optional, Dict, List, Union, Any, Iterable
 
-import torch
 from torch.utils.data import TensorDataset
 
-import pandas as pd
 import numpy as np
 from haystack.modeling.model.tokenization import (
     Tokenizer,

@@ -2,8 +2,6 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import logging
 
-from sqlalchemy import schema
-
 import os
 import re
 import sys
@@ -26,7 +24,7 @@ from pydantic.schema import (
 )
 
 from haystack import __version__ as haystack_version
-from haystack.errors import HaystackError, PipelineSchemaError
+from haystack.errors import PipelineSchemaError
 from haystack.nodes.base import BaseComponent
 
 

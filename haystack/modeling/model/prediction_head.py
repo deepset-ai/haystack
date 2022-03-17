@@ -19,11 +19,11 @@ from haystack.modeling.utils import try_get, all_gather_list
 logger = logging.getLogger(__name__)
 
 
-try:
-    from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
-except (ImportError, AttributeError) as e:
-    logger.debug("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
-    BertLayerNorm = torch.nn.LayerNorm
+# try:
+#     from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
+# except (ImportError, AttributeError) as e:
+#     logger.debug("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
+#     BertLayerNorm = torch.nn.LayerNorm
 
 
 class PredictionHead(nn.Module):

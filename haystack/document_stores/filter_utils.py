@@ -1,7 +1,6 @@
 from typing import Union, List, Dict, Optional, Tuple
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from functools import reduce
 
 from sqlalchemy.sql import select
 from sqlalchemy import and_, or_

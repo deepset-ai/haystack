@@ -1,5 +1,5 @@
-from multiprocessing.sharedctypes import Value
 from typing import List, Union
+
 from pathlib import Path
 from haystack.nodes.base import BaseComponent
 

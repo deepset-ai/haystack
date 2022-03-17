@@ -1,10 +1,10 @@
 import logging
 import numbers
-from typing import Iterable, List
+from typing import List
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, ConcatDataset, TensorDataset
+from torch.utils.data import ConcatDataset, TensorDataset
 from transformers import BatchEncoding
 
 from haystack.modeling.utils import flatten_list

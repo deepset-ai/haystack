@@ -1,5 +1,4 @@
 from __future__ import annotations
-from os import pipe
 from typing import Dict, List, Optional, Any
 
 import copy
@@ -12,11 +11,7 @@ import pandas as pd
 from pathlib import Path
 import networkx as nx
 from abc import ABC, abstractmethod
-from jsonschema import Draft7Validator
-from jsonschema.exceptions import ValidationError
-from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
-from transformers import pipelines
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
@@ -35,7 +30,6 @@ from haystack.nodes.evaluator.evaluator import (
     semantic_answer_similarity,
 )
 from haystack.pipelines.config import (
-    JSON_SCHEMAS_PATH,
     get_component_definitions,
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
@@ -44,7 +38,7 @@ from haystack.pipelines.config import (
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
 from haystack.schema import EvaluationResult, MultiLabel, Document
-from haystack.errors import PipelineError, PipelineConfigError
+from haystack.errors import PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -964,7 +958,7 @@ class Pipeline(BasePipeline):
         :param path: the path to save the image.
         """
         try:
-            import pygraphviz
+            import pygraphviz  # pylint: disable=unused-import
         except ImportError:
             raise ImportError(
                 f"Could not import `pygraphviz`. Please install via: \n"

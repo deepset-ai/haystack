@@ -1,4 +1,3 @@
-from modulefinder import Module
 from typing import List, Optional, Type, Union, Dict, Any, Generator
 
 import json

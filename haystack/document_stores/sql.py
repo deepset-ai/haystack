@@ -13,7 +13,6 @@ try:
         Column,
         String,
         DateTime,
-        ForeignKey,
         Boolean,
         Text,
         text,

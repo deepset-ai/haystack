@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field, Extra
 from pydantic import BaseConfig
 from pydantic.dataclasses import dataclass as pydantic_dataclass
-from haystack.schema import Answer, Document, Label, Span
+from haystack.schema import Answer, Document, Label
 
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union
 try:
     from typing import Literal
 except ImportError:
