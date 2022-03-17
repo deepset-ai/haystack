@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
 
 import logging
 
@@ -113,6 +113,15 @@ class Config(BaseConfig):
     extra = "forbid"  # type: ignore
 
 
+def is_valid_component_class(clazz, include_base_classes: bool = False):
+    return (
+        inspect.isclass(clazz)
+        and not inspect.isabstract(clazz)
+        and issubclass(clazz, BaseComponent)
+        #and (include_base_classes or not clazz.__name__.startswith("Base"))
+    )
+
+
 def find_subclasses_in_modules(importable_modules: List[str], include_base_classes: bool = False):
     """
     This function returns a list `(module, class)` of all the classes that can be imported
@@ -124,16 +133,11 @@ def find_subclasses_in_modules(importable_modules: List[str], include_base_class
         (module, clazz)
         for module in importable_modules
         for _, clazz in inspect.getmembers(sys.modules[module])
-        if (
-            inspect.isclass(clazz)
-            and not inspect.isabstract(clazz)
-            and issubclass(clazz, BaseComponent)
-            and (include_base_classes or not clazz.__name__.startswith("Base"))
-        )
+        if is_valid_component_class(clazz)
     ]
 
 
-def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Create the JSON schema for a single BaseComponent subclass,
     including all accessory classes.
@@ -141,15 +145,15 @@ def create_schema_for_node(node: BaseComponent) -> Tuple[Dict[str, Any], Dict[st
     :returns: the schema for the node and all accessory classes,
               and a dict with the reference to the node only.
     """
-    if not hasattr(node, "__name__"):
-        raise PipelineSchemaError(f"Node {node} has no __name__ attribute, cannot create a schema for it.")
+    if not hasattr(node_class, "__name__"):
+        raise PipelineSchemaError(f"Node class '{node_class}' has no '__name__' attribute, cannot create a schema for it.")
 
-    node_name = getattr(node, "__name__")
+    node_name = getattr(node_class, "__name__")
 
     logger.info(f"Creating schema for '{node_name}'")
 
     # Read the relevant init parameters from __init__'s signature
-    init_method = getattr(node, "__init__", None)
+    init_method = getattr(node_class, "__init__", None)
     if not init_method:
         raise PipelineSchemaError(f"Could not read the __init__ method of {node_name} to create its schema.")
 
@@ -232,7 +236,7 @@ def get_json_schema(
 
     # Build the definitions and refs for the nodes
     for _, node in possible_nodes:
-        node_definition, node_ref = create_schema_for_node(node)
+        node_definition, node_ref = create_schema_for_node_class(node)
         schema_definitions.update(node_definition)
         node_refs.append(node_ref)
 
@@ -303,17 +307,25 @@ def get_json_schema(
     return pipeline_schema
 
 
-def inject_definition_in_schema(node: BaseComponent, schema: Dict[str, Any]) -> Dict[str, Any]:
+def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[str, Any]) -> Dict[str, Any]:
     """
     Given a node and a schema in dict form, injects the JSON schema for the new component
     so that pipelines containing such note can be validated against it.
 
     :returns: the updated schema
     """
-    schema_definition, node_ref = create_schema_for_node(node)
+    if not is_valid_component_class(node_class):
+        raise PipelineSchemaError(
+            f"Can't generate a valid schema for node of type '{node_class.__name__}'. "
+            "Possible causes: \n"
+            "   - it has abstract methods\n"
+            "   - the class name starts with 'Base'\n"
+            "   - its __init__() take something else than Python primitive types or other nodes as parameter.\n"
+        )
+    schema_definition, node_ref = create_schema_for_node_class(node_class)
     schema["definitions"].update(schema_definition)
     schema["properties"]["components"]["items"]["anyOf"].append(node_ref)
-    logger.info(f"Added definition for {getattr(node, '__name__')}")
+    logger.info(f"Added definition for {getattr(node_class, '__name__')}")
     return schema
 
 

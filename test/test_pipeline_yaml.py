@@ -1,14 +1,13 @@
+from abc import abstractmethod
 import pytest
 import json
-import numpy as np
+import inspect
 import networkx as nx
 from enum import Enum
 from pydantic.dataclasses import dataclass
 
 import haystack
 from haystack import Pipeline
-from haystack import document_stores
-from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes import _json_schema
 from haystack.nodes import FileTypeClassifier
 from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError
@@ -17,10 +16,10 @@ from .conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, Moc
 from . import conftest
 
 
+
 #
 # Fixtures
 #
-
 
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, tmp_path):
@@ -51,7 +50,6 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 #
 # Integration
 #
-
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
@@ -108,7 +106,6 @@ def test_load_and_save_from_yaml(tmp_path):
 #
 # Unit
 #
-
 
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -251,6 +248,7 @@ def test_load_yaml_wrong_component(tmp_path):
 def test_load_yaml_custom_component(tmp_path):
     class CustomNode(MockNode):
         def __init__(self, param: int):
+            super().__init__()
             self.param = param
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -270,16 +268,121 @@ def test_load_yaml_custom_component(tmp_path):
                 - Query
         """
         )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert pipeline.get_node("custom_node").param == 1
+
+def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
+    class CustomNode(MockNode):
+        def __init__(self):
+            super().__init__()
+          
+        @abstractmethod
+        def abstract_method(self):
+          pass
+
+    assert inspect.isabstract(CustomNode)
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomNode
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineSchemaError, match="abstract"):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_custom_component_name_can_include_base(tmp_path):
+    class CustomBaseNode(MockNode):
+        def __init__(self):
+            super().__init__()
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomBaseNode
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
     Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_custom_component_name_cant_start_with_base(tmp_path):
+    class BaseCustomNode(MockNode):
+        def __init__(self):
+            super().__init__()
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: BaseCustomNode
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineSchemaError, match="starts with 'Base'"):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_custom_component_must_subclass_basecomponent(tmp_path):
+    class SomeCustomNode():
+        def run(self, *a, **k):
+            pass
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: SomeCustomNode
+              params:
+                param: 1
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineSchemaError, match="'SomeCustomNode' not found"):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
 def test_load_yaml_custom_component_referencing_other_node_in_init(tmp_path):
     class OtherNode(MockNode):
         def __init__(self, another_param: str):
+            super().__init__()
             self.param = another_param
 
     class CustomNode(MockNode):
         def __init__(self, other_node: OtherNode):
+            super().__init__()
             self.other_node = other_node
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -323,6 +426,7 @@ def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
 
     class CustomNode(MockNode):
         def __init__(self, some_exotic_parameter: HelperClass = HelperClass(1)):
+            super().__init__()
             self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -359,6 +463,7 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
 
     class CustomNode(MockNode):
         def __init__(self, some_exotic_parameter: HelperClass):
+            super().__init__()
             self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -397,6 +502,7 @@ def test_load_yaml_custom_component_with_enum_in_init(tmp_path):
 
     class CustomNode(MockNode):
         def __init__(self, some_exotic_parameter: Flags = None):
+            super().__init__()
             self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -433,6 +539,7 @@ def test_load_yaml_custom_component_with_enum_in_yaml(tmp_path):
 
     class CustomNode(MockNode):
         def __init__(self, some_exotic_parameter: Flags):
+            super().__init__()
             self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -466,6 +573,7 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
 
     class CustomNode(MockNode):
         def __init__(self, some_exotic_parameter: str):
+            super().__init__()
             self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -492,10 +600,12 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
 
 def test_load_yaml_custom_component_with_superclass(tmp_path):
     class BaseCustomNode(MockNode):
-        pass
+        def __init__(self):
+            super().__init__()
 
     class CustomNode(BaseCustomNode):
         def __init__(self, some_exotic_parameter: str):
+            super().__init__()
             self.some_exotic_parameter = some_exotic_parameter
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:

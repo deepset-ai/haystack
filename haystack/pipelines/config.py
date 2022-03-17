@@ -195,8 +195,8 @@ def validate_config(pipeline_config: Dict) -> None:
                     logger.info(
                         f"Missing definition for node of type {validation.instance['type']}. Looking into local classes..."
                     )
-                    missing_component = BaseComponent.get_subclass(validation.instance["type"])
-                    schema = inject_definition_in_schema(node=missing_component, schema=schema)
+                    missing_component_class = BaseComponent.get_subclass(validation.instance["type"])
+                    schema = inject_definition_in_schema(node_class=missing_component_class, schema=schema)
                     loaded_custom_nodes.append(validation.instance["type"])
                     continue
 
@@ -206,7 +206,6 @@ def validate_config(pipeline_config: Dict) -> None:
                     f"Node of type {validation.instance['type']} found, but it failed validation. Possible causes:\n"
                     " - The node is missing some mandatory parameter\n"
                     " - Wrong indentation of some parameter in YAML\n"
-                    " - If it's a custom node, its __init__ doesn't take only Python primitive types or other nodes as parameters.\n"
                     "See the stacktrace for more information."
                 ) from validation
 
