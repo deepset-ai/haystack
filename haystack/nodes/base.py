@@ -72,16 +72,14 @@ class BaseComponent(ABC):
 
     @property
     def name(self) -> Optional[str]:
-        if "name" not in self._component_config:
-            return None
-        return self._component_config["name"]
+        return self._component_config.get("name", None)
 
     @name.setter
     def name(self, value: str):
         self._component_config["name"] = value
 
     @property
-    def sub_components(self) -> List[BaseComponent]:
+    def dependencies(self) -> List[BaseComponent]:
         if "params" not in self._component_config:
             return list()
         return [param for param in self._component_config["params"].values() if isinstance(param, BaseComponent)]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from os import pipe
-from typing import Dict, List, Optional, Any, Sequence, Set
+from typing import Dict, List, Optional, Any, Set
 
 import copy
 import json
@@ -1214,14 +1214,14 @@ class Pipeline(BasePipeline):
         for component in components_to_search:
             if component.name is not None:
                 component_names.add(component.name)
-                sub_component_names = self._get_all_component_names(component.sub_components)
+                sub_component_names = self._get_all_component_names(component.dependencies)
                 component_names.update(sub_component_names)
         return component_names
 
     def _set_sub_component_names(self, component: BaseComponent, component_names: Optional[Set[str]] = None):
         if component_names is None:
             component_names = self._get_all_component_names()
-        for sub_component in component.sub_components:
+        for sub_component in component.dependencies:
             if sub_component.name is None:
                 sub_component.name = self._generate_component_name(
                     type_name=sub_component.type, existing_component_names=component_names
