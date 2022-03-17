@@ -620,7 +620,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             ids = [doc.meta["vector_id"] for doc in docs if "vector_id" in doc.meta]
 
         expr = f"{self.id_field} in [{','.join(ids)}]"
-        
+
         self.collection.delete(expr)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
