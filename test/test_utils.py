@@ -7,7 +7,7 @@ from haystack.utils.preprocessing import convert_files_to_dicts, tika_convert_fi
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.augment_squad import augment_squad
 from haystack.utils.squad_data import SquadData
-from haystack.utils.context_matching import calculate_context_similarity
+from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
 from .conftest import SAMPLES_PATH
 
@@ -20,6 +20,14 @@ Widerstände gegen diesen Fortschritt werden anti-aufklärerischen Kräften oder
 Die Epochendefinition rückt vor allem publizistisch tätige Gruppen in den gesellschaftlichen Fokus, 
 die zunächst selten einen bürgerlichen Hintergrund aufwiesen, sondern weitaus häufiger der Geistlichkeit oder Aristokratie angehörten: 
 Wissenschaftler, Journalisten, Autoren, sogar Regenten, die Traditionen der Kritik unterzogen, indem sie sich auf die Vernunftperspektive beriefen."""
+
+
+TEST_CONTEXT_2 = """Beer is one of the oldest[1][2][3] and most widely consumed[4] alcoholic drinks in the world, and the third most popular drink overall after water and tea.[5] It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.[6] Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.[7]
+Some of humanity's earliest known writings refer to the production and distribution of beer: the Code of Hammurabi included laws regulating beer and beer parlours,[8] and "The Hymn to Ninkasi", a prayer to the Mesopotamian goddess of beer, served as both a prayer and as a method of remembering the recipe for beer in a culture with few literate people.[9][10]
+Beer is distributed in bottles and cans and is also commonly available on draught, particularly in pubs and bars. The brewing industry is a global business, consisting of several dominant multinational companies and many thousands of smaller producers ranging from brewpubs to regional breweries. The strength of modern beer is usually around 4% to 6% alcohol by volume (ABV), although it may vary between 0.5% and 20%, with some breweries creating examples of 40% ABV and above.[11]
+Beer forms part of the culture of many nations and is associated with social traditions such as beer festivals, as well as a rich pub culture involving activities like pub crawling, pub quizzes and pub games.
+When beer is distilled, the resulting liquor is a form of whisky.[12]
+"""
 
 
 def test_convert_files_to_dicts():
@@ -184,6 +192,52 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noi
         scores.append(score)
     accuracy = np.where(np.array(scores) >= 65, 1, 0).mean()
     assert accuracy > 0.99
+
+
+def test_match_context():
+    whole_document = TEST_CONTEXT
+    min_length = 100
+    margin = 5
+    context_size = min_length + margin
+    for i in range(len(whole_document) - context_size):
+        partial_context = whole_document[i : i + context_size]
+        candidates = ((str(i), TEST_CONTEXT if i == 0 else TEST_CONTEXT_2) for i in range(10))
+        results = match_context(partial_context, candidates, min_length=min_length, num_processes=2)
+        assert len(results) == 1
+        id, score = results[0]
+        assert id == "0"
+        assert score == 100.0
+
+
+def test_match_context_single_process():
+    whole_document = TEST_CONTEXT
+    min_length = 100
+    margin = 5
+    context_size = min_length + margin
+    for i in range(len(whole_document) - context_size):
+        partial_context = whole_document[i : i + context_size]
+        candidates = ((str(i), TEST_CONTEXT if i == 0 else TEST_CONTEXT_2) for i in range(10))
+        results = match_context(partial_context, candidates, min_length=min_length, num_processes=1)
+        assert len(results) == 1
+        id, score = results[0]
+        assert id == "0"
+        assert score == 100.0
+
+
+def test_match_contexts():
+    whole_document = TEST_CONTEXT
+    min_length = 100
+    margin = 5
+    context_size = min_length + margin
+    candidates = ((str(i), TEST_CONTEXT if i == 0 else TEST_CONTEXT_2) for i in range(10))
+    partial_contexts = [whole_document[i : i + context_size] for i in range(len(whole_document) - context_size)]
+    result_list = match_contexts(partial_contexts, candidates, min_length=min_length, num_processes=2)
+    assert len(result_list) == len(partial_contexts)
+    for results in result_list:
+        assert len(results) == 1
+        id, score = results[0]
+        assert id == "0"
+        assert score == 100.0
 
 
 def _get_random_chars(size: int):
