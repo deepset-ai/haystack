@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from lib2to3.pytree import Base
 import pytest
 import json
 import inspect
@@ -302,29 +303,6 @@ def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
 
 
 def test_load_yaml_custom_component_name_can_include_base(tmp_path):
-    class CustomBaseNode(MockNode):
-        def __init__(self):
-            super().__init__()
-
-    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
-        tmp_file.write(
-            f"""
-            version: unstable
-            components:
-            - name: custom_node
-              type: CustomBaseNode
-            pipelines:
-            - name: my_pipeline
-              nodes:
-              - name: custom_node
-                inputs:
-                - Query
-        """
-        )
-    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-
-
-def test_load_yaml_custom_component_name_cant_start_with_base(tmp_path):
     class BaseCustomNode(MockNode):
         def __init__(self):
             super().__init__()
@@ -344,8 +322,8 @@ def test_load_yaml_custom_component_name_cant_start_with_base(tmp_path):
                 - Query
         """
         )
-    with pytest.raises(PipelineSchemaError, match="starts with 'Base'"):
-        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert isinstance(pipeline.get_node("custom_node"), BaseCustomNode)
 
 
 def test_load_yaml_custom_component_must_subclass_basecomponent(tmp_path):

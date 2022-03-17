@@ -113,16 +113,15 @@ class Config(BaseConfig):
     extra = "forbid"  # type: ignore
 
 
-def is_valid_component_class(clazz, include_base_classes: bool = False):
+def is_valid_component_class(clazz):
     return (
         inspect.isclass(clazz)
         and not inspect.isabstract(clazz)
         and issubclass(clazz, BaseComponent)
-        #and (include_base_classes or not clazz.__name__.startswith("Base"))
     )
 
 
-def find_subclasses_in_modules(importable_modules: List[str], include_base_classes: bool = False):
+def find_subclasses_in_modules(importable_modules: List[str]):
     """
     This function returns a list `(module, class)` of all the classes that can be imported
     dynamically, for example from a pipeline YAML definition or to generate documentation.
@@ -319,7 +318,6 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
             f"Can't generate a valid schema for node of type '{node_class.__name__}'. "
             "Possible causes: \n"
             "   - it has abstract methods\n"
-            "   - the class name starts with 'Base'\n"
             "   - its __init__() take something else than Python primitive types or other nodes as parameter.\n"
         )
     schema_definition, node_ref = create_schema_for_node_class(node_class)
