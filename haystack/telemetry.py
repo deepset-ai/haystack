@@ -134,7 +134,7 @@ def send_event(func):
     return wrapper
 
 
-def send_custom_event(event: str = "", payload: Dict = {}):
+def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
     """
     This method can be called directly from anywhere in Haystack to send an event.
     Enriches the given event with metadata and sends it to the posthog server if telemetry is enabled.
@@ -143,30 +143,45 @@ def send_custom_event(event: str = "", payload: Dict = {}):
     :param event: Name of the event. Use a noun and a verb, e.g., "evaluation started", "component created"
     :param payload: A dictionary containing event meta data, e.g., parameter settings
     """
+    global user_id
     try:
 
-        def request_task(data):
-            event_properties = {**(NonPrivateParameters.apply_filter(data)), **_get_or_create_telemetry_meta_data()}
-            user_id = _get_or_create_user_id()
+        def request_task(payload: Dict[str, Any], delete_telemetry_files: bool = False):
+            """
+            Sends an event in a post request to a posthog server
+
+            :param payload: A dictionary containing event meta data, e.g., parameter settings
+            :param delete_telemetry_files: Whether to delete the config and log file after sending the request. Used when sending a finale event after disabling telemetry.
+            """
+            event_properties = {**(NonPrivateParameters.apply_filter(payload)), **_get_or_create_telemetry_meta_data()}
+
             try:
                 posthog.capture(distinct_id=user_id, event=event, properties=event_properties)
             except Exception as e:
                 logger.debug("Telemetry was not able to make a post request to posthog.", exc_info=e)
             if is_telemetry_enabled() and is_telemetry_logging_to_file_enabled():
                 _write_event_to_telemetry_log_file(distinct_id=user_id, event=event, properties=event_properties)
+            if delete_telemetry_files:
+                _delete_telemetry_file(TelemetryFileType.CONFIG_FILE)
+                _delete_telemetry_file(TelemetryFileType.LOG_FILE)
 
-        def fire_and_forget(data):
-            Thread(target=request_task, args=(data,)).start()
+        def fire_and_forget(payload: Dict[str, Any], delete_telemetry_files: bool = False):
+            """
+            Starts a thread with the task to send an event in a post request to a posthog server
 
+            :param payload: A dictionary containing event meta data, e.g., parameter settings
+            :param delete_telemetry_files: Whether to delete the config and log file after sending the request. Used when sending a finale event after disabling telemetry.
+            """
+            Thread(target=request_task, args=(payload, delete_telemetry_files)).start()
+
+        user_id = _get_or_create_user_id()
         if is_telemetry_enabled():
-            fire_and_forget(data=payload)
+            fire_and_forget(payload=payload)
         elif CONFIG_PATH.exists():
             # if telemetry has just been disabled but the config file has not been deleted yet,
             # then send a final event instead of the triggered event and delete config file and log file afterward
             event = "telemetry disabled"
-            fire_and_forget(data={})
-            _delete_telemetry_file(TelemetryFileType.CONFIG_FILE)
-            _delete_telemetry_file(TelemetryFileType.LOG_FILE)
+            fire_and_forget(payload={}, delete_telemetry_files=True)
         else:
             # return without sending any event, not even a final event
             return
@@ -298,6 +313,7 @@ def _write_telemetry_config():
         with open(CONFIG_PATH, "w") as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
     except Exception:
+        logger.debug(f"Could not write config file to {CONFIG_PATH}.")
         send_custom_event(event="config saving failed")
 
 
@@ -314,9 +330,9 @@ def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
     Deletes the telemetry config file or log file if it exists.
     """
     if not isinstance(file_type_to_delete, TelemetryFileType):
-        logger.debug('File type to delete must be either TelemetryFileType.LOG_FILE or TelemetryFileType.CONFIG_FILE.')
+        logger.debug("File type to delete must be either TelemetryFileType.LOG_FILE or TelemetryFileType.CONFIG_FILE.")
+    path = LOG_PATH if file_type_to_delete is TelemetryFileType.LOG_FILE else CONFIG_PATH
     try:
-        path = LOG_PATH if file_type_to_delete is TelemetryFileType.LOG_FILE else CONFIG_PATH
         path.unlink(missing_ok=True)
     except Exception as e:
         logger.debug(f"Telemetry was not able to delete the {file_type_to_delete} at {path}.", exc_info=e)
@@ -339,7 +355,7 @@ class NonPrivateParameters:
         if "model_name_or_path" in tracked_params:
             if (
                 Path(tracked_params["model_name_or_path"]).is_file()
-                or tracked_params["model_name_or_path"].count("/") > 1
+                or tracked_params["model_name_or_path"].count(os.path.sep) > 1
             ):
                 # if model_name_or_path points to an existing file or contains more than one / it is a path
                 tracked_params["model_name_or_path"] = Path(tracked_params["model_name_or_path"]).name

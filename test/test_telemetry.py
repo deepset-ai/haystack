@@ -3,7 +3,9 @@ from time import sleep
 
 from unittest.mock import patch, PropertyMock
 
-import haystack
+import pytest
+
+from haystack import telemetry
 from haystack.telemetry import (
     NonPrivateParameters,
     send_event,
@@ -13,7 +15,7 @@ from haystack.telemetry import (
     _delete_telemetry_file,
     disable_telemetry,
     enable_telemetry,
-    TelemetryFileType
+    TelemetryFileType,
 )
 
 
@@ -42,6 +44,7 @@ def test_only_non_private_params(mock_nonprivateparameters):
     assert non_private_params == {}
 
 
+@pytest.mark.integration
 @patch("posthog.capture")
 @patch.object(
     NonPrivateParameters,
@@ -71,45 +74,55 @@ def num_lines(path: Path):
     return 0
 
 
-@patch("haystack.telemetry.LOG_PATH", Path("~/.haystack/telemetry_test.log").expanduser())
-def test_write_to_file():
-    num_lines_before = num_lines(haystack.telemetry.LOG_PATH)
+@pytest.mark.integration
+@patch("posthog.capture")
+def test_write_to_file(mock_posthog_capture, monkeypatch):
+    monkeypatch.setattr(telemetry, "LOG_PATH", Path("~/.haystack/telemetry_test.log").expanduser())
+    num_lines_before = num_lines(telemetry.LOG_PATH)
     send_custom_event(event="test")
     sleep(1)
-    num_lines_after = num_lines(haystack.telemetry.LOG_PATH)
+    num_lines_after = num_lines(telemetry.LOG_PATH)
     assert num_lines_before == num_lines_after
 
     enable_writing_events_to_file()
-    num_lines_before = num_lines(haystack.telemetry.LOG_PATH)
+    num_lines_before = num_lines(telemetry.LOG_PATH)
     send_custom_event(event="test")
     sleep(1)
-    num_lines_after = num_lines(haystack.telemetry.LOG_PATH)
+    num_lines_after = num_lines(telemetry.LOG_PATH)
     assert num_lines_before + 1 == num_lines_after
 
     disable_writing_events_to_file()
-    num_lines_before = num_lines(haystack.telemetry.LOG_PATH)
+    num_lines_before = num_lines(telemetry.LOG_PATH)
     send_custom_event(event="test")
     sleep(1)
-    num_lines_after = num_lines(haystack.telemetry.LOG_PATH)
+    num_lines_after = num_lines(telemetry.LOG_PATH)
     assert num_lines_before == num_lines_after
     _delete_telemetry_file(TelemetryFileType.LOG_FILE)
 
 
+@pytest.mark.integration
 @patch("posthog.capture")
-def test_disable_enable_telemetry(mock_posthog_capture):
+def test_disable_enable_telemetry(mock_posthog_capture, monkeypatch):
+    monkeypatch.setattr(telemetry, "HAYSTACK_TELEMETRY_ENABLED", "HAYSTACK_TELEMETRY_ENABLED_TEST")
+    monkeypatch.setattr(telemetry, "CONFIG_PATH", Path("~/.haystack/config_test.yaml").expanduser())
+    send_custom_event(event="test")
     send_custom_event(event="test")
     sleep(1)
-    assert mock_posthog_capture.call_count == 1, "a single event should be sent"
+    assert mock_posthog_capture.call_count == 2, "two events should be sent"
 
     disable_telemetry()
     send_custom_event(event="test")
     sleep(1)
-    assert mock_posthog_capture.call_count == 2, "one additional final event should be sent"
+    assert mock_posthog_capture.call_count == 3, "one additional final event should be sent"
     send_custom_event(event="test")
     sleep(1)
-    assert mock_posthog_capture.call_count == 2, "no additional event should be sent"
+    assert mock_posthog_capture.call_count == 3, "no additional event should be sent"
 
     enable_telemetry()
     send_custom_event(event="test")
     sleep(1)
-    assert mock_posthog_capture.call_count == 3, "one additional event should be sent"
+    assert mock_posthog_capture.call_count == 4, "one additional event should be sent"
+
+
+def setup_function():
+    telemetry.user_id = None
