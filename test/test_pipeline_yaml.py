@@ -279,7 +279,7 @@ def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
           
         @abstractmethod
         def abstract_method(self):
-          pass
+            pass
 
     assert inspect.isabstract(CustomNode)
 
