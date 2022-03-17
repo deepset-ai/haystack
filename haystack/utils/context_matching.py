@@ -73,7 +73,7 @@ def calculate_context_similarity(
     # If we detect that the score is near a half match and the best fitting part of longer is at its boundaries
     # we cut the shorter on the same side, recalculate the score and take the mean of both.
     # Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total
-    if boost_split_overlaps and score >= 40 and score < 65:
+    if boost_split_overlaps and 40 <= score < 65:
         cut_shorter_left = score_alignment.dest_start == 0
         cut_shorter_right = score_alignment.dest_end == longer_len
         cut_len = shorter_len // 2
