@@ -403,8 +403,9 @@ def semantic_answer_similarity(
     :param gold_labels: Labels as list of multiple possible answers per question
     :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model, should be path or string
                                      pointing to downloadable models.
-    :param batch_size: Batch size for encoding
-    :param use_gpu: Bool that indicates whether GPU is used for calculating SAS. If False CPU is used, if True GPU is used if available.
+    :param batch_size: Number of prediction label pairs to encode at once.
+    :param use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+                    Falls back to CPU if no GPU is available.
     :return: top_1_sas, top_k_sas
     """
     assert len(predictions) == len(gold_labels)
