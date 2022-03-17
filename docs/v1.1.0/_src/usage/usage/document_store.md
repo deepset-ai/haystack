@@ -128,9 +128,9 @@ document_store = SQLDocumentStore()
 <div class="tabcontent">
 
 The `WeaviateDocumentStore` requires a running Weaviate Server. 
-You can start a basic instance like this (see the [Weaviate docs](https://www.semi.technology/developers/weaviate/current/) for details):
+You can start a basic instance like this (see the [Weaviate docs](https://weaviate.io/developers/weaviate/current/) for details):
 ```
-    docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.2
+    docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
 ```
   
 Afterwards, you can use it in Haystack:

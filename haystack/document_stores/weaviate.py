@@ -32,7 +32,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     """
 
     Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
-    (See https://www.semi.technology/developers/weaviate/current/index.html#what-is-weaviate)
+    (See https://weaviate.io/developers/weaviate/current/index.html#what-is-weaviate)
 
     Some of the key differences in contrast to FAISS & Milvus:
     1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
@@ -45,7 +45,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
 
     Usage:
-    1. Start a Weaviate server (see https://www.semi.technology/developers/weaviate/current/getting-started/installation.html)
+    1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)
     2. Init a WeaviateDocumentStore in Haystack
 
     Limitations:
@@ -74,7 +74,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
-                             For more details, refer "https://www.semi.technology/developers/weaviate/current/getting-started/installation.html"
+                             For more details, refer "https://weaviate.io/developers/weaviate/current/getting-started/installation.html"
         :param port: port of Weaviate instance
         :param timeout_config: Weaviate Timeout config as a tuple of (retries, time out seconds).
         :param username: username (standard authentication via http_auth)
@@ -88,11 +88,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
-                           See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
+                           See: https://weaviate.io/developers/weaviate/current/more-resources/performance.html
         :param custom_schema: Allows to create custom schema in Weaviate, for more details
-                           See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
+                           See https://weaviate.io/developers/weaviate/current/data-schema/schema-configuration.html
         :param module_name: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
-                            For more details, See https://www.semi.technology/developers/weaviate/current/modules/
+                            For more details, See https://weaviate.io/developers/weaviate/current/modules/
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
@@ -793,7 +793,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             ```
         :param top_k: How many documents to return per query.
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
-                            https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
+                            https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         index = self._sanitize_index_name(index) or self.index
