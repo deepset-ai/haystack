@@ -126,7 +126,9 @@ def match_context(
         score_candidate_args = ((context, candidate, min_length, boost_split_overlaps) for candidate in candidates)
         if num_processes is None or num_processes > 1:
             pool = Pool(processes=num_processes)
-            candidate_scores: Iterable = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
+            candidate_scores: Iterable = pool.imap_unordered(
+                _score_candidate, score_candidate_args, chunksize=chunksize
+            )
         else:
             candidate_scores = map(_score_candidate, score_candidate_args)
 
@@ -186,7 +188,9 @@ def match_contexts(
 
         if num_processes is None or num_processes > 1:
             pool = Pool(processes=num_processes)
-            candidate_scores: Iterable = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
+            candidate_scores: Iterable = pool.imap_unordered(
+                _score_candidate, score_candidate_args, chunksize=chunksize
+            )
         else:
             candidate_scores = map(_score_candidate, score_candidate_args)
 
