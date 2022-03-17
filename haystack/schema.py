@@ -12,7 +12,7 @@ except ImportError:
 if not typing.TYPE_CHECKING:
     # We are using Pydantic dataclasses instead of vanilla Python's
     # See #1598 for the reasons behind this choice & performance considerations
-    from pydantic.dataclasses import dataclass  
+    from pydantic.dataclasses import dataclass
 else:
     from dataclasses import dataclass  # type: ignore
 
