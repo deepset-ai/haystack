@@ -6,7 +6,7 @@ from haystack.utils import (
     clean_wiki_text,
     launch_es,
     print_answers,
-    print_documents
+    print_documents,
 )
 from haystack.pipelines import Pipeline, RootNode
 from haystack.document_stores import ElasticsearchDocumentStore
