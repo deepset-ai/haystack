@@ -1,6 +1,13 @@
 import os
 from subprocess import Popen, PIPE, STDOUT
-from haystack.utils import fetch_archive_from_http, convert_files_to_dicts, clean_wiki_text, launch_es, print_answers
+from haystack.utils import (
+    fetch_archive_from_http,
+    convert_files_to_dicts,
+    clean_wiki_text,
+    launch_es,
+    print_answers,
+    print_documents
+)
 from haystack.pipelines import Pipeline, RootNode
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes import (
@@ -164,7 +171,7 @@ def tutorial14_query_classifier():
     res_2 = transformer_question_classifier.run(query="Arya Stark was the daughter of a Lord.")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
-    print_answers(res_2, details="minimum")
+    print_documents(res_2)
 
     # Here we create the keyword vs question/statement query classifier
 
