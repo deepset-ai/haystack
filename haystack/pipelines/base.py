@@ -500,7 +500,9 @@ class Pipeline(BasePipeline):
                     f"Root node '{root_node}' is invalid. Available options are {valid_root_nodes}."
                 )
         component.name = name
-        self._set_sub_component_names(component)
+        component_names = self._get_all_component_names()
+        component_names.add(name)
+        self._set_sub_component_names(component, component_names=component_names)
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
@@ -1190,6 +1192,10 @@ class Pipeline(BasePipeline):
     def _add_component_to_definitions(
         self, component: BaseComponent, component_definitions: Dict[str, Dict], return_defaults: bool = False
     ):
+        """
+        Add the definition of the component and all its dependencies (components too) to the component_definitions dict.
+        This is used to collect all component definitions within Pipeline.get_config()
+        """
         if component.name is None:
             raise PipelineError(f"Component with config '{component._component_config}' does not have a name.")
 
@@ -1219,8 +1225,6 @@ class Pipeline(BasePipeline):
         return component_names
 
     def _set_sub_component_names(self, component: BaseComponent, component_names: Optional[Set[str]] = None):
-        if component_names is None:
-            component_names = self._get_all_component_names()
         for sub_component in component.dependencies:
             if sub_component.name is None:
                 sub_component.name = self._generate_component_name(
