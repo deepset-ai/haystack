@@ -391,8 +391,8 @@ def semantic_answer_similarity(
     predictions: List[List[str]],
     gold_labels: List[List[str]],
     sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-    sas_batch_size: int = 32,
-    sas_use_gpu: bool = True
+    batch_size: int = 32,
+    use_gpu: bool = True
 ) -> Tuple[List[float], List[float]]:
     """
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
@@ -403,6 +403,8 @@ def semantic_answer_similarity(
     :param gold_labels: Labels as list of multiple possible answers per question
     :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model, should be path or string
                                      pointing to downloadable models.
+    :param batch_size: Batch size for encoding
+    :param use_gpu: Bool that indicates whether GPU is used for calculating SAS. If False CPU is used, if True GPU is used if available.
     :return: top_1_sas, top_k_sas
     """
     assert len(predictions) == len(gold_labels)
@@ -412,7 +414,7 @@ def semantic_answer_similarity(
     if config.architectures is not None:
         cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
         
-    device = None if sas_use_gpu else 'cpu'
+    device = None if use_gpu else 'cpu'
 
     # Compute similarities
     top_1_sas = []
@@ -429,7 +431,7 @@ def semantic_answer_similarity(
                 for l in labels:
                     grid.append((p, l))
             lengths.append((len(preds), len(labels)))
-        scores = model.predict(grid, batch_size=sas_batch_size)
+        scores = model.predict(grid, batch_size=batch_size)
 
         current_position = 0
         for len_p, len_l in lengths:
@@ -449,7 +451,7 @@ def semantic_answer_similarity(
             all_texts.extend(l)
             lengths.append((len(p), len(l)))
         # then compute embeddings
-        embeddings = model.encode(all_texts, batch_size=sas_batch_size)
+        embeddings = model.encode(all_texts, batch_size=batch_size)
 
         # then select which embeddings will be used for similarity computations
         current_position = 0
