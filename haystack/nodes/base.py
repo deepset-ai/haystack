@@ -79,7 +79,7 @@ class BaseComponent(ABC):
         self._component_config["name"] = value
 
     @property
-    def dependencies(self) -> List[BaseComponent]:
+    def utilized_components(self) -> List[BaseComponent]:
         if "params" not in self._component_config:
             return list()
         return [param for param in self._component_config["params"].values() if isinstance(param, BaseComponent)]

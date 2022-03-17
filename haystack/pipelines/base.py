@@ -1220,12 +1220,12 @@ class Pipeline(BasePipeline):
         for component in components_to_search:
             if component.name is not None:
                 component_names.add(component.name)
-                sub_component_names = self._get_all_component_names(component.dependencies)
+                sub_component_names = self._get_all_component_names(component.utilized_components)
                 component_names.update(sub_component_names)
         return component_names
 
     def _set_sub_component_names(self, component: BaseComponent, component_names: Set[str]):
-        for sub_component in component.dependencies:
+        for sub_component in component.utilized_components:
             if sub_component.name is None:
                 sub_component.name = self._generate_component_name(
                     type_name=sub_component.type, existing_component_names=component_names
