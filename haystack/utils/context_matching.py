@@ -1,5 +1,6 @@
 from collections import namedtuple
-from typing import Generator, Tuple, List, Union
+import multiprocessing
+from typing import Generator, Iterable, Optional, Tuple, List, Union
 import re
 from rapidfuzz import fuzz
 from multiprocessing import Pool
@@ -120,9 +121,15 @@ def match_context(
                                  we cut the context on the same side, recalculate the score and take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
     """
-    with Pool(processes=num_processes) as pool:
+    pool: Optional[multiprocessing.pool.Pool] = None
+    try:
         score_candidate_args = ((context, candidate, min_length, boost_split_overlaps) for candidate in candidates)
-        candidate_scores = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
+        if num_processes is None or num_processes > 1:
+            pool = Pool(processes=num_processes)
+            candidate_scores: Iterable = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
+        else:
+            candidate_scores = map(_score_candidate, score_candidate_args)
+
         if show_progress:
             candidate_scores = tqdm(candidate_scores)
 
@@ -131,6 +138,10 @@ def match_context(
         match_list = list((candiate_score.candidate_id, candiate_score.score) for candiate_score in sorted_matches)
 
         return match_list
+
+    finally:
+        if pool:
+            pool.close()
 
 
 def match_contexts(
@@ -165,13 +176,20 @@ def match_contexts(
                                  we cut the context on the same side, recalculate the score and take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
     """
-    with Pool(processes=num_processes) as pool:
+    pool: Optional[multiprocessing.pool.Pool] = None
+    try:
         score_candidate_args = (
             (context, candidate, min_length, boost_split_overlaps)
             for candidate in candidates
             for context in enumerate(contexts)
         )
-        candidate_scores = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
+
+        if num_processes is None or num_processes > 1:
+            pool = Pool(processes=num_processes)
+            candidate_scores: Iterable = pool.imap_unordered(_score_candidate, score_candidate_args, chunksize=chunksize)
+        else:
+            candidate_scores = map(_score_candidate, score_candidate_args)
+
         if show_progress:
             candidate_scores = tqdm(candidate_scores)
 
@@ -185,3 +203,7 @@ def match_contexts(
             match_lists.insert(context_id, match_list)
 
         return match_lists
+
+    finally:
+        if pool:
+            pool.close()
