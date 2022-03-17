@@ -1,19 +1,13 @@
+from typing import Dict, Generator, List, Optional, Union
+
 import hashlib
 import re
 import uuid
-from typing import Dict, Generator, List, Optional, Union
-from datetime import datetime
 
 import logging
 import json
 import numpy as np
 from tqdm import tqdm
-
-from haystack.schema import Document
-from haystack.document_stores import BaseDocumentStore
-from haystack.document_stores.base import get_batches_from_generator
-from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.document_stores.utils import convert_date_to_rfc3339
 
 try:
     from weaviate import client, AuthClientPassword
@@ -22,6 +16,12 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "weaviate", ie)
+
+from haystack.schema import Document
+from haystack.document_stores import BaseDocumentStore
+from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.document_stores.utils import convert_date_to_rfc3339
 
 
 logger = logging.getLogger(__name__)

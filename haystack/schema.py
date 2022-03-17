@@ -2,21 +2,22 @@ from __future__ import annotations
 
 import typing
 from typing import Any, Optional, Dict, List, Union
-from dataclasses import asdict
-
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+from pydantic import BaseConfig
+from pydantic.json import pydantic_encoder
+
 if not typing.TYPE_CHECKING:
     # We are using Pydantic dataclasses instead of vanilla Python's
     # See #1598 for the reasons behind this choice & performance considerations
-    from pydantic.dataclasses import dataclass  
+    from pydantic.dataclasses import dataclass
 else:
     from dataclasses import dataclass  # type: ignore
 
-from pydantic.json import pydantic_encoder
+from dataclasses import asdict
 from pathlib import Path
 from uuid import uuid4
 import mmh3
@@ -30,8 +31,6 @@ import ast
 
 logger = logging.getLogger(__name__)
 
-
-from pydantic import BaseConfig
 
 BaseConfig.arbitrary_types_allowed = True
 

@@ -1,8 +1,5 @@
 from typing import TYPE_CHECKING, Any, Union, List, Optional, Dict, Generator
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
-
 import json
 import logging
 import warnings
@@ -21,6 +18,9 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "faiss", ie)
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator

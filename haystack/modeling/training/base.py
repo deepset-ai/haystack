@@ -1,16 +1,15 @@
 from typing import Optional, Union, Tuple, List, Callable
 
-from torch.optim.lr_scheduler import _LRScheduler
-
 import sys
 import shutil
 import logging
 import dill
 import numpy
-import torch
 from tqdm import tqdm
 from pathlib import Path
 
+import torch
+from torch.optim.lr_scheduler import _LRScheduler
 from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel
 import torch.nn.functional as F
 from torch.optim import Optimizer

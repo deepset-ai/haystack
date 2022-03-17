@@ -20,6 +20,15 @@ from transformers import pipelines
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
+
+try:
+    from ray import serve
+    import ray
+except:
+    ray = None  # type: ignore
+    serve = None  # type: ignore
+
+from haystack import __version__
 from haystack.nodes.evaluator.evaluator import (
     calculate_em_str_multi,
     calculate_f1_str_multi,
@@ -30,20 +39,10 @@ from haystack.pipelines.config import (
     get_component_definitions,
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
-    validate_config_strings,
     validate_config,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
-
-try:
-    from ray import serve
-    import ray
-except:
-    ray = None  # type: ignore
-    serve = None  # type: ignore
-
-from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.errors import PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent

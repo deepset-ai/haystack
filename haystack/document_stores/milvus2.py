@@ -1,10 +1,7 @@
-import logging
-import warnings
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever.base import BaseRetriever
-
+import logging
+import warnings
 import numpy as np
 
 from scipy.special import expit
@@ -18,6 +15,9 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "milvus2", ie)
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever.base import BaseRetriever
 
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore

@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple, Dict, Union
+from typing import TYPE_CHECKING, Optional, List, Tuple, Dict, Union
 
 import hashlib
 import json
@@ -16,8 +16,6 @@ import torch.multiprocessing as mp
 from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from haystack.nodes import FARMReader

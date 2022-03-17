@@ -67,8 +67,6 @@ disable = [
   "arguments-renamed",
   "unnecessary-pass",
 
-  "ungrouped-imports",
-
   "broad-except",
   "unnecessary-comprehension",
   "subprocess-run-check",

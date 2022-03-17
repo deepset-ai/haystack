@@ -1,11 +1,10 @@
+from typing import Any, Dict, List, Optional
+
 import logging
 from collections.abc import Callable
 from enum import Enum
-from typing import Any, Dict, List, Optional
-
 import numpy
 import torch
-from haystack.modeling.utils import initialize_device_settings
 from transformers import (
     RagTokenizer,
     RagTokenForGeneration,
@@ -18,6 +17,7 @@ from transformers import (
 from haystack.schema import Answer, Document
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.retriever.dense import DensePassageRetriever
+from haystack.modeling.utils import initialize_device_settings
 
 
 logger = logging.getLogger(__name__)

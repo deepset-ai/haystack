@@ -1,8 +1,5 @@
 from typing import TYPE_CHECKING, Callable, List, Union, Dict
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import EmbeddingRetriever
-
 import logging
 from abc import abstractmethod
 import numpy as np
@@ -10,6 +7,9 @@ from tqdm.auto import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
 from transformers import AutoTokenizer, AutoModel
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import EmbeddingRetriever
 
 from haystack.schema import Document
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
