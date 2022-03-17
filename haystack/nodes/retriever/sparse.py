@@ -9,8 +9,6 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore, KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 
-from haystack.document_stores import BaseDocumentStore
-
 
 logger = logging.getLogger(__name__)
 

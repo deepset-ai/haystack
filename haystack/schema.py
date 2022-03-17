@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Optional, Dict, List, Union, Optional
+from typing import Any, Optional, Dict, List, Union
 from dataclasses import asdict
 
 try:
@@ -9,11 +9,11 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-# We are using Pydantic dataclasses instead of vanilla Python's
-# See #1598 for the reasons behind this choice & performance considerations
-from pydantic.dataclasses import dataclass
-
-if typing.TYPE_CHECKING:
+if not typing.TYPE_CHECKING:
+    # We are using Pydantic dataclasses instead of vanilla Python's
+    # See #1598 for the reasons behind this choice & performance considerations
+    from pydantic.dataclasses import dataclass  
+else:
     from dataclasses import dataclass  # type: ignore
 
 from pydantic.json import pydantic_encoder
