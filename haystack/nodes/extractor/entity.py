@@ -21,8 +21,8 @@ class EntityExtractor(BaseComponent):
     outgoing_edges = 1
 
     def __init__(self, model_name_or_path: str = "dslim/bert-base-NER", use_gpu: bool = True):
+        super().__init__()
 
-        self.set_config(model_name_or_path=model_name_or_path)
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)

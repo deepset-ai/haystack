@@ -1,11 +1,8 @@
 import pytest
 import sys
-from pathlib import Path
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
-from haystack.nodes.retriever.dense import EmbeddingRetriever
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
@@ -19,10 +16,9 @@ from haystack.pipelines.standard_pipelines import (
     RetrieverQuestionGenerationPipeline,
     TranslationWrapperPipeline,
 )
-from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
@@ -83,7 +79,7 @@ def test_summarizer_calculate_metrics(
     assert metrics["Summarizer"]["ndcg"] == 0.5
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 @pytest.mark.parametrize("batch_size", [None, 20])
 def test_add_eval_data(document_store, batch_size):
     # add eval data (SQUAD format)
@@ -130,7 +126,7 @@ def test_add_eval_data(document_store, batch_size):
     assert doc.content[start:end] == "France"
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_eval_reader(reader, document_store: BaseDocumentStore):
     # add eval data (SQUAD format)
@@ -216,7 +212,7 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     assert eval_reader.top_k_em == eval_reader_vanila.top_k_em
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_eval_data_split_word(document_store):
     # splitting by word
     preprocessor = PreProcessor(
@@ -241,7 +237,7 @@ def test_eval_data_split_word(document_store):
     assert len(set(labels[0].document_ids)) == 2
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 def test_eval_data_split_passage(document_store):
     # splitting by passage
     preprocessor = PreProcessor(
@@ -305,10 +301,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     labels = EVAL_LABELS[:1]
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result = pipeline.eval(
-        labels=labels,
-        params={"Retriever": {"top_k": 5}},
-    )
+    eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics()
 
@@ -469,10 +462,7 @@ def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path
     ]
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result = pipeline.eval(
-        labels=labels,
-        params={"Retriever": {"top_k": 5}},
-    )
+    eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics()
 
@@ -541,10 +531,7 @@ def test_reader_eval_in_pipeline(reader):
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(
-        labels=EVAL_LABELS,
-        params={"Retriever": {"top_k": 5}},
-    )
+    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
     metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match")
 
@@ -773,10 +760,7 @@ def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
     ]
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(
-        labels=labels,
-        params={"Retriever": {"top_k": 5}},
-    )
+    eval_result: EvaluationResult = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
     wrongs_retriever = eval_result.wrong_examples(node="Retriever", n=1)
     wrongs_reader = eval_result.wrong_examples(node="Reader", n=1)

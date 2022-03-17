@@ -221,7 +221,7 @@ def get_hard_negative_contexts(retriever: BaseRetriever, question: str, answers:
     for retrieved_doc in retrieved_docs:
         retrieved_doc_id = retrieved_doc.meta.get("name", "")
         retrieved_doc_text = retrieved_doc.content
-        if any([True if answer.lower() in retrieved_doc_text.lower() else False for answer in answers]):
+        if any(answer.lower() in retrieved_doc_text.lower() for answer in answers):
             continue
         list_hard_neg_ctxs.append({"title": retrieved_doc_id, "text": retrieved_doc_text, "passage_id": ""})
 
@@ -334,13 +334,8 @@ if __name__ == "__main__":
     num_hard_negative_ctxs = args.num_hard_negative_ctxs
     split_dataset = args.split_dataset
 
-    retriever_dpr_config = {
-        "use_gpu": True,
-    }
-    store_dpr_config = {
-        "embedding_field": "embedding",
-        "embedding_dim": 768,
-    }
+    retriever_dpr_config = {"use_gpu": True}
+    store_dpr_config = {"embedding_field": "embedding", "embedding_dim": 768}
 
     retriever_bm25_config: dict = {}
 

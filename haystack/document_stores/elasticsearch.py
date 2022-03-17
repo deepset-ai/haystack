@@ -1,19 +1,18 @@
 from modulefinder import Module
-from typing import List, Optional, Union, Dict, Any, Generator
+from typing import List, Optional, Type, Union, Dict, Any, Generator
 
 import json
 import logging
 import time
 from copy import deepcopy
 from string import Template
-from collections import defaultdict
 
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
 
 try:
-    from elasticsearch import Elasticsearch, RequestsHttpConnection
+    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
 except (ImportError, ModuleNotFoundError) as ie:
@@ -65,6 +64,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
+        use_system_proxy: bool = False,
     ):
         """
         A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -137,42 +137,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param synonym_type: Synonym filter type can be passed.
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+        :param use_system_proxy: Whether to use system proxy.
 
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            host=host,
-            port=port,
-            username=username,
-            password=password,
-            api_key_id=api_key_id,
-            api_key=api_key,
-            aws4auth=aws4auth,
-            index=index,
-            label_index=label_index,
-            search_fields=search_fields,
-            content_field=content_field,
-            name_field=name_field,
-            embedding_field=embedding_field,
-            embedding_dim=embedding_dim,
-            custom_mapping=custom_mapping,
-            excluded_meta_data=excluded_meta_data,
-            analyzer=analyzer,
-            scheme=scheme,
-            ca_certs=ca_certs,
-            verify_certs=verify_certs,
-            create_index=create_index,
-            duplicate_documents=duplicate_documents,
-            refresh_type=refresh_type,
-            similarity=similarity,
-            timeout=timeout,
-            return_embedding=return_embedding,
-            index_type=index_type,
-            scroll=scroll,
-            skip_missing_embeddings=skip_missing_embeddings,
-            synonyms=synonyms,
-            synonym_type=synonym_type,
-        )
+        super().__init__()
 
         self.client = self._init_elastic_client(
             host=host,
@@ -186,6 +154,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             ca_certs=ca_certs,
             verify_certs=verify_certs,
             timeout=timeout,
+            use_system_proxy=use_system_proxy,
         )
 
         # configure mappings to ES fields that will be used for querying / displaying results
@@ -229,17 +198,17 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             self.delete_index(index)
             self.delete_index(label_index)
             self._create_document_index(index)
-            self._create_label_index(index)
-
-        if create_index:
+            self._create_label_index(label_index)
+        elif create_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
 
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
 
+    @classmethod
     def _init_elastic_client(
-        self,
+        cls,
         host: Union[str, List[str]],
         port: Union[int, List[int]],
         username: str,
@@ -251,12 +220,17 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         ca_certs: Optional[str],
         verify_certs: bool,
         timeout: int,
+        use_system_proxy: bool,
     ) -> Elasticsearch:
 
-        hosts = self._prepare_hosts(host, port)
+        hosts = cls._prepare_hosts(host, port)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
+
+        connection_class: Type[Connection] = Urllib3HttpConnection
+        if use_system_proxy:
+            connection_class = RequestsHttpConnection
 
         if api_key:
             # api key authentication
@@ -267,6 +241,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 ca_certs=ca_certs,
                 verify_certs=verify_certs,
                 timeout=timeout,
+                connection_class=connection_class,
             )
         elif aws4auth:
             # aws elasticsearch with IAM
@@ -288,11 +263,17 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 ca_certs=ca_certs,
                 verify_certs=verify_certs,
                 timeout=timeout,
+                connection_class=connection_class,
             )
         else:
             # there is no authentication for this elasticsearch instance
             client = Elasticsearch(
-                hosts=hosts, scheme=scheme, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout
+                hosts=hosts,
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
             )
 
         # Test connection
@@ -312,7 +293,8 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             )
         return client
 
-    def _prepare_hosts(self, host, port):
+    @staticmethod
+    def _prepare_hosts(host, port):
         # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
         if isinstance(host, list):
             if isinstance(port, list):
@@ -336,11 +318,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             if self.search_fields:
                 for search_field in self.search_fields:
                     if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+                        host_data = self.client.transport.hosts[0]
                         raise Exception(
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
                             f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
                             f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                            f"In this case deleting the index with `curl -X DELETE \"{host_data['host']}:{host_data['port']}/{index_name}\"` will fix your environment. "
                             f"Note, that all data stored in the index will be lost!"
                         )
             if self.embedding_field:
@@ -367,15 +350,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         {"strings": {"path_match": "*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
                     ],
                 },
-                "settings": {
-                    "analysis": {
-                        "analyzer": {
-                            "default": {
-                                "type": self.analyzer,
-                            }
-                        }
-                    }
-                },
+                "settings": {"analysis": {"analyzer": {"default": {"type": self.analyzer}}}},
             }
 
             if self.synonyms:
@@ -522,15 +497,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if query:
             body["query"] = {
                 "bool": {
-                    "should": [
-                        {
-                            "multi_match": {
-                                "query": query,
-                                "type": "most_fields",
-                                "fields": self.search_fields,
-                            }
-                        }
-                    ]
+                    "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
                 }
             }
         if filters:
@@ -1193,55 +1160,54 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
-        else:
-            # +1 in similarity to avoid negative numbers (for cosine sim)
-            body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-            if filters:
-                body["query"]["script_score"]["query"] = {
-                    "bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}
-                }
 
-            excluded_meta_data: Optional[list] = None
+        # +1 in similarity to avoid negative numbers (for cosine sim)
+        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
+            if body["query"]["script_score"]["query"] == {"match_all": {}}:
+                body["query"]["script_score"]["query"] = filter_
+            else:
+                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
 
-            if self.excluded_meta_data:
-                excluded_meta_data = deepcopy(self.excluded_meta_data)
+        excluded_meta_data: Optional[list] = None
 
-                if return_embedding is True and self.embedding_field in excluded_meta_data:
-                    excluded_meta_data.remove(self.embedding_field)
-                elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                    excluded_meta_data.append(self.embedding_field)
-            elif return_embedding is False:
-                excluded_meta_data = [self.embedding_field]
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
 
-            if excluded_meta_data:
-                body["_source"] = {"excludes": excluded_meta_data}
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
 
-            logger.debug(f"Retriever query: {body}")
-            try:
-                result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"][
-                    "hits"
-                ]
-                if len(result) == 0:
-                    count_embeddings = self.get_embedding_count(index=index, headers=headers)
-                    if count_embeddings == 0:
-                        raise RequestError(
-                            400, "search_phase_execution_exception", {"error": "No documents with embeddings."}
-                        )
-            except RequestError as e:
-                if e.error == "search_phase_execution_exception":
-                    error_message: str = (
-                        "search_phase_execution_exception: Likely some of your stored documents don't have embeddings."
-                        " Run the document store's update_embeddings() method."
+        if excluded_meta_data:
+            body["_source"] = {"excludes": excluded_meta_data}
+
+        logger.debug(f"Retriever query: {body}")
+        try:
+            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+            if len(result) == 0:
+                count_embeddings = self.get_embedding_count(index=index, headers=headers)
+                if count_embeddings == 0:
+                    raise RequestError(
+                        400, "search_phase_execution_exception", {"error": "No documents with embeddings."}
                     )
-                    raise RequestError(e.status_code, error_message, e.info)
-                else:
-                    raise e
+        except RequestError as e:
+            if e.error == "search_phase_execution_exception":
+                error_message: str = (
+                    "search_phase_execution_exception: Likely some of your stored documents don't have embeddings."
+                    " Run the document store's update_embeddings() method."
+                )
+                raise RequestError(e.status_code, error_message, e.info)
+            raise e
 
-            documents = [
-                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
-                for hit in result
-            ]
-            return documents
+        documents = [
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+            for hit in result
+        ]
+        return documents
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
@@ -1276,10 +1242,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         return query
 
     def _convert_es_hit_to_document(
-        self,
-        hit: dict,
-        return_embedding: bool,
-        adapt_score_for_embedding: bool = False,
+        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {
@@ -1783,38 +1746,34 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
-        else:
-            # +1 in similarity to avoid negative numbers (for cosine sim)
-            body: Dict[str, Any] = {
-                "size": top_k,
-                "query": self._get_vector_similarity_query(query_emb, top_k),
-            }
-            if filters:
-                body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+        # +1 in similarity to avoid negative numbers (for cosine sim)
+        body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-            excluded_meta_data: Optional[list] = None
+        excluded_meta_data: Optional[list] = None
 
-            if self.excluded_meta_data:
-                excluded_meta_data = deepcopy(self.excluded_meta_data)
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
 
-                if return_embedding is True and self.embedding_field in excluded_meta_data:
-                    excluded_meta_data.remove(self.embedding_field)
-                elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                    excluded_meta_data.append(self.embedding_field)
-            elif return_embedding is False:
-                excluded_meta_data = [self.embedding_field]
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
 
-            if excluded_meta_data:
-                body["_source"] = {"excludes": excluded_meta_data}
+        if excluded_meta_data:
+            body["_source"] = {"excludes": excluded_meta_data}
 
-            logger.debug(f"Retriever query: {body}")
-            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+        logger.debug(f"Retriever query: {body}")
+        result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
-            documents = [
-                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
-                for hit in result
-            ]
-            return documents
+        documents = [
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+            for hit in result
+        ]
+        return documents
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
@@ -1823,41 +1782,51 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
             index_info = self.client.indices.get(index_name, headers=headers)[index_name]
-            mapping = index_info["mappings"]
-            settings = index_info["settings"]["index"]
+            mappings = index_info["mappings"]
+            index_settings = index_info["settings"]["index"]
             if self.search_fields:
                 for search_field in self.search_fields:
-                    if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+                    if (
+                        search_field in mappings["properties"]
+                        and mappings["properties"][search_field]["type"] != "text"
+                    ):
+                        host_data = self.client.transport.hosts[0]
                         raise Exception(
-                            f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
+                            f"The search_field '{search_field}' of index '{index_name}' with type '{mappings['properties'][search_field]['type']}' "
                             f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
                             f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                            f"In this case deleting the index with `curl -X DELETE \"{host_data['host']}:{host_data['port']}/{index_name}\"` will fix your environment. "
                             f"Note, that all data stored in the index will be lost!"
                         )
 
             # embedding field will be created
-            if self.embedding_field not in mapping["properties"]:
-                mapping["properties"][self.embedding_field] = self._get_embedding_field_mapping(
+            if self.embedding_field not in mappings["properties"]:
+                mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping(
                     similarity=self.similarity
                 )
-                self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
+                self.client.indices.put_mapping(index=self.index, body=mappings, headers=headers)
                 self.embeddings_field_supports_similarity = True
             else:
                 # bad embedding field
-                if mapping["properties"][self.embedding_field]["type"] != "knn_vector":
+                if mappings["properties"][self.embedding_field]["type"] != "knn_vector":
                     raise Exception(
                         f"The '{index_name}' index in OpenSearch already has a field called '{self.embedding_field}'"
-                        f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
+                        f" with the type '{mappings['properties'][self.embedding_field]['type']}'. Please update the "
                         f"document_store to use a different name for the embedding_field parameter."
                     )
+                # embedding field with global space_type setting
+                if "method" not in mappings["properties"][self.embedding_field]:
+                    embedding_field_space_type = index_settings["knn.space_type"]
+                # embedding field with local space_type setting
                 else:
                     # embedding field with global space_type setting
-                    if "method" not in mapping["properties"][self.embedding_field]:
-                        embedding_field_space_type = settings["knn.space_type"]
+                    if "method" not in mappings["properties"][self.embedding_field]:
+                        embedding_field_space_type = index_settings["knn.space_type"]
                     # embedding field with local space_type setting
                     else:
-                        embedding_field_space_type = mapping["properties"][self.embedding_field]["method"]["space_type"]
+                        embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
+                            "space_type"
+                        ]
 
                     embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
                     if embedding_field_similarity == self.similarity:
@@ -1871,54 +1840,57 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
                         )
 
+            # Adjust global ef_search setting. If not set, default is 512.
+            ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)
+            if self.index_type == "hnsw" and ef_search != 20:
+                body = {"knn.algo_param.ef_search": 20}
+                self.client.indices.put_settings(index=self.index, body=body, headers=headers)
+            elif self.index_type == "flat" and ef_search != 512:
+                body = {"knn.algo_param.ef_search": 512}
+                self.client.indices.put_settings(index=self.index, body=body, headers=headers)
+
             return
 
         if self.custom_mapping:
-            mapping = self.custom_mapping
+            index_definition = self.custom_mapping
         else:
-            mapping = {
+            index_definition = {
                 "mappings": {
                     "properties": {self.name_field: {"type": "keyword"}, self.content_field: {"type": "text"}},
                     "dynamic_templates": [
                         {"strings": {"path_match": "*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
                     ],
                 },
-                "settings": {
-                    "analysis": {
-                        "analyzer": {
-                            "default": {
-                                "type": self.analyzer,
-                            }
-                        }
-                    }
-                },
+                "settings": {"analysis": {"analyzer": {"default": {"type": self.analyzer}}}},
             }
 
             if self.synonyms:
                 for field in self.search_fields:
-                    mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
-                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+                    index_definition["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
+                index_definition["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
 
-                mapping["settings"]["analysis"]["analyzer"]["synonym"] = {
+                index_definition["settings"]["analysis"]["analyzer"]["synonym"] = {
                     "tokenizer": "whitespace",
                     "filter": ["lowercase", "synonym"],
                 }
-                mapping["settings"]["analysis"]["filter"] = {
+                index_definition["settings"]["analysis"]["filter"] = {
                     "synonym": {"type": self.synonym_type, "synonyms": self.synonyms}
                 }
 
             else:
                 for field in self.search_fields:
-                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
+                    index_definition["mappings"]["properties"].update({field: {"type": "text"}})
 
             if self.embedding_field:
-                mapping["settings"]["index"] = {"knn": True}
-                mapping["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
+                index_definition["settings"]["index"] = {"knn": True}
+                if self.index_type == "hnsw":
+                    index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
+                index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
                     similarity=self.similarity
                 )
 
         try:
-            self.client.indices.create(index=index_name, body=mapping, headers=headers)
+            self.client.indices.create(index=index_name, body=index_definition, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
@@ -1935,7 +1907,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             # use default parameters
             pass
         elif self.index_type == "hnsw":
-            method["parameters"] = {"ef_construction": 80, "m": 64, "ef_search": 20}
+            method["parameters"] = {"ef_construction": 80, "m": 64}
         else:
             logger.error("Please set index_type to either 'flat' or 'hnsw'")
 

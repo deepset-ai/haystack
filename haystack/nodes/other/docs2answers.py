@@ -13,9 +13,6 @@ class Docs2Answers(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self):
-        self.set_config()
-
     def run(self, query: str, documents: List[Document]):  # type: ignore
         # conversion from Document -> Answer
         answers: List[Answer] = []
@@ -35,12 +32,7 @@ class Docs2Answers(BaseComponent):
             else:
                 # Regular docs
                 cur_answer = Answer(
-                    answer="",
-                    type="other",
-                    score=doc.score,
-                    context=doc.content,
-                    document_id=doc.id,
-                    meta=doc.meta,
+                    answer="", type="other", score=doc.score, context=doc.content, document_id=doc.id, meta=doc.meta
                 )
             answers.append(cur_answer)
 

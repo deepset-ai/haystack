@@ -65,14 +65,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                 f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}"
             )
 
-        self.set_config(
-            workspace=workspace,
-            index=index,
-            duplicate_documents=duplicate_documents,
-            api_endpoint=api_endpoint,
-            similarity=similarity,
-            return_embedding=return_embedding,
-        )
+        super().__init__()
 
     def get_all_documents(
         self,

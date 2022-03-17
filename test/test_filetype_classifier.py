@@ -3,9 +3,9 @@ from pathlib import Path
 from haystack.nodes.file_classifier.file_type import FileTypeClassifier, DEFAULT_TYPES
 
 
-def test_filetype_classifier_single_file(tmpdir):
+def test_filetype_classifier_single_file(tmp_path):
     node = FileTypeClassifier()
-    test_files = [tmpdir / f"test.{extension}" for extension in DEFAULT_TYPES]
+    test_files = [tmp_path / f"test.{extension}" for extension in DEFAULT_TYPES]
 
     for edge_index, test_file in enumerate(test_files):
         output, edge = node.run(test_file)
@@ -13,35 +13,35 @@ def test_filetype_classifier_single_file(tmpdir):
         assert output == {"file_paths": [test_file]}
 
 
-def test_filetype_classifier_many_files(tmpdir):
+def test_filetype_classifier_many_files(tmp_path):
     node = FileTypeClassifier()
 
     for edge_index, extension in enumerate(DEFAULT_TYPES):
-        test_files = [tmpdir / f"test_{idx}.{extension}" for idx in range(10)]
+        test_files = [tmp_path / f"test_{idx}.{extension}" for idx in range(10)]
 
         output, edge = node.run(test_files)
         assert edge == f"output_{edge_index+1}"
         assert output == {"file_paths": test_files}
 
 
-def test_filetype_classifier_many_files_mixed_extensions(tmpdir):
+def test_filetype_classifier_many_files_mixed_extensions(tmp_path):
     node = FileTypeClassifier()
-    test_files = [tmpdir / f"test.{extension}" for extension in DEFAULT_TYPES]
+    test_files = [tmp_path / f"test.{extension}" for extension in DEFAULT_TYPES]
 
     with pytest.raises(ValueError):
         node.run(test_files)
 
 
-def test_filetype_classifier_unsupported_extension(tmpdir):
+def test_filetype_classifier_unsupported_extension(tmp_path):
     node = FileTypeClassifier()
-    test_file = tmpdir / f"test.really_weird_extension"
+    test_file = tmp_path / f"test.really_weird_extension"
     with pytest.raises(ValueError):
         node.run(test_file)
 
 
-def test_filetype_classifier_custom_extensions(tmpdir):
+def test_filetype_classifier_custom_extensions(tmp_path):
     node = FileTypeClassifier(supported_types=["my_extension"])
-    test_file = tmpdir / f"test.my_extension"
+    test_file = tmp_path / f"test.my_extension"
     output, edge = node.run(test_file)
     assert edge == f"output_1"
     assert output == {"file_paths": [test_file]}

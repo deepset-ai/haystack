@@ -2,164 +2,458 @@ from pathlib import Path
 
 import os
 import json
+from typing import Tuple
 from unittest.mock import Mock
+
+import pandas as pd
 import pytest
+from requests import PreparedRequest
 import responses
+import logging
+import yaml
+
+from haystack import __version__, Document, Answer, JoinAnswers
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
-
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.nodes.other.join_docs import JoinDocuments
+from haystack.nodes.base import BaseComponent
+from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
-from haystack.pipelines import (
-    Pipeline,
-    DocumentSearchPipeline,
-    RootNode,
+from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode
+from haystack.pipelines.config import validate_config_strings
+from haystack.pipelines.utils import generate_code
+from haystack.errors import PipelineConfigError
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments, PreProcessor, TextConverter
+from haystack.utils.deepsetcloud import DeepsetCloudError
+
+from .conftest import (
+    MOCK_DC,
+    DC_API_ENDPOINT,
+    DC_API_KEY,
+    DC_TEST_INDEX,
+    SAMPLES_PATH,
+    MockDocumentStore,
+    MockRetriever,
+    deepset_cloud_fixture,
 )
-from haystack.pipelines import ExtractiveQAPipeline
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
-
-from conftest import MOCK_DC, DC_API_ENDPOINT, DC_API_KEY, DC_TEST_INDEX, SAMPLES_PATH, deepset_cloud_fixture
 
 
+class ParentComponent(BaseComponent):
+    outgoing_edges = 1
+
+    def __init__(self, dependent: BaseComponent) -> None:
+        super().__init__()
+
+    def run(*args, **kwargs):
+        logging.info("ParentComponent run() was called")
+
+
+class ParentComponent2(BaseComponent):
+    outgoing_edges = 1
+
+    def __init__(self, dependent: BaseComponent) -> None:
+        super().__init__()
+
+    def run(*args, **kwargs):
+        logging.info("ParentComponent2 run() was called")
+
+
+class ChildComponent(BaseComponent):
+    def __init__(self, some_key: str = None) -> None:
+        super().__init__()
+
+    def run(*args, **kwargs):
+        logging.info("ChildComponent run() was called")
+
+
+class DummyRetriever(MockRetriever):
+    def __init__(self, document_store):
+        self.document_store = document_store
+
+    def run(self):
+        test = "test"
+        return {"test": test}, "output_1"
+
+
+class JoinNode(RootNode):
+    def run(self, output=None, inputs=None):
+        if inputs:
+            output = ""
+            for input_dict in inputs:
+                output += input_dict["output"]
+        return {"output": output}, "output_1"
+
+
+@pytest.mark.integration
 @pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_load_and_save_yaml(document_store, tmp_path):
-    # test correct load of indexing pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
+def test_to_code_creates_same_pipelines():
+    index_pipeline = Pipeline.load_from_yaml(
         SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
     )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline")
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
-    )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0].answer == "Adobe Systems"
-    assert "_debug" not in prediction.keys()
-
-    # test invalid pipeline name
-    with pytest.raises(Exception):
-        Pipeline.load_from_yaml(path=SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="invalid")
-    # test config export
-    pipeline.save_to_yaml(tmp_path / "test.yaml")
-    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
-        saved_yaml = stream.read()
-    expected_yaml = """
-        components:
-        - name: ESRetriever
-          params:
-            document_store: ElasticsearchDocumentStore
-          type: ElasticsearchRetriever
-        - name: ElasticsearchDocumentStore
-          params:
-            index: haystack_test
-            label_index: haystack_test_label
-          type: ElasticsearchDocumentStore
-        - name: Reader
-          params:
-            model_name_or_path: deepset/roberta-base-squad2
-            no_ans_boost: -10
-            num_processes: 0
-          type: FARMReader
-        pipelines:
-        - name: query
-          nodes:
-          - inputs:
-            - Query
-            name: ESRetriever
-          - inputs:
-            - ESRetriever
-            name: Reader
-          type: Pipeline
-        version: '0.8'
-    """
-    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
-
-
-@pytest.mark.elasticsearch
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_load_and_save_yaml_prebuilt_pipelines(document_store, tmp_path):
-    # populating index
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    # test correct load of query pipeline from yaml
-    pipeline = ExtractiveQAPipeline.load_from_yaml(
+    query_pipeline = Pipeline.load_from_yaml(
         SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline"
     )
-    prediction = pipeline.run(
-        query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
-    )
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert prediction["answers"][0].answer == "Adobe Systems"
-    assert "_debug" not in prediction.keys()
+    query_pipeline_code = query_pipeline.to_code(pipeline_variable_name="query_pipeline_from_code")
+    index_pipeline_code = index_pipeline.to_code(pipeline_variable_name="index_pipeline_from_code")
 
-    # test invalid pipeline name
-    with pytest.raises(Exception):
-        ExtractiveQAPipeline.load_from_yaml(
-            path=SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="invalid"
-        )
-    # test config export
-    pipeline.save_to_yaml(tmp_path / "test.yaml")
-    with open(tmp_path / "test.yaml", "r", encoding="utf-8") as stream:
-        saved_yaml = stream.read()
-    expected_yaml = """
-        components:
-        - name: ESRetriever
-          params:
-            document_store: ElasticsearchDocumentStore
-          type: ElasticsearchRetriever
-        - name: ElasticsearchDocumentStore
-          params:
-            index: haystack_test
-            label_index: haystack_test_label
-          type: ElasticsearchDocumentStore
-        - name: Reader
-          params:
-            model_name_or_path: deepset/roberta-base-squad2
-            no_ans_boost: -10
-            num_processes: 0
-          type: FARMReader
-        pipelines:
-        - name: query
-          nodes:
-          - inputs:
-            - Query
-            name: ESRetriever
-          - inputs:
-            - ESRetriever
-            name: Reader
-          type: Pipeline
-        version: '0.8'
-    """
-    assert saved_yaml.replace(" ", "").replace("\n", "") == expected_yaml.replace(" ", "").replace("\n", "")
+    exec(query_pipeline_code)
+    exec(index_pipeline_code)
+    assert locals()["query_pipeline_from_code"] is not None
+    assert locals()["index_pipeline_from_code"] is not None
+    assert query_pipeline.get_config() == locals()["query_pipeline_from_code"].get_config()
+    assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
 
 
-def test_load_tfidfretriever_yaml(tmp_path):
-    documents = [
+def test_get_config_creates_dependent_component():
+    child = ChildComponent()
+    parent = ParentComponent(dependent=child)
+    pipeline = Pipeline()
+    pipeline.add_node(component=parent, name="parent", inputs=["Query"])
+
+    expected_pipelines = [{"name": "query", "nodes": [{"name": "parent", "inputs": ["Query"]}]}]
+    expected_components = [
+        {"name": "parent", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+    ]
+
+    config = pipeline.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_creates_only_one_dependent_component_referenced_by_multiple_parents():
+    child = ChildComponent()
+    parent = ParentComponent(dependent=child)
+    parent2 = ParentComponent2(dependent=child)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="Parent1", inputs=["Query"])
+    p_ensemble.add_node(component=parent2, name="Parent2", inputs=["Query"])
+    p_ensemble.add_node(component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["Parent1", "Parent2"])
+
+    expected_components = [
+        {"name": "Parent1", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+        {"name": "Parent2", "type": "ParentComponent2", "params": {"dependent": "ChildComponent"}},
+        {"name": "JoinResults", "type": "JoinDocuments", "params": {"join_mode": "merge"}},
+    ]
+
+    expected_pipelines = [
         {
-            "content": "A Doc specifically talking about haystack. Haystack can be used to scale QA models to large document collections."
+            "name": "query",
+            "nodes": [
+                {"name": "Parent1", "inputs": ["Query"]},
+                {"name": "Parent2", "inputs": ["Query"]},
+                {"name": "JoinResults", "inputs": ["Parent1", "Parent2"]},
+            ],
         }
     ]
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_tfidfretriever.yaml", pipeline_name="query_pipeline"
-    )
-    with pytest.raises(Exception) as exc_info:
-        pipeline.run(
-            query="What can be used to scale QA models to large document collections?",
-            params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
-        )
-    exception_raised = str(exc_info.value)
-    assert "Retrieval requires dataframe df and tf-idf matrix" in exception_raised
 
-    pipeline.get_node(name="Retriever").document_store.write_documents(documents=documents)
-    prediction = pipeline.run(
-        query="What can be used to scale QA models to large document collections?",
-        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}},
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_creates_two_different_dependent_components_of_same_type():
+    child_a = ChildComponent(some_key="A")
+    child_b = ChildComponent(some_key="B")
+    parent = ParentComponent(dependent=child_a)
+    parent2 = ParentComponent(dependent=child_b)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="ParentA", inputs=["Query"])
+    p_ensemble.add_node(component=parent2, name="ParentB", inputs=["Query"])
+    p_ensemble.add_node(component=JoinDocuments(join_mode="merge"), name="JoinResults", inputs=["ParentA", "ParentB"])
+
+    expected_components = [
+        {"name": "ParentA", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {"some_key": "A"}},
+        {"name": "ParentB", "type": "ParentComponent", "params": {"dependent": "ChildComponent_2"}},
+        {"name": "ChildComponent_2", "type": "ChildComponent", "params": {"some_key": "B"}},
+        {"name": "JoinResults", "type": "JoinDocuments", "params": {"join_mode": "merge"}},
+    ]
+
+    expected_pipelines = [
+        {
+            "name": "query",
+            "nodes": [
+                {"name": "ParentA", "inputs": ["Query"]},
+                {"name": "ParentB", "inputs": ["Query"]},
+                {"name": "JoinResults", "inputs": ["ParentA", "ParentB"]},
+            ],
+        }
+    ]
+
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_component_with_superclass_arguments():
+    class CustomBaseDocumentStore(MockDocumentStore):
+        def __init__(self, base_parameter: str):
+            self.base_parameter = base_parameter
+
+    class CustomDocumentStore(CustomBaseDocumentStore):
+        def __init__(self, sub_parameter: int):
+            super().__init__(base_parameter="something")
+            self.sub_parameter = sub_parameter
+
+    class CustomRetriever(MockRetriever):
+        def __init__(self, document_store):
+            super().__init__()
+            self.document_store = document_store
+
+    document_store = CustomDocumentStore(sub_parameter=10)
+    retriever = CustomRetriever(document_store=document_store)
+    pipeline = Pipeline()
+    pipeline.add_node(retriever, name="Retriever", inputs=["Query"])
+
+    pipeline.get_config()
+    assert pipeline.get_document_store().sub_parameter == 10
+    assert pipeline.get_document_store().base_parameter == "something"
+
+
+def test_generate_code_simple_pipeline():
+    config = {
+        "version": "unstable",
+        "components": [
+            {
+                "name": "retri",
+                "type": "ElasticsearchRetriever",
+                "params": {"document_store": "ElasticsearchDocumentStore", "top_k": 20},
+            },
+            {
+                "name": "ElasticsearchDocumentStore",
+                "type": "ElasticsearchDocumentStore",
+                "params": {"index": "my-index"},
+            },
+        ],
+        "pipelines": [{"name": "query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+    }
+
+    code = generate_code(pipeline_config=config, pipeline_variable_name="p", generate_imports=False)
+    assert code == (
+        'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
+        "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=retri, name="retri", inputs=["Query"])'
     )
-    assert prediction["query"] == "What can be used to scale QA models to large document collections?"
-    assert prediction["answers"][0].answer == "haystack"
+
+
+def test_generate_code_imports():
+    pipeline_config = {
+        "version": "unstable",
+        "components": [
+            {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
+            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri2", "type": "TfidfRetriever", "params": {"document_store": "DocumentStore"}},
+        ],
+        "pipelines": [
+            {
+                "name": "Query",
+                "nodes": [{"name": "retri", "inputs": ["Query"]}, {"name": "retri2", "inputs": ["Query"]}],
+            }
+        ],
+    }
+
+    code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=True)
+    assert code == (
+        "from haystack.document_stores import ElasticsearchDocumentStore\n"
+        "from haystack.nodes import ElasticsearchRetriever, TfidfRetriever\n"
+        "from haystack.pipelines import Pipeline\n"
+        "\n"
+        "document_store = ElasticsearchDocumentStore()\n"
+        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "retri_2 = TfidfRetriever(document_store=document_store)\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=retri, name="retri", inputs=["Query"])\n'
+        'p.add_node(component=retri_2, name="retri2", inputs=["Query"])'
+    )
+
+
+def test_generate_code_imports_no_pipeline_cls():
+    pipeline_config = {
+        "version": "unstable",
+        "components": [
+            {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
+            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+        ],
+        "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+    }
+
+    code = generate_code(
+        pipeline_config=pipeline_config,
+        pipeline_variable_name="p",
+        generate_imports=True,
+        add_pipeline_cls_import=False,
+    )
+    assert code == (
+        "from haystack.document_stores import ElasticsearchDocumentStore\n"
+        "from haystack.nodes import ElasticsearchRetriever\n"
+        "\n"
+        "document_store = ElasticsearchDocumentStore()\n"
+        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=retri, name="retri", inputs=["Query"])'
+    )
+
+
+def test_generate_code_comment():
+    pipeline_config = {
+        "version": "unstable",
+        "components": [
+            {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
+            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+        ],
+        "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
+    }
+
+    comment = "This is my comment\n...and here is a new line"
+    code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", comment=comment)
+    assert code == (
+        "# This is my comment\n"
+        "# ...and here is a new line\n"
+        "from haystack.document_stores import ElasticsearchDocumentStore\n"
+        "from haystack.nodes import ElasticsearchRetriever\n"
+        "from haystack.pipelines import Pipeline\n"
+        "\n"
+        "document_store = ElasticsearchDocumentStore()\n"
+        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=retri, name="retri", inputs=["Query"])'
+    )
+
+
+def test_generate_code_is_component_order_invariant():
+    pipeline_config = {
+        "version": "unstable",
+        "pipelines": [
+            {
+                "name": "Query",
+                "nodes": [
+                    {"name": "EsRetriever", "inputs": ["Query"]},
+                    {"name": "EmbeddingRetriever", "inputs": ["Query"]},
+                    {"name": "JoinResults", "inputs": ["EsRetriever", "EmbeddingRetriever"]},
+                ],
+            }
+        ],
+    }
+
+    doc_store = {"name": "ElasticsearchDocumentStore", "type": "ElasticsearchDocumentStore"}
+    es_retriever = {
+        "name": "EsRetriever",
+        "type": "ElasticsearchRetriever",
+        "params": {"document_store": "ElasticsearchDocumentStore"},
+    }
+    emb_retriever = {
+        "name": "EmbeddingRetriever",
+        "type": "EmbeddingRetriever",
+        "params": {
+            "document_store": "ElasticsearchDocumentStore",
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        },
+    }
+    join_node = {"name": "JoinResults", "type": "JoinDocuments"}
+
+    component_orders = [
+        [doc_store, es_retriever, emb_retriever, join_node],
+        [es_retriever, emb_retriever, join_node, doc_store],
+        [join_node, es_retriever, emb_retriever, doc_store],
+    ]
+
+    expected_code = (
+        "elasticsearch_document_store = ElasticsearchDocumentStore()\n"
+        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store)\n"
+        'embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
+        "join_results = JoinDocuments()\n"
+        "\n"
+        "p = Pipeline()\n"
+        'p.add_node(component=es_retriever, name="EsRetriever", inputs=["Query"])\n'
+        'p.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])\n'
+        'p.add_node(component=join_results, name="JoinResults", inputs=["EsRetriever", "EmbeddingRetriever"])'
+    )
+
+    for components in component_orders:
+        pipeline_config["components"] = components
+        code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=False)
+        assert code == expected_code
+
+
+@pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
+def test_validate_user_input_invalid(input):
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings(input)
+
+
+@pytest.mark.parametrize(
+    "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path"]
+)
+def test_validate_user_input_valid(input):
+    validate_config_strings(input)
+
+
+def test_validate_pipeline_config_invalid_component_name():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "\btest"}]})
+
+
+def test_validate_pipeline_config_invalid_component_type():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
+
+
+def test_validate_pipeline_config_invalid_component_param():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
+
+
+def test_validate_pipeline_config_invalid_component_param_key():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
+
+
+def test_validate_pipeline_config_invalid_pipeline_name():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "\btest"}]})
+
+
+def test_validate_pipeline_config_invalid_pipeline_node_name():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings(
+            {
+                "components": [{"name": "test", "type": "test"}],
+                "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "\btest"}]}],
+            }
+        )
+
+
+def test_validate_pipeline_config_invalid_pipeline_node_inputs():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings(
+            {
+                "components": [{"name": "test", "type": "test"}],
+                "pipelines": [{"name": "test", "type": "test", "nodes": [{"name": "test", "inputs": ["\btest"]}]}],
+            }
+        )
+
+
+def test_validate_pipeline_config_recursive_config():
+    pipeline_config = {}
+    node = {"config": pipeline_config}
+    pipeline_config["node"] = node
+
+    with pytest.raises(PipelineConfigError, match="recursive"):
+        validate_config_strings(pipeline_config)
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -190,6 +484,7 @@ def test_load_from_deepset_cloud_query():
     document_store = retriever.document_store
     assert isinstance(retriever, ElasticsearchRetriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
+    assert document_store == query_pipeline.get_document_store()
 
     prediction = query_pipeline.run(query="man on horse", params={})
 
@@ -377,46 +672,504 @@ def test_save_to_deepset_cloud():
         )
 
 
-# @pytest.mark.slow
-# @pytest.mark.elasticsearch
-# @pytest.mark.parametrize(
-#     "retriever_with_docs, document_store_with_docs",
-#     [("elasticsearch", "elasticsearch")],
-#     indirect=True,
-# )
-@pytest.mark.parametrize(
-    "retriever_with_docs,document_store_with_docs",
-    [
-        ("dpr", "elasticsearch"),
-        ("dpr", "faiss"),
-        ("dpr", "memory"),
-        ("dpr", "milvus"),
-        ("embedding", "elasticsearch"),
-        ("embedding", "faiss"),
-        ("embedding", "memory"),
-        ("embedding", "milvus"),
-        ("elasticsearch", "elasticsearch"),
-        ("es_filter_only", "elasticsearch"),
-        ("tfidf", "memory"),
-    ],
-    indirect=True,
-)
-def test_graph_creation(retriever_with_docs, document_store_with_docs):
+@pytest.mark.elasticsearch
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_save_nonexisting_pipeline_to_deepset_cloud():
+    if MOCK_DC:
+
+        def dc_document_store_matcher(request: PreparedRequest) -> Tuple[bool, str]:
+            matches = False
+            reason = "No DeepsetCloudDocumentStore found."
+            request_body = request.body or ""
+            json_body = yaml.safe_load(request_body)
+            components = json_body["components"]
+            for component in components:
+                if component["type"].endswith("DocumentStore"):
+                    if component["type"] == "DeepsetCloudDocumentStore":
+                        matches = True
+                    else:
+                        matches = False
+                        reason = f"Component {component['name']} is of type {component['type']} and not DeepsetCloudDocumentStore"
+                        break
+            return matches, reason
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+            json={"errors": ["Pipeline with the name test_pipeline_config_copy does not exists."]},
+            status=404,
+        )
+
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            json={"name": "test_new_non_existing_pipeline"},
+            status=201,
+            match=[dc_document_store_matcher],
+        )
+
+    es_document_store = ElasticsearchDocumentStore()
+    es_retriever = ElasticsearchRetriever(document_store=es_document_store)
+    file_converter = TextConverter()
+    preprocessor = PreProcessor()
+
+    query_pipeline = Pipeline()
+    query_pipeline.add_node(component=es_retriever, name="Retriever", inputs=["Query"])
+    index_pipeline = Pipeline()
+    index_pipeline.add_node(component=file_converter, name="FileConverter", inputs=["File"])
+    index_pipeline.add_node(component=preprocessor, name="Preprocessor", inputs=["FileConverter"])
+    index_pipeline.add_node(component=es_document_store, name="DocumentStore", inputs=["Preprocessor"])
+
+    Pipeline.save_to_deepset_cloud(
+        query_pipeline=query_pipeline,
+        index_pipeline=index_pipeline,
+        pipeline_config_name="test_new_non_existing_pipeline",
+        api_endpoint=DC_API_ENDPOINT,
+        api_key=DC_API_KEY,
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_non_existing_pipeline():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+            json={"errors": ["Pipeline with the name test_pipeline_config_copy does not exists."]},
+            status=404,
+        )
+
+    with pytest.raises(DeepsetCloudError, match="Pipeline config 'test_new_non_existing_pipeline' does not exist."):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_non_existing_pipeline():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+            json={"errors": ["Pipeline with the name test_pipeline_config_copy does not exists."]},
+            status=404,
+        )
+
+    with pytest.raises(DeepsetCloudError, match="Pipeline config 'test_new_non_existing_pipeline' does not exist."):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    Pipeline.deploy_on_deepset_cloud(
+        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED", "UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    Pipeline.undeploy_on_deepset_cloud(
+        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_sate_already_satisfied():
+    if MOCK_DC:
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    Pipeline.deploy_on_deepset_cloud(
+        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_sate_already_satisfied():
+    if MOCK_DC:
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    Pipeline.undeploy_on_deepset_cloud(
+        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_failed():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress and the third time undeployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "UNDEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with pytest.raises(
+        DeepsetCloudError, match="Deployment of pipeline config 'test_new_non_existing_pipeline' failed."
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_failed():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress and the third time undeployed
+        status_flow = ["DEPLOYED", "UNDEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with pytest.raises(
+        DeepsetCloudError, match="Undeployment of pipeline config 'test_new_non_existing_pipeline' failed."
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_invalid_initial_state():
+    if MOCK_DC:
+        status_flow = ["UNDEPLOYMENT_SCHEDULED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Pipeline config 'test_new_non_existing_pipeline' is in invalid state 'UNDEPLOYMENT_SCHEDULED' to be transitioned to 'DEPLOYED'.",
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_invalid_initial_state():
+    if MOCK_DC:
+        status_flow = ["DEPLOYMENT_SCHEDULED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Pipeline config 'test_new_non_existing_pipeline' is in invalid state 'DEPLOYMENT_SCHEDULED' to be transitioned to 'UNDEPLOYED'.",
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_invalid_state_in_progress():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "UNDEPLOYMENT_IN_PROGRESS"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Deployment of pipline config 'test_new_non_existing_pipeline' aborted. Undeployment was requested.",
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_invalid_state_in_progress():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED", "DEPLOYMENT_IN_PROGRESS"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Undeployment of pipline config 'test_new_non_existing_pipeline' aborted. Deployment was requested.",
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_unknown_state_in_progress():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "ASKDHFASJDF"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Deployment of pipeline config 'test_new_non_existing_pipeline ended in unexpected status: UNKNOWN",
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_unknown_state_in_progress():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED", "ASKDHFASJDF"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match="Undeployment of pipeline config 'test_new_non_existing_pipeline ended in unexpected status: UNKNOWN",
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_timeout():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        TimeoutError, match="Transitioning of 'test_new_non_existing_pipeline' to state 'DEPLOYED' timed out."
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+            timeout=5,
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_undeploy_on_deepset_cloud_timeout():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/undeploy",
+            json={"status": "UNDEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["DEPLOYED", "UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYMENT_IN_PROGRESS", "UNDEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        TimeoutError, match="Transitioning of 'test_new_non_existing_pipeline' to state 'UNDEPLOYED' timed out."
+    ):
+        Pipeline.undeploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+            timeout=5,
+        )
+
+
+def test_graph_creation_invalid_edge():
+    docstore = MockDocumentStore()
+    retriever = DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
-    pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["Query"])
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
-    with pytest.raises(AssertionError):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["ES.output_2"])
+    with pytest.raises(PipelineConfigError, match="'output_2' from 'DocStore'"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.output_2"])
 
-    with pytest.raises(AssertionError):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["ES.wrong_edge_label"])
 
-    with pytest.raises(Exception):
-        pipeline.add_node(name="Reader", component=retriever_with_docs, inputs=["InvalidNode"])
+def test_graph_creation_non_existing_edge():
+    docstore = MockDocumentStore()
+    retriever = DummyRetriever(document_store=docstore)
+    pipeline = Pipeline()
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
-    with pytest.raises(Exception):
-        pipeline = Pipeline()
-        pipeline.add_node(name="ES", component=retriever_with_docs, inputs=["InvalidNode"])
+    with pytest.raises(PipelineConfigError, match="'wrong_edge_label' is not a valid edge name"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.wrong_edge_label"])
+
+
+def test_graph_creation_invalid_node():
+    docstore = MockDocumentStore()
+    retriever = DummyRetriever(document_store=docstore)
+    pipeline = Pipeline()
+    pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
+
+    with pytest.raises(PipelineConfigError, match="Cannot find node 'InvalidNode'"):
+        pipeline.add_node(name="Retriever", component=retriever, inputs=["InvalidNode"])
+
+
+def test_graph_creation_invalid_root_node():
+    docstore = MockDocumentStore()
+    pipeline = Pipeline()
+
+    with pytest.raises(PipelineConfigError, match="Root node 'InvalidNode' is invalid"):
+        pipeline.add_node(name="DocStore", component=docstore, inputs=["InvalidNode"])
 
 
 def test_parallel_paths_in_pipeline_graph():
@@ -551,6 +1304,87 @@ def test_parallel_paths_in_pipeline_graph_with_branching():
     assert output["output"] == "ACABEABD"
 
 
+def test_pipeline_components():
+    class Node(BaseComponent):
+        outgoing_edges = 1
+
+        def run(self):
+            test = "test"
+            return {"test": test}, "output_1"
+
+    a = Node()
+    b = Node()
+    c = Node()
+    d = Node()
+    e = Node()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=a, inputs=["Query"])
+    pipeline.add_node(name="B", component=b, inputs=["A"])
+    pipeline.add_node(name="C", component=c, inputs=["B"])
+    pipeline.add_node(name="D", component=d, inputs=["C"])
+    pipeline.add_node(name="E", component=e, inputs=["D"])
+    assert len(pipeline.components) == 5
+    assert pipeline.components["A"] == a
+    assert pipeline.components["B"] == b
+    assert pipeline.components["C"] == c
+    assert pipeline.components["D"] == d
+    assert pipeline.components["E"] == e
+
+
+def test_pipeline_get_document_store_from_components():
+    doc_store = MockDocumentStore()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=doc_store, inputs=["File"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_components_multiple_doc_stores():
+    doc_store_a = MockDocumentStore()
+    doc_store_b = MockDocumentStore()
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=doc_store_a, inputs=["File"])
+    pipeline.add_node(name="B", component=doc_store_b, inputs=["File"])
+
+    with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
+        pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_retriever():
+    doc_store = MockDocumentStore()
+    retriever = DummyRetriever(document_store=doc_store)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever, inputs=["Query"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_from_dual_retriever():
+    doc_store = MockDocumentStore()
+    retriever_a = DummyRetriever(document_store=doc_store)
+    retriever_b = DummyRetriever(document_store=doc_store)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever_a, inputs=["Query"])
+    pipeline.add_node(name="B", component=retriever_b, inputs=["Query"])
+    pipeline.add_node(name="C", component=JoinNode(), inputs=["A", "B"])
+
+    assert doc_store == pipeline.get_document_store()
+
+
+def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
+    doc_store_a = MockDocumentStore()
+    doc_store_b = MockDocumentStore()
+    retriever_a = DummyRetriever(document_store=doc_store_a)
+    retriever_b = DummyRetriever(document_store=doc_store_b)
+    pipeline = Pipeline()
+    pipeline.add_node(name="A", component=retriever_a, inputs=["Query"])
+    pipeline.add_node(name="B", component=retriever_b, inputs=["Query"])
+    pipeline.add_node(name="C", component=JoinNode(), inputs=["A", "B"])
+
+    with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
+        pipeline.get_document_store()
+
+
 def test_existing_faiss_document_store():
     clean_faiss_document_store()
 
@@ -590,8 +1424,7 @@ def test_documentsearch_es_authentication(retriever_with_docs, document_store_wi
     auth_headers = {"Authorization": "Basic YWRtaW46cm9vdA=="}
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     prediction = pipeline.run(
-        query="Who lives in Berlin?",
-        params={"Retriever": {"top_k": 10, "headers": auth_headers}},
+        query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
     )
     assert prediction is not None
     assert len(prediction["documents"]) == 5
@@ -614,13 +1447,11 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
     if not mock_client:
         with pytest.raises(Exception):
             prediction = pipeline.run(
-                query="Who lives in Berlin?",
-                params={"Retriever": {"top_k": 10, "headers": auth_headers}},
+                query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
             )
     else:
         prediction = pipeline.run(
-            query="Who lives in Berlin?",
-            params={"Retriever": {"top_k": 10, "headers": auth_headers}},
+            query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
         )
         assert prediction is not None
         assert len(prediction["documents"]) == 5
@@ -628,6 +1459,51 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
         args, kwargs = mock_client.count.call_args
         assert "headers" in kwargs
         assert kwargs["headers"] == auth_headers
+
+
+def test_route_documents_by_content_type():
+    # Test routing by content_type
+    docs = [
+        Document(content="text document", content_type="text"),
+        Document(
+            content=pd.DataFrame(columns=["col 1", "col 2"], data=[["row 1", "row 1"], ["row 2", "row 2"]]),
+            content_type="table",
+        ),
+    ]
+
+    route_documents = RouteDocuments()
+    result, _ = route_documents.run(documents=docs)
+    assert len(result["output_1"]) == 1
+    assert len(result["output_2"]) == 1
+    assert result["output_1"][0].content_type == "text"
+    assert result["output_2"][0].content_type == "table"
+
+
+def test_route_documents_by_metafield(test_docs_xs):
+    # Test routing by metadata field
+    docs = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in test_docs_xs]
+    route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
+    result, _ = route_documents.run(docs)
+    assert len(result["output_1"]) == 1
+    assert len(result["output_2"]) == 1
+    assert len(result["output_3"]) == 1
+    assert result["output_1"][0].meta["meta_field"] == "test1"
+    assert result["output_2"][0].meta["meta_field"] == "test3"
+    assert result["output_3"][0].meta["meta_field"] == "test5"
+
+
+@pytest.mark.parametrize("join_mode", ["concatenate", "merge"])
+def test_join_answers(join_mode):
+    inputs = [{"answers": [Answer(answer="answer 1", score=0.7)]}, {"answers": [Answer(answer="answer 2", score=0.8)]}]
+
+    join_answers = JoinAnswers(join_mode=join_mode)
+    result, _ = join_answers.run(inputs)
+    assert len(result["answers"]) == 2
+    assert result["answers"] == sorted(result["answers"], reverse=True)
+
+    result, _ = join_answers.run(inputs, top_k_join=1)
+    assert len(result["answers"]) == 1
+    assert result["answers"][0].answer == "answer 2"
 
 
 def clean_faiss_document_store():

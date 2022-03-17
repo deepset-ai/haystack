@@ -388,6 +388,87 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 class ElasticsearchDocumentStore(KeywordDocumentStore)
 ```
 
+<a id="elasticsearch.ElasticsearchDocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
+```
+
+A DocumentStore using Elasticsearch to store and query the documents for our search.
+
+* Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
+    * You can either use an existing Elasticsearch index or create a new one via haystack
+    * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
+
+**Arguments**:
+
+- `host`: url(s) of elasticsearch nodes
+- `port`: port(s) of elasticsearch nodes
+- `username`: username (standard authentication via http_auth)
+- `password`: password (standard authentication via http_auth)
+- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth)
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth)
+- `aws4auth`: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
+- `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+- `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
+- `search_fields`: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+- `name_field`: Name of field that contains the title of the the doc
+- `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `custom_mapping`: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+- `analyzer`: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
+- `excluded_meta_data`: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+- `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
+- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
+- `verify_certs`: Whether to be strict about ca certificates
+- `recreate_index`: If set to True, an existing elasticsearch index will be deleted and a new one will be
+created using the config you are using for initialization. Be aware that all data in the old index will be
+lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+be recreated.
+- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+..deprecated:: 2.0
+This param is deprecated. In the next major version we will always try to create an index if there is no
+existing index (the current behaviour when create_index=True). If you are looking to recreate an
+existing index by deleting it first if it already exist use param recreate_index.
+- `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+If set to 'wait_for', continue only after changes are visible (slow, but safe).
+If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `timeout`: Number of seconds after which an ElasticSearch request times out.
+- `return_embedding`: To return document embedding
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `index_type`: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
+ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
+- `scroll`: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+- `skip_missing_embeddings`: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
+Parameter options: (True, False)
+False: Raises exception if one or more documents do not have embeddings at query time
+True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
+- `synonyms`: List of synonyms can be passed while elasticsearch initialization.
+For example: [ "foo, bar => baz",
+               "foozball , foosball" ]
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
+- `synonym_type`: Synonym filter type can be passed.
+Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+- `use_system_proxy`: Whether to use system proxy.
+
 <a id="elasticsearch.ElasticsearchDocumentStore.get_document_by_id"></a>
 
 #### get\_document\_by\_id
@@ -1120,6 +1201,84 @@ None
 class OpenSearchDocumentStore(ElasticsearchDocumentStore)
 ```
 
+<a id="elasticsearch.OpenSearchDocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(verify_certs=False, scheme="https", username="admin", password="admin", port=9200, **kwargs)
+```
+
+Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
+
+In addition to native Elasticsearch query & filtering, it provides efficient vector similarity search using
+the KNN plugin that can scale to a large number of documents.
+
+**Arguments**:
+
+- `host`: url(s) of elasticsearch nodes
+- `port`: port(s) of elasticsearch nodes
+- `username`: username (standard authentication via http_auth)
+- `password`: password (standard authentication via http_auth)
+- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth)
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth)
+- `aws4auth`: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
+- `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+- `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
+- `search_fields`: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+- `name_field`: Name of field that contains the title of the the doc
+- `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+Note, that in OpenSearch the similarity type for efficient approximate vector similarity calculations is tied to the embedding field's data type which cannot be changed after creation.
+- `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `custom_mapping`: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+- `analyzer`: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
+- `excluded_meta_data`: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+- `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
+- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
+- `verify_certs`: Whether to be strict about ca certificates
+- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case
+- `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+If set to 'wait_for', continue only after changes are visible (slow, but safe).
+If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+Note, that the use of efficient approximate vector calculations in OpenSearch is tied to embedding_field's data type which cannot be changed after creation.
+You won't be able to use approximate vector calculations on an embedding_field which was created with a different similarity value.
+In such cases a fallback to exact but slow vector calculations will happen and a warning will be displayed.
+- `timeout`: Number of seconds after which an ElasticSearch request times out.
+- `return_embedding`: To return document embedding
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `index_type`: The type of index to be created. Choose from 'flat' and 'hnsw'.
+As OpenSearch currently does not support all similarity functions (e.g. dot_product) in exact vector similarity calculations,
+we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but further optimized for accuracy.
+Exact vector similarity is only used as fallback when there's a mismatch between certain requested and indexed similarity types.
+In these cases however, a warning will be displayed. See similarity param for more information.
+- `scroll`: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+- `skip_missing_embeddings`: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
+Parameter options: (True, False)
+False: Raises exception if one or more documents do not have embeddings at query time
+True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
+- `synonyms`: List of synonyms can be passed while elasticsearch initialization.
+For example: [ "foo, bar => baz",
+               "foozball , foosball" ]
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
+- `synonym_type`: Synonym filter type can be passed.
+Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+
 <a id="elasticsearch.OpenSearchDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
@@ -1226,6 +1385,40 @@ class InMemoryDocumentStore(BaseDocumentStore)
 
 In-memory document store
 
+<a id="memory.InMemoryDocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True, duplicate_documents: str = "overwrite", use_gpu: bool = True, scoring_batch_size: int = 500000)
+```
+
+**Arguments**:
+
+- `index`: The documents are scoped to an index attribute that can be used when writing, querying,
+or deleting documents. This parameter sets the default value for document index.
+- `label_index`: The default value of index attribute for the labels.
+- `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `embedding_dim`: The size of the embedding vector.
+- `return_embedding`: To return document embedding
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default sine it is
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `use_gpu`: Whether to use a GPU or the CPU for calculating embedding similarity.
+Falls back to CPU if no GPU is available.
+- `scoring_batch_size`: Batch size of documents to calculate similarity for. Very small batch sizes are inefficent.
+Very large batch sizes can overrun GPU memory. In general you want to make sure
+you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
+Since the data is originally stored in CPU memory there is little risk of overruning memory
+when running on CPU.
+
 <a id="memory.InMemoryDocumentStore.write_documents"></a>
 
 #### write\_documents
@@ -1327,8 +1520,66 @@ Find the document that is most similar to the provided `query_emb` by using a ve
 **Arguments**:
 
 - `query_emb`: Embedding of the query (e.g. gathered from DPR)
-- `filters`: Optional filters to narrow down the search space.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+To use the same logical operator multiple times on the same level, logical operators take
+optionally a list of dictionaries as value.
+Example:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
@@ -1353,8 +1604,30 @@ This can be useful if want to add or change the embeddings for your documents (e
 only documents without embeddings are processed. This mode can be used for
 incremental updating of embeddings, wherein, only newly indexed documents
 get processed.
-- `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 **Returns**:
@@ -1405,8 +1678,30 @@ Get all documents from the document store as a list.
 
 - `index`: Name of the index to get the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
-- `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 - `return_embedding`: Whether to return the document embeddings.
 
 <a id="memory.InMemoryDocumentStore.get_all_documents_generator"></a>
@@ -1425,8 +1720,30 @@ documents.
 
 - `index`: Name of the index to get the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
-- `filters`: Optional filters to narrow down the documents to return.
-Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 - `return_embedding`: Whether to return the document embeddings.
 
 <a id="memory.InMemoryDocumentStore.get_all_labels"></a>
@@ -1452,7 +1769,30 @@ Delete documents in an index. All documents are deleted if no filters are passed
 **Arguments**:
 
 - `index`: Index name to delete the document from.
-- `filters`: Optional filters to narrow down the documents to be deleted.
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 
 **Returns**:
 
@@ -1473,11 +1813,30 @@ Delete documents in an index. All documents are deleted if no filters are passed
 - `index`: Index name to delete the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
-- `filters`: Optional filters to narrow down the documents to be deleted.
-Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
-If filters are provided along with a list of IDs, this method deletes the
-intersection of the two query results (documents that match the filters and
-have their ID in the list).
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 
 **Returns**:
 
@@ -1498,8 +1857,30 @@ Delete labels in an index. All labels are deleted if no filters are passed.
 - `index`: Index name to delete the labels from. If None, the
 DocumentStore's default label index (self.label_index) will be used.
 - `ids`: Optional list of IDs to narrow down the labels to be deleted.
-- `filters`: Optional filters to narrow down the labels to be deleted.
-Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+- `filters`: Narrow down the scope to documents that match the given filters.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+Example:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
 
 **Returns**:
 
@@ -1516,6 +1897,31 @@ None
 ```python
 class SQLDocumentStore(BaseDocumentStore)
 ```
+
+<a id="sql.SQLDocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", duplicate_documents: str = "overwrite", check_same_thread: bool = False, isolation_level: str = None)
+```
+
+An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
+
+**Arguments**:
+
+- `url`: URL for SQL database as expected by SQLAlchemy. More info here: https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls
+- `index`: The documents are scoped to an index attribute that can be used when writing, querying, or deleting documents.
+This parameter sets the default value for document index.
+- `label_index`: The default value of index attribute for the labels.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `check_same_thread`: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a id="sql.SQLDocumentStore.get_document_by_id"></a>
 
@@ -1602,7 +2008,8 @@ documents for evaluation can be indexed in a separate index than the documents f
 - `duplicate_documents`: Handle duplicates document based on parameter options.
 Parameter options : ( 'skip','overwrite','fail')
 skip: Ignore the duplicates documents
-overwrite: Update any existing documents with the same ID when adding documents.
+overwrite: Update any existing documents with the same ID when adding documents
+but is considerably slower (default).
 fail: an error is raised if the document ID of the document being added already
 exists.
 
@@ -1761,6 +2168,59 @@ to perform similarity search on vectors.
 
 The document text and meta-data (for filtering) are stored using the SQLDocumentStore, while
 the vector embeddings are indexed in a FAISS Index.
+
+<a id="faiss.FAISSDocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, **kwargs, ,)
+```
+
+**Arguments**:
+
+- `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
+deployment, Postgres is recommended.
+- `vector_dim`: Deprecated. Use embedding_dim instead.
+- `embedding_dim`: The embedding vector size. Default: 768.
+- `faiss_index_factory_str`: Create a new FAISS index of the specified type.
+The type is determined from the given string following the conventions
+of the original FAISS index factory.
+Recommended options:
+- "Flat" (default): Best accuracy (= exact). Becomes slow and RAM intense for > 1 Mio docs.
+- "HNSW": Graph-based heuristic. If not further specified,
+          we use the following config:
+          HNSW64, efConstruction=80 and efSearch=20
+- "IVFx,Flat": Inverted Index. Replace x with the number of centroids aka nlist.
+                  Rule of thumb: nlist = 10 * sqrt (num_docs) is a good starting point.
+For more details see:
+- Overview of indices https://github.com/facebookresearch/faiss/wiki/Faiss-indexes
+- Guideline for choosing an index https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
+- FAISS Index factory https://github.com/facebookresearch/faiss/wiki/The-index-factory
+Benchmarks: XXX
+- `faiss_index`: Pass an existing FAISS Index, i.e. an empty one that you configured manually
+or one with docs that you used in Haystack before and want to load again.
+- `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
+- `index`: Name of index in document store to use.
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence-Transformer model.
+In both cases, the returned values in Document.score are normalized to be in range [0,1]:
+For `dot_product`: expit(np.asarray(raw_score / 100))
+FOr `cosine`: (raw_score + 1) / 2
+- `embedding_field`: Name of field containing an embedding vector.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `faiss_index_path`: Stored FAISS index file. Can be created via calling `save()`.
+If specified no other params besides faiss_config_path must be specified.
+- `faiss_config_path`: Stored FAISS initial configuration parameters.
+Can be created via calling `save()`
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 
 <a id="faiss.FAISSDocumentStore.write_documents"></a>
 
@@ -1973,16 +2433,16 @@ Note: In order to have a correct mapping from FAISS to SQL,
 - `config_path`: Stored FAISS initial configuration parameters.
 Can be created via calling `save()`
 
-<a id="milvus"></a>
+<a id="milvus1"></a>
 
-# Module milvus
+# Module milvus1
 
-<a id="milvus.MilvusDocumentStore"></a>
+<a id="milvus1.Milvus1DocumentStore"></a>
 
-## MilvusDocumentStore
+## Milvus1DocumentStore
 
 ```python
-class MilvusDocumentStore(SQLDocumentStore)
+class Milvus1DocumentStore(SQLDocumentStore)
 ```
 
 Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
@@ -1998,9 +2458,63 @@ does not allow these data types (yet).
 
 Usage:
 1. Start a Milvus server (see https://milvus.io/docs/v1.0.0/install_milvus.md)
-2. Init a MilvusDocumentStore in Haystack
+2. Run pip install farm-haystack[milvus1]
+3. Init a MilvusDocumentStore in Haystack
 
-<a id="milvus.MilvusDocumentStore.write_documents"></a>
+<a id="milvus1.Milvus1DocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, **kwargs, ,)
+```
+
+**Arguments**:
+
+- `sql_url`: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
+deployment, Postgres is recommended. If using MySQL then same server can also be used for
+Milvus metadata. For more details see https://milvus.io/docs/v1.0.0/data_manage.md.
+- `milvus_url`: Milvus server connection URL for storing and processing vectors.
+Protocol, host and port will automatically be inferred from the URL.
+See https://milvus.io/docs/v1.0.0/install_milvus.md for instructions to start a Milvus instance.
+- `connection_pool`: Connection pool type to connect with Milvus server. Default: "SingletonThread".
+- `index`: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
+- `vector_dim`: Deprecated. Use embedding_dim instead.
+- `embedding_dim`: The embedding vector size. Default: 768.
+- `index_file_size`: Specifies the size of each segment file that is stored by Milvus and its default value is 1024 MB.
+When the size of newly inserted vectors reaches the specified volume, Milvus packs these vectors into a new segment.
+Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
+As a rule of thumb, we would see a 30% ~ 50% increase in the search performance after changing the value of index_file_size from 1024 to 2048.
+Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
+(From https://milvus.io/docs/v1.0.0/performance_faq.md#How-can-I-get-the-best-performance-from-Milvus-through-setting-index_file_size)
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
+'cosine' is recommended for Sentence Transformers.
+- `index_type`: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
+Some popular options:
+- FLAT (default): Exact method, slow
+- IVF_FLAT, inverted file based heuristic, fast
+- HSNW: Graph based, fast
+- ANNOY: Tree based, fast
+See: https://milvus.io/docs/v1.0.0/index.md
+- `index_param`: Configuration parameters for the chose index_type needed at indexing time.
+For example: {"nlist": 16384} as the number of cluster units to create for index_type IVF_FLAT.
+See https://milvus.io/docs/v1.0.0/index.md
+- `search_param`: Configuration parameters for the chose index_type needed at query time
+For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
+See https://milvus.io/docs/v1.0.0/index.md
+- `return_embedding`: To return document embedding.
+- `embedding_field`: Name of field containing an embedding vector.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+
+<a id="milvus1.Milvus1DocumentStore.write_documents"></a>
 
 #### write\_documents
 
@@ -2031,7 +2545,7 @@ exists.
 
 None
 
-<a id="milvus.MilvusDocumentStore.update_embeddings"></a>
+<a id="milvus1.Milvus1DocumentStore.update_embeddings"></a>
 
 #### update\_embeddings
 
@@ -2059,7 +2573,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 
 None
 
-<a id="milvus.MilvusDocumentStore.query_by_embedding"></a>
+<a id="milvus1.Milvus1DocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
 
@@ -2082,7 +2596,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 
 list of Documents that are the most similar to `query_emb`
 
-<a id="milvus.MilvusDocumentStore.delete_all_documents"></a>
+<a id="milvus1.Milvus1DocumentStore.delete_all_documents"></a>
 
 #### delete\_all\_documents
 
@@ -2102,7 +2616,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 
 None
 
-<a id="milvus.MilvusDocumentStore.delete_documents"></a>
+<a id="milvus1.Milvus1DocumentStore.delete_documents"></a>
 
 #### delete\_documents
 
@@ -2127,7 +2641,7 @@ have their ID in the list).
 
 None
 
-<a id="milvus.MilvusDocumentStore.get_all_documents_generator"></a>
+<a id="milvus1.Milvus1DocumentStore.get_all_documents_generator"></a>
 
 #### get\_all\_documents\_generator
 
@@ -2149,7 +2663,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
-<a id="milvus.MilvusDocumentStore.get_all_documents"></a>
+<a id="milvus1.Milvus1DocumentStore.get_all_documents"></a>
 
 #### get\_all\_documents
 
@@ -2168,7 +2682,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
-<a id="milvus.MilvusDocumentStore.get_document_by_id"></a>
+<a id="milvus1.Milvus1DocumentStore.get_document_by_id"></a>
 
 #### get\_document\_by\_id
 
@@ -2184,7 +2698,7 @@ Fetch a document by specifying its text id string
 - `index`: Name of the index to get the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
 
-<a id="milvus.MilvusDocumentStore.get_documents_by_id"></a>
+<a id="milvus1.Milvus1DocumentStore.get_documents_by_id"></a>
 
 #### get\_documents\_by\_id
 
@@ -2201,7 +2715,7 @@ Fetch multiple documents by specifying their IDs (strings)
 DocumentStore's default index (self.index) will be used.
 - `batch_size`: is currently not used
 
-<a id="milvus.MilvusDocumentStore.get_all_vectors"></a>
+<a id="milvus1.Milvus1DocumentStore.get_all_vectors"></a>
 
 #### get\_all\_vectors
 
@@ -2220,12 +2734,284 @@ DocumentStore's default index (self.index) will be used.
 
 List[np.array]: List of vectors.
 
-<a id="milvus.MilvusDocumentStore.get_embedding_count"></a>
+<a id="milvus1.Milvus1DocumentStore.get_embedding_count"></a>
 
 #### get\_embedding\_count
 
 ```python
 def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None) -> int
+```
+
+Return the count of embeddings in the document store.
+
+<a id="milvus2"></a>
+
+# Module milvus2
+
+<a id="milvus2.Milvus2DocumentStore"></a>
+
+## Milvus2DocumentStore
+
+```python
+class Milvus2DocumentStore(SQLDocumentStore)
+```
+
+Limitations:
+Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
+Therefore, delete_documents() and update_embeddings() won't work yet.
+
+Differences to 1.x:
+Besides big architectural changes that impact performance and reliability 2.0 supports the filtering by scalar data types.
+For Haystack users this means you can now run a query using vector similarity and filter for some meta data at the same time!
+(See https://milvus.io/docs/v2.0.0/comparison.md for more details)
+
+Usage:
+1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
+2. Run pip install farm-haystack[milvus]
+3. Init a MilvusDocumentStore() in Haystack
+
+Overview:
+Milvus (https://milvus.io/) is a highly reliable, scalable Document Store specialized on storing and processing vectors.
+Therefore, it is particularly suited for Haystack users that work with dense retrieval methods (like DPR).
+
+In contrast to FAISS, Milvus ...
+ - runs as a separate service (e.g. a Docker container) and can scale easily in a distributed environment
+ - allows dynamic data management (i.e. you can insert/delete vectors without recreating the whole index)
+ - encapsulates multiple ANN libraries (FAISS, ANNOY ...)
+
+This class uses Milvus for all vector related storage, processing and querying.
+The meta-data (e.g. for filtering) and the document text are however stored in a separate SQL Database as Milvus
+does not allow these data types (yet).
+
+<a id="milvus2.Milvus2DocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: str = "IVF_FLAT", index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", id_field: str = "id", custom_fields: Optional[List[Any]] = None, progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, consistency_level: int = 0)
+```
+
+**Arguments**:
+
+- `sql_url`: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
+deployment, Postgres is recommended. If using MySQL then same server can also be used for
+Milvus metadata. For more details see https://milvus.io/docs/v2.0.0/data_manage.md.
+- `milvus_url`: Milvus server connection URL for storing and processing vectors.
+Protocol, host and port will automatically be inferred from the URL.
+See https://milvus.io/docs/v2.0.0/install_milvus.md for instructions to start a Milvus instance.
+- `connection_pool`: Connection pool type to connect with Milvus server. Default: "SingletonThread".
+- `index`: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
+- `vector_dim`: Deprecated. Use embedding_dim instead.
+- `embedding_dim`: The embedding vector size. Default: 768.
+- `index_file_size`: Specifies the size of each segment file that is stored by Milvus and its default value is 1024 MB.
+When the size of newly inserted vectors reaches the specified volume, Milvus packs these vectors into a new segment.
+Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
+As a rule of thumb, we would see a 30% ~ 50% increase in the search performance after changing the value of index_file_size from 1024 to 2048.
+Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
+(From https://milvus.io/docs/v2.0.0/performance_faq.md)
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
+'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
+However, you can normalize your embeddings and use `dot_product` to get the same results.
+See https://milvus.io/docs/v2.0.0/metric.md.
+- `index_type`: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
+Some popular options:
+- FLAT (default): Exact method, slow
+- IVF_FLAT, inverted file based heuristic, fast
+- HSNW: Graph based, fast
+- ANNOY: Tree based, fast
+See: https://milvus.io/docs/v2.0.0/index.md
+- `index_param`: Configuration parameters for the chose index_type needed at indexing time.
+For example: {"nlist": 16384} as the number of cluster units to create for index_type IVF_FLAT.
+See https://milvus.io/docs/v2.0.0/index.md
+- `search_param`: Configuration parameters for the chose index_type needed at query time
+For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
+See https://milvus.io/docs/v2.0.0/index.md
+- `return_embedding`: To return document embedding.
+- `embedding_field`: Name of field containing an embedding vector.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+
+<a id="milvus2.Milvus2DocumentStore.write_documents"></a>
+
+#### write\_documents
+
+```python
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, index_param: Optional[Dict[str, Any]] = None)
+```
+
+Add new documents to the DocumentStore.
+
+**Arguments**:
+
+- `documents`: List of `Dicts` or List of `Documents`. If they already contain the embeddings, we'll index
+them right away in Milvus. If not, you can later call `update_embeddings()` to create & index them.
+- `index`: (SQL) index name for storing the docs and metadata
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+
+**Raises**:
+
+- `DuplicateDocumentError`: Exception trigger on duplicate document
+
+<a id="milvus2.Milvus2DocumentStore.update_embeddings"></a>
+
+#### update\_embeddings
+
+```python
+def update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, Any]] = None)
+```
+
+Updates the embeddings in the the document store using the encoding model specified in the retriever.
+
+This can be useful if want to add or change the embeddings for your documents (e.g. after changing the retriever config).
+
+**Arguments**:
+
+- `retriever`: Retriever to use to get embeddings for text
+- `index`: (SQL) index name for storing the docs and metadata
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `update_existing_embeddings`: Whether to update existing embeddings of the documents. If set to False,
+only documents without embeddings are processed. This mode can be used for
+incremental updating of embeddings, wherein, only newly indexed documents
+get processed.
+- `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
+
+<a id="milvus2.Milvus2DocumentStore.query_by_embedding"></a>
+
+#### query\_by\_embedding
+
+```python
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+**Arguments**:
+
+- `query_emb`: Embedding of the query (e.g. gathered from DPR)
+- `filters`: Optional filters to narrow down the search space.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `top_k`: How many documents to return
+- `index`: (SQL) index name for storing the docs and metadata
+- `return_embedding`: To return document embedding
+
+<a id="milvus2.Milvus2DocumentStore.delete_documents"></a>
+
+#### delete\_documents
+
+```python
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000)
+```
+
+Delete all documents (from SQL AND Milvus).
+
+**Arguments**:
+
+- `index`: (SQL) index name for storing the docs and metadata
+- `filters`: Optional filters to narrow down the search space.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
+
+<a id="milvus2.Milvus2DocumentStore.get_all_documents_generator"></a>
+
+#### get\_all\_documents\_generator
+
+```python
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
+```
+
+Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
+
+document store and yielded as individual documents. This method can be used to iteratively process
+a large number of documents without having to load all documents in memory.
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+<a id="milvus2.Milvus2DocumentStore.get_all_documents"></a>
+
+#### get\_all\_documents
+
+```python
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Get documents from the document store (optionally using filter criteria).
+
+**Arguments**:
+
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `filters`: Optional filters to narrow down the documents to return.
+Example: {"name": ["some", "more"], "category": ["only_one"]}
+- `return_embedding`: Whether to return the document embeddings.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+<a id="milvus2.Milvus2DocumentStore.get_document_by_id"></a>
+
+#### get\_document\_by\_id
+
+```python
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+```
+
+Fetch a document by specifying its text id string
+
+**Arguments**:
+
+- `id`: ID of the document
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+
+<a id="milvus2.Milvus2DocumentStore.get_documents_by_id"></a>
+
+#### get\_documents\_by\_id
+
+```python
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+```
+
+Fetch multiple documents by specifying their IDs (strings)
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+<a id="milvus2.Milvus2DocumentStore.get_embedding_count"></a>
+
+#### get\_embedding\_count
+
+```python
+def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -2261,6 +3047,46 @@ Usage:
 
 Limitations:
 The current implementation is not supporting the storage of labels, so you cannot run any evaluation workflows.
+
+<a id="weaviate.WeaviateDocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", **kwargs, ,)
+```
+
+**Arguments**:
+
+- `host`: Weaviate server connection URL for storing and processing documents and vectors.
+For more details, refer "https://www.semi.technology/developers/weaviate/current/getting-started/installation.html"
+- `port`: port of Weaviate instance
+- `timeout_config`: Weaviate Timeout config as a tuple of (retries, time out seconds).
+- `username`: username (standard authentication via http_auth)
+- `password`: password (standard authentication via http_auth)
+- `index`: Index name for document text, embedding and metadata (in Weaviate terminology, this is a "Class" in Weaviate schema).
+- `embedding_dim`: The embedding vector size. Default: 768.
+- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+- `name_field`: Name of field that contains the title of the the doc
+- `similarity`: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
+'cosine' is recommended for Sentence Transformers.
+- `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
+Currently, HSNW is only supported.
+See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
+- `custom_schema`: Allows to create custom schema in Weaviate, for more details
+See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
+- `module_name`: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
+For more details, See https://www.semi.technology/developers/weaviate/current/modules/
+- `return_embedding`: To return document embedding.
+- `embedding_field`: Name of field containing an embedding vector.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+Can be helpful to disable in production deployments to keep the logs clean.
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already exists.
 
 <a id="weaviate.WeaviateDocumentStore.get_document_by_id"></a>
 
@@ -2771,6 +3597,54 @@ operation.
 
 None
 
+<a id="weaviate.WeaviateDocumentStore.delete_labels"></a>
+
+#### delete\_labels
+
+```python
+def delete_labels()
+```
+
+Implemented to respect BaseDocumentStore's contract.
+
+Weaviate does not support labels (yet).
+
+<a id="weaviate.WeaviateDocumentStore.get_all_labels"></a>
+
+#### get\_all\_labels
+
+```python
+def get_all_labels()
+```
+
+Implemented to respect BaseDocumentStore's contract.
+
+Weaviate does not support labels (yet).
+
+<a id="weaviate.WeaviateDocumentStore.get_label_count"></a>
+
+#### get\_label\_count
+
+```python
+def get_label_count()
+```
+
+Implemented to respect BaseDocumentStore's contract.
+
+Weaviate does not support labels (yet).
+
+<a id="weaviate.WeaviateDocumentStore.write_labels"></a>
+
+#### write\_labels
+
+```python
+def write_labels()
+```
+
+Implemented to respect BaseDocumentStore's contract.
+
+Weaviate does not support labels (yet).
+
 <a id="graphdb"></a>
 
 # Module graphdb
@@ -2784,6 +3658,25 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph)
 ```
 
 Knowledge graph store that runs on a GraphDB instance.
+
+<a id="graphdb.GraphDBKnowledgeGraph.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(host: str = "localhost", port: int = 7200, username: str = "", password: str = "", index: Optional[str] = None, prefixes: str = "")
+```
+
+Init the knowledge graph by defining the settings to connect with a GraphDB instance
+
+**Arguments**:
+
+- `host`: address of server where the GraphDB instance is running
+- `port`: port where the GraphDB instance is running
+- `username`: username to login to the GraphDB instance (if any)
+- `password`: password to login to the GraphDB instance (if any)
+- `index`: name of the index (also called repository) stored in the GraphDB instance
+- `prefixes`: definitions of namespaces with a new line after each namespace, e.g., PREFIX hp: <https://deepset.ai/harry_potter/>
 
 <a id="graphdb.GraphDBKnowledgeGraph.create_index"></a>
 
@@ -2938,6 +3831,39 @@ query result
 ```python
 class DeepsetCloudDocumentStore(KeywordDocumentStore)
 ```
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False)
+```
+
+A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
+
+Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
+
+DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
+See https://haystack.deepset.ai/components/document-store for more information.
+
+**Arguments**:
+
+- `api_key`: Secret value of the API key.
+If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+- `workspace`: workspace in Deepset Cloud
+- `index`: index to access within the Deepset Cloud workspace
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `api_endpoint`: The URL of the Deepset Cloud API.
+If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `return_embedding`: To return document embedding.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
 
@@ -3225,4 +4151,184 @@ exists.
 **Returns**:
 
 None
+
+<a id="utils"></a>
+
+# Module utils
+
+<a id="utils.eval_data_from_json"></a>
+
+#### eval\_data\_from\_json
+
+```python
+def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False) -> Tuple[List[Document], List[Label]]
+```
+
+Read Documents + Labels from a SQuAD-style file.
+
+Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
+
+**Arguments**:
+
+- `filename`: Path to file in SQuAD format
+- `max_docs`: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+- `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
+
+<a id="utils.eval_data_from_jsonl"></a>
+
+#### eval\_data\_from\_jsonl
+
+```python
+def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False) -> Generator[Tuple[List[Document], List[Label]], None, None]
+```
+
+Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
+
+Document and Labels can then be indexed to the DocumentStore and be used for evaluation.
+
+This is a generator which will yield one tuple per iteration containing a list
+of batch_size documents and a list with the documents' labels.
+If batch_size is set to None, this method will yield all documents and labels.
+
+**Arguments**:
+
+- `filename`: Path to file in SQuAD format
+- `max_docs`: This sets the number of documents that will be loaded. By default, this is set to None, thus reading in all available eval documents.
+- `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the same question might be found in different contexts.
+
+<a id="utils.squad_json_to_jsonl"></a>
+
+#### squad\_json\_to\_jsonl
+
+```python
+def squad_json_to_jsonl(squad_file: str, output_file: str)
+```
+
+Converts a SQuAD-json-file into jsonl format with one document per line.
+
+**Arguments**:
+
+- `squad_file`: SQuAD-file in json format.
+- `output_file`: Name of output file (SQuAD in jsonl format)
+
+<a id="utils.convert_date_to_rfc3339"></a>
+
+#### convert\_date\_to\_rfc3339
+
+```python
+def convert_date_to_rfc3339(date: str) -> str
+```
+
+Converts a date to RFC3339 format, as Weaviate requires dates to be in RFC3339 format including the time and
+timezone.
+
+If the provided date string does not contain a time and/or timezone, we use 00:00 as default time
+and UTC as default time zone.
+
+This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
+and filter_utils.py.
+
+<a id="utils.open_search_index_to_document_store"></a>
+
+#### open\_search\_index\_to\_document\_store
+
+```python
+def open_search_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "admin", password: str = "admin", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "https", ca_certs: Optional[str] = None, verify_certs: bool = False, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
+```
+
+This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
+
+the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
+on a regular basis in order to add new records of the OpenSearch index to the `DocumentStore`.
+
+**Arguments**:
+
+- `document_store`: The haystack `DocumentStore` to write the converted `Document` objects to.
+- `original_index_name`: OpenSearch index containing the records to be converted.
+- `original_content_field`: OpenSearch field containing the text to be put in the `content` field of the
+resulting haystack `Document` objects.
+- `original_name_field`: Optional OpenSearch field containing the title of the Document.
+- `included_metadata_fields`: List of OpenSearch fields that shall be stored in the `meta` field of the
+resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
+`included_metadata_fields` and `excluded_metadata_fields` parameters.
+- `excluded_metadata_fields`: List of OpenSearch fields that shall be excluded from the `meta` field of the
+resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
+`included_metadata_fields` and `excluded_metadata_fields` parameters.
+- `store_original_ids`: Whether to store the ID a record had in the original OpenSearch index at the
+`"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
+if you want to continuously update the `DocumentStore` with new records inside your OpenSearch index. If this
+parameter was set to `False` on the first call of `open_search_index_to_document_store`,
+all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
+- `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
+- `preprocessor`: Optional PreProcessor that will be applied on the content field of the original OpenSearch
+record.
+- `batch_size`: Number of records to process at once.
+- `host`: URL(s) of OpenSearch nodes.
+- `port`: Ports(s) of OpenSearch nodes.
+- `username`: Username (standard authentication via http_auth).
+- `password`: Password (standard authentication via http_auth).
+- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth).
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth).
+- `aws4auth`: Authentication for usage with AWS OpenSearch
+(can be generated with the requests-aws4auth package).
+- `scheme`: `"https"` or `"http"`, protocol used to connect to your OpenSearch instance.
+- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
+You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
+- `verify_certs`: Whether to be strict about ca certificates.
+- `timeout`: Number of seconds after which an OpenSearch request times out.
+- `use_system_proxy`: Whether to use system proxy.
+
+<a id="utils.elasticsearch_index_to_document_store"></a>
+
+#### elasticsearch\_index\_to\_document\_store
+
+```python
+def elasticsearch_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
+```
+
+This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
+
+the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
+on a regular basis in order to add new records of the Elasticsearch index to the `DocumentStore`.
+
+**Arguments**:
+
+- `document_store`: The haystack `DocumentStore` to write the converted `Document` objects to.
+- `original_index_name`: Elasticsearch index containing the records to be converted.
+- `original_content_field`: Elasticsearch field containing the text to be put in the `content` field of the
+resulting haystack `Document` objects.
+- `original_name_field`: Optional Elasticsearch field containing the title of the Document.
+- `included_metadata_fields`: List of Elasticsearch fields that shall be stored in the `meta` field of the
+resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
+`included_metadata_fields` and `excluded_metadata_fields` parameters.
+- `excluded_metadata_fields`: List of Elasticsearch fields that shall be excluded from the `meta` field of the
+resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
+`included_metadata_fields` and `excluded_metadata_fields` parameters.
+- `store_original_ids`: Whether to store the ID a record had in the original Elasticsearch index at the
+`"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
+if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
+parameter was set to `False` on the first call of `elasticsearch_index_to_document_store`,
+all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
+- `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
+- `preprocessor`: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
+record.
+- `batch_size`: Number of records to process at once.
+- `host`: URL(s) of Elasticsearch nodes.
+- `port`: Ports(s) of Elasticsearch nodes.
+- `username`: Username (standard authentication via http_auth).
+- `password`: Password (standard authentication via http_auth).
+- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth).
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth).
+- `aws4auth`: Authentication for usage with AWS Elasticsearch
+(can be generated with the requests-aws4auth package).
+- `scheme`: `"https"` or `"http"`, protocol used to connect to your Elasticsearch instance.
+- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
+You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
+- `verify_certs`: Whether to be strict about ca certificates.
+- `timeout`: Number of seconds after which an Elasticsearch request times out.
+- `use_system_proxy`: Whether to use system proxy.
 
