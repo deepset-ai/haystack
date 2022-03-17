@@ -113,12 +113,6 @@ def build_component_dependency_graph(
     :param component_definitions: the definition of the pipeline components (e.g. use get_component_definitions() to obtain it)
     """
     graph = DiGraph()
-    for node in pipeline_definition["nodes"]:
-        node_name = node["name"]
-        graph.add_node(node_name)
-        for input in node["inputs"]:
-            if input in component_definitions:
-                graph.add_edge(input, node_name)
     for component_name, component_definition in component_definitions.items():
         params = component_definition.get("params", {})
         referenced_components: List[str] = list()
@@ -129,6 +123,17 @@ def build_component_dependency_graph(
                 referenced_components.append(param_value)
         for referenced_component in referenced_components:
             graph.add_edge(referenced_component, component_name)
+    for node in pipeline_definition["nodes"]:
+        node_name = node["name"]
+        graph.add_node(node_name)
+        for input in node["inputs"]:
+            if input in component_definitions:
+                # Special case for (actually permitted) cyclic dependencies between two components:
+                # e.g. DensePassageRetriever depends on ElasticsearchDocumentStore.
+                # In indexing pipelines ElasticsearchDocumentStore depends on DensePassageRetriever's output.
+                # But this second dependency is looser, so we neglect it.
+                if not graph.has_edge(node_name, input):
+                    graph.add_edge(input, node_name)
     return graph
 
 
