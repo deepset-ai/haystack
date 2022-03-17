@@ -143,7 +143,7 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
     :param event: Name of the event. Use a noun and a verb, e.g., "evaluation started", "component created"
     :param payload: A dictionary containing event meta data, e.g., parameter settings
     """
-    global user_id
+    global user_id  # pylint: disable=global-statement
     try:
 
         def request_task(payload: Dict[str, Any], delete_telemetry_files: bool = False):
@@ -154,7 +154,8 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
             :param delete_telemetry_files: Whether to delete the config and log file after sending the request. Used when sending a finale event after disabling telemetry.
             """
             event_properties = {**(NonPrivateParameters.apply_filter(payload)), **_get_or_create_telemetry_meta_data()}
-
+            if user_id is None:
+                raise RuntimeError("User id was not initialized")
             try:
                 posthog.capture(distinct_id=user_id, event=event, properties=event_properties)
             except Exception as e:
