@@ -361,7 +361,7 @@ Reader from multiple Retrievers, or re-ranking of candidate documents.
 #### add\_node
 
 ```python
-def add_node(component, name: str, inputs: List[str])
+def add_node(component: BaseComponent, name: str, inputs: List[str])
 ```
 
 Add a new node to the pipeline.

@@ -41,10 +41,7 @@ def exportable_to_yaml(init_func):
 
             # Store all the named input parameters in self._component_config
             for k, v in kwargs.items():
-                if isinstance(v, BaseComponent):
-                    self._component_config["params"][k] = v._component_config
-                elif v is not None:
-                    self._component_config["params"][k] = v
+                self._component_config["params"][k] = v
 
     return wrapper_exportable_to_yaml
 
@@ -55,7 +52,6 @@ class BaseComponent(ABC):
     """
 
     outgoing_edges: int
-    name: Optional[str] = None
     _subclasses: dict = {}
     _component_config: dict = {}
 
@@ -73,6 +69,36 @@ class BaseComponent(ABC):
         # Keeps track of all available subclasses by name.
         # Enables generic load() for all specific component implementations.
         cls._subclasses[cls.__name__] = cls
+
+    @property
+    def name(self) -> Optional[str]:
+        return self._component_config.get("name", None)
+
+    @name.setter
+    def name(self, value: str):
+        self._component_config["name"] = value
+
+    @property
+    def utilized_components(self) -> List[BaseComponent]:
+        if "params" not in self._component_config:
+            return list()
+        return [param for param in self._component_config["params"].values() if isinstance(param, BaseComponent)]
+
+    @property
+    def type(self) -> str:
+        return self._component_config["type"]
+
+    def get_params(self, return_defaults: bool = False) -> Dict[str, Any]:
+        component_signature = self._get_signature()
+        params: Dict[str, Any] = {}
+        for key, value in self._component_config["params"].items():
+            if value != component_signature[key].default or return_defaults:
+                params[key] = value
+        if return_defaults:
+            for key, param in component_signature.items():
+                if key not in params:
+                    params[key] = param.default
+        return params
 
     @classmethod
     def get_subclass(cls, component_type: str):
@@ -207,3 +233,13 @@ class BaseComponent(ABC):
 
         output["params"] = params
         return output, stream
+
+    @classmethod
+    def _get_signature(cls) -> Dict[str, inspect.Parameter]:
+        component_classes = inspect.getmro(cls)
+        component_signature: Dict[str, inspect.Parameter] = {
+            param_key: parameter
+            for class_ in component_classes
+            for param_key, parameter in inspect.signature(class_).parameters.items()
+        }
+        return component_signature
