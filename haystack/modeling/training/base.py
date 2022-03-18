@@ -357,6 +357,8 @@ class Trainer:
                         if self.early_stopping:
                             do_stopping, save_model, eval_value = self.early_stopping.check_stopping(result)
                             if save_model:
+                                if self.logging_wandb:
+                                    wandb.config.update({"best_model_iter": step, "best_model_epoch": epoch})
                                 logger.info(
                                     "Saving current best model to {}, eval={}".format(
                                         self.early_stopping.save_dir, eval_value
