@@ -17,6 +17,7 @@ from haystack.telemetry import (
     disable_telemetry,
     enable_telemetry,
     TelemetryFileType,
+    _write_telemetry_config,
 )
 
 
@@ -111,12 +112,13 @@ def test_write_to_file(mock_posthog_capture, monkeypatch):
 def test_disable_enable_telemetry(mock_posthog_capture, monkeypatch):
     monkeypatch.setattr(telemetry, "HAYSTACK_TELEMETRY_ENABLED", "HAYSTACK_TELEMETRY_ENABLED_TEST")
     monkeypatch.setattr(telemetry, "CONFIG_PATH", Path("~/.haystack/config_test.yaml").expanduser())
+    # config_test.yaml doesn't exist yet and won't be created automatically because the global user_id might have been set already by other tests
+    _write_telemetry_config()
     send_custom_event(event="test")
     send_custom_event(event="test")
     assert mock_posthog_capture.call_count == 2, "two events should be sent"
 
-    # disable telemetry
-    monkeypatch.setenv("HAYSTACK_TELEMETRY_ENABLED_TEST", "False")
+    disable_telemetry()
     send_custom_event(event="test")
     assert mock_posthog_capture.call_count == 3, "one additional event should be sent"
     # todo replace [1] with .kwargs when moving from python 3.7 to 3.8 in CI
@@ -124,11 +126,6 @@ def test_disable_enable_telemetry(mock_posthog_capture, monkeypatch):
     send_custom_event(event="test")
     assert mock_posthog_capture.call_count == 3, "no additional event should be sent"
 
-    # enable telemetry
-    monkeypatch.setenv("HAYSTACK_TELEMETRY_ENABLED_TEST", "True")
+    enable_telemetry()
     send_custom_event(event="test")
     assert mock_posthog_capture.call_count == 4, "one additional event should be sent"
-
-
-def setup_function():
-    telemetry.user_id = None
