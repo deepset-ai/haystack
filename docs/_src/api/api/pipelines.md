@@ -434,6 +434,31 @@ about their execution. By default these include the input parameters
 they received and the output they generated. All debug information can
 then be found in the dict returned by this method under the key "_debug"
 
+<a id="base.Pipeline.eval_beir"></a>
+
+#### eval\_beir
+
+```python
+@classmethod
+def eval_beir(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict = {}, query_params: dict = {}, dataset: str = "scifact", dataset_dir: Path = Path("."), top_k_values: List[int] = [1, 3, 5, 10, 100, 1000]) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]
+```
+
+Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
+
+See https://github.com/beir-cellar/beir for more information.
+
+**Arguments**:
+
+- `index_pipeline`: The indexing pipeline to use.
+- `query_pipeline`: The query pipeline to evaluate.
+- `index_params`: The params to use during indexing (see pipeline.run's params).
+- `query_params`: The params to use during querying (see pipeline.run's params).
+- `dataset`: The BEIR dataset to use.
+- `dataset_dir`: The directory to store the dataset to.
+- `top_k_values`: The top_k values each metric will be calculated for.
+Returns a tuple containing the ncdg, map, recall and precision scores.
+Each metric is represented by a dictionary containing the scores for each top_k value.
+
 <a id="base.Pipeline.eval"></a>
 
 #### eval
@@ -833,6 +858,34 @@ def __call__(*args, **kwargs)
 ```
 
 Ray calls this method which is then re-directed to the corresponding component's run().
+
+<a id="base._HaystackBeirRetrieverAdapter"></a>
+
+## \_HaystackBeirRetrieverAdapter
+
+```python
+class _HaystackBeirRetrieverAdapter()
+```
+
+<a id="base._HaystackBeirRetrieverAdapter.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict)
+```
+
+Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on a Haystack Pipelines.
+
+This has nothing to do with Haystack's retriever classes.
+See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
+
+**Arguments**:
+
+- `index_pipeline`: The indexing pipeline to use.
+- `query_pipeline`: The query pipeline to evaluate.
+- `index_params`: The params to use during indexing (see pipeline.run's params).
+- `query_params`: The params to use during querying (see pipeline.run's params).
 
 <a id="standard_pipelines"></a>
 
