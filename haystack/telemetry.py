@@ -22,7 +22,6 @@ import torch
 import posthog
 import os
 import platform
-from threading import Thread
 
 posthog.api_key = "phc_uZ6c2kaqSz3u9QrYRCBbxsi6MMHiiew9dwi4LTobgV3"
 posthog.host = "https://posthog.dpst.dev"
@@ -145,10 +144,10 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
     """
     global user_id  # pylint: disable=global-statement
     try:
-
-        def request_task(payload: Dict[str, Any], delete_telemetry_files: bool = False):
+        def send_request(payload: Dict[str, Any], delete_telemetry_files: bool = False):
             """
-            Sends an event in a post request to a posthog server
+            Prepares and sends an event in a post request to a posthog server
+            Sending the post request within posthog.capture is non-blocking.
 
             :param payload: A dictionary containing event meta data, e.g., parameter settings
             :param delete_telemetry_files: Whether to delete the config and log file after sending the request. Used when sending a finale event after disabling telemetry.
@@ -166,23 +165,14 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
                 _delete_telemetry_file(TelemetryFileType.CONFIG_FILE)
                 _delete_telemetry_file(TelemetryFileType.LOG_FILE)
 
-        def fire_and_forget(payload: Dict[str, Any], delete_telemetry_files: bool = False):
-            """
-            Starts a thread with the task to send an event in a post request to a posthog server
-
-            :param payload: A dictionary containing event meta data, e.g., parameter settings
-            :param delete_telemetry_files: Whether to delete the config and log file after sending the request. Used when sending a finale event after disabling telemetry.
-            """
-            Thread(target=request_task, args=(payload, delete_telemetry_files)).start()
-
         user_id = _get_or_create_user_id()
         if is_telemetry_enabled():
-            fire_and_forget(payload=payload)
+            send_request(payload=payload)
         elif CONFIG_PATH.exists():
             # if telemetry has just been disabled but the config file has not been deleted yet,
             # then send a final event instead of the triggered event and delete config file and log file afterward
             event = "telemetry disabled"
-            fire_and_forget(payload={}, delete_telemetry_files=True)
+            send_request(payload={}, delete_telemetry_files=True)
         else:
             # return without sending any event, not even a final event
             return
@@ -249,7 +239,9 @@ def _get_or_create_telemetry_meta_data() -> Dict[str, Any]:
             "haystack_version": haystack.__version__,
             "transformers_version": transformers.__version__,
             "torch_version": torch.__version__,
+            "torch_cuda_version": torch.version.cuda if torch.cuda.is_available() else 0,
             "n_gpu": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+            "n_cpu": os.cpu_count(),
             "context": os.environ.get(HAYSTACK_EXECUTION_CONTEXT),
             "execution_env": _get_execution_environment(),
         }

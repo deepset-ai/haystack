@@ -6,6 +6,7 @@ from unittest.mock import patch, PropertyMock
 import pytest
 
 from haystack import telemetry
+from haystack.errors import PipelineSchemaError
 from haystack.telemetry import (
     NonPrivateParameters,
     send_event,
@@ -61,10 +62,18 @@ def test_send_event_via_decorator(mock_nonprivateparameters, mock_posthog_captur
 
     test_class = TestClass()
     test_class.run(add_isolated_node_eval=True)
-    sleep(1)
     # todo replace [1] with .kwargs when moving from python 3.7 to 3.8 in CI
     assert mock_posthog_capture.call_args[1]["event"] == "TestClass.run executed"
     assert mock_posthog_capture.call_args[1]["properties"]["add_isolated_node_eval"]
+
+
+@pytest.mark.integration
+@patch("posthog.capture")
+def test_send_event_if_custom_error_raised(mock_posthog_capture):
+    with pytest.raises(PipelineSchemaError):
+        raise PipelineSchemaError
+    # todo replace [1] with .kwargs when moving from python 3.7 to 3.8 in CI
+    assert mock_posthog_capture.call_args[1]["event"] == "PipelineSchemaError raised"
 
 
 def num_lines(path: Path):
@@ -80,21 +89,18 @@ def test_write_to_file(mock_posthog_capture, monkeypatch):
     monkeypatch.setattr(telemetry, "LOG_PATH", Path("~/.haystack/telemetry_test.log").expanduser())
     num_lines_before = num_lines(telemetry.LOG_PATH)
     send_custom_event(event="test")
-    sleep(1)
     num_lines_after = num_lines(telemetry.LOG_PATH)
     assert num_lines_before == num_lines_after
 
     enable_writing_events_to_file()
     num_lines_before = num_lines(telemetry.LOG_PATH)
     send_custom_event(event="test")
-    sleep(1)
     num_lines_after = num_lines(telemetry.LOG_PATH)
     assert num_lines_before + 1 == num_lines_after
 
     disable_writing_events_to_file()
     num_lines_before = num_lines(telemetry.LOG_PATH)
     send_custom_event(event="test")
-    sleep(1)
     num_lines_after = num_lines(telemetry.LOG_PATH)
     assert num_lines_before == num_lines_after
     _delete_telemetry_file(TelemetryFileType.LOG_FILE)
@@ -107,20 +113,16 @@ def test_disable_enable_telemetry(mock_posthog_capture, monkeypatch):
     monkeypatch.setattr(telemetry, "CONFIG_PATH", Path("~/.haystack/config_test.yaml").expanduser())
     send_custom_event(event="test")
     send_custom_event(event="test")
-    sleep(1)
     assert mock_posthog_capture.call_count == 2, "two events should be sent"
 
     disable_telemetry()
     send_custom_event(event="test")
-    sleep(1)
     assert mock_posthog_capture.call_count == 3, "one additional final event should be sent"
     send_custom_event(event="test")
-    sleep(1)
     assert mock_posthog_capture.call_count == 3, "no additional event should be sent"
 
     enable_telemetry()
     send_custom_event(event="test")
-    sleep(1)
     assert mock_posthog_capture.call_count == 4, "one additional event should be sent"
 
 
