@@ -221,6 +221,7 @@ class Trainer:
                                    "patience": self.early_stopping.patience,
                                    "metric": self.early_stopping.metric,
                                    "min_delta": self.early_stopping.min_delta,
+                                   "min_evals": self.early_stopping.min_evals,
                                    "num_hard_negatives_ctx": self.data_silo.processor.num_hard_negatives,
                                    "num_positives_ctx": self.data_silo.processor.num_positives,
                                    "train_filename": self.data_silo.processor.train_filename,
