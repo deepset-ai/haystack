@@ -1,6 +1,7 @@
 from __future__ import annotations
 from os import pipe
-from typing import Dict, List, Optional, Any, Set
+import tempfile
+from typing import Dict, List, Optional, Any, Set, Union
 
 import copy
 import json
@@ -16,6 +17,7 @@ from jsonschema import Draft7Validator
 from jsonschema.exceptions import ValidationError
 from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
+from tqdm import tqdm
 from transformers import pipelines
 import yaml
 from networkx import DiGraph
@@ -575,7 +577,7 @@ class Pipeline(BasePipeline):
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
+        meta: Optional[Union[dict, List[dict]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
@@ -690,6 +692,50 @@ class Pipeline(BasePipeline):
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
 
+    @classmethod
+    def eval_beir(
+        cls,
+        index_pipeline: Pipeline,
+        query_pipeline: Pipeline,
+        index_params: dict = {},
+        query_params: dict = {},
+        dataset: str = "scifact",
+        dataset_dir: Path = Path("."),
+    ):
+        try:
+            from beir import util
+            from beir.datasets.data_loader import GenericDataLoader
+            from beir.retrieval.evaluation import EvaluateRetrieval
+        except:
+            raise PipelineError("beir is not installed. Please run `pip install beir`...")
+
+        url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
+        data_path = util.download_and_unzip(url, dataset_dir)
+        logger.info("Dataset downloaded here: {}".format(data_path))
+
+        corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
+        index = f"beir_{dataset}"
+        index_params["index"] = index
+        query_params["index"] = index
+        haystack_retriever = BeirHaystackRetriever(
+            index_pipeline=index_pipeline,
+            query_pipeline=query_pipeline,
+            index_params=index_params,
+            query_params=query_params,
+        )
+        retriever = EvaluateRetrieval(haystack_retriever)
+
+        #### Retrieve dense results (format of results is identical to qrels)
+        results = retriever.retrieve(corpus, queries)
+        document_store = index_pipeline.get_document_store()
+        if document_store is not None:
+            document_store.delete_all_documents(index=index)
+
+        #### Evaluate your retrieval using NDCG@k, MAP@K ...
+        logger.info("Retriever evaluation for k in: {}".format(retriever.k_values))
+        ndcg, _map, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
+        return ndcg, _map, recall, precision
+
     def eval(
         self,
         labels: List[MultiLabel],
@@ -766,8 +812,11 @@ class Pipeline(BasePipeline):
                     gold_labels = df["gold_answers"].values
                     predictions = [[a] for a in df["answer"].values]
                     sas, _ = semantic_answer_similarity(
-                        predictions=predictions, gold_labels=gold_labels, sas_model_name_or_path=sas_model_name_or_path,
-                        batch_size=sas_batch_size, use_gpu=sas_use_gpu
+                        predictions=predictions,
+                        gold_labels=gold_labels,
+                        sas_model_name_or_path=sas_model_name_or_path,
+                        batch_size=sas_batch_size,
+                        use_gpu=sas_use_gpu,
                     )
                     df["sas"] = sas
 
@@ -1556,3 +1605,42 @@ class _RayDeploymentWrapper:
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
         return self.node._dispatch_run(*args, **kwargs)
+
+
+class BeirHaystackRetriever:
+    def __init__(self, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict):
+        self.index_pipeline = index_pipeline
+        self.query_pipeline = query_pipeline
+        self.index_params = index_params
+        self.query_params = query_params
+
+    def search(
+        self,
+        corpus: Dict[str, Dict[str, str]],
+        queries: Dict[str, str],
+        top_k: List[int],
+        score_function: str,
+        **kwargs,
+    ) -> Dict[str, Dict[str, float]]:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_paths = []
+            metas = []
+            for id, doc in corpus.items():
+                file_path = f"{temp_dir}/{id}"
+                with open(file_path, "w") as f:
+                    f.write(doc["text"])
+                file_paths.append(file_path)
+                metas.append({"name": id})
+
+            logger.info(f"indexing {len(corpus)} documents...")
+            self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
+            logger.info(f"indexing finished.")
+
+            results = {}
+            for q_id, query in tqdm(queries.items(), total=len(queries)):
+                res = self.query_pipeline.run(query=query, params=self.query_params)
+                docs = res["documents"]
+                query_results = {doc.meta["name"]: doc.score for doc in docs}
+                results[q_id] = query_results
+
+            return results
