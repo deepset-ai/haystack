@@ -109,8 +109,13 @@ class SquadData:
         """Convert a list of SQuAD document dictionaries into a pandas dataframe (each row is one annotation)"""
         flat = []
         for document in data:
-            title = document["title"]
+            title = ""
+            if "title" in document:
+                title = document["title"]
             for paragraph in document["paragraphs"]:
+                document_id = ""
+                if "document_id" in paragraph:
+                    document_id = paragraph["document_id"]
                 context = paragraph["context"]
                 for question in paragraph["qas"]:
                     q = question["question"]
@@ -127,6 +132,7 @@ class SquadData:
                                 "answer_text": "",
                                 "answer_start": None,
                                 "is_impossible": is_impossible,
+                                "document_id": document_id
                             }
                         )
                     # For span answer samples
@@ -143,6 +149,7 @@ class SquadData:
                                     "answer_text": answer_text,
                                     "answer_start": answer_start,
                                     "is_impossible": is_impossible,
+                                    "document_id": document_id
                                 }
                             )
         df = pd.DataFrame.from_records(flat)
