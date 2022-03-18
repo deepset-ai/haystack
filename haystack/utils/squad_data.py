@@ -132,7 +132,7 @@ class SquadData:
                                 "answer_text": "",
                                 "answer_start": None,
                                 "is_impossible": is_impossible,
-                                "document_id": document_id
+                                "document_id": document_id,
                             }
                         )
                     # For span answer samples
@@ -149,7 +149,7 @@ class SquadData:
                                     "answer_text": answer_text,
                                     "answer_start": answer_start,
                                     "is_impossible": is_impossible,
-                                    "document_id": document_id
+                                    "document_id": document_id,
                                 }
                             )
         df = pd.DataFrame.from_records(flat)
