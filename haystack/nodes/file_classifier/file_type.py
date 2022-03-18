@@ -1,6 +1,7 @@
 from multiprocessing.sharedctypes import Value
 from typing import List, Union
 from pathlib import Path
+import magic
 from haystack.nodes.base import BaseComponent
 
 
@@ -34,6 +35,16 @@ class FileTypeClassifier(BaseComponent):
 
         self.supported_types = supported_types
 
+    def _estimate_extension(self, file_path: Path) -> str:
+        """
+        Return the extension found based on the contents of the given file
+
+        :param file_path: the path to extract the extension from
+        """
+        extension = magic.from_file(file_path, mime=True)
+        return '.' + extension.split('.')[-1]
+
+
     def _get_extension(self, file_paths: List[Path]) -> str:
         """
         Return the extension found in the given list of files.
@@ -44,9 +55,14 @@ class FileTypeClassifier(BaseComponent):
         :return: a set of strings with all the extensions (without duplicates)
         """
         extension = file_paths[0].suffix
+        if extension == '':
+            extension = self._estimate_extension(file_paths[0])
 
         for path in file_paths:
-            if path.suffix != extension:
+            path_suffix = path.suffix
+            if path_suffix == '':
+                path_suffix = self._estimate_extension(path)
+            if path_suffix != extension:
                 raise ValueError(f"Multiple file types are not allowed at once.")
 
         return extension.lstrip(".")
