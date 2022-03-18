@@ -80,7 +80,6 @@ disable = [
   "use-list-literal",
 
 
-  "cyclic-import",
   "wrong-import-order",
   
   
