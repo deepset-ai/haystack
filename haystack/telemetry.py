@@ -144,6 +144,7 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
     """
     global user_id  # pylint: disable=global-statement
     try:
+
         def send_request(payload: Dict[str, Any], delete_telemetry_files: bool = False):
             """
             Prepares and sends an event in a post request to a posthog server
