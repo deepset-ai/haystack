@@ -735,6 +735,14 @@ class Pipeline(BasePipeline):
         index_params["index"] = index
         query_params["index"] = index
 
+        # clean index before eval
+        document_store = index_pipeline.get_document_store()
+        if document_store is not None:
+            if hasattr(document_store, "delete_index"):
+                document_store.delete_index(index=index) # type: ignore
+            else:
+                document_store.delete_documents(index=index)
+
         haystack_retriever = _HaystackBeirRetrieverAdapter(
             index_pipeline=index_pipeline,
             query_pipeline=query_pipeline,
@@ -747,9 +755,11 @@ class Pipeline(BasePipeline):
         results = retriever.retrieve(corpus, queries)
 
         # Clean up document store
-        document_store = index_pipeline.get_document_store()
         if document_store is not None:
-            document_store.delete_all_documents(index=index)
+            if hasattr(document_store, "delete_index"):
+                document_store.delete_index(index=index) # type: ignore
+            else:
+                document_store.delete_documents(index=index)
 
         # Evaluate your retrieval using NDCG@k, MAP@K ...
         logger.info(f"Retriever evaluation for k in: {retriever.k_values}")
@@ -1655,7 +1665,14 @@ class _HaystackBeirRetrieverAdapter:
                 with open(file_path, "w") as f:
                     f.write(doc["text"])
                 file_paths.append(file_path)
-                metas.append({"name": id})
+                metas.append({"id": id, "name": doc.get("title", None)})
+
+            document_store = self.index_pipeline.get_document_store()
+            if hasattr(document_store, "search_fields"):
+                search_fields = getattr(document_store, "search_fields")
+                if "name" not in search_fields:
+                    logger.warning("Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. " 
+                                   "Please set search_fields appropriately.")
 
             logger.info(f"indexing {len(corpus)} documents...")
             self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
@@ -1669,7 +1686,7 @@ class _HaystackBeirRetrieverAdapter:
             for q_id, query in tqdm(queries.items(), total=len(queries)):
                 res = self.query_pipeline.run(query=query, params=query_params)
                 docs = res["documents"]
-                query_results = {doc.meta["name"]: doc.score for doc in docs}
+                query_results = {doc.meta["id"]: doc.score for doc in docs}
                 results[q_id] = query_results
 
             return results
