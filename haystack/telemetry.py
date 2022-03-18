@@ -144,13 +144,13 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
     """
     global user_id  # pylint: disable=global-statement
     try:
-        def send_request(payload: Dict[str, Any], delete_telemetry_files: bool = False):
+
+        def send_request(payload: Dict[str, Any]):
             """
             Prepares and sends an event in a post request to a posthog server
             Sending the post request within posthog.capture is non-blocking.
 
             :param payload: A dictionary containing event meta data, e.g., parameter settings
-            :param delete_telemetry_files: Whether to delete the config and log file after sending the request. Used when sending a finale event after disabling telemetry.
             """
             event_properties = {**(NonPrivateParameters.apply_filter(payload)), **_get_or_create_telemetry_meta_data()}
             if user_id is None:
@@ -161,9 +161,6 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
                 logger.debug("Telemetry was not able to make a post request to posthog.", exc_info=e)
             if is_telemetry_enabled() and is_telemetry_logging_to_file_enabled():
                 _write_event_to_telemetry_log_file(distinct_id=user_id, event=event, properties=event_properties)
-            if delete_telemetry_files:
-                _delete_telemetry_file(TelemetryFileType.CONFIG_FILE)
-                _delete_telemetry_file(TelemetryFileType.LOG_FILE)
 
         user_id = _get_or_create_user_id()
         if is_telemetry_enabled():
@@ -172,7 +169,9 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
             # if telemetry has just been disabled but the config file has not been deleted yet,
             # then send a final event instead of the triggered event and delete config file and log file afterward
             event = "telemetry disabled"
-            send_request(payload={}, delete_telemetry_files=True)
+            send_request(payload={})
+            _delete_telemetry_file(TelemetryFileType.CONFIG_FILE)
+            _delete_telemetry_file(TelemetryFileType.LOG_FILE)
         else:
             # return without sending any event, not even a final event
             return
@@ -254,22 +253,22 @@ def _get_execution_environment():
     Options are: colab notebook, kubernetes, CPU/GPU docker container, test environment, jupyter notebook, python script
     """
     if os.environ.get("CI", "False").lower() == "true":
-        return "ci"
+        execution_env = "ci"
     elif "google.colab" in sys.modules:
-        return "colab"
+        execution_env = "colab"
     elif "KUBERNETES_SERVICE_HOST" in os.environ:
-        return "kubernetes"
+        execution_env = "kubernetes"
     elif HAYSTACK_DOCKER_CONTAINER in os.environ:
-        return os.environ.get(HAYSTACK_DOCKER_CONTAINER)
+        execution_env = os.environ.get(HAYSTACK_DOCKER_CONTAINER)
     # check if pytest is imported
     elif "pytest" in sys.modules:
-        return "test"
+        execution_env = "test"
     else:
         try:
-            return get_ipython().__class__.__name__  # pylint: disable=undefined-variable
-        except Exception:
-            return "script"
-    return "script"
+            execution_env = get_ipython().__class__.__name__  # pylint: disable=undefined-variable
+        except NameError:
+            execution_env = "script"
+    return execution_env
 
 
 def _read_telemetry_config():
