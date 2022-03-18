@@ -115,13 +115,17 @@ def test_disable_enable_telemetry(mock_posthog_capture, monkeypatch):
     send_custom_event(event="test")
     assert mock_posthog_capture.call_count == 2, "two events should be sent"
 
-    disable_telemetry()
+    # disable telemetry
+    monkeypatch.setenv("HAYSTACK_TELEMETRY_ENABLED_TEST", "False")
     send_custom_event(event="test")
-    assert mock_posthog_capture.call_count == 3, "one additional final event should be sent"
+    assert mock_posthog_capture.call_count == 3, "one additional event should be sent"
+    # todo replace [1] with .kwargs when moving from python 3.7 to 3.8 in CI
+    assert mock_posthog_capture.call_args[1]["event"] == "telemetry disabled", "a final event should be sent"
     send_custom_event(event="test")
     assert mock_posthog_capture.call_count == 3, "no additional event should be sent"
 
-    enable_telemetry()
+    # enable telemetry
+    monkeypatch.setenv("HAYSTACK_TELEMETRY_ENABLED_TEST", "True")
     send_custom_event(event="test")
     assert mock_posthog_capture.call_count == 4, "one additional event should be sent"
 
