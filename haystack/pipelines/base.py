@@ -1,7 +1,7 @@
 from __future__ import annotations
 from os import pipe
 import tempfile
-from typing import Dict, List, Optional, Any, Set, Union
+from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 import copy
 import json
@@ -701,7 +701,23 @@ class Pipeline(BasePipeline):
         query_params: dict = {},
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
-    ):
+        top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+    ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
+        """
+        Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
+        See https://github.com/beir-cellar/beir for more information.
+
+        :param index_pipeline: The indexing pipeline to use.
+        :param query_pipeline: The query pipeline to evaluate.
+        :param index_params: The params to use during indexing (see pipeline.run's params).
+        :param query_params: The params to use during querying (see pipeline.run's params).
+        :param dataset: The BEIR dataset to use.
+        :param dataset_dir: The directory to store the dataset to.
+        :param top_k_values: The top_k values each metric will be calculated for.
+
+        Returns a tuple containing the ncdg, map, recall and precision scores.
+        Each metric is represented by a dictionary containing the scores for each top_k value.
+        """
         try:
             from beir import util
             from beir.datasets.data_loader import GenericDataLoader
@@ -711,30 +727,34 @@ class Pipeline(BasePipeline):
 
         url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
         data_path = util.download_and_unzip(url, dataset_dir)
-        logger.info("Dataset downloaded here: {}".format(data_path))
-
+        logger.info(f"Dataset downloaded here: {data_path}")
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
+
+        # use dedicated index
         index = f"beir_{dataset}"
         index_params["index"] = index
         query_params["index"] = index
-        haystack_retriever = BeirHaystackRetriever(
+
+        haystack_retriever = _HaystackBeirRetrieverAdapter(
             index_pipeline=index_pipeline,
             query_pipeline=query_pipeline,
             index_params=index_params,
             query_params=query_params,
         )
-        retriever = EvaluateRetrieval(haystack_retriever)
+        retriever = EvaluateRetrieval(haystack_retriever, k_values=top_k_values)
 
-        #### Retrieve dense results (format of results is identical to qrels)
+        # Retrieve results (format of results is identical to qrels)
         results = retriever.retrieve(corpus, queries)
+
+        # Clean up document store
         document_store = index_pipeline.get_document_store()
         if document_store is not None:
             document_store.delete_all_documents(index=index)
 
-        #### Evaluate your retrieval using NDCG@k, MAP@K ...
-        logger.info("Retriever evaluation for k in: {}".format(retriever.k_values))
-        ndcg, _map, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
-        return ndcg, _map, recall, precision
+        # Evaluate your retrieval using NDCG@k, MAP@K ...
+        logger.info(f"Retriever evaluation for k in: {retriever.k_values}")
+        ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
+        return ndcg, map_, recall, precision
 
     def eval(
         self,
@@ -1607,20 +1627,25 @@ class _RayDeploymentWrapper:
         return self.node._dispatch_run(*args, **kwargs)
 
 
-class BeirHaystackRetriever:
+class _HaystackBeirRetrieverAdapter:
     def __init__(self, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict):
+        """
+        Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on a Haystack Pipelines.
+        This has nothing to do with Haystack's retriever classes.
+        See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
+
+        :param index_pipeline: The indexing pipeline to use.
+        :param query_pipeline: The query pipeline to evaluate.
+        :param index_params: The params to use during indexing (see pipeline.run's params).
+        :param query_params: The params to use during querying (see pipeline.run's params).
+        """
         self.index_pipeline = index_pipeline
         self.query_pipeline = query_pipeline
         self.index_params = index_params
         self.query_params = query_params
 
     def search(
-        self,
-        corpus: Dict[str, Dict[str, str]],
-        queries: Dict[str, str],
-        top_k: List[int],
-        score_function: str,
-        **kwargs,
+        self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, score_function: str, **kwargs
     ) -> Dict[str, Dict[str, float]]:
         with tempfile.TemporaryDirectory() as temp_dir:
             file_paths = []
@@ -1636,9 +1661,13 @@ class BeirHaystackRetriever:
             self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
             logger.info(f"indexing finished.")
 
+            # adjust query_params to ensure top_k is retrieved
+            query_params = copy.deepcopy(self.query_params)
+            query_params["top_k"] = top_k
+
             results = {}
             for q_id, query in tqdm(queries.items(), total=len(queries)):
-                res = self.query_pipeline.run(query=query, params=self.query_params)
+                res = self.query_pipeline.run(query=query, params=query_params)
                 docs = res["documents"]
                 query_results = {doc.meta["name"]: doc.score for doc in docs}
                 results[q_id] = query_results
