@@ -326,7 +326,7 @@ def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
         logger.debug("File type to delete must be either TelemetryFileType.LOG_FILE or TelemetryFileType.CONFIG_FILE.")
     path = LOG_PATH if file_type_to_delete is TelemetryFileType.LOG_FILE else CONFIG_PATH
     try:
-        path.unlink(missing_ok=True)
+        path.unlink()  # todo add missing_ok=True to the unlink() call when upgrading to python>3.7
     except Exception as e:
         logger.debug(f"Telemetry was not able to delete the {file_type_to_delete} at {path}.", exc_info=e)
 
