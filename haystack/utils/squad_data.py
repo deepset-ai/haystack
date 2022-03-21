@@ -113,10 +113,7 @@ class SquadData:
             title = document.get("title", "")
             for paragraph in document["paragraphs"]:
                 context = paragraph["context"]
-                document_id = paragraph.get(
-                    "document_id",
-                    "{:02x}".format(mmh3.hash128(str(context), signed=False))
-                )
+                document_id = paragraph.get("document_id", "{:02x}".format(mmh3.hash128(str(context), signed=False)))
                 for question in paragraph["qas"]:
                     q = question["question"]
                     id = question["id"]
