@@ -42,7 +42,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         api_key: str,
         environment: str = "us-west1-gcp",
         sql_url: str = "sqlite:///pinecone_document_store.db",
-        pinecone_index: Optional["pinecone.Index"] = None,
+        pinecone_index: Optional[pinecone.Index] = None,
         embedding_dim: int = 768,
         return_embedding: bool = False,
         index: str = "document",
