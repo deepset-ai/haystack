@@ -69,7 +69,13 @@ def get_component_definitions(pipeline_config: Dict[str, Any], overwrite_with_en
     return component_definitions
 
 
-def read_pipeline_config_from_yaml(path: Path):
+def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
+    """
+    Parses YAML files into Python objects.
+    Fails if the file does not exist.
+    """
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Not found: {path}")
     with open(path, "r", encoding="utf-8") as stream:
         return yaml.safe_load(stream)
 

@@ -466,6 +466,9 @@ If you use custom cross encoders please make sure they work with sentence_transf
 - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
 - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
 - Large model for German only: "deepset/gbert-large-sts"
+- `sas_batch_size`: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+- `sas_use_gpu`: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+Falls back to CPU if no GPU is available.
 - `add_isolated_node_eval`: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
 This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
 If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
