@@ -735,7 +735,7 @@ class Pipeline(BasePipeline):
         logger.info(f"Dataset downloaded here: {data_path}")
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
 
-        # clean index before eval
+        # check index before eval
         document_store = index_pipeline.get_document_store()
         if document_store is not None:
             if document_store.get_document_count() > 0:
@@ -1645,7 +1645,7 @@ class _RayDeploymentWrapper:
 class _HaystackBeirRetrieverAdapter:
     def __init__(self, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict):
         """
-        Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on a Haystack Pipelines.
+        Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
         This has nothing to do with Haystack's retriever classes.
         See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
 
