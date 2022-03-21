@@ -485,3 +485,6 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ):
         raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+
+    def delete_index(self, index: str):
+        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting indexes.")

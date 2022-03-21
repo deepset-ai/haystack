@@ -318,12 +318,11 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             if self.search_fields:
                 for search_field in self.search_fields:
                     if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
-                        host_data = self.client.transport.hosts[0]
                         raise Exception(
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{host_data['host']}:{host_data['port']}/{index_name}\"` will fix your environment. "
+                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                            f'In this case deleting the index with `delete_index(index="{index_name}")` will fix your environment. '
                             f"Note, that all data stored in the index will be lost!"
                         )
             if self.embedding_field:
@@ -1571,6 +1570,11 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param index: The name of the index to delete.
         :return: None
         """
+        if index == self.index:
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
         self.client.indices.delete(index=index, ignore=[400, 404])
         logger.debug(f"deleted elasticsearch index {index}")
 
@@ -1790,12 +1794,11 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         search_field in mappings["properties"]
                         and mappings["properties"][search_field]["type"] != "text"
                     ):
-                        host_data = self.client.transport.hosts[0]
                         raise Exception(
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mappings['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{host_data['host']}:{host_data['port']}/{index_name}\"` will fix your environment. "
+                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                            f'In this case deleting the index with `delete_index(index="{index_name}")` will fix your environment. '
                             f"Note, that all data stored in the index will be lost!"
                         )
 

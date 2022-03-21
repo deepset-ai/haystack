@@ -250,6 +250,25 @@ When set to None (default) all available eval documents are used.
 same question might be found in different contexts.
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
+<a id="base.BaseDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+@abstractmethod
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a id="base.BaseDocumentStore.run"></a>
 
 #### run
@@ -1842,6 +1861,24 @@ Example:
 
 None
 
+<a id="memory.InMemoryDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a id="memory.InMemoryDocumentStore.delete_labels"></a>
 
 #### delete\_labels
@@ -2127,6 +2164,24 @@ have their ID in the list).
 
 None
 
+<a id="sql.SQLDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a id="sql.SQLDocumentStore.delete_labels"></a>
 
 #### delete\_labels
@@ -2366,6 +2421,24 @@ Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
 If filters are provided along with a list of IDs, this method deletes the
 intersection of the two query results (documents that match the filters and
 have their ID in the list).
+
+**Returns**:
+
+None
+
+<a id="faiss.FAISSDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
 
 **Returns**:
 
@@ -2636,6 +2709,24 @@ Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
 If filters are provided along with a list of IDs, this method deletes the
 intersection of the two query results (documents that match the filters and
 have their ID in the list).
+
+**Returns**:
+
+None
+
+<a id="milvus1.Milvus1DocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
 
 **Returns**:
 
@@ -2927,6 +3018,24 @@ Delete all documents (from SQL AND Milvus).
 - `index`: (SQL) index name for storing the docs and metadata
 - `filters`: Optional filters to narrow down the search space.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
+
+<a id="milvus2.Milvus2DocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
 
 **Returns**:
 
@@ -3560,6 +3669,24 @@ operation.
     If filters are provided along with a list of IDs, this method deletes the
     intersection of the two query results (documents that match the filters and
     have their ID in the list).
+
+**Returns**:
+
+None
+
+<a id="weaviate.WeaviateDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
 
 **Returns**:
 
