@@ -6,10 +6,10 @@ from haystack.modeling.model.tokenization import Tokenizer
 from haystack.modeling.utils import set_all_seeds
 import torch
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
-def test_processor_saving_loading(caplog):
+def test_processor_saving_loading(tmp_path, caplog):
     if caplog is not None:
         caplog.set_level(logging.CRITICAL)
 
@@ -31,7 +31,7 @@ def test_processor_saving_loading(caplog):
     dicts = processor.file_to_dicts(file=SAMPLES_PATH / "qa" / "dev-sample.json")
     data, tensor_names, _ = processor.dataset_from_dicts(dicts=dicts, indices=[1])
 
-    save_dir = Path("testsave/processor")
+    save_dir = tmp_path / Path("testsave/processor")
     processor.save(save_dir)
 
     processor = processor.load_from_dir(save_dir)

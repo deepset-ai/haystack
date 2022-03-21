@@ -58,6 +58,8 @@ class Crawler(BaseComponent):
             All URLs not matching at least one of the regular expressions will be dropped.
         :param overwrite_existing_files: Whether to overwrite existing files in output_dir with new content
         """
+        super().__init__()
+
         IN_COLAB = "google.colab" in sys.modules
 
         options = webdriver.chrome.options.Options()
@@ -146,8 +148,8 @@ class Crawler(BaseComponent):
                             base_url=url_, filter_urls=filter_urls, existed_links=existed_links
                         )
                     )
-                for url in sub_links:
-                    file_paths += self._write_to_files(sub_links[url], output_dir=output_dir, base_url=url)
+                for url, extracted_sublink in sub_links.items():
+                    file_paths += self._write_to_files(extracted_sublink, output_dir=output_dir, base_url=url)
 
         return file_paths
 

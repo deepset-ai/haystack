@@ -4,13 +4,12 @@ from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.doc_store import (
     launch_es,
     launch_milvus,
-    launch_open_distro_es,
     launch_opensearch,
     launch_weaviate,
     stop_opensearch,
     stop_service,
 )
-from haystack.utils.deepsetcloud import DeepsetCloud
+from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudError
 from haystack.utils.export_utils import (
     print_answers,
     print_documents,

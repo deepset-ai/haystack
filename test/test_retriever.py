@@ -10,12 +10,12 @@ from haystack.document_stores import WeaviateDocumentStore
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.milvus import MilvusDocumentStore
+from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 @pytest.fixture()
@@ -56,11 +56,11 @@ def docs():
         ("dpr", "elasticsearch"),
         ("dpr", "faiss"),
         ("dpr", "memory"),
-        ("dpr", "milvus"),
+        ("dpr", "milvus1"),
         ("embedding", "elasticsearch"),
         ("embedding", "faiss"),
         ("embedding", "memory"),
-        ("embedding", "milvus"),
+        ("embedding", "milvus1"),
         ("elasticsearch", "elasticsearch"),
         ("es_filter_only", "elasticsearch"),
         ("tfidf", "memory"),
@@ -74,7 +74,7 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
     # test without filters
     res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
     assert res[0].content == "My name is Carla and I live in Berlin"
-    assert len(res) == 3
+    assert len(res) == 5
     assert res[0].meta["name"] == "filename1"
 
     # test with filters
@@ -150,6 +150,9 @@ def test_elasticsearch_custom_query():
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store, retriever, docs):
 
@@ -178,6 +181,9 @@ def test_dpr_embedding(document_store, retriever, docs):
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
 def test_retribert_embedding(document_store, retriever, docs):
@@ -238,8 +244,8 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_dpr_saving_and_loading(retriever, document_store):
-    retriever.save("test_dpr_save")
+def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
+    retriever.save(f"{tmp_path}/test_dpr_save")
 
     def sum_params(model):
         s = []
@@ -252,7 +258,7 @@ def test_dpr_saving_and_loading(retriever, document_store):
     original_sum_passage = sum_params(retriever.passage_encoder)
     del retriever
 
-    loaded_retriever = DensePassageRetriever.load("test_dpr_save", document_store)
+    loaded_retriever = DensePassageRetriever.load(f"{tmp_path}/test_dpr_save", document_store)
 
     loaded_sum_query = sum_params(loaded_retriever.query_encoder)
     loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)
@@ -286,8 +292,8 @@ def test_dpr_saving_and_loading(retriever, document_store):
 
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.embedding_dim(512)
-def test_table_text_retriever_saving_and_loading(retriever, document_store):
-    retriever.save("test_table_text_retriever_save")
+def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_store):
+    retriever.save(f"{tmp_path}/test_table_text_retriever_save")
 
     def sum_params(model):
         s = []
@@ -301,7 +307,7 @@ def test_table_text_retriever_saving_and_loading(retriever, document_store):
     original_sum_table = sum_params(retriever.table_encoder)
     del retriever
 
-    loaded_retriever = TableTextRetriever.load("test_table_text_retriever_save", document_store)
+    loaded_retriever = TableTextRetriever.load(f"{tmp_path}/test_table_text_retriever_save", document_store)
 
     loaded_sum_query = sum_params(loaded_retriever.query_encoder)
     loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)

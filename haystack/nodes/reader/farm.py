@@ -113,30 +113,8 @@ class FARMReader(BaseReader):
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            context_window_size=context_window_size,
-            batch_size=batch_size,
-            use_gpu=use_gpu,
-            no_ans_boost=no_ans_boost,
-            return_no_answer=return_no_answer,
-            top_k=top_k,
-            top_k_per_candidate=top_k_per_candidate,
-            top_k_per_sample=top_k_per_sample,
-            num_processes=num_processes,
-            max_seq_len=max_seq_len,
-            doc_stride=doc_stride,
-            progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering,
-            proxies=proxies,
-            local_files_only=local_files_only,
-            force_download=force_download,
-            use_confidence_scores=use_confidence_scores,
-            **kwargs,
-        )
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         self.return_no_answers = return_no_answer
@@ -175,6 +153,7 @@ class FARMReader(BaseReader):
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
+        self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
 
     def _training_procedure(
         self,
@@ -407,7 +386,7 @@ class FARMReader(BaseReader):
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
-        :param caching whether or not to use caching for preprocessed dataset
+        :param caching: whether or not to use caching for preprocessed dataset
         :param cache_path: Path to cache the preprocessed dataset
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :return: None
@@ -514,7 +493,7 @@ class FARMReader(BaseReader):
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
-        :param caching whether or not to use caching for preprocessed dataset and teacher logits
+        :param caching: whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
@@ -628,7 +607,7 @@ class FARMReader(BaseReader):
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: maximum number of train checkpoints to save.
-        :param caching whether or not to use caching for preprocessed dataset and teacher logits
+        :param caching: whether or not to use caching for preprocessed dataset and teacher logits
         :param cache_path: Path to cache the preprocessed dataset and teacher logits
         :param distillation_loss_weight: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
@@ -798,7 +777,7 @@ class FARMReader(BaseReader):
 
         return result
 
-    def eval_on_file(self, data_dir: str, test_filename: str, device: Optional[torch.device] = None):
+    def eval_on_file(self, data_dir: Union[Path, str], test_filename: str, device: Optional[torch.device] = None):
         """
         Performs evaluation on a SQuAD-formatted file.
         Returns a dict containing the following metrics:
@@ -808,7 +787,8 @@ class FARMReader(BaseReader):
 
         :param data_dir: The directory in which the test set can be found
         :param test_filename: The name of the file containing the test data in SQuAD format.
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+        :param device: The device on which the tensors should be processed. 
+               Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
         """
         if device is None:
             device = self.devices[0]
@@ -854,7 +834,8 @@ class FARMReader(BaseReader):
               - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
         :param document_store: DocumentStore containing the evaluation documents
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+        :param device: The device on which the tensors should be processed. 
+                       Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
@@ -870,7 +851,7 @@ class FARMReader(BaseReader):
             )
 
         # extract all questions for evaluation
-        filters = {"origin": [label_origin]}
+        filters: Dict = {"origin": [label_origin]}
 
         labels = document_store.get_all_labels(index=label_index, filters=filters)
 
@@ -906,48 +887,44 @@ class FARMReader(BaseReader):
                             f"Label.answer.offsets_in_document was None, but Span object was expected: {label} "
                         )
                         continue
+                    # add to existing answers
+                    # TODO offsets (whole block)
+                    if aggregation_key in aggregated_per_question.keys():
+                        if label.no_answer:
+                            continue
+
+                        # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
+                        if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
+                            logger.warning(
+                                f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})"
+                            )
+                            continue
+                        aggregated_per_question[aggregation_key]["answers"].append(
+                            {"text": label.answer.answer, "answer_start": label.answer.offsets_in_document[0].start}
+                        )
+                        aggregated_per_question[aggregation_key]["is_impossible"] = False
+                    # create new one
                     else:
-                        # add to existing answers
-                        # TODO offsets (whole block)
-                        if aggregation_key in aggregated_per_question.keys():
-                            if label.no_answer:
-                                continue
-                            else:
-                                # Hack to fix problem where duplicate questions are merged by doc_store processing creating a QA example with 8 annotations > 6 annotation max
-                                if len(aggregated_per_question[aggregation_key]["answers"]) >= 6:
-                                    logger.warning(
-                                        f"Answers in this sample are being dropped because it has more than 6 answers. (doc_id: {doc_id}, question: {label.query}, label_id: {label.id})"
-                                    )
-                                    continue
-                                aggregated_per_question[aggregation_key]["answers"].append(
+                        # We don't need to create an answer dict if is_impossible / no_answer
+                        if label.no_answer == True:
+                            aggregated_per_question[aggregation_key] = {
+                                "id": str(hash(str(doc_id) + label.query)),
+                                "question": label.query,
+                                "answers": [],
+                                "is_impossible": True,
+                            }
+                        else:
+                            aggregated_per_question[aggregation_key] = {
+                                "id": str(hash(str(doc_id) + label.query)),
+                                "question": label.query,
+                                "answers": [
                                     {
                                         "text": label.answer.answer,
                                         "answer_start": label.answer.offsets_in_document[0].start,
                                     }
-                                )
-                                aggregated_per_question[aggregation_key]["is_impossible"] = False
-                        # create new one
-                        else:
-                            # We don't need to create an answer dict if is_impossible / no_answer
-                            if label.no_answer == True:
-                                aggregated_per_question[aggregation_key] = {
-                                    "id": str(hash(str(doc_id) + label.query)),
-                                    "question": label.query,
-                                    "answers": [],
-                                    "is_impossible": True,
-                                }
-                            else:
-                                aggregated_per_question[aggregation_key] = {
-                                    "id": str(hash(str(doc_id) + label.query)),
-                                    "question": label.query,
-                                    "answers": [
-                                        {
-                                            "text": label.answer.answer,
-                                            "answer_start": label.answer.offsets_in_document[0].start,
-                                        }
-                                    ],
-                                    "is_impossible": False,
-                                }
+                                ],
+                                "is_impossible": False,
+                            }
 
             # Get rid of the question key again (after we aggregated we don't need it anymore)
             d[str(doc_id)]["qas"] = [v for v in aggregated_per_question.values()]
@@ -1043,7 +1020,8 @@ class FARMReader(BaseReader):
         Calibrates confidence scores on evaluation documents in the DocumentStore.
 
         :param document_store: DocumentStore containing the evaluation documents
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+        :param device: The device on which the tensors should be processed. 
+                       Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
@@ -1067,10 +1045,7 @@ class FARMReader(BaseReader):
                 logger.error(
                     "Invalid 'no_answer': Got a prediction for position 0, but answer string is not 'no_answer'"
                 )
-        if c.answer == "no_answer":
-            return True
-        else:
-            return False
+        return c.answer == "no_answer"
 
     def predict_on_texts(self, question: str, texts: List[str], top_k: Optional[int] = None):
         """

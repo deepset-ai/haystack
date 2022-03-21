@@ -1,15 +1,15 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Union, List, Optional, Dict, Generator
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
 
 import json
 import logging
-from pathlib import Path
-from typing import Union, List, Optional, Dict, Generator
-from tqdm.auto import tqdm
 import warnings
 import numpy as np
+from copy import deepcopy
+from pathlib import Path
+from tqdm.auto import tqdm
 from inspect import Signature, signature
 
 try:
@@ -21,7 +21,6 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "faiss", ie)
-
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
@@ -47,7 +46,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_dim: int = None,
         embedding_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
-        faiss_index: "Optional[faiss.swigfaiss.Index]" = None,
+        faiss_index: Optional[faiss.swigfaiss.Index] = None,
         return_embedding: bool = False,
         index: str = "document",
         similarity: str = "dot_product",
@@ -109,23 +108,8 @@ class FAISSDocumentStore(SQLDocumentStore):
             sig = signature(self.__class__.__init__)
             self._validate_params_load_from_disk(sig, locals(), kwargs)
             init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
-            self.__class__.__init__(self, **init_params)
+            self.__class__.__init__(self, **init_params)  # pylint: disable=non-parent-init-called
             return
-
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            sql_url=sql_url,
-            vector_dim=vector_dim,
-            embedding_dim=embedding_dim,
-            faiss_index_factory_str=faiss_index_factory_str,
-            return_embedding=return_embedding,
-            duplicate_documents=duplicate_documents,
-            index=index,
-            similarity=similarity,
-            embedding_field=embedding_field,
-            progress_bar=progress_bar,
-            isolation_level=isolation_level,
-        )
 
         if similarity in ("dot_product", "cosine"):
             self.similarity = similarity
@@ -299,16 +283,14 @@ class FAISSDocumentStore(SQLDocumentStore):
             progress_bar.close()
 
     def _create_document_field_map(self) -> Dict:
-        return {
-            self.index: self.embedding_field,
-        }
+        return {self.index: self.embedding_field}
 
     def update_embeddings(
         self,
         retriever: "BaseRetriever",
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         batch_size: int = 10_000,
     ):
         """
@@ -344,7 +326,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        vector_id = sum([self.faiss_indexes[index].ntotal for index in self.faiss_indexes.keys()])
+        vector_id = sum([index.ntotal for index in self.faiss_indexes.values()])
 
         result = self._query(
             index=index,
@@ -379,7 +361,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -396,7 +378,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -447,7 +429,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                     doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
         return documents
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
@@ -486,7 +468,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -507,7 +489,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -546,7 +528,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -616,8 +598,15 @@ class FAISSDocumentStore(SQLDocumentStore):
             config_path = index_path.with_suffix(".json")
 
         faiss.write_index(self.faiss_indexes[self.index], str(index_path))
+
+        config_to_save = deepcopy(self._component_config["params"])
+        keys_to_remove = ["faiss_index", "faiss_index_path"]
+        for key in keys_to_remove:
+            if key in config_to_save.keys():
+                del config_to_save[key]
+
         with open(config_path, "w") as ipp:
-            json.dump(self.pipeline_config["params"], ipp)
+            json.dump(config_to_save, ipp, default=str)
 
     def _load_init_params_from_config(
         self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None

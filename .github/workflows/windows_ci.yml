@@ -40,15 +40,12 @@ jobs:
           # TODO for the tests refactoring: We could speed up the process by caching only 
           # the dependencies and installing Haystack again separately for each test runner.
           key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
-      
-      - name: Install Pytorch on windows
-        run: |
-          pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
-      
+
       - name: Install dependencies
         if: steps.cache-python-env.outputs.cache-hit != 'true'
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
+          pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
           pip install --upgrade --upgrade-strategy eager .[test]
           pip install --upgrade --upgrade-strategy eager rest_api/
           pip install --upgrade --upgrade-strategy eager ui/
@@ -85,6 +82,16 @@ jobs:
       with:
         path: ${{ env.pythonLocation }}
         key: windows-${{ hashFiles('**/*.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('.github') }}
+        
+    - name: Install Haystack (on cacne miss)
+      if: steps.cache-python-env.outputs.cache-hit != 'true'
+      run: |
+        pip install --upgrade pip
+        pip install torch==1.8.1+cpu -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+        pip install --upgrade --upgrade-strategy eager .[test]
+        pip install --upgrade --upgrade-strategy eager rest_api/
+        pip install --upgrade --upgrade-strategy eager ui/
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows test env
@@ -101,5 +108,5 @@ jobs:
     # As on windows we are going to disable quite a few tests these, hence these files will throw error refer https://github.com/pytest-dev/pytest/issues/812
     # Removing test_ray, test_utils, test_preprocessor, test_knowledge_graph and test_connector
     - name: Run tests
-      if: ${{ !contains(fromJSON('["test_ray.py", "test_knowledge_graph.py", "test_connector.py", "test_summarizer_translation.py"]'), matrix.test-path) }}
+      if: ${{ !contains(fromJSON('["./test/test_ray.py", "./test/test_knowledge_graph.py", "./test/test_connector.py", "./test/test_summarizer_translation.py", "./test/test_summarizer.py"]'), matrix.test-path) }}
       run: pytest --document_store_type=memory,faiss,elasticsearch -m "not tika and not graphdb" -k "not test_parsr_converter" -s ${{ matrix.test-path }}

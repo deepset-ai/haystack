@@ -102,31 +102,16 @@ class DensePassageRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones 
+                        These strings will be converted into pytorch devices, so use the string notation described here: 
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training 
+                        will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            query_embedding_model=query_embedding_model,
-            passage_embedding_model=passage_embedding_model,
-            model_version=model_version,
-            max_seq_len_query=max_seq_len_query,
-            max_seq_len_passage=max_seq_len_passage,
-            top_k=top_k,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            embed_title=embed_title,
-            use_fast_tokenizers=use_fast_tokenizers,
-            infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function,
-            progress_bar=progress_bar,
-            devices=devices,
-            use_auth_token=use_auth_token,
-        )
+        super().__init__()
 
         if devices is not None:
             self.devices = devices
@@ -600,36 +585,19 @@ class TableTextRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones 
+                        These strings will be converted into pytorch devices, so use the string notation described here: 
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever, 
+                        training will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            query_embedding_model=query_embedding_model,
-            passage_embedding_model=passage_embedding_model,
-            table_embedding_model=table_embedding_model,
-            model_version=model_version,
-            max_seq_len_query=max_seq_len_query,
-            max_seq_len_passage=max_seq_len_passage,
-            max_seq_len_table=max_seq_len_table,
-            top_k=top_k,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            embed_meta_fields=embed_meta_fields,
-            use_fast_tokenizers=use_fast_tokenizers,
-            infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function,
-            progress_bar=progress_bar,
-            devices=devices,
-            use_auth_token=use_auth_token,
-        )
+        super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
@@ -1139,28 +1107,19 @@ class EmbeddingRetriever(BaseRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones 
+                        These strings will be converted into pytorch devices, so use the string notation described here: 
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever, 
+                        training will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            embedding_model=embedding_model,
-            model_version=model_version,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            max_seq_len=max_seq_len,
-            model_format=model_format,
-            pooling_strategy=pooling_strategy,
-            emb_extraction_layer=emb_extraction_layer,
-            top_k=top_k,
-        )
+        super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
@@ -1182,7 +1141,7 @@ class EmbeddingRetriever(BaseRetriever):
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
-        if not model_format in _EMBEDDING_ENCODERS.keys():
+        if model_format not in _EMBEDDING_ENCODERS.keys():
             raise ValueError(f"Unknown retriever embedding model format {model_format}")
         self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
 

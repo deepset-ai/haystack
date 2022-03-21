@@ -1,5 +1,5 @@
 # TODO analyse if this optimization is needed or whether we can use HF transformers code
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import inspect
 import logging
@@ -9,25 +9,34 @@ import torch
 from torch.nn import DataParallel
 from torch.nn.parallel import DistributedDataParallel
 
+logger = logging.getLogger(__name__)
+
 try:
-    from apex import amp
+    from apex import amp  # pylint: disable=import-error
+
+    logger.info("apex is available.")
 
     try:
-        from apex.parallel import convert_syncbn_model
+        from apex.parallel import convert_syncbn_model  # pylint: disable=import-error
 
         APEX_PARALLEL_AVAILABLE = True
+
+        logger.info("apex.parallel is available.")
+
     except AttributeError:
         APEX_PARALLEL_AVAILABLE = False
+        logger.info("apex.parallel not found, won't use it." "See https://nvidia.github.io/apex/parallel.html")
+
     AMP_AVAILABLE = True
+
 except ImportError:
     AMP_AVAILABLE = False
     APEX_PARALLEL_AVAILABLE = False
+    logger.info("apex not found, won't use it. " "See https://nvidia.github.io/apex/")
+
 
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.logger import MLFlowLogger as MlLogger
-
-
-logger = logging.getLogger(__name__)
 
 
 class WrappedDataParallel(DataParallel):
@@ -64,7 +73,7 @@ def initialize_optimizer(
     model: AdaptiveModel,
     n_batches: int,
     n_epochs: int,
-    device,
+    device: torch.device,
     learning_rate: float,
     optimizer_opts: Dict[Any, Any] = None,
     schedule_opts: Dict[Any, Any] = None,
@@ -81,7 +90,7 @@ def initialize_optimizer(
     :param model: model to optimize (e.g. trimming weights to fp16 / mixed precision)
     :param n_batches: number of batches for training
     :param n_epochs: number of epochs for training
-    :param device:
+    :param device: Which hardware will be used by the optimizer. Either torch.device("cpu") or torch.device("cuda").
     :param learning_rate: Learning rate
     :param optimizer_opts: Dict to customize the optimizer. Choose any optimizer available from torch.optim, apex.optimizers or
                            transformers.optimization by supplying the class name and the parameters for the constructor.
@@ -153,12 +162,7 @@ def initialize_optimizer(
         schedule_opts["num_training_steps"] = num_train_optimization_steps
 
     # Log params
-    MlLogger.log_params(
-        {
-            "use_amp": use_amp,
-            "num_train_optimization_steps": schedule_opts["num_training_steps"],
-        }
-    )
+    MlLogger.log_params({"use_amp": use_amp, "num_train_optimization_steps": schedule_opts["num_training_steps"]})
 
     # Get optimizer from pytorch, transformers or apex
     optimizer = _get_optim(model, optimizer_opts)
@@ -291,14 +295,13 @@ def get_scheduler(optimizer, opts):
     return scheduler
 
 
-def optimize_model(model, device, local_rank, optimizer=None, distributed=False, use_amp=None):
+def optimize_model(model: "AdaptiveModel", device: torch.device, local_rank: int, optimizer=None, distributed: Optional[bool] = False, use_amp: Optional[str] = None):
     """
     Wraps MultiGPU or distributed usage around a model
     No support for ONNX models
 
     :param model: model to optimize (e.g. trimming weights to fp16 / mixed precision)
-    :type model: AdaptiveModel
-    :param device: either gpu or cpu, get the device from initialize_device_settings()
+    :param device: either torch.device("cpu") or torch.device("cuda"). Get the device from `initialize_device_settings()`
     :param distributed: Whether training on distributed machines
     :param local_rank: rank of the machine in a distributed setting
     :param use_amp: Optimization level of nvidia's automatic mixed precision (AMP). The higher the level, the faster the model.

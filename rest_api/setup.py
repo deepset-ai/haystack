@@ -3,11 +3,11 @@ import logging
 from pathlib import Path
 
 
-VERSION = None
+VERSION = "0.0.0"
 try:
     VERSION = open(Path(__file__).parent.parent / "VERSION.txt", "r").read()
 except Exception as e:
-    logging.exception("No VERSION.txt found!", e)
+    logging.exception("No VERSION.txt found!")
 
 
 setup(

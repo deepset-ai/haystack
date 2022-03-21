@@ -18,7 +18,7 @@ Arguments:
     replace_probability: Probability of replacing a word with a different word.
     glove_path: Path to the GloVe vectors. If it does not exist, it will be downloaded.
     batch_size: Batch size for MLM model.
-    device: Device to use for MLM model. Usually either "cpu:0" or "cuda:0".
+    device: Device to use for MLM model. Usually either torch.device("cpu:0") or torch.device("cuda:0").
     tokenizer: Huggingface tokenizer identifier.
     model: Huggingface MLM model identifier.
 """
@@ -120,8 +120,7 @@ def get_replacements(
 
     # masks words which were not split into subwords by the tokenizer
     inputs = []
-    for word_index in word_subword_mapping:
-        subword_index = word_subword_mapping[word_index]
+    for subword_index in word_subword_mapping.values():
         input_ids_ = copy(input_ids)
         input_ids_[subword_index] = tokenizer.mask_token_id
         inputs.append((input_ids_, subword_index))

@@ -1,3 +1,5 @@
+from typing import List, Optional, Tuple, Dict
+
 import subprocess
 import time
 from subprocess import run
@@ -14,14 +16,22 @@ import psutil
 import pytest
 import requests
 
+from haystack.nodes.base import BaseComponent, MultiLabel
+
+try:
+    from milvus import Milvus
+
+    milvus1 = True
+except ImportError:
+    milvus1 = False
+    from pymilvus import utility
+
 try:
     from elasticsearch import Elasticsearch
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-    from milvus import Milvus
     import weaviate
-
     from haystack.document_stores.weaviate import WeaviateDocumentStore
-    from haystack.document_stores.milvus import MilvusDocumentStore
+    from haystack.document_stores import MilvusDocumentStore
     from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
     from haystack.document_stores.faiss import FAISSDocumentStore
     from haystack.document_stores.sql import SQLDocumentStore
@@ -31,18 +41,15 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed("test", "test", ie)
 
-from haystack.document_stores import DeepsetCloudDocumentStore, InMemoryDocumentStore
+from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
+from haystack.nodes import BaseReader, BaseRetriever
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-
-from haystack.nodes.answer_generator.transformers import RAGenerator, RAGeneratorType
-from haystack.modeling.infer import Inferencer, QAInferencer
+from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
 from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
-from haystack.schema import Document
-
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader, RCIReader
@@ -50,11 +57,14 @@ from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
 from haystack.nodes.question_generator import QuestionGenerator
 
+from haystack.modeling.infer import Inferencer, QAInferencer
+
+from haystack.schema import Document
+
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
-
 
 SAMPLES_PATH = Path(__file__).parent / "samples"
 
@@ -63,28 +73,6 @@ DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
-
-
-def pytest_addoption(parser):
-    parser.addoption("--document_store_type", action="store", default="elasticsearch, faiss, memory, milvus, weaviate")
-
-
-def pytest_generate_tests(metafunc):
-    # Get selected docstores from CLI arg
-    document_store_type = metafunc.config.option.document_store_type
-    selected_doc_stores = [item.strip() for item in document_store_type.split(",")]
-
-    # parametrize document_store fixture if it's in the test function argument list
-    # but does not have an explicit parametrize annotation e.g
-    # @pytest.mark.parametrize("document_store", ["memory"], indirect=False)
-    found_mark_parametrize_document_store = False
-    for marker in metafunc.definition.iter_markers("parametrize"):
-        if "document_store" in marker.args[0]:
-            found_mark_parametrize_document_store = True
-            break
-    # for all others that don't have explicit parametrization, we add the ones from the CLI arg
-    if "document_store" in metafunc.fixturenames and not found_mark_parametrize_document_store:
-        metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
 
 
 def _sql_session_rollback(self, attr):
@@ -110,46 +98,128 @@ def pytest_collection_modifyitems(config, items):
 
         # add pytest markers for tests that are not explicitly marked but include some keywords
         # in the test name (e.g. test_elasticsearch_client would get the "elasticsearch" marker)
+        # TODO evaluate if we need all of there (the non document store ones seems to be unused)
         if "generator" in item.nodeid:
             item.add_marker(pytest.mark.generator)
         elif "summarizer" in item.nodeid:
             item.add_marker(pytest.mark.summarizer)
         elif "tika" in item.nodeid:
             item.add_marker(pytest.mark.tika)
-        elif "elasticsearch" in item.nodeid:
-            item.add_marker(pytest.mark.elasticsearch)
-        elif "graphdb" in item.nodeid:
-            item.add_marker(pytest.mark.graphdb)
         elif "pipeline" in item.nodeid:
             item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
             item.add_marker(pytest.mark.slow)
+        elif "elasticsearch" in item.nodeid:
+            item.add_marker(pytest.mark.elasticsearch)
+        elif "graphdb" in item.nodeid:
+            item.add_marker(pytest.mark.graphdb)
         elif "weaviate" in item.nodeid:
             item.add_marker(pytest.mark.weaviate)
+        elif "faiss" in item.nodeid:
+            item.add_marker(pytest.mark.faiss)
+        elif "milvus" in item.nodeid:
+            item.add_marker(pytest.mark.milvus)
+            item.add_marker(pytest.mark.milvus1)
 
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
+        document_store_types_to_run = document_store_types_to_run.split(", ")
         keywords = []
+
         for i in item.keywords:
             if "-" in i:
                 keywords.extend(i.split("-"))
             else:
                 keywords.append(i)
-        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate"]:
+        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate"]:
             if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
                 )
                 item.add_marker(skip_docstore)
 
+        if "milvus1" in keywords and not milvus1:
+            skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
+            item.add_marker(skip_milvus1)
+        elif "milvus" in keywords and milvus1:
+            skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
+            item.add_marker(skip_milvus)
 
-@pytest.fixture
-def tmpdir(tmpdir):
-    """
-    Makes pytest's tmpdir fixture fully compatible with pathlib
-    """
-    return Path(tmpdir)
+
+#
+# Empty mocks, as a base for unit tests.
+#
+# Monkeypatch the methods you need with either a mock implementation
+# or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
+#
+
+
+class MockNode(BaseComponent):
+    outgoing_edges = 1
+
+    def run(self, *a, **k):
+        pass
+
+
+class MockDocumentStore(BaseDocumentStore):
+    outgoing_edges = 1
+
+    def _create_document_field_map(self, *a, **k):
+        pass
+
+    def delete_documents(self, *a, **k):
+        pass
+
+    def delete_labels(self, *a, **k):
+        pass
+
+    def get_all_documents(self, *a, **k):
+        pass
+
+    def get_all_documents_generator(self, *a, **k):
+        pass
+
+    def get_all_labels(self, *a, **k):
+        pass
+
+    def get_document_by_id(self, *a, **k):
+        pass
+
+    def get_document_count(self, *a, **k):
+        pass
+
+    def get_documents_by_id(self, *a, **k):
+        pass
+
+    def get_label_count(self, *a, **k):
+        pass
+
+    def query_by_embedding(self, *a, **k):
+        pass
+
+    def write_documents(self, *a, **k):
+        pass
+
+    def write_labels(self, *a, **k):
+        pass
+
+
+class MockRetriever(BaseRetriever):
+    outgoing_edges = 1
+
+    def retrieve(self, query: str, top_k: int):
+        pass
+
+
+class MockReader(BaseReader):
+    outgoing_edges = 1
+
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
+        pass
+
+    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
+        pass
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -308,7 +378,7 @@ def deepset_cloud_document_store(deepset_cloud_fixture):
 
 @pytest.fixture(scope="function")
 def rag_generator():
-    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type=RAGeneratorType.TOKEN, max_length=20)
+    return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
 
 @pytest.fixture(scope="function")
@@ -317,8 +387,8 @@ def question_generator():
 
 
 @pytest.fixture(scope="function")
-def eli5_generator():
-    return Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5", max_length=20)
+def lfqa_generator(request):
+    return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
 
 
 @pytest.fixture(scope="function")
@@ -328,28 +398,42 @@ def summarizer():
 
 @pytest.fixture(scope="function")
 def en_to_de_translator():
-    return TransformersTranslator(
-        model_name_or_path="Helsinki-NLP/opus-mt-en-de",
-    )
+    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
 
 
 @pytest.fixture(scope="function")
 def de_to_en_translator():
-    return TransformersTranslator(
-        model_name_or_path="Helsinki-NLP/opus-mt-de-en",
-    )
+    return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
 
 
 @pytest.fixture(scope="function")
 def test_docs_xs():
     return [
         # current "dict" format for a document
-        {"content": "My name is Carla and I live in Berlin", "meta": {"meta_field": "test1", "name": "filename1"}},
+        {
+            "content": "My name is Carla and I live in Berlin",
+            "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
+        },
         # metafield at the top level for backward compatibility
-        {"content": "My name is Paul and I live in New York", "meta_field": "test2", "name": "filename2"},
+        {
+            "content": "My name is Paul and I live in New York",
+            "meta_field": "test2",
+            "name": "filename2",
+            "date_field": "2019-10-01",
+            "numeric_field": 5.0,
+        },
         # Document object for a doc
         Document(
-            content="My name is Christelle and I live in Paris", meta={"meta_field": "test3", "name": "filename3"}
+            content="My name is Christelle and I live in Paris",
+            meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
+        ),
+        Document(
+            content="My name is Camila and I live in Madrid",
+            meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
+        ),
+        Document(
+            content="My name is Matteo and I live in Rome",
+            meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
         ),
     ]
 
@@ -395,16 +479,12 @@ def table_reader(request):
 
 @pytest.fixture(scope="function")
 def ranker_two_logits():
-    return SentenceTransformersRanker(
-        model_name_or_path="deepset/gbert-base-germandpr-reranking",
-    )
+    return SentenceTransformersRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
 
 
 @pytest.fixture(scope="function")
 def ranker():
-    return SentenceTransformersRanker(
-        model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2",
-    )
+    return SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
 
 
 @pytest.fixture(scope="function")
@@ -512,6 +592,14 @@ def get_retriever(retriever_type, document_store):
             model_format="retribert",
             use_gpu=False,
         )
+    elif retriever_type == "dpr_lfqa":
+        retriever = DensePassageRetriever(
+            document_store=document_store,
+            query_embedding_model="vblagoje/dpr-question_encoder-single-lfqa-wiki",
+            passage_embedding_model="vblagoje/dpr-ctx_encoder-single-lfqa-wiki",
+            use_gpu=False,
+            embed_title=True,
+        )
     elif retriever_type == "elasticsearch":
         retriever = ElasticsearchRetriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
@@ -537,7 +625,7 @@ def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
             d["id"] = str(uuid.uuid4())
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"])
 def document_store_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -557,8 +645,12 @@ def document_store(request, tmp_path):
     yield document_store
     document_store.delete_documents()
 
+    # Make sure to drop Milvus2 collection, required for tests using different embedding dimensions
+    if isinstance(document_store, MilvusDocumentStore) and not milvus1:
+        document_store.collection.drop()
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
+
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
 def document_store_dot_product(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -571,7 +663,7 @@ def document_store_dot_product(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch"])
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
 def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -585,7 +677,7 @@ def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1"])
 def document_store_dot_product_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
@@ -598,7 +690,7 @@ def document_store_dot_product_small(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"])
 def document_store_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
@@ -697,7 +789,7 @@ def get_document_store(
             isolation_level="AUTOCOMMIT",
         )
 
-    elif document_store_type == "milvus":
+    elif document_store_type == "milvus1":
         document_store = MilvusDocumentStore(
             embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
@@ -712,12 +804,20 @@ def get_document_store(
             if collection.startswith(index):
                 document_store.milvus_server.drop_collection(collection)
 
-    elif document_store_type == "weaviate":
-        document_store = WeaviateDocumentStore(
-            weaviate_url="http://localhost:8080",
+    elif document_store_type == "milvus":
+        document_store = MilvusDocumentStore(
+            embedding_dim=embedding_dim,
+            sql_url=get_sql_url(tmp_path),
+            return_embedding=True,
+            embedding_field=embedding_field,
             index=index,
             similarity=similarity,
-            embedding_dim=embedding_dim,
+            isolation_level="AUTOCOMMIT",
+        )
+
+    elif document_store_type == "weaviate":
+        document_store = WeaviateDocumentStore(
+            weaviate_url="http://localhost:8080", index=index, similarity=similarity, embedding_dim=embedding_dim
         )
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()

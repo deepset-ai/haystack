@@ -1,6 +1,7 @@
 import logging
 from typing import Union
 
+import torch
 from transformers import AutoModelForQuestionAnswering
 
 from haystack.modeling.model import adaptive_model as am
@@ -46,7 +47,7 @@ class Converter:
     @staticmethod
     def convert_from_transformers(
         model_name_or_path,
-        device,
+        device: torch.device,
         revision=None,
         task_type=None,
         processor=None,
@@ -65,7 +66,7 @@ class Converter:
                                               - deepset/bert-large-uncased-whole-word-masking-squad2
 
                                               See https://huggingface.co/models for full list
-        :param device: "cpu" or "cuda"
+        :param device: torch.device("cpu") or torch.device("cuda")
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :type revision: str
         :param task_type: One of :

@@ -1,17 +1,12 @@
 from pathlib import Path
+from collections import defaultdict
 
 import os
 import math
 import pytest
 
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.pipelines import (
-    Pipeline,
-    FAQPipeline,
-    DocumentSearchPipeline,
-    RootNode,
-    MostSimilarDocumentsPipeline,
-)
+from haystack.pipelines import Pipeline, FAQPipeline, DocumentSearchPipeline, RootNode, MostSimilarDocumentsPipeline
 from haystack.nodes import (
     DensePassageRetriever,
     ElasticsearchRetriever,
@@ -21,41 +16,21 @@ from haystack.nodes import (
 )
 from haystack.schema import Document
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [
-        ("embedding", "memory"),
-        ("embedding", "faiss"),
-        ("embedding", "milvus"),
-        ("embedding", "elasticsearch"),
-    ],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_faq_pipeline(retriever, document_store):
     documents = [
-        {
-            "content": "How to test module-1?",
-            "meta": {"source": "wiki1", "answer": "Using tests for module-1"},
-        },
-        {
-            "content": "How to test module-2?",
-            "meta": {"source": "wiki2", "answer": "Using tests for module-2"},
-        },
-        {
-            "content": "How to test module-3?",
-            "meta": {"source": "wiki3", "answer": "Using tests for module-3"},
-        },
-        {
-            "content": "How to test module-4?",
-            "meta": {"source": "wiki4", "answer": "Using tests for module-4"},
-        },
-        {
-            "content": "How to test module-5?",
-            "meta": {"source": "wiki5", "answer": "Using tests for module-5"},
-        },
+        {"content": "How to test module-1?", "meta": {"source": "wiki1", "answer": "Using tests for module-1"}},
+        {"content": "How to test module-2?", "meta": {"source": "wiki2", "answer": "Using tests for module-2"}},
+        {"content": "How to test module-3?", "meta": {"source": "wiki3", "answer": "Using tests for module-3"}},
+        {"content": "How to test module-4?", "meta": {"source": "wiki4", "answer": "Using tests for module-4"}},
+        {"content": "How to test module-5?", "meta": {"source": "wiki5", "answer": "Using tests for module-5"}},
     ]
 
     document_store.write_documents(documents)
@@ -76,6 +51,9 @@ def test_faq_pipeline(retriever, document_store):
 
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+)
 def test_document_search_pipeline(retriever, document_store):
     documents = [
         {"content": "Sample text for document-1", "meta": {"source": "wiki1"}},
@@ -99,11 +77,7 @@ def test_document_search_pipeline(retriever, document_store):
 
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [
-        ("embedding", "faiss"),
-        ("embedding", "milvus"),
-        ("embedding", "elasticsearch"),
-    ],
+    [("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_most_similar_documents_pipeline(retriever, document_store):
@@ -136,8 +110,7 @@ def test_most_similar_documents_pipeline(retriever, document_store):
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
+def test_join_merge_no_weights(document_store_dot_product_with_docs):
     es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
@@ -149,35 +122,76 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
 
     query = "Where does Carla live?"
 
-    # test merge without weights
     join_node = JoinDocuments(join_mode="merge")
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert len(results["documents"]) == 3
+    assert len(results["documents"]) == 5
 
-    # test merge with weights
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+def test_join_merge_with_weights(document_store_dot_product_with_docs):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
     join_node = JoinDocuments(join_mode="merge", weights=[1000, 1], top_k_join=2)
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert math.isclose(results["documents"][0].score, 0.5350644373470798, rel_tol=0.0001)
+    assert math.isclose(results["documents"][0].score, 0.5481393431183286, rel_tol=0.0001)
     assert len(results["documents"]) == 2
 
-    # test concatenate
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+def test_join_concatenate(document_store_dot_product_with_docs):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
     join_node = JoinDocuments(join_mode="concatenate")
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
     p.add_node(component=dpr, name="R2", inputs=["Query"])
     p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
     results = p.run(query=query)
-    assert len(results["documents"]) == 3
+    assert len(results["documents"]) == 5
 
-    # test concatenate with top_k_join parameter
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+def test_join_concatenate_with_topk(document_store_dot_product_with_docs):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
     join_node = JoinDocuments(join_mode="concatenate")
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
@@ -188,7 +202,22 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     assert len(one_result["documents"]) == 1
     assert len(two_results["documents"]) == 2
 
-    # test join_node with reader
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_join_with_reader(document_store_dot_product_with_docs, reader):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
     join_node = JoinDocuments()
     p = Pipeline()
     p.add_node(component=es, name="R1", inputs=["Query"])
@@ -198,6 +227,39 @@ def test_join_document_pipeline(document_store_dot_product_with_docs, reader):
     results = p.run(query=query)
     # check whether correct answer is within top 2 predictions
     assert results["answers"][0].answer == "Berlin" or results["answers"][1].answer == "Berlin"
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
+def test_join_with_rrf(document_store_dot_product_with_docs):
+    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    dpr = DensePassageRetriever(
+        document_store=document_store_dot_product_with_docs,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        use_gpu=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(dpr)
+
+    query = "Where does Carla live?"
+
+    join_node = JoinDocuments(join_mode="reciprocal_rank_fusion")
+    p = Pipeline()
+    p.add_node(component=es, name="R1", inputs=["Query"])
+    p.add_node(component=dpr, name="R2", inputs=["Query"])
+    p.add_node(component=join_node, name="Join", inputs=["R1", "R2"])
+    results = p.run(query=query)
+
+    # list of precalculated expected results
+    expected_scores = [
+        0.03278688524590164,
+        0.03200204813108039,
+        0.03200204813108039,
+        0.031009615384615385,
+        0.031009615384615385,
+    ]
+
+    assert all([doc.score == expected_scores[idx] for idx, doc in enumerate(results["documents"])])
 
 
 def test_query_keyword_statement_classifier():
@@ -216,20 +278,12 @@ def test_query_keyword_statement_classifier():
             return kwargs, "output_2"
 
     pipeline = Pipeline()
+    pipeline.add_node(name="SkQueryKeywordQuestionClassifier", component=SklearnQueryClassifier(), inputs=["Query"])
     pipeline.add_node(
-        name="SkQueryKeywordQuestionClassifier",
-        component=SklearnQueryClassifier(),
-        inputs=["Query"],
+        name="KeywordNode", component=KeywordOutput(), inputs=["SkQueryKeywordQuestionClassifier.output_2"]
     )
     pipeline.add_node(
-        name="KeywordNode",
-        component=KeywordOutput(),
-        inputs=["SkQueryKeywordQuestionClassifier.output_2"],
-    )
-    pipeline.add_node(
-        name="QuestionNode",
-        component=QuestionOutput(),
-        inputs=["SkQueryKeywordQuestionClassifier.output_1"],
+        name="QuestionNode", component=QuestionOutput(), inputs=["SkQueryKeywordQuestionClassifier.output_1"]
     )
     output = pipeline.run(query="morse code")
     assert output["output"] == "keyword"
@@ -239,19 +293,13 @@ def test_query_keyword_statement_classifier():
 
     pipeline = Pipeline()
     pipeline.add_node(
-        name="TfQueryKeywordQuestionClassifier",
-        component=TransformersQueryClassifier(),
-        inputs=["Query"],
+        name="TfQueryKeywordQuestionClassifier", component=TransformersQueryClassifier(), inputs=["Query"]
     )
     pipeline.add_node(
-        name="KeywordNode",
-        component=KeywordOutput(),
-        inputs=["TfQueryKeywordQuestionClassifier.output_2"],
+        name="KeywordNode", component=KeywordOutput(), inputs=["TfQueryKeywordQuestionClassifier.output_2"]
     )
     pipeline.add_node(
-        name="QuestionNode",
-        component=QuestionOutput(),
-        inputs=["TfQueryKeywordQuestionClassifier.output_1"],
+        name="QuestionNode", component=QuestionOutput(), inputs=["TfQueryKeywordQuestionClassifier.output_1"]
     )
     output = pipeline.run(query="morse code")
     assert output["output"] == "keyword"
@@ -316,8 +364,7 @@ def test_existing_faiss_document_store():
         SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
     )
 
-    retriever = pipeline.get_node("DPRRetriever")
-    existing_document_store = retriever.document_store
+    existing_document_store = pipeline.get_document_store()
     faiss_index = existing_document_store.faiss_indexes["document"]
     assert faiss_index.ntotal == 2
 

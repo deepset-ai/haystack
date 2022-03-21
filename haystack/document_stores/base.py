@@ -1,4 +1,4 @@
-from typing import Generator, Optional, Dict, List, Union
+from typing import Generator, Optional, Dict, List, Set, Union
 
 import logging
 import collections
@@ -19,15 +19,15 @@ from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
 
+logger = logging.getLogger(__name__)
+
 try:
-    from numba import njit
-except:
+    from numba import njit  # pylint: disable=import-error
+except (ImportError, ModuleNotFoundError):
+    logger.info("Numba not found, replacing njit() with no-op implementation. " "Enable it with 'pip install numba'.")
 
     def njit(f):
         return f
-
-
-logger = logging.getLogger(__name__)
 
 
 @njit  # (fastmath=True)
@@ -98,7 +98,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -108,8 +108,33 @@ class BaseDocumentStore(BaseComponent):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
+
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: Number of documents that are passed to bulk function at a time.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
@@ -120,7 +145,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -132,8 +157,33 @@ class BaseDocumentStore(BaseComponent):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                        __Example__:
+                        ```python
+                        filters = {
+                            "$and": {
+                                "type": {"$eq": "article"},
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": {"$in": ["economy", "politics"]},
+                                    "publisher": {"$eq": "nytimes"}
+                                }
+                            }
+                        }
+                        ```
+
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
@@ -148,17 +198,16 @@ class BaseDocumentStore(BaseComponent):
     def __next__(self):
         if len(self.ids_iterator) == 0:
             raise StopIteration
-        else:
-            curr_id = self.ids_iterator[0]
-            ret = self.get_document_by_id(curr_id)
-            self.ids_iterator = self.ids_iterator[1:]
-            return ret
+        curr_id = self.ids_iterator[0]
+        ret = self.get_document_by_id(curr_id)
+        self.ids_iterator = self.ids_iterator[1:]
+        return ret
 
     @abstractmethod
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         pass
@@ -166,7 +215,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_labels_aggregated(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         open_domain: bool = True,
         drop_negative_labels: bool = False,
         drop_no_answers: bool = False,
@@ -188,54 +237,92 @@ class BaseDocumentStore(BaseComponent):
 
         :param index: Name of the index to get the labels from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the labels to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
+
         :param open_domain: When True, labels are aggregated purely based on the question text alone.
                             When False, labels are aggregated in a closed domain fashion based on the question text
                             and also the id of the document that the label is tied to. In this setting, this function
                             might return multiple MultiLabel objects with the same question string.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
-        :param TODO drop params
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-
+        TODO drop params
         """
-        aggregated_labels = []
+        if aggregate_by_meta:
+            if type(aggregate_by_meta) == str:
+                aggregate_by_meta = [aggregate_by_meta]
+        else:
+            aggregate_by_meta = []
+
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
 
-        # Collect all answers to a question in a dict
-        question_ans_dict: dict = {}
+        grouped_labels: dict = {}
         for l in all_labels:
-            # This group_by_id determines the key by which we aggregate labels. Its contents depend on
-            # whether we are in an open / closed domain setting,
-            # or if there are fields in the meta data that we should group by (set using group_by_meta)
-            group_by_id_list: list = []
-            if open_domain:
-                group_by_id_list = [l.query]
-            else:
-                group_by_id_list = [l.document.id, l.query]
-            if aggregate_by_meta:
-                if type(aggregate_by_meta) == str:
-                    aggregate_by_meta = [aggregate_by_meta]
-                if l.meta is None:
-                    l.meta = {}
-                for meta_key in aggregate_by_meta:
-                    curr_meta = l.meta.get(meta_key, None)
-                    if curr_meta:
-                        group_by_id_list.append(curr_meta)
-            group_by_id = tuple(group_by_id_list)
+            # This group_keys determines the key by which we aggregate labels. Its contents depend on
+            # whether we are in an open / closed domain setting, on filters that are specified for labels,
+            # or if there are fields in the meta data that we should group by dynamically (set using group_by_meta).
+            label_filter_keys = [f"{k}={''.join(v)}" for k, v in l.filters.items()] if l.filters else []
+            group_keys: list = [l.query] + label_filter_keys
+            # Filters indicate the scope within which a label is valid.
+            # Depending on the aggregation we need to add filters dynamically.
+            label_filters_to_add: dict = {}
 
-            if group_by_id in question_ans_dict:
-                question_ans_dict[group_by_id].append(l)
+            if not open_domain:
+                group_keys.append(f"_id={l.document.id}")
+                label_filters_to_add["_id"] = l.document.id
+
+            for meta_key in aggregate_by_meta:
+                meta = l.meta or {}
+                curr_meta = meta.get(meta_key, None)
+                if curr_meta:
+                    curr_meta = curr_meta if isinstance(curr_meta, list) else [curr_meta]
+                    meta_str = f"{meta_key}={''.join(curr_meta)}"
+                    group_keys.append(meta_str)
+                    label_filters_to_add[meta_key] = curr_meta
+
+            if label_filters_to_add:
+                if l.filters is None:
+                    l.filters = label_filters_to_add
+                else:
+                    l.filters.update(label_filters_to_add)
+
+            group_key = tuple(group_keys)
+            if group_key in grouped_labels:
+                grouped_labels[group_key].append(l)
             else:
-                question_ans_dict[group_by_id] = [l]
+                grouped_labels[group_key] = [l]
 
         # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
         # aggregated attributes like `no_answer`
-        for q, ls in question_ans_dict.items():
-            agg_label = MultiLabel(
-                labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers
-            )
-            aggregated_labels.append(agg_label)
+        aggregated_labels = [
+            MultiLabel(labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers)
+            for ls in grouped_labels.values()
+        ]
+
         return aggregated_labels
 
     @abstractmethod
@@ -247,7 +334,7 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def get_document_count(
         self,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -286,7 +373,7 @@ class BaseDocumentStore(BaseComponent):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Optional[Dict[str, List[str]]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -400,7 +487,7 @@ class BaseDocumentStore(BaseComponent):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -410,7 +497,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -420,7 +507,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -466,7 +553,7 @@ class BaseDocumentStore(BaseComponent):
         :param documents: A list of Haystack Document objects.
         :return: A list of Haystack Document objects.
         """
-        _hash_ids: list = []
+        _hash_ids: Set = set([])
         _documents: List[Document] = []
 
         for document in documents:
@@ -476,7 +563,7 @@ class BaseDocumentStore(BaseComponent):
                 )
                 continue
             _documents.append(document)
-            _hash_ids.append(document.id)
+            _hash_ids.add(document.id)
 
         return _documents
 
@@ -551,7 +638,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -562,7 +649,70 @@ class KeywordDocumentStore(BaseDocumentStore):
         that are most relevant to the query as defined by keyword matching algorithms like BM25.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+
         :param top_k: How many documents to return per query.
         :param custom_query: Custom query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents

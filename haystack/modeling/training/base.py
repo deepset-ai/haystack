@@ -152,7 +152,7 @@ class Trainer:
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
-        :param device: The device on which the train, dev and test tensors should be hosted. Choose from "cpu" and "cuda".
+        :param device: The device on which the train, dev and test tensors should be hosted. Choose from torch.device("cpu") and torch.device("cuda").
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
@@ -378,10 +378,7 @@ class Trainer:
         loss = self.adjust_loss(loss)
         if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0]:
             if self.local_rank in [-1, 0]:
-                MlLogger.log_metrics(
-                    {"Train_loss_total": float(loss.detach().cpu().numpy())},
-                    step=self.global_step,
-                )
+                MlLogger.log_metrics({"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step)
                 if self.log_learning_rate:
                     MlLogger.log_metrics({"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step)
         if self.use_amp:
@@ -694,7 +691,7 @@ class DistillationTrainer(Trainer):
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
-        :param device: The device on which the train, dev and test tensors should be hosted. Choose from "cpu" and "cuda".
+        :param device: The device on which the train, dev and test tensors should be hosted. Choose from torch.device("cpu") and torch.device("cuda").
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
@@ -836,7 +833,7 @@ class TinyBERTDistillationTrainer(Trainer):
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
-        :param device: The device on which the train, dev and test tensors should be hosted. Choose from "cpu" and "cuda".
+        :param device: The device on which the train, dev and test tensors should be hosted. Choose from torch.device("cpu") and torch.device("cuda").
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating

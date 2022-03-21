@@ -182,7 +182,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                 "per_sequence", a single embedding will be extracted to represent the full
                                 input sequence. Can either be a single string, or a list of strings,
                                 one for each prediction head.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         :param loss_aggregation_fn: Function to aggregate the loss of multiple prediction heads.
                                     Input: loss_per_head (list of tensors), global_step (int), batch (dict)
                                     Output: aggregated loss (tensor)
@@ -277,7 +277,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         * vocab.txt vocab file for language model, turning text to Wordpiece Tokens
 
         :param load_dir: Location where the AdaptiveModel is stored.
-        :param device: To which device we want to sent the model, either cpu or cuda.
+        :param device: To which device we want to sent the model, either torch.device("cpu") or torch.device("cuda").
         :param lm_name: The name to assign to the loaded language model.
         :param strict: Whether to strictly enforce that the keys loaded from saved model match the ones in
                        the PredictionHead (see torch.nn.module.load_state_dict()).
@@ -509,7 +509,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
                                               See https://huggingface.co/models for full list
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param device: "cpu" or "cuda"
+        :param device: On which hardware the conversion should take place. Choose from torch.device("cpu") or torch.device("cuda")
         :param task_type: One of :
                           - 'question_answering'
                           More tasks coming soon ...
@@ -554,9 +554,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         if language_model_class not in ["Bert", "Roberta", "XLMRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
-        task_type_to_pipeline_map = {
-            "question_answering": "question-answering",
-        }
+        task_type_to_pipeline_map = {"question_answering": "question-answering"}
 
         convert(
             pipeline_name=task_type_to_pipeline_map[task_type],
@@ -626,9 +624,11 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         :param language_model_class: Class of LanguageModel
         :param langauge: Language the model is trained for.
         :param prediction_heads: A list of models that take embeddings and return logits for a given task.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """
         import onnxruntime
+
+        super().__init__(prediction_heads)
 
         if str(device) == "cuda" and onnxruntime.get_device() != "GPU":
             raise Exception(
@@ -647,7 +647,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         Loads an ONNXAdaptiveModel from a directory.
 
         :param load_dir: Location where the ONNXAdaptiveModel is stored.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """
         load_dir = Path(load_dir)
         import onnxruntime
