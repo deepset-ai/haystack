@@ -439,6 +439,7 @@ then be found in the dict returned by this method under the key "_debug"
 #### eval
 
 ```python
+@send_event
 def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, add_isolated_node_eval: bool = False) -> EvaluationResult
 ```
 
