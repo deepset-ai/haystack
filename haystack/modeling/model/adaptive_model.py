@@ -258,14 +258,14 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # Need to save config and pipeline
 
     @classmethod
-    def load(
+    def load(    # type: ignore
         cls,
         load_dir: Union[str, Path],
         device: torch.device,
         strict: bool = True,
         lm_name: Optional[str] = None,
         processor: Optional[Processor] = None,
-    ):   # type: ignore
+    ):
         """
         Loads an AdaptiveModel from a directory. The directory must contain:
 
