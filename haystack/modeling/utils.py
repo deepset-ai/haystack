@@ -162,8 +162,8 @@ def all_gather_list(data, group=None, max_size=16384):
     buffer.zero_()
     cpu_buffer = all_gather_list._cpu_buffer
 
-    assert enc_size < 256 ** SIZE_STORAGE_BYTES, "Encoded object size should be less than {} bytes".format(
-        256 ** SIZE_STORAGE_BYTES
+    assert enc_size < 256**SIZE_STORAGE_BYTES, "Encoded object size should be less than {} bytes".format(
+        256**SIZE_STORAGE_BYTES
     )
 
     size_bytes = enc_size.to_bytes(SIZE_STORAGE_BYTES, byteorder="big")
