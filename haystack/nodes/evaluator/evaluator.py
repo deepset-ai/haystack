@@ -394,7 +394,7 @@ def semantic_answer_similarity(
     gold_labels: List[List[str]],
     sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
     batch_size: int = 32,
-    use_gpu: bool = True
+    use_gpu: bool = True,
 ) -> Tuple[List[float], List[float]]:
     """
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
@@ -416,8 +416,8 @@ def semantic_answer_similarity(
     cross_encoder_used = False
     if config.architectures is not None:
         cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
-        
-    device = None if use_gpu else 'cpu'
+
+    device = None if use_gpu else "cpu"
 
     # Compute similarities
     top_1_sas = []
