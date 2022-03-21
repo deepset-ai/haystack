@@ -190,7 +190,7 @@ def send_tutorial_event(url: str):
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip": "1",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip": "2",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt3.zip": "3",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/faq_covidbert.csv.zip": "4",
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/small_faq_covid.csv.zip": "4",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v2.json.zip": "5",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt6.zip": "6",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/small_generator_dataset.csv.zip": "7",
