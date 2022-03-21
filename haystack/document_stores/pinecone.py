@@ -14,6 +14,7 @@ from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.errors import DocumentStoreError
 
 
 logger = logging.getLogger(__name__)
@@ -21,10 +22,13 @@ logger = logging.getLogger(__name__)
 
 class PineconeDocumentStore(SQLDocumentStore):
     """
-    Document store for very large scale embedding based dense retrievers like the DPR.
+    Document store for very large scale embedding based dense retrievers like the DPR. This is a hosted document store,
+    this means that your vectors will not be stored locally but in the cloud. This means that the similarity
+    search will be run on the cloud as well.
 
     It implements the Pinecone vector database ([https://www.pinecone.io](https://www.pinecone.io))
-    to perform similarity search on vectors.
+    to perform similarity search on vectors. In order to use this document store, you need an API key that you can
+    obtain by creating an account on the [Pinecone website](https://www.pinecone.io).
 
     The document text is stored using the SQLDocumentStore, while
     the vector embeddings and metadata (for filtering) are indexed in a Pinecone Index.
@@ -52,7 +56,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
         :param environment: Pinecone cloud environment uses `"us-west1-gcp"` by default. Other GCP and AWS regions are
-            supported, contact Pinecone if required.
+            supported, contact Pinecone [here](https://www.pinecone.io/contact/) if required.
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
             deployment, Postgres is recommended.
         :param pinecone_index: pinecone-client Index object, an index will be initialized or loaded if not specified.
@@ -129,10 +133,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         # self._validate_index_sync()
 
     def _sanitize_index_name(self, index: str) -> str:
-        if "_" in index:
-            return index.replace("_", "-").lower()
-        else:
-            return index.lower()
+        return index.replace("_", "-").lower()
 
     def _create_index_if_not_exist(
         self,
@@ -168,40 +169,13 @@ class PineconeDocumentStore(SQLDocumentStore):
         # return index connection
         return index_connection
 
-    def _convert_pinecone_result_to_document(self, result: dict, return_embedding: bool) -> Document:
-        """
-        Convert Pinecone result dict into haystack document object.
-        """
-        content = ""
-
-        id = result.get("id")
-        score = result.get("score", None)
-        embedding = result.get("values")
-        meta = result.get("metadata")
-        content_type = meta.pop("content_type") if isinstance(meta, dict) and "content_type" in meta else None
-
-        if return_embedding and embedding:
-            embedding = np.asarray(embedding, dtype=np.float32)
-
-        document = Document.from_dict(
-            {
-                "id": id,
-                "content": content,
-                "content_type": content_type,
-                "meta": meta,
-                "score": score,
-                "embedding": embedding,
-            }
-        )
-        return document
-
     def _validate_index_sync(self):
         """
         This check ensures the correct document database was loaded. If it fails, make sure you provided the same path
         to the SQL database as when you created the original Pinecone index.
         """
         if not self.get_document_count() == self.get_embedding_count():
-            raise ValueError(
+            raise DocumentStoreError(
                 "The number of documents present in the SQL database does not "
                 "match the number of embeddings in Pinecone. Make sure your Pinecone "
                 "index aligns to the same database that was used when creating the "
@@ -230,7 +204,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 - `"skip"`: Ignore the duplicate documents.
                 - `"overwrite"`: Update any existing documents with the same ID when adding documents.
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
-
+        :param headers: PineconeDocumentStore does not support headers.
         :raises DuplicateDocumentError: Exception trigger on duplicate document.
         """
         if headers:
@@ -296,7 +270,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         batch_size: int = 32,
     ):
         """
-        Updates the embeddings in the the document store using the encoding model specified in the retriever.
+        Updates the embeddings in the document store using the encoding model specified in the retriever.
         This can be useful if you want to add or change the embeddings for your documents (e.g. after changing the
         retriever config).
 
@@ -439,6 +413,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param headers: PineconeDocumentStore does not support headers.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -550,6 +525,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                     }
                 }
                 ```
+        :param headers: PineconeDocumentStore does not support headers.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -645,6 +621,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return.
         :param index: The name of the index from which to retrieve documents.
         :param return_embedding: Whether to return document embedding.
+        :param headers: PineconeDocumentStore does not support headers.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -660,7 +637,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
 
         if index not in self.pinecone_indexes:
-            raise Exception(
+            raise DocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
@@ -702,13 +679,13 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         if include_values:
             if top_k > self.top_k_limit_vectors:
-                raise Exception(
+                raise DocumentStoreError(
                     f"PineconeDocumentStore allows requests of no more than {self.top_k_limit_vectors} records ",
                     f"when returning embedding values. This request is attempting to return {top_k} records.",
                 )
         else:
             if top_k > self.top_k_limit:
-                raise Exception(
+                raise DocumentStoreError(
                     f"PineconeDocumentStore allows requests of no more than {self.top_k_limit} records. ",
                     f"This request is attempting to return {top_k} records.",
                 )
