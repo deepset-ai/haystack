@@ -9,6 +9,7 @@ import inspect
 import logging
 
 from haystack.schema import Document, MultiLabel
+from haystack.telemetry import send_custom_event
 from haystack.errors import HaystackError
 
 
@@ -54,6 +55,10 @@ class BaseComponent(ABC):
     outgoing_edges: int
     _subclasses: dict = {}
     _component_config: dict = {}
+
+    def __init__(self):
+        # a small subset of the component's parameters is sent in an event after applying filters defined in haystack.telemetry.NonPrivateParameters
+        send_custom_event(event=f"{type(self).__name__} initialized", payload=self._component_config.get("params", {}))
 
     # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_
     # (not instantiated). It works approximately as a metaclass.
