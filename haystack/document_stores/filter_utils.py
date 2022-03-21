@@ -145,6 +145,12 @@ class LogicalFilterClause(ABC):
         """
         pass
 
+    def convert_to_pinecone(self):
+        """
+        Converts the LogicalFilterClause instance to a Pinecone filter.
+        """
+        pass
+
     def _merge_es_range_queries(self, conditions: List[Dict]) -> List[Dict[str, Dict]]:
         """
         Merges Elasticsearch range queries that perform on the same metadata field.
@@ -237,6 +243,12 @@ class ComparisonOperation(ABC):
         """
         pass
 
+    def convert_to_pinecone(self):
+        """
+        Converts the ComparisonOperation instance to a Pinecone comparison operator.
+        """
+        pass
+
     @abstractmethod
     def invert(self) -> "ComparisonOperation":
         """
@@ -309,6 +321,14 @@ class NotOperation(LogicalFilterClause):
         else:
             return conditions[0]
 
+    def convert_to_pinecone(self) -> Dict[str, Union[str, int, float, bool, List[Dict]]]:
+        conditions = [condition.invert().convert_to_pinecone() for condition in self.conditions]
+        if len(conditions) > 1:
+            # Conditions in self.conditions are by default combined with AND which becomes OR according to DeMorgan
+            return {"$or": conditions}
+        else:
+            return conditions[0]
+
     def invert(self) -> Union[LogicalFilterClause, ComparisonOperation]:
         # This method is called when a "$not" operation is embedded in another "$not" operation. Therefore, we don't
         # invert the operations here, as two "$not" operation annihilate each other.
@@ -344,6 +364,10 @@ class AndOperation(LogicalFilterClause):
         conditions = [condition.convert_to_weaviate() for condition in self.conditions]
         return {"operator": "And", "operands": conditions}
 
+    def convert_to_pinecone(self) -> Dict[str, Union[str, List[Dict]]]:
+        conditions = [condition.convert_to_pinecone() for condition in self.conditions]
+        return {"$and": conditions}
+
     def invert(self) -> "OrOperation":
         return OrOperation([condition.invert() for condition in self.conditions])
 
@@ -372,6 +396,10 @@ class OrOperation(LogicalFilterClause):
         conditions = [condition.convert_to_weaviate() for condition in self.conditions]
         return {"operator": "Or", "operands": conditions}
 
+    def convert_to_pinecone(self) -> Dict[str, Union[str, List[Dict]]]:
+        conditions = [condition.convert_to_pinecone() for condition in self.conditions]
+        return {"$or": conditions}
+
     def invert(self) -> AndOperation:
         return AndOperation([condition.invert() for condition in self.conditions])
 
@@ -398,6 +426,9 @@ class EqOperation(ComparisonOperation):
     def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
         return {"path": [self.field_name], "operator": "Equal", comp_value_type: comp_value}
+
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[List[str], str, int, float, bool]]]:
+        return {self.field_name: {"$eq": self.comparison_value}}
 
     def invert(self) -> "NeOperation":
         return NeOperation(self.field_name, self.comparison_value)
@@ -435,6 +466,10 @@ class InOperation(ComparisonOperation):
 
         return filter_dict
 
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, List]]:
+        assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
+        return {self.field_name: {"$in": self.comparison_value}}
+
     def invert(self) -> "NinOperation":
         return NinOperation(self.field_name, self.comparison_value)
 
@@ -461,6 +496,9 @@ class NeOperation(ComparisonOperation):
     def convert_to_weaviate(self) -> Dict[str, Union[List[str], str, int, float, bool]]:
         comp_value_type, comp_value = self._get_weaviate_datatype()
         return {"path": [self.field_name], "operator": "NotEqual", comp_value_type: comp_value}
+
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[List[str], str, int, float, bool]]]:
+        return {self.field_name: {"$ne": self.comparison_value}}
 
     def invert(self) -> "EqOperation":
         return EqOperation(self.field_name, self.comparison_value)
@@ -498,6 +536,10 @@ class NinOperation(ComparisonOperation):
 
         return filter_dict
 
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, List]]:
+        assert isinstance(self.comparison_value, list), "'$in' operation requires comparison value to be a list."
+        return {self.field_name: {"$nin": self.comparison_value}}
+
     def invert(self) -> "InOperation":
         return InOperation(self.field_name, self.comparison_value)
 
@@ -525,6 +567,12 @@ class GtOperation(ComparisonOperation):
         comp_value_type, comp_value = self._get_weaviate_datatype()
         assert not isinstance(comp_value, list), "Comparison value for '$gt' operation must not be a list."
         return {"path": [self.field_name], "operator": "GreaterThan", comp_value_type: comp_value}
+
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
+        assert not isinstance(
+            self.comparison_value, (list, str)
+        ), "Comparison value for '$gt' operation must be a float or int."
+        return {self.field_name: {"$gt": self.comparison_value}}
 
     def invert(self) -> "LteOperation":
         return LteOperation(self.field_name, self.comparison_value)
@@ -554,6 +602,12 @@ class GteOperation(ComparisonOperation):
         assert not isinstance(comp_value, list), "Comparison value for '$gte' operation must not be a list."
         return {"path": [self.field_name], "operator": "GreaterThanEqual", comp_value_type: comp_value}
 
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
+        assert not isinstance(
+            self.comparison_value, (list, str)
+        ), "Comparison value for '$gte' operation must be a float or int."
+        return {self.field_name: {"$gte": self.comparison_value}}
+
     def invert(self) -> "LtOperation":
         return LtOperation(self.field_name, self.comparison_value)
 
@@ -582,6 +636,12 @@ class LtOperation(ComparisonOperation):
         assert not isinstance(comp_value, list), "Comparison value for '$lt' operation must not be a list."
         return {"path": [self.field_name], "operator": "LessThan", comp_value_type: comp_value}
 
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
+        assert not isinstance(
+            self.comparison_value, (list, str)
+        ), "Comparison value for '$lt' operation must be a float or int."
+        return {self.field_name: {"$lt": self.comparison_value}}
+
     def invert(self) -> "GteOperation":
         return GteOperation(self.field_name, self.comparison_value)
 
@@ -609,6 +669,12 @@ class LteOperation(ComparisonOperation):
         comp_value_type, comp_value = self._get_weaviate_datatype()
         assert not isinstance(comp_value, list), "Comparison value for '$lte' operation must not be a list."
         return {"path": [self.field_name], "operator": "LessThanEqual", comp_value_type: comp_value}
+
+    def convert_to_pinecone(self) -> Dict[str, Dict[str, Union[float, int]]]:
+        assert not isinstance(
+            self.comparison_value, (list, str)
+        ), "Comparison value for '$lte' operation must be a float or int."
+        return {self.field_name: {"$lte": self.comparison_value}}
 
     def invert(self) -> "GtOperation":
         return GtOperation(self.field_name, self.comparison_value)
