@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 import responses
 from sqlalchemy import create_engine, text
+import posthog
 
 import numpy as np
 import psutil
@@ -73,6 +74,9 @@ DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
+
+# Disable telemetry reports when running tests
+posthog.disabled = True
 
 
 def _sql_session_rollback(self, attr):
