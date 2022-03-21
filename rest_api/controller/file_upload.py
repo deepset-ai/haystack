@@ -12,7 +12,12 @@ from pydantic import BaseModel
 
 from haystack.pipelines.base import Pipeline
 from haystack.errors import PipelineConfigError
-from haystack.pipelines.config import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml, validate_config
+from haystack.pipelines.config import (
+    get_component_definitions,
+    get_pipeline_definition,
+    read_pipeline_config_from_yaml,
+    validate_config,
+)
 from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
 from rest_api.controller.utils import as_form
 
