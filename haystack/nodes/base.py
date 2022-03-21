@@ -9,6 +9,7 @@ import inspect
 import logging
 
 from haystack.schema import Document, MultiLabel
+from haystack.errors import PipelineSchemaError
 from haystack.telemetry import send_custom_event
 from haystack.errors import HaystackError
 
@@ -73,6 +74,7 @@ class BaseComponent(ABC):
 
         # Keeps track of all available subclasses by name.
         # Enables generic load() for all specific component implementations.
+        # Registers abstract classes and base classes too.
         cls._subclasses[cls.__name__] = cls
 
     @property
@@ -108,7 +110,7 @@ class BaseComponent(ABC):
     @classmethod
     def get_subclass(cls, component_type: str):
         if component_type not in cls._subclasses.keys():
-            raise HaystackError(f"Haystack component with the name '{component_type}' does not exist.")
+            raise PipelineSchemaError(f"Haystack component with the name '{component_type}' not found.")
         subclass = cls._subclasses[component_type]
         return subclass
 
