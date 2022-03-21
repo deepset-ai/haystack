@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from lib2to3.pytree import Base
 import pytest
 import json
 import inspect

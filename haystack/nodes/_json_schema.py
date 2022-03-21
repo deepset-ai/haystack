@@ -113,8 +113,8 @@ class Config(BaseConfig):
     extra = "forbid"  # type: ignore
 
 
-def is_valid_component_class(clazz):
-    return inspect.isclass(clazz) and not inspect.isabstract(clazz) and issubclass(clazz, BaseComponent)
+def is_valid_component_class(class_):
+    return inspect.isclass(class_) and not inspect.isabstract(class_) and issubclass(class_, BaseComponent)
 
 
 def find_subclasses_in_modules(importable_modules: List[str]):
@@ -125,10 +125,10 @@ def find_subclasses_in_modules(importable_modules: List[str]):
     By default it won't include Base classes, which should be abstract.
     """
     return [
-        (module, clazz)
+        (module, class_)
         for module in importable_modules
-        for _, clazz in inspect.getmembers(sys.modules[module])
-        if is_valid_component_class(clazz)
+        for _, class_ in inspect.getmembers(sys.modules[module])
+        if is_valid_component_class(class_)
     ]
 
 
@@ -229,11 +229,11 @@ def get_json_schema(
     node_refs = []  # References to the nodes only (accessory classes cannot be listed among the nodes in a config)
 
     # List all known nodes in the given modules
-    possible_nodes = find_subclasses_in_modules(importable_modules=modules)
+    possible_node_classes = find_subclasses_in_modules(importable_modules=modules)
 
     # Build the definitions and refs for the nodes
-    for _, node in possible_nodes:
-        node_definition, node_ref = create_schema_for_node_class(node)
+    for _, node_class in possible_node_classes:
+        node_definition, node_ref = create_schema_for_node_class(node_class)
         schema_definitions.update(node_definition)
         node_refs.append(node_ref)
 
