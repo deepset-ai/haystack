@@ -263,9 +263,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         load_dir: Union[str, Path],
         device: torch.device,
         strict: bool = True,
-        lm_name: Optional[str] = None,  #  type: ignore
+        lm_name: Optional[str] = None,
         processor: Optional[Processor] = None,
-    ):
+    ):   # type: ignore
         """
         Loads an AdaptiveModel from a directory. The directory must contain:
 
