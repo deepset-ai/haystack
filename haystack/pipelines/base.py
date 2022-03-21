@@ -47,7 +47,7 @@ except:
 
 from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
-from haystack.errors import PipelineError, PipelineConfigError
+from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -722,8 +722,8 @@ class Pipeline(BasePipeline):
             from beir import util
             from beir.datasets.data_loader import GenericDataLoader
             from beir.retrieval.evaluation import EvaluateRetrieval
-        except:
-            raise PipelineError("beir is not installed. Please run `pip install beir`...")
+        except ModuleNotFoundError as e:
+            raise HaystackError("beir is not installed. Please run `pip install farm-haystack[beir]`...") from e
 
         url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
         data_path = util.download_and_unzip(url, dataset_dir)
@@ -739,7 +739,7 @@ class Pipeline(BasePipeline):
         document_store = index_pipeline.get_document_store()
         if document_store is not None:
             if hasattr(document_store, "delete_index"):
-                document_store.delete_index(index=index) # type: ignore
+                document_store.delete_index(index=index)  # type: ignore
             else:
                 document_store.delete_documents(index=index)
 
@@ -757,7 +757,7 @@ class Pipeline(BasePipeline):
         # Clean up document store
         if document_store is not None:
             if hasattr(document_store, "delete_index"):
-                document_store.delete_index(index=index) # type: ignore
+                document_store.delete_index(index=index)  # type: ignore
             else:
                 document_store.delete_documents(index=index)
 
@@ -1671,8 +1671,10 @@ class _HaystackBeirRetrieverAdapter:
             if hasattr(document_store, "search_fields"):
                 search_fields = getattr(document_store, "search_fields")
                 if "name" not in search_fields:
-                    logger.warning("Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. " 
-                                   "Please set search_fields appropriately.")
+                    logger.warning(
+                        "Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. "
+                        "Please set search_fields appropriately."
+                    )
 
             logger.info(f"indexing {len(corpus)} documents...")
             self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
