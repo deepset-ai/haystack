@@ -5,6 +5,7 @@ import json
 import random
 import pandas as pd
 from tqdm import tqdm
+import mmh3
 
 from haystack.schema import Document, Label
 from haystack.modeling.data_handler.processor import _read_squad_file
@@ -109,14 +110,13 @@ class SquadData:
         """Convert a list of SQuAD document dictionaries into a pandas dataframe (each row is one annotation)"""
         flat = []
         for document in data:
-            title = ""
-            if "title" in document:
-                title = document["title"]
+            title = document.get("title", "")
             for paragraph in document["paragraphs"]:
-                document_id = ""
-                if "document_id" in paragraph:
-                    document_id = paragraph["document_id"]
                 context = paragraph["context"]
+                document_id = paragraph.get(
+                    "document_id",
+                    "{:02x}".format(mmh3.hash128(str(context), signed=False))
+                )
                 for question in paragraph["qas"]:
                     q = question["question"]
                     id = question["id"]
