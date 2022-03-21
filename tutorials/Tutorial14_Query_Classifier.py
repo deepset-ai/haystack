@@ -39,8 +39,11 @@ def tutorial14_query_classifier():
     es_retriever = ElasticsearchRetriever(document_store=document_store)
 
     # Initialize dense retriever
-    embedding_retriever = EmbeddingRetriever(document_store=document_store, model_format="sentence_transformers",
-                                             embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1")
+    embedding_retriever = EmbeddingRetriever(
+        document_store=document_store,
+        model_format="sentence_transformers",
+        embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+    )
     document_store.update_embeddings(embedding_retriever, update_existing_embeddings=False)
 
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
@@ -108,7 +111,9 @@ def tutorial14_query_classifier():
     transformer_keyword_classifier.add_node(
         component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
     )
-    transformer_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"])
+    transformer_keyword_classifier.add_node(
+        component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"]
+    )
     transformer_keyword_classifier.draw("pipeline_classifier.png")
 
     # Run only the dense retriever on the full sentence query
