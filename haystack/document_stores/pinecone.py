@@ -680,14 +680,14 @@ class PineconeDocumentStore(SQLDocumentStore):
         if include_values:
             if top_k > self.top_k_limit_vectors:
                 raise DocumentStoreError(
-                    f"PineconeDocumentStore allows requests of no more than {self.top_k_limit_vectors} records ",
-                    f"when returning embedding values. This request is attempting to return {top_k} records.",
+                    f"PineconeDocumentStore allows requests of no more than {self.top_k_limit_vectors} records "
+                    f"when returning embedding values. This request is attempting to return {top_k} records."
                 )
         else:
             if top_k > self.top_k_limit:
                 raise DocumentStoreError(
-                    f"PineconeDocumentStore allows requests of no more than {self.top_k_limit} records. ",
-                    f"This request is attempting to return {top_k} records.",
+                    f"PineconeDocumentStore allows requests of no more than {self.top_k_limit} records. "
+                    f"This request is attempting to return {top_k} records."
                 )
 
     @classmethod
