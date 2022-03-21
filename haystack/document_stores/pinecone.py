@@ -78,21 +78,6 @@ class PineconeDocumentStore(SQLDocumentStore):
                 - `"overwrite"`: Update any existing documents with the same ID when adding documents.
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
         """
-        # Save init parameters to enable export of component config as YAML
-        self.set_config(
-            api_key=api_key,
-            environment=environment,
-            sql_url=sql_url,
-            embedding_dim=embedding_dim,
-            return_embedding=return_embedding,
-            index=index,
-            similarity=similarity,
-            replicas=replicas,
-            shards=shards,
-            embedding_field=embedding_field,
-            progress_bar=progress_bar,
-            duplicate_documents=duplicate_documents,
-        )
 
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
