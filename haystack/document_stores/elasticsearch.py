@@ -2034,13 +2034,10 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
     A DocumentStore which has an Open Distro for Elasticsearch service behind it.
     """
 
-    def __init__(self, host="https://admin:admin@localhost:9200/", similarity="cosine", **kwargs):
+    def __init__(self, similarity="cosine", **kwargs):
         logger.warning(
             "Open Distro for Elasticsearch has been replaced by OpenSearch! "
             "See https://opensearch.org/faq/ for details. "
             "We recommend using the OpenSearchDocumentStore instead."
         )
-        super(OpenDistroElasticsearchDocumentStore, self).__init__(host=host, similarity=similarity, **kwargs)
-
-    def _prepare_hosts(self, host, port):
-        return host
+        super(OpenDistroElasticsearchDocumentStore, self).__init__(similarity=similarity, **kwargs)
