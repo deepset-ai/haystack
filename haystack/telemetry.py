@@ -23,8 +23,8 @@ import posthog
 import os
 import platform
 
-posthog.api_key = "phc_uZ6c2kaqSz3u9QrYRCBbxsi6MMHiiew9dwi4LTobgV3"
-posthog.host = "https://posthog.dpst.dev"
+posthog.api_key = 'phc_F5v11iI2YHkoP6Er3cPILWSrLhY3D6UY4dEMga4eoaa'
+posthog.host = 'https://tm.hs.deepset.ai'
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED = "HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED"
 HAYSTACK_EXECUTION_CONTEXT = "HAYSTACK_EXECUTION_CONTEXT"
