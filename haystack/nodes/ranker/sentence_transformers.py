@@ -50,8 +50,8 @@ class SentenceTransformersRanker(BaseRanker):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param top_k: The maximum number of documents to return
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones 
-                        These strings will be converted into pytorch devices, so use the string notation described here: 
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]).
         """
@@ -63,7 +63,7 @@ class SentenceTransformersRanker(BaseRanker):
             self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
-            
+
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path, revision=model_version
         )
