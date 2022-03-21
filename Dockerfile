@@ -43,6 +43,7 @@ RUN chmod 777 /home/user/rest_api/file-upload
 #COPY data /home/user/data
 
 EXPOSE 8000
+ENV HAYSTACK_DOCKER_CONTAINER="HAYSTACK_CPU_CONTAINER"
 
 # cmd for running the API
 CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]

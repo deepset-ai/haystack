@@ -25,8 +25,8 @@ from haystack.utils import convert_files_to_dicts, fetch_archive_from_http
 def tutorial8_preprocessing():
     # This fetches some sample files to work with
 
-    doc_dir = "data/preprocessing_tutorial"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial.zip"
+    doc_dir = "data/tutorial8"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial8.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     """
