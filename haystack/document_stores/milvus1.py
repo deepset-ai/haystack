@@ -490,6 +490,9 @@ class Milvus1DocumentStore(SQLDocumentStore):
         :param index: The name of the index to delete.
         :return: None
         """
+        if index == self.index:
+            logger.warning(f"Deletion of default index '{index}' detected. "
+                           f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects.")
         self.milvus_server.drop_collection(index)
         super().delete_index(index)
 

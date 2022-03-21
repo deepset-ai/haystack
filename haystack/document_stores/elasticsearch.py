@@ -1570,6 +1570,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param index: The name of the index to delete.
         :return: None
         """
+        if index == self.index:
+            logger.warning(f"Deletion of default index '{index}' detected. "
+                           f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects.")
         self.client.indices.delete(index=index, ignore=[400, 404])
         logger.debug(f"deleted elasticsearch index {index}")
 
