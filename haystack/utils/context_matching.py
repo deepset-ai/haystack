@@ -137,7 +137,7 @@ def match_context(
 
         matches = (candidate for candidate in candidate_scores if candidate.score > threshold)
         sorted_matches = sorted(matches, key=lambda candidate: candidate.score, reverse=True)
-        match_list = list((candiate_score.candidate_id, candiate_score.score) for candiate_score in sorted_matches)
+        match_list = list((candidate_score.candidate_id, candidate_score.score) for candidate_score in sorted_matches)
 
         return match_list
 
