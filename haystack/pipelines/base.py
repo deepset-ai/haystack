@@ -49,6 +49,7 @@ from haystack.errors import PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.telemetry import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -690,6 +691,7 @@ class Pipeline(BasePipeline):
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
 
+    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
