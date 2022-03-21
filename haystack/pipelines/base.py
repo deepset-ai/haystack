@@ -31,6 +31,7 @@ from haystack.pipelines.config import (
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
+from haystack.utils.environment import get_or_create_env_meta_data
 
 try:
     from ray import serve
@@ -712,6 +713,8 @@ class Pipeline(BasePipeline):
                 "sas_batch_size": sas_batch_size,
                 "sas_use_gpu": sas_use_gpu,
                 "type": "offline/evaluation",
+                "pipeline_yaml": yaml.dump(self.get_config()),
+                "environment": get_or_create_env_meta_data(),
             }
         )
 
@@ -732,8 +735,11 @@ class Pipeline(BasePipeline):
         metrics_logger.log_metrics(metrics, step=0)
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            eval_result.save(out_dir=temp_dir)
-            metrics_logger.log_artifacts(temp_dir, artifact_path="eval_result")
+            eval_result_dir = Path(temp_dir) / "eval_result"
+            eval_result.save(out_dir=eval_result_dir)
+            metrics_logger.log_artifacts(eval_result_dir, artifact_path="eval_result")
+            self.save_to_yaml(path=Path(temp_dir))
+            metrics_logger.log_artifacts(temp_dir)
 
         metrics_logger.end_run()
         return eval_result
