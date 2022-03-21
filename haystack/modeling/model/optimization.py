@@ -295,7 +295,14 @@ def get_scheduler(optimizer, opts):
     return scheduler
 
 
-def optimize_model(model: "AdaptiveModel", device: torch.device, local_rank: int, optimizer=None, distributed: Optional[bool] = False, use_amp: Optional[str] = None):
+def optimize_model(
+    model: "AdaptiveModel",
+    device: torch.device,
+    local_rank: int,
+    optimizer=None,
+    distributed: Optional[bool] = False,
+    use_amp: Optional[str] = None,
+):
     """
     Wraps MultiGPU or distributed usage around a model
     No support for ONNX models

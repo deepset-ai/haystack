@@ -433,7 +433,7 @@ class BiAdaptiveModel(nn.Module):
         model_name_or_path1: Union[str, Path],
         model_name_or_path2: Union[str, Path],
         device: torch.device,
-        task_type: str = 'text_similarity',
+        task_type: str = "text_similarity",
         processor: Optional[Processor] = None,
         similarity_function: str = "dot_product",
     ):

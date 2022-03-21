@@ -102,10 +102,10 @@ class DensePassageRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones 
-                        These strings will be converted into pytorch devices, so use the string notation described here: 
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training 
+                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
                         will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
@@ -585,10 +585,10 @@ class TableTextRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones 
-                        These strings will be converted into pytorch devices, so use the string notation described here: 
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever, 
+                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
                         training will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
@@ -1107,10 +1107,10 @@ class EmbeddingRetriever(BaseRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones 
-                        These strings will be converted into pytorch devices, so use the string notation described here: 
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever, 
+                        (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
                         training will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
