@@ -8,6 +8,9 @@ import gc
 import uuid
 import logging
 from pathlib import Path
+import os
+
+import pinecone
 import responses
 from sqlalchemy import create_engine, text
 import posthog
@@ -32,7 +35,7 @@ try:
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
     import weaviate
     from haystack.document_stores.weaviate import WeaviateDocumentStore
-    from haystack.document_stores import MilvusDocumentStore
+    from haystack.document_stores import MilvusDocumentStore, PineconeDocumentStore
     from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
     from haystack.document_stores.faiss import FAISSDocumentStore
     from haystack.document_stores.sql import SQLDocumentStore
@@ -136,7 +139,7 @@ def pytest_collection_modifyitems(config, items):
                 keywords.extend(i.split("-"))
             else:
                 keywords.append(i)
-        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate"]:
+        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate", "pinecone"]:
             if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
@@ -149,6 +152,11 @@ def pytest_collection_modifyitems(config, items):
         elif "milvus" in keywords and milvus1:
             skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
             item.add_marker(skip_milvus)
+
+        # Skip PineconeDocumentStore if PINECONE_API_KEY not in environment variables
+        if not os.environ.get("PINECONE_API_KEY", False) and "pinecone" in keywords:
+            skip_pinecone = pytest.mark.skip(reason="PINECONE_API_KEY not in environment variables.")
+            item.add_marker(skip_pinecone)
 
 
 #
@@ -629,7 +637,7 @@ def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
             d["id"] = str(uuid.uuid4())
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
 def document_store_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -653,8 +661,13 @@ def document_store(request, tmp_path):
     if isinstance(document_store, MilvusDocumentStore) and not milvus1:
         document_store.collection.drop()
 
+    # Make sure to delete Pinecone indexes, required for tests using different embedding dimensions
+    if isinstance(document_store, PineconeDocumentStore):
+        for index in document_store.pinecone_indexes:
+            pinecone.delete_index(index)
 
-@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
+
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
 def document_store_dot_product(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -667,7 +680,7 @@ def document_store_dot_product(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch"])
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
 def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
@@ -681,7 +694,7 @@ def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "pinecone"])
 def document_store_dot_product_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
@@ -694,7 +707,7 @@ def document_store_dot_product_small(request, tmp_path):
     document_store.delete_documents()
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
 def document_store_small(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
@@ -825,6 +838,16 @@ def get_document_store(
         )
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()
+
+    elif document_store_type == "pinecone":
+        document_store = PineconeDocumentStore(
+            api_key=os.environ["PINECONE_API_KEY"],
+            embedding_dim=embedding_dim,
+            embedding_field=embedding_field,
+            index=index,
+            similarity=similarity,
+        )
+
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
