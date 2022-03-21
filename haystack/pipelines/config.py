@@ -71,7 +71,7 @@ def get_component_definitions(pipeline_config: Dict[str, Any], overwrite_with_en
 
 def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
     """
-    Parses YAML files into Python objects. 
+    Parses YAML files into Python objects.
     Fails if the file does not exist.
     """
     if not os.path.isfile(path):
