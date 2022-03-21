@@ -216,6 +216,9 @@ class MockDocumentStore(BaseDocumentStore):
     def write_labels(self, *a, **k):
         pass
 
+    def delete_index(self, *a, **k):
+        pass
+
 
 class MockRetriever(BaseRetriever):
     outgoing_edges = 1

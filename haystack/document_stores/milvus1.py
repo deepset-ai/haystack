@@ -483,6 +483,21 @@ class Milvus1DocumentStore(SQLDocumentStore):
         # Delete from SQL at the end to allow the above .get_all_documents() to work properly
         super().delete_documents(index=index, ids=ids, filters=filters)
 
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        if index == self.index:
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
+        self.milvus_server.drop_collection(index)
+        super().delete_index(index)
+
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
