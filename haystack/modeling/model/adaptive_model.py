@@ -265,7 +265,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         strict: bool = True,
         lm_name: Optional[str] = None,
         processor: Optional[Processor] = None,
-    ):   # type: ignore
+    ):  # type: ignore
         """
         Loads an AdaptiveModel from a directory. The directory must contain:
 
