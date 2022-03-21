@@ -258,7 +258,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # Need to save config and pipeline
 
     @classmethod
-    def load(    # type: ignore
+    def load(  # type: ignore
         cls,
         load_dir: Union[str, Path],
         device: torch.device,
