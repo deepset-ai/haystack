@@ -4132,10 +4132,13 @@ None
 class PineconeDocumentStore(SQLDocumentStore)
 ```
 
-Document store for very large scale embedding based dense retrievers like the DPR.
+Document store for very large scale embedding based dense retrievers like the DPR. This is a hosted document store,
+this means that your vectors will not be stored locally but in the cloud. This means that the similarity
+search will be run on the cloud as well.
 
 It implements the Pinecone vector database ([https://www.pinecone.io](https://www.pinecone.io))
-to perform similarity search on vectors.
+to perform similarity search on vectors. In order to use this document store, you need an API key that you can
+obtain by creating an account on the [Pinecone website](https://www.pinecone.io).
 
 The document text is stored using the SQLDocumentStore, while
 the vector embeddings and metadata (for filtering) are indexed in a Pinecone Index.
@@ -4145,14 +4148,14 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### \_\_init\_\_
 
 ```python
-def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional["pinecone.Index"] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite")
+def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite")
 ```
 
 **Arguments**:
 
 - `api_key`: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
 - `environment`: Pinecone cloud environment uses `"us-west1-gcp"` by default. Other GCP and AWS regions are
-supported, contact Pinecone if required.
+supported, contact Pinecone [here](https://www.pinecone.io/contact/) if required.
 - `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
 deployment, Postgres is recommended.
 - `pinecone_index`: pinecone-client Index object, an index will be initialized or loaded if not specified.
@@ -4199,6 +4202,7 @@ Parameter options:
     - `"skip"`: Ignore the duplicate documents.
     - `"overwrite"`: Update any existing documents with the same ID when adding documents.
     - `"fail"`: An error is raised if the document ID of the document being added already exists.
+- `headers`: PineconeDocumentStore does not support headers.
 
 **Raises**:
 
@@ -4212,7 +4216,7 @@ Parameter options:
 def update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, batch_size: int = 32)
 ```
 
-Updates the embeddings in the the document store using the encoding model specified in the retriever.
+Updates the embeddings in the document store using the encoding model specified in the retriever.
 
 This can be useful if you want to add or change the embeddings for your documents (e.g. after changing the
 retriever config).
@@ -4295,6 +4299,7 @@ operation.
     ```
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `headers`: PineconeDocumentStore does not support headers.
 
 <a id="pinecone.PineconeDocumentStore.get_embedding_count"></a>
 
@@ -4355,6 +4360,7 @@ operation.
         }
     }
     ```
+- `headers`: PineconeDocumentStore does not support headers.
 
 <a id="pinecone.PineconeDocumentStore.query_by_embedding"></a>
 
@@ -4432,6 +4438,7 @@ operation.
 - `top_k`: How many documents to return.
 - `index`: The name of the index from which to retrieve documents.
 - `return_embedding`: Whether to return document embedding.
+- `headers`: PineconeDocumentStore does not support headers.
 
 <a id="pinecone.PineconeDocumentStore.load"></a>
 
