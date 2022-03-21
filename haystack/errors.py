@@ -1,6 +1,7 @@
 # coding: utf8
 """Custom Errors for Haystack"""
 
+from haystack.telemetry import send_custom_event
 from typing import Optional
 
 
@@ -14,6 +15,7 @@ class HaystackError(Exception):
     """
 
     def __init__(self, message: Optional[str] = None, docs_link: Optional[str] = None):
+        send_custom_event(event=f"{type(self).__name__} raised")
         super().__init__()
         if message:
             self.message = message
@@ -45,7 +47,8 @@ class PipelineError(HaystackError):
 class PipelineSchemaError(PipelineError):
     """Exception for issues arising when reading/building the JSON schema of pipelines"""
 
-    pass
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
 
 
 class PipelineConfigError(PipelineError):
@@ -62,10 +65,12 @@ class PipelineConfigError(PipelineError):
 class DocumentStoreError(HaystackError):
     """Exception for issues that occur in a document store"""
 
-    pass
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
 
 
 class DuplicateDocumentError(DocumentStoreError, ValueError):
     """Exception for Duplicate document"""
 
-    pass
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)

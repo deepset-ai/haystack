@@ -464,6 +464,7 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 #### eval
 
 ```python
+@send_event
 def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False) -> EvaluationResult
 ```
 

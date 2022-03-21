@@ -51,6 +51,7 @@ from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.telemetry import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -769,6 +770,7 @@ class Pipeline(BasePipeline):
         ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
         return ndcg, map_, recall, precision
 
+    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
