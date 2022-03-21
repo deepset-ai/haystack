@@ -21,7 +21,7 @@ def tutorial5_evaluation():
     launch_es()
 
     # Download evaluation data, which is a subset of Natural Questions development set containing 50 documents with one question per document and multiple annotated answers
-    doc_dir = "../data/nq"
+    doc_dir = "data/tutorial5"
     s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/nq_dev_subset_v2.json.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 

@@ -393,6 +393,8 @@ def semantic_answer_similarity(
     predictions: List[List[str]],
     gold_labels: List[List[str]],
     sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+    batch_size: int = 32,
+    use_gpu: bool = True
 ) -> Tuple[List[float], List[float]]:
     """
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
@@ -403,6 +405,9 @@ def semantic_answer_similarity(
     :param gold_labels: Labels as list of multiple possible answers per question
     :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model, should be path or string
                                      pointing to downloadable models.
+    :param batch_size: Number of prediction label pairs to encode at once.
+    :param use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+                    Falls back to CPU if no GPU is available.
     :return: top_1_sas, top_k_sas
     """
     assert len(predictions) == len(gold_labels)
@@ -411,6 +416,8 @@ def semantic_answer_similarity(
     cross_encoder_used = False
     if config.architectures is not None:
         cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
+        
+    device = None if use_gpu else 'cpu'
 
     # Compute similarities
     top_1_sas = []
@@ -420,14 +427,14 @@ def semantic_answer_similarity(
     # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
     # Similarity computation changes for both approaches
     if cross_encoder_used:
-        model = CrossEncoder(sas_model_name_or_path)
+        model = CrossEncoder(sas_model_name_or_path, device=device)
         grid = []
         for preds, labels in zip(predictions, gold_labels):
             for p in preds:
                 for l in labels:
                     grid.append((p, l))
             lengths.append((len(preds), len(labels)))
-        scores = model.predict(grid)
+        scores = model.predict(grid, batch_size=batch_size)
 
         current_position = 0
         for len_p, len_l in lengths:
@@ -439,7 +446,7 @@ def semantic_answer_similarity(
             current_position += len_p * len_l
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
-        model = SentenceTransformer(sas_model_name_or_path)
+        model = SentenceTransformer(sas_model_name_or_path, device=device)
         all_texts: List[str] = []
         for p, l in zip(predictions, gold_labels):  # type: ignore
             # TODO potentially exclude (near) exact matches from computations
@@ -447,7 +454,7 @@ def semantic_answer_similarity(
             all_texts.extend(l)
             lengths.append((len(p), len(l)))
         # then compute embeddings
-        embeddings = model.encode(all_texts)
+        embeddings = model.encode(all_texts, batch_size=batch_size)
 
         # then select which embeddings will be used for similarity computations
         current_position = 0

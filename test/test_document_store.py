@@ -19,7 +19,7 @@ from .conftest import (
 )
 from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.utils import es_index_to_document_store
+from haystack.document_stores.utils import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -1711,7 +1711,7 @@ def test_elasticsearch_search_field_mapping():
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_brownfield_support(document_store_with_docs):
     new_document_store = InMemoryDocumentStore()
-    new_document_store = es_index_to_document_store(
+    new_document_store = elasticsearch_index_to_document_store(
         document_store=new_document_store,
         original_index_name="haystack_test",
         original_content_field="content",
@@ -1733,7 +1733,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert original_content == transferred_content
 
     # Test transferring docs with PreProcessor
-    new_document_store = es_index_to_document_store(
+    new_document_store = elasticsearch_index_to_document_store(
         document_store=new_document_store,
         original_index_name="haystack_test",
         original_content_field="content",
