@@ -10,6 +10,7 @@ from fastapi import APIRouter
 
 import haystack
 from haystack.pipelines.base import Pipeline
+from haystack.telemetry import send_event_if_public_demo
 from rest_api.config import PIPELINE_YAML_PATH, QUERY_PIPELINE_NAME
 from rest_api.config import LOG_LEVEL, CONCURRENT_REQUEST_PER_WORKER
 from rest_api.schema import QueryRequest, QueryResponse
@@ -65,6 +66,7 @@ def query(request: QueryRequest):
         return result
 
 
+@send_event_if_public_demo
 def _process_request(pipeline, request) -> Dict[str, Any]:
     start_time = time.time()
 

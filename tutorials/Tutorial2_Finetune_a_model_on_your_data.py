@@ -8,11 +8,9 @@
 # This tutorial shows you how to fine-tune a pretrained model on your own dataset.
 
 from haystack.nodes import FARMReader
-from haystack.utils import augment_squad
+from haystack.utils import augment_squad, fetch_archive_from_http
 
 from pathlib import Path
-
-import os
 
 
 def tutorial2_finetune_a_model_on_your_data():
@@ -68,16 +66,18 @@ def distil():
     # To get the most out of model distillation, we recommend increasing the size of your training data by using data augmentation.
     # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/master/haystack/utils/augment_squad.py):
 
+    doc_dir = "data/tutorial2"
     # Downloading smaller glove vector file (only for demonstration purposes)
-    os.system("wget https://nlp.stanford.edu/data/glove.6B.zip")
-    os.system("unzip glove.6B.zip")
+    glove_url = "https://nlp.stanford.edu/data/glove.6B.zip"
+    fetch_archive_from_http(url=glove_url, output_dir=doc_dir)
 
     # Downloading very small dataset to make tutorial faster (please use a bigger dataset in real use cases)
-    os.system("wget https://raw.githubusercontent.com/deepset-ai/haystack/master/test/samples/squad/small.json")
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/squad_small.json.zip"
+    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
-    # Just replace dataset.json with the name of your dataset and adjust the output path
+    # Just replace squad_small.json with the name of your dataset and adjust the output path
     augment_squad.main(
-        squad_path=Path("dataset.json"),
+        squad_path=Path("squad_small.json"),
         output_path=Path("augmented_dataset.json"),
         multiplication_factor=2,
         glove_path=Path("glove.6B.300d.txt"),

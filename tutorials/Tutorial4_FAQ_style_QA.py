@@ -1,7 +1,7 @@
 from haystack.document_stores import ElasticsearchDocumentStore
 
 from haystack.nodes import EmbeddingRetriever
-from haystack.utils import launch_es, print_answers
+from haystack.utils import launch_es, print_answers, fetch_archive_from_http
 import pandas as pd
 import requests
 import logging
@@ -53,8 +53,9 @@ def tutorial4_faq_style_qa():
 
     # Download a csv containing some FAQ data
     # Here: Some question-answer pairs related to COVID-19
-    temp = requests.get("https://raw.githubusercontent.com/deepset-ai/COVID-QA/master/data/faqs/faq_covidbert.csv")
-    open("small_faq_covid.csv", "wb").write(temp.content)
+    doc_dir = "data/tutorial4"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/small_faq_covid.csv.zip"
+    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Get dataframe with columns "question", "answer" and some custom metadata
     df = pd.read_csv("small_faq_covid.csv")
