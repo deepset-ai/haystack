@@ -474,6 +474,16 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index = index or self.index
         super().delete_documents(index=index, filters=filters, ids=ids)
 
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        utility.drop_collection(collection_name=index)
+        super().delete_index(index)
+
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,

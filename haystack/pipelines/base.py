@@ -702,6 +702,7 @@ class Pipeline(BasePipeline):
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
         top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+        keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
         """
         Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
@@ -714,6 +715,9 @@ class Pipeline(BasePipeline):
         :param dataset: The BEIR dataset to use.
         :param dataset_dir: The directory to store the dataset to.
         :param top_k_values: The top_k values each metric will be calculated for.
+        :param keep_index: Whether to keep the index after evaluation.
+                           If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+                           Defaults to False.
 
         Returns a tuple containing the ncdg, map, recall and precision scores.
         Each metric is represented by a dictionary containing the scores for each top_k value.
@@ -730,18 +734,19 @@ class Pipeline(BasePipeline):
         logger.info(f"Dataset downloaded here: {data_path}")
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
 
-        # use dedicated index
-        index = f"beir_{dataset}"
-        index_params["index"] = index
-        query_params["index"] = index
-
         # clean index before eval
         document_store = index_pipeline.get_document_store()
         if document_store is not None:
-            if hasattr(document_store, "delete_index"):
-                document_store.delete_index(index=index)  # type: ignore
-            else:
-                document_store.delete_documents(index=index)
+            if document_store.get_document_count() > 0:
+                raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+
+            if hasattr(document_store, "search_fields"):
+                search_fields = getattr(document_store, "search_fields")
+                if "name" not in search_fields:
+                    logger.warning(
+                        "Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. "
+                        "Please set search_fields appropriately."
+                    )
 
         haystack_retriever = _HaystackBeirRetrieverAdapter(
             index_pipeline=index_pipeline,
@@ -755,11 +760,9 @@ class Pipeline(BasePipeline):
         results = retriever.retrieve(corpus, queries)
 
         # Clean up document store
-        if document_store is not None:
-            if hasattr(document_store, "delete_index"):
-                document_store.delete_index(index=index)  # type: ignore
-            else:
-                document_store.delete_documents(index=index)
+        if not keep_index and document_store is not None and document_store.index is not None:
+            logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+            document_store.delete_index(document_store.index)
 
         # Evaluate your retrieval using NDCG@k, MAP@K ...
         logger.info(f"Retriever evaluation for k in: {retriever.k_values}")
@@ -1666,15 +1669,6 @@ class _HaystackBeirRetrieverAdapter:
                     f.write(doc["text"])
                 file_paths.append(file_path)
                 metas.append({"id": id, "name": doc.get("title", None)})
-
-            document_store = self.index_pipeline.get_document_store()
-            if hasattr(document_store, "search_fields"):
-                search_fields = getattr(document_store, "search_fields")
-                if "name" not in search_fields:
-                    logger.warning(
-                        "Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. "
-                        "Please set search_fields appropriately."
-                    )
 
             logger.info(f"indexing {len(corpus)} documents...")
             self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)

@@ -525,6 +525,16 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         super().delete_documents(index=index, ids=ids, filters=filters)
 
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        del self.faiss_indexes[index]
+        super().delete_index(index)
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,

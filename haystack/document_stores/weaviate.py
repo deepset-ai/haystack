@@ -1146,6 +1146,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
             for doc in docs_to_delete:
                 self.weaviate_client.data_object.delete(doc.id)
 
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        self.weaviate_client.schema.delete_class(index)
+
     def delete_labels(self):
         """
         Implemented to respect BaseDocumentStore's contract.
