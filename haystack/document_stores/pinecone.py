@@ -646,7 +646,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         if self.similarity == "cosine":
             self.normalize_embedding(query_emb)
 
-        res = self.pinecone_indexes[index].query(query_emb.tolist(), top_k=top_k, include_values=True, filter=filters)
+        res = self.pinecone_indexes[index].query(query_emb.tolist(), top_k=top_k, include_values=False, filter=filters)
 
         score_matrix = []
         vector_id_matrix = []
