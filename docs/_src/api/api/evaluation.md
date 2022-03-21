@@ -123,7 +123,7 @@ Print the evaluation results
 #### semantic\_answer\_similarity
 
 ```python
-def semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2") -> Tuple[List[float], List[float]]
+def semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2", batch_size: int = 32, use_gpu: bool = True) -> Tuple[List[float], List[float]]
 ```
 
 Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
@@ -137,6 +137,9 @@ Returns per QA pair a) the similarity of the most likely prediction (top 1) to a
 - `gold_labels`: Labels as list of multiple possible answers per question
 - `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model, should be path or string
 pointing to downloadable models.
+- `batch_size`: Number of prediction label pairs to encode at once.
+- `use_gpu`: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+Falls back to CPU if no GPU is available.
 
 **Returns**:
 
