@@ -2,6 +2,8 @@ import logging
 import mlflow
 from requests.exceptions import ConnectionError
 
+from haystack.modeling.utils import flatten_dict
+
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +82,7 @@ class MLFlowLogger(BaseMLLogger):
     def log_metrics(cls, metrics, step):
         if not cls.disable_logging:
             try:
+                metrics = flatten_dict(metrics)
                 mlflow.log_metrics(metrics, step=step)
             except ConnectionError:
                 logger.warning(f"ConnectionError in logging metrics to MLFlow.")
@@ -90,6 +93,7 @@ class MLFlowLogger(BaseMLLogger):
     def log_params(cls, params):
         if not cls.disable_logging:
             try:
+                params = flatten_dict(params)
                 mlflow.log_params(params)
             except ConnectionError:
                 logger.warning("ConnectionError in logging params to MLFlow")

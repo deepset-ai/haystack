@@ -1,5 +1,5 @@
 from __future__ import annotations
-from os import pipe
+import tempfile
 from typing import Dict, List, Optional, Any, Set
 
 import copy
@@ -12,14 +12,11 @@ import pandas as pd
 from pathlib import Path
 import networkx as nx
 from abc import ABC, abstractmethod
-from jsonschema import Draft7Validator
-from jsonschema.exceptions import ValidationError
-from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
-from transformers import pipelines
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
+from haystack.modeling.logger import MLFlowLogger
 from haystack.nodes.evaluator.evaluator import (
     calculate_em_str_multi,
     calculate_f1_str_multi,
@@ -30,7 +27,6 @@ from haystack.pipelines.config import (
     get_component_definitions,
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
-    validate_config_strings,
     validate_config,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
@@ -44,7 +40,7 @@ except:
     serve = None  # type: ignore
 
 from haystack import __version__
-from haystack.schema import EvaluationResult, MultiLabel, Document
+from haystack.schema import EvaluationDataset, EvaluationResult, MultiLabel, Document
 from haystack.errors import PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
@@ -692,6 +688,57 @@ class Pipeline(BasePipeline):
         return node_output
 
     @send_event
+    def run_eval_experiment(
+        self,
+        dataset: EvaluationDataset,
+        params: Optional[dict] = None,
+        sas_model_name_or_path: str = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
+        add_isolated_node_eval: bool = False,
+        experiment_name: str = None,
+        experiment_run_name: str = None,
+        experiment_tracking_uri: str = None,
+    ) -> EvaluationResult:
+        metrics_logger = MLFlowLogger(tracking_uri=experiment_tracking_uri)
+        metrics_logger.init_experiment(experiment_name=experiment_name, run_name=experiment_run_name)
+        metrics_logger.log_params(
+            {
+                "dataset_name": dataset.name,
+                "dataset_hash": hash(dataset),
+                "params": params,
+                "add_isolated_node_eval": add_isolated_node_eval,
+                "sas_model_name_or_path": sas_model_name_or_path,
+                "sas_batch_size": sas_batch_size,
+                "sas_use_gpu": sas_use_gpu,
+                "type": "offline/evaluation",
+            }
+        )
+
+        eval_result = self.eval(
+            labels=dataset.labels,
+            params=params,
+            sas_model_name_or_path=sas_model_name_or_path,
+            sas_batch_size=sas_batch_size,
+            sas_use_gpu=sas_use_gpu,
+            add_isolated_node_eval=add_isolated_node_eval,
+        )
+
+        integrated_metrics = eval_result.calculate_metrics()
+        metrics = {"integrated": integrated_metrics}
+        if add_isolated_node_eval:
+            isolated_metrics = eval_result.calculate_metrics(eval_mode="isolated")
+            metrics["isolated"] = isolated_metrics
+        metrics_logger.log_metrics(metrics, step=0)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            eval_result.save(out_dir=temp_dir)
+            metrics_logger.log_artifacts(temp_dir, artifact_path="eval_result")
+
+        metrics_logger.end_run()
+        return eval_result
+
+    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
@@ -768,8 +815,11 @@ class Pipeline(BasePipeline):
                     gold_labels = df["gold_answers"].values
                     predictions = [[a] for a in df["answer"].values]
                     sas, _ = semantic_answer_similarity(
-                        predictions=predictions, gold_labels=gold_labels, sas_model_name_or_path=sas_model_name_or_path,
-                        batch_size=sas_batch_size, use_gpu=sas_use_gpu
+                        predictions=predictions,
+                        gold_labels=gold_labels,
+                        sas_model_name_or_path=sas_model_name_or_path,
+                        batch_size=sas_batch_size,
+                        use_gpu=sas_use_gpu,
                     )
                     df["sas"] = sas
 

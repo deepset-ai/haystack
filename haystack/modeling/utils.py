@@ -115,6 +115,16 @@ def try_get(keys, dictionary):
     return None
 
 
+def flatten_dict(dict_to_flatten: dict, prefix: str = ""):
+    flat_dict = dict()
+    for k, v in dict_to_flatten.items():
+        if isinstance(v, dict):
+            flat_dict.update(flatten_dict(v, k + "_"))
+        else:
+            flat_dict[prefix + k] = v
+    return flat_dict
+
+
 # DDP utils
 def all_reduce(tensor, group=None):
     if group is None:
@@ -152,8 +162,8 @@ def all_gather_list(data, group=None, max_size=16384):
     buffer.zero_()
     cpu_buffer = all_gather_list._cpu_buffer
 
-    assert enc_size < 256**SIZE_STORAGE_BYTES, "Encoded object size should be less than {} bytes".format(
-        256**SIZE_STORAGE_BYTES
+    assert enc_size < 256 ** SIZE_STORAGE_BYTES, "Encoded object size should be less than {} bytes".format(
+        256 ** SIZE_STORAGE_BYTES
     )
 
     size_bytes = enc_size.to_bytes(SIZE_STORAGE_BYTES, byteorder="big")
