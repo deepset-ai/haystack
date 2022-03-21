@@ -32,8 +32,8 @@ def tutorial6_better_retrieval_via_dpr():
 
     # ## Preprocessing of documents
     # Let's first get some documents that we want to query
-    doc_dir = "data/article_txt_got"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
+    doc_dir = "data/tutorial6"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt6.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # convert files to dicts containing documents that can be indexed to our datastore
