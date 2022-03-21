@@ -1154,8 +1154,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :return: None
         """
         if index == self.index:
-            logger.warning(f"Deletion of default index '{index}' detected. "
-                           f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects.")
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
         self.weaviate_client.schema.delete_class(index)
 
     def delete_labels(self):

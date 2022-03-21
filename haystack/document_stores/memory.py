@@ -751,8 +751,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :return: None
         """
         if index == self.index:
-            logger.warning(f"Deletion of default index '{index}' detected. "
-                           f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects.")
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
         del self.indexes[index]
 
     def delete_labels(

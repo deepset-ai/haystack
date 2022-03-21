@@ -440,7 +440,7 @@ then be found in the dict returned by this method under the key "_debug"
 
 ```python
 @classmethod
-def eval_beir(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict = {}, query_params: dict = {}, dataset: str = "scifact", dataset_dir: Path = Path("."), top_k_values: List[int] = [1, 3, 5, 10, 100, 1000]) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]
+def eval_beir(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict = {}, query_params: dict = {}, dataset: str = "scifact", dataset_dir: Path = Path("."), top_k_values: List[int] = [1, 3, 5, 10, 100, 1000], keep_index: bool = False) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]
 ```
 
 Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
@@ -456,6 +456,10 @@ See https://github.com/beir-cellar/beir for more information.
 - `dataset`: The BEIR dataset to use.
 - `dataset_dir`: The directory to store the dataset to.
 - `top_k_values`: The top_k values each metric will be calculated for.
+- `keep_index`: Whether to keep the index after evaluation.
+If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+                   Defaults to False.
+
 Returns a tuple containing the ncdg, map, recall and precision scores.
 Each metric is represented by a dictionary containing the scores for each top_k value.
 
@@ -876,7 +880,7 @@ class _HaystackBeirRetrieverAdapter()
 def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict)
 ```
 
-Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on a Haystack Pipelines.
+Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
 
 This has nothing to do with Haystack's retriever classes.
 See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
