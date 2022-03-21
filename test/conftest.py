@@ -8,6 +8,7 @@ import gc
 import uuid
 import logging
 from pathlib import Path
+import os
 
 import pinecone
 import responses
