@@ -54,7 +54,7 @@ class DensePassageRetriever(BaseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[torch.device]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
@@ -114,7 +114,7 @@ class DensePassageRetriever(BaseRetriever):
         super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
@@ -551,7 +551,7 @@ class TableTextRetriever(BaseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[torch.device]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
@@ -1081,7 +1081,7 @@ class EmbeddingRetriever(BaseRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[torch.device]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """

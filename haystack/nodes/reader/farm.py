@@ -777,7 +777,7 @@ class FARMReader(BaseReader):
 
         return result
 
-    def eval_on_file(self, data_dir: Union[Path, str], test_filename: str, device: Optional[torch.device] = None):
+    def eval_on_file(self, data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None):
         """
         Performs evaluation on a SQuAD-formatted file.
         Returns a dict containing the following metrics:
@@ -792,6 +792,9 @@ class FARMReader(BaseReader):
         """
         if device is None:
             device = self.devices[0]
+        else:
+            device = torch.device(device)
+
         eval_processor = SquadProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
             max_seq_len=self.inferencer.processor.max_seq_len,
@@ -820,7 +823,7 @@ class FARMReader(BaseReader):
     def eval(
         self,
         document_store: BaseDocumentStore,
-        device: Optional[torch.device] = None,
+        device: Optional[Union[str, torch.device]] = None,
         label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold-label",
@@ -843,6 +846,9 @@ class FARMReader(BaseReader):
         """
         if device is None:
             device = self.devices[0]
+        else:
+            device = torch.device(device)
+
         if self.top_k_per_candidate != 4:
             logger.info(
                 f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
@@ -1011,7 +1017,7 @@ class FARMReader(BaseReader):
     def calibrate_confidence_scores(
         self,
         document_store: BaseDocumentStore,
-        device: Optional[torch.device] = None,
+        device: Optional[Union[str, torch.device]] = None,
         label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold_label",

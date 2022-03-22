@@ -41,7 +41,7 @@ class SentenceTransformersRanker(BaseRanker):
         model_version: Optional[str] = None,
         top_k: int = 10,
         use_gpu: bool = True,
-        devices: Optional[List[torch.device]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -51,7 +51,7 @@ class SentenceTransformersRanker(BaseRanker):
         :param top_k: The maximum number of documents to return
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-                        These strings will be converted into pytorch devices, so use the string notation described here:
+                        The strings will be converted into pytorch devices, so use the string notation described here:
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]).
         """

@@ -18,7 +18,7 @@ Arguments:
     replace_probability: Probability of replacing a word with a different word.
     glove_path: Path to the GloVe vectors. If it does not exist, it will be downloaded.
     batch_size: Batch size for MLM model.
-    device: Device to use for MLM model. Usually either torch.device("cpu:0") or torch.device("cuda:0").
+    device: Device to use for MLM model. Usually either "cpu:0" or "cuda:0".
     tokenizer: Huggingface tokenizer identifier.
     model: Huggingface MLM model identifier.
 """
@@ -218,7 +218,7 @@ def augment_squad(
     multiplication_factor: int = 20,
     word_possibilities: int = 20,
     replace_probability: float = 0.4,
-    device: torch.device = torch.device("cpu:0"),
+    device: str = "cpu:0",
     batch_size: int = 16,
 ):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
@@ -286,7 +286,7 @@ if __name__ == "__main__":
     parser.add_argument("--replace_probability", type=float, default=0.4, help="Probability of replacing a word")
     parser.add_argument("--glove_path", type=Path, default="glove.txt", help="Path to the glove file")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for forward pass")
-    parser.add_argument("--device", type=torch.device, default="cuda:0", help="Device to use")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device to use")
     parser.add_argument(
         "--model", type=str, default="bert-base-uncased", help="Huggingface model identifier for MLM model"
     )
