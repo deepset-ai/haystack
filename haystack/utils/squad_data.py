@@ -5,6 +5,7 @@ import json
 import random
 import pandas as pd
 from tqdm import tqdm
+import mmh3
 
 from haystack.schema import Document, Label
 from haystack.modeling.data_handler.processor import _read_squad_file
@@ -109,9 +110,10 @@ class SquadData:
         """Convert a list of SQuAD document dictionaries into a pandas dataframe (each row is one annotation)"""
         flat = []
         for document in data:
-            title = document["title"]
+            title = document.get("title", "")
             for paragraph in document["paragraphs"]:
                 context = paragraph["context"]
+                document_id = paragraph.get("document_id", "{:02x}".format(mmh3.hash128(str(context), signed=False)))
                 for question in paragraph["qas"]:
                     q = question["question"]
                     id = question["id"]
@@ -127,6 +129,7 @@ class SquadData:
                                 "answer_text": "",
                                 "answer_start": None,
                                 "is_impossible": is_impossible,
+                                "document_id": document_id,
                             }
                         )
                     # For span answer samples
@@ -143,6 +146,7 @@ class SquadData:
                                     "answer_text": answer_text,
                                     "answer_start": answer_start,
                                     "is_impossible": is_impossible,
+                                    "document_id": document_id,
                                 }
                             )
         df = pd.DataFrame.from_records(flat)
