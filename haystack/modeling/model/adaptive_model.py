@@ -16,7 +16,7 @@ import haystack.modeling.conversion.transformers as conv
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.modeling.logger import ExperimentTracker as ExperimentTracker
 
 
 logger = logging.getLogger(__name__)
@@ -450,7 +450,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             "lm_output_types": ",".join(self.lm_output_types),
         }
         try:
-            MlLogger.log_params(params)
+            ExperimentTracker.log_params(params)
         except Exception as e:
             logger.warning(f"ML logging didn't work: {e}")
 

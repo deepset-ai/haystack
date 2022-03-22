@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.modeling.logger import ExperimentTracker
 from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
 
@@ -500,7 +500,7 @@ class DataSilo:
                 logger.info("Average passage length after clipping:          {}".format(ave_len[1]))
                 logger.info("Proportion passages clipped:                    {}".format(clipped[1]))
 
-        MlLogger.log_params(
+        ExperimentTracker.log_params(
             {
                 "n_samples_train": self.counts["train"],
                 "n_samples_dev": self.counts["dev"],

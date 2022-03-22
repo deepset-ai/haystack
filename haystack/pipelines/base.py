@@ -19,7 +19,7 @@ from transformers import pipelines
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-from haystack.modeling.logger import MLFlowLogger
+from haystack.modeling.logger import ExperimentTracker, MLFlowExperimentTracker
 from haystack.nodes.evaluator.evaluator import (
     calculate_em_str_multi,
     calculate_f1_str_multi,
@@ -781,14 +781,15 @@ class Pipeline(BasePipeline):
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
     ) -> EvaluationResult:
-        metrics_logger = MLFlowLogger(tracking_uri=experiment_tracking_uri)
-        metrics_logger.init_experiment(
+        mlflow_tracker = MLFlowExperimentTracker(tracking_uri=experiment_tracking_uri)
+        ExperimentTracker.set_tracker(mlflow_tracker)
+        ExperimentTracker.init_experiment(
             experiment_name=experiment_name, run_name=experiment_run_name, tags={experiment_name: "True"}
         )
         document_store = self.get_document_store()
         if document_store is None:
             raise HaystackError("Pipeline does not contain a document store.")
-        metrics_logger.log_params(
+        ExperimentTracker.log_params(
             {
                 "dataset_name": dataset.name,
                 "dataset_hash": hash(dataset),
@@ -819,17 +820,17 @@ class Pipeline(BasePipeline):
         if add_isolated_node_eval:
             isolated_metrics = eval_result.calculate_metrics(eval_mode="isolated")
             metrics["isolated"] = isolated_metrics
-        metrics_logger.log_metrics(metrics, step=0)
+        ExperimentTracker.log_metrics(metrics, step=0)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             eval_result_dir = Path(temp_dir) / "eval_result"
             eval_result_dir.mkdir(exist_ok=True)
             eval_result.save(out_dir=eval_result_dir)
-            metrics_logger.log_artifacts(eval_result_dir, artifact_path="eval_result")
+            ExperimentTracker.log_artifacts(eval_result_dir, artifact_path="eval_result")
             self.save_to_yaml(path=Path(temp_dir) / "pipeline.yaml")
-            metrics_logger.log_artifacts(temp_dir)
+            ExperimentTracker.log_artifacts(temp_dir)
 
-        metrics_logger.end_run()
+        ExperimentTracker.end_run()
         return eval_result
 
     @send_event

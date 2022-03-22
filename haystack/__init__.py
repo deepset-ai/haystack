@@ -101,7 +101,7 @@ except ImportError:
     pass
 
 from haystack.modeling.evaluation import eval
-from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogger
+from haystack.modeling.logger import MLFlowExperimentTracker, StdoutExperimentTracker, ExperimentTracker, NoExperimentTracker
 from haystack.nodes.other import JoinDocuments, Docs2Answers, JoinAnswers, RouteDocuments
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.file_classifier import FileTypeClassifier
@@ -175,9 +175,10 @@ if graph_retriever:
 # Adding them to sys.modules would enable `import haystack.pipelines.JoinDocuments`,
 # which I believe it's a very rare import style.
 setattr(file_converter, "FileTypeClassifier", FileTypeClassifier)
-setattr(modeling_utils, "MLFlowLogger", MLFlowLogger)
-setattr(modeling_utils, "StdoutLogger", StdoutLogger)
-setattr(modeling_utils, "TensorBoardLogger", TensorBoardLogger)
+setattr(modeling_utils, "MLFlowLogger", MLFlowExperimentTracker)
+setattr(modeling_utils, "StdoutLogger", StdoutExperimentTracker)
+setattr(modeling_utils, "ExperimentTracker", ExperimentTracker)
+setattr(modeling_utils, "NoExperimentTracker", NoExperimentTracker)
 setattr(pipelines, "JoinDocuments", JoinDocuments)
 setattr(pipelines, "Docs2Answers", Docs2Answers)
 setattr(pipelines, "SklearnQueryClassifier", SklearnQueryClassifier)

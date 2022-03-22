@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.modeling.logger import ExperimentTracker
 from haystack.modeling.visual import BUSH_SEP
 
 
@@ -147,11 +147,11 @@ class Evaluator:
         for head_num, head in enumerate(results):
             logger.info("\n _________ {} _________".format(head["task_name"]))
             for metric_name, metric_val in head.items():
-                # log with ML framework (e.g. Mlflow)
+                # log with experiment tracking framework (e.g. Mlflow)
                 if logging:
                     if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
                         if isinstance(metric_val, numbers.Number):
-                            MlLogger.log_metrics(
+                            ExperimentTracker.log_metrics(
                                 metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val}, step=steps
                             )
                 # print via standard python logger
