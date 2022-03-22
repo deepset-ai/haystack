@@ -58,7 +58,7 @@ def tutorial4_faq_style_qa():
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Get dataframe with columns "question", "answer" and some custom metadata
-    df = pd.read_csv("small_faq_covid.csv")
+    df = pd.read_csv(f"{doc_dir}/small_faq_covid.csv")
     # Minimal cleaning
     df.fillna(value="", inplace=True)
     df["question"] = df["question"].apply(lambda x: x.strip())
