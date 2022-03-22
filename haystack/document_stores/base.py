@@ -350,21 +350,21 @@ class BaseDocumentStore(BaseComponent):
 
         # Single vec
         if len(emb.shape) == 1:
-            self.normalize_embedding_1D(emb)
+            self._normalize_embedding_1D(emb)
         # 2D matrix
         else:
-            self.normalize_embedding_2D(emb)
+            self._normalize_embedding_2D(emb)
 
     @staticmethod
     @njit  # (fastmath=True)
-    def normalize_embedding_1D(emb: np.ndarray) -> None:
+    def _normalize_embedding_1D(emb: np.ndarray) -> None:
         norm = np.sqrt(emb.dot(emb))  # faster than np.linalg.norm()
         if norm != 0.0:
             emb /= norm
 
     @staticmethod
     @njit  # (fastmath=True)
-    def normalize_embedding_2D(emb: np.ndarray) -> None:
+    def _normalize_embedding_2D(emb: np.ndarray) -> None:
         for vec in emb:
             vec = np.ascontiguousarray(vec)
             norm = np.sqrt(vec.dot(vec))
