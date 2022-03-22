@@ -19,7 +19,7 @@ logging.basicConfig(
 logging.getLogger("haystack").setLevel(logging.INFO)
 
 from haystack import pipelines
-from haystack.schema import Document, Answer, Label, MultiLabel, Span
+from haystack.schema import Document, Answer, Label, MultiLabel, Span, EvaluationDataset, EvaluationResult
 from haystack.nodes import BaseComponent
 from haystack.pipelines import Pipeline
 

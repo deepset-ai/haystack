@@ -119,7 +119,7 @@ def flatten_dict(dict_to_flatten: dict, prefix: str = ""):
     flat_dict = dict()
     for k, v in dict_to_flatten.items():
         if isinstance(v, dict):
-            flat_dict.update(flatten_dict(v, k + "_"))
+            flat_dict.update(flatten_dict(v, prefix + k + "_"))
         else:
             flat_dict[prefix + k] = v
     return flat_dict

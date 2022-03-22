@@ -74,8 +74,6 @@ class Inferencer:
         :return: An instance of the Inferencer.
 
         """
-        MLFlowLogger.disable()
-
         # Init device and distributed settings
         self.devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
 

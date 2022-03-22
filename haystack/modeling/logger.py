@@ -1,4 +1,6 @@
 import logging
+from pathlib import Path
+from typing import Any, Dict, Union
 import mlflow
 from requests.exceptions import ConnectionError
 
@@ -65,12 +67,14 @@ class MLFlowLogger(BaseMLLogger):
     Logger for MLFlow experiment tracking.
     """
 
-    def init_experiment(self, experiment_name, run_name=None, nested=True):
+    def init_experiment(
+        self, experiment_name: str, run_name: str = None, nested: bool = True, tags: Dict[str, Any] = None
+    ):
         if not self.disable_logging:
             try:
                 mlflow.set_tracking_uri(self.tracking_uri)
                 mlflow.set_experiment(experiment_name)
-                mlflow.start_run(run_name=run_name, nested=nested)
+                mlflow.start_run(run_name=run_name, nested=nested, tags=tags)
             except ConnectionError:
                 raise Exception(
                     f"MLFlow cannot connect to the remote server at {self.tracking_uri}.\n"
@@ -79,7 +83,7 @@ class MLFlowLogger(BaseMLLogger):
                 )
 
     @classmethod
-    def log_metrics(cls, metrics, step):
+    def log_metrics(cls, metrics: Dict[str, Any], step: int):
         if not cls.disable_logging:
             try:
                 metrics = flatten_dict(metrics)
@@ -90,7 +94,7 @@ class MLFlowLogger(BaseMLLogger):
                 logger.warning(f"Failed to log metrics: {e}")
 
     @classmethod
-    def log_params(cls, params):
+    def log_params(cls, params: Dict[str, Any]):
         if not cls.disable_logging:
             try:
                 params = flatten_dict(params)
@@ -101,7 +105,7 @@ class MLFlowLogger(BaseMLLogger):
                 logger.warning(f"Failed to log params: {e}")
 
     @classmethod
-    def log_artifacts(cls, dir_path, artifact_path=None):
+    def log_artifacts(cls, dir_path: Union[str, Path], artifact_path: str = None):
         if not cls.disable_logging:
             try:
                 mlflow.log_artifacts(dir_path, artifact_path)

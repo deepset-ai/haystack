@@ -772,28 +772,35 @@ class Pipeline(BasePipeline):
     def run_eval_experiment(
         self,
         dataset: EvaluationDataset,
+        experiment_name: str,
+        experiment_run_name: str,
+        experiment_tracking_uri: str,
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
-        experiment_name: str = None,
-        experiment_run_name: str = None,
-        experiment_tracking_uri: str = None,
     ) -> EvaluationResult:
         metrics_logger = MLFlowLogger(tracking_uri=experiment_tracking_uri)
-        metrics_logger.init_experiment(experiment_name=experiment_name, run_name=experiment_run_name)
+        metrics_logger.init_experiment(
+            experiment_name=experiment_name, run_name=experiment_run_name, tags={experiment_name: "True"}
+        )
+        document_store = self.get_document_store()
+        if document_store is None:
+            raise HaystackError("Pipeline does not contain a document store.")
         metrics_logger.log_params(
             {
                 "dataset_name": dataset.name,
                 "dataset_hash": hash(dataset),
-                "params": params,
-                "add_isolated_node_eval": add_isolated_node_eval,
+                "dataset_labels": len(dataset),
                 "sas_model_name_or_path": sas_model_name_or_path,
                 "sas_batch_size": sas_batch_size,
                 "sas_use_gpu": sas_use_gpu,
+                "pipeline_params": params,
+                "pipeline_name": document_store.index,  # TODO: revise
+                "pipeline_index": document_store.index,
+                "pipeline_index_documents": document_store.get_document_count(),
                 "type": "offline/evaluation",
-                "pipeline_yaml": yaml.dump(self.get_config()),
                 "environment": get_or_create_env_meta_data(),
             }
         )
@@ -816,9 +823,10 @@ class Pipeline(BasePipeline):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             eval_result_dir = Path(temp_dir) / "eval_result"
+            eval_result_dir.mkdir(exist_ok=True)
             eval_result.save(out_dir=eval_result_dir)
             metrics_logger.log_artifacts(eval_result_dir, artifact_path="eval_result")
-            self.save_to_yaml(path=Path(temp_dir))
+            self.save_to_yaml(path=Path(temp_dir)/"pipeline.yaml")
             metrics_logger.log_artifacts(temp_dir)
 
         metrics_logger.end_run()
