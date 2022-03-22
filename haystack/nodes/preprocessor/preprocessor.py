@@ -10,7 +10,7 @@ from more_itertools import windowed
 from tqdm import tqdm
 
 from haystack.nodes.preprocessor import BasePreProcessor
-from haystack import Document
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)

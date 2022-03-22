@@ -12,7 +12,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "preprocessing", ie)
 
 from haystack.nodes.file_converter import BaseConverter
-from haystack import Document
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)

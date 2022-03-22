@@ -5,7 +5,7 @@ from pathlib import Path
 import docx
 
 from haystack.nodes.file_converter import BaseConverter
-from haystack import Document
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)

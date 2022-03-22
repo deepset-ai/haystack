@@ -5,7 +5,7 @@ from pathlib import Path
 import langdetect
 
 from haystack.nodes.base import BaseComponent
-from haystack import Document
+from haystack.schema import Document
 
 
 class BaseConverter(BaseComponent):

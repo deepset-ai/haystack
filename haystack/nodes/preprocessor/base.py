@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional, Union
 
 from abc import abstractmethod
 from haystack.nodes.base import BaseComponent
-from haystack import Document
+from haystack.schema import Document
 
 
 class BasePreProcessor(BaseComponent):

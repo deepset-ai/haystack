@@ -10,7 +10,7 @@ from azure.core.credentials import AzureKeyCredential
 import pandas as pd
 
 from haystack.nodes.file_converter import BaseConverter
-from haystack import Document
+from haystack.schema import Document
 
 logger = logging.getLogger(__name__)
 

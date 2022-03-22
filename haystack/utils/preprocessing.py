@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from haystack.nodes.file_converter import BaseConverter, DocxToTextConverter, PDFToTextConverter, TextConverter
-from haystack import Document
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)

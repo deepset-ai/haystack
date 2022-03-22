@@ -3,7 +3,7 @@ from typing import List, Optional, Any, Dict
 import logging
 from pathlib import Path
 from haystack.nodes.file_converter import BaseConverter
-from haystack import Document
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
