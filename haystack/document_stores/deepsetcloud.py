@@ -451,7 +451,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :return: list of evaluation set names
         """
-        return self.evaluation_set_client.list_all_names()
+        return self.evaluation_set_client.get_evaluation_set_names()
 
     def get_all_labels(
         self,
