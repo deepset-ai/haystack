@@ -19,7 +19,7 @@ from transformers import pipelines
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-from haystack.modeling.logger import ExperimentTracker, MLFlowExperimentTracker
+from haystack.utils.experiment_tracking import ExperimentTracker, MLFlowExperimentTracker
 from haystack.nodes.evaluator.evaluator import (
     calculate_em_str_multi,
     calculate_f1_str_multi,

@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.logger import ExperimentTracker
+from haystack.utils.experiment_tracking import ExperimentTracker
 from haystack.modeling.visual import BUSH_SEP
 
 

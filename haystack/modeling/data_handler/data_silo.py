@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.logger import ExperimentTracker
+from haystack.utils.experiment_tracking import ExperimentTracker
 from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
 

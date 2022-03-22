@@ -5,10 +5,18 @@ from typing import Any, Dict, Union
 import mlflow
 from requests.exceptions import ConnectionError
 
-from haystack.modeling.utils import flatten_dict
-
 
 logger = logging.getLogger(__name__)
+
+
+def flatten_dict(dict_to_flatten: dict, prefix: str = ""):
+    flat_dict = dict()
+    for k, v in dict_to_flatten.items():
+        if isinstance(v, dict):
+            flat_dict.update(flatten_dict(v, prefix + k + "_"))
+        else:
+            flat_dict[prefix + k] = v
+    return flat_dict
 
 
 class BaseExperimentTracker(ABC):
@@ -19,9 +27,11 @@ class BaseExperimentTracker(ABC):
     """
 
     @abstractmethod
-    def init_experiment(self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False):
+    def init_experiment(
+        self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+    ):
         raise NotImplementedError()
-    
+
     @abstractmethod
     def log_metrics(self, metrics: Dict[str, Any], step: int):
         raise NotImplementedError()
@@ -40,7 +50,9 @@ class BaseExperimentTracker(ABC):
 
 
 class NoExperimentTracker(BaseExperimentTracker):
-    def init_experiment(self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False):
+    def init_experiment(
+        self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+    ):
         pass
 
     def log_metrics(self, metrics: Dict[str, Any], step: int):
@@ -60,10 +72,13 @@ class ExperimentTracker:
     """
     Facade for tracking experiments.
     """
+
     tracker: BaseExperimentTracker = NoExperimentTracker()
 
     @classmethod
-    def init_experiment(cls, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False):
+    def init_experiment(
+        cls, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+    ):
         cls.tracker.init_experiment(experiment_name=experiment_name, run_name=run_name, tags=tags, nested=nested)
 
     @classmethod
@@ -91,7 +106,9 @@ class StdoutExperimentTracker(BaseExperimentTracker):
     """Minimal logger printing metrics and params to stdout.
     Useful for services like AWS SageMaker, where you parse metrics from the actual logs"""
 
-    def init_experiment(self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False):
+    def init_experiment(
+        self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+    ):
         logger.info(f"\n **** Starting experiment '{experiment_name}' (Run: {run_name})  ****")
 
     def log_metrics(self, metrics: Dict[str, Any], step: int):
@@ -111,6 +128,7 @@ class MLFlowExperimentTracker(BaseExperimentTracker):
     """
     Logger for MLFlow experiment tracking.
     """
+
     def __init__(self, tracking_uri: str) -> None:
         super().__init__()
         self.tracking_uri = tracking_uri

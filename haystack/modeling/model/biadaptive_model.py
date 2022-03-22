@@ -9,7 +9,7 @@ from pathlib import Path
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead, TextSimilarityHead
-from haystack.modeling.logger import ExperimentTracker
+from haystack.utils.experiment_tracking import ExperimentTracker
 
 
 logger = logging.getLogger(__name__)

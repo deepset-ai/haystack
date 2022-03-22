@@ -115,16 +115,6 @@ def try_get(keys, dictionary):
     return None
 
 
-def flatten_dict(dict_to_flatten: dict, prefix: str = ""):
-    flat_dict = dict()
-    for k, v in dict_to_flatten.items():
-        if isinstance(v, dict):
-            flat_dict.update(flatten_dict(v, prefix + k + "_"))
-        else:
-            flat_dict[prefix + k] = v
-    return flat_dict
-
-
 # DDP utils
 def all_reduce(tensor, group=None):
     if group is None:

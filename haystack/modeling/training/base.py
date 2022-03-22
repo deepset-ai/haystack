@@ -20,7 +20,7 @@ from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
-from haystack.modeling.logger import ExperimentTracker
+from haystack.utils.experiment_tracking import ExperimentTracker
 
 try:
     from apex import amp
@@ -378,9 +378,13 @@ class Trainer:
         loss = self.adjust_loss(loss)
         if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0]:
             if self.local_rank in [-1, 0]:
-                ExperimentTracker.log_metrics({"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step)
+                ExperimentTracker.log_metrics(
+                    {"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step
+                )
                 if self.log_learning_rate:
-                    ExperimentTracker.log_metrics({"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step)
+                    ExperimentTracker.log_metrics(
+                        {"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step
+                    )
         if self.use_amp:
             with amp.scale_loss(loss, self.optimizer) as scaled_loss:
                 scaled_loss.backward()
