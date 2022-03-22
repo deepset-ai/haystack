@@ -459,9 +459,29 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
+        """
+        Returns a list of labels for the given index name.
+
+        :param index: Optional name of index where the documents will search for labels.
+                      If None, the DocumentStore's default index (self.index) will be used.
+        :filters: Not supported.
+        :param headers: Not supported.
+
+        :return: list of Labels.
+        """
         return self.evaluation_set_client.get_labels(index=index)
 
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
+        """
+        Counts the number of labels for the given index and returns the value.
+
+        :param index: Optional name of index for which the labels should be counted.
+                      If None, the DocumentStore's default index (self.index) will be used.
+        :param headers: Not supported.
+
+
+        :return: number of labels for the given index
+        """
         raise self.evaluation_set_client.get_labels_count(index=index)
 
     def write_labels(

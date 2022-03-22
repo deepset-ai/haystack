@@ -651,6 +651,15 @@ class EvaluationSetClient:
         self.index = index
 
     def get_labels(self, index: str, workspace: Optional[str] = None) -> List[Label]:
+        """
+        Searches for labels for a given index in deepset cloud. Returns a list of all found labels.
+
+        :param index: name of the index for which labels should be fetched
+        :param workspace: Optional workspace in Deepset Cloud
+                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+
+        :return: list of Label
+        """
         evaluation_set = self._get_evaluation_set(index=index, workspace=workspace)[0]
 
         labels = self._get_labels_from_evaluation_set(
@@ -677,10 +686,28 @@ class EvaluationSetClient:
         ]
 
     def get_labels_count(self, index: Optional[str] = None, workspace: Optional[str] = None) -> int:
+        """
+        Counts labels for a given index in deepset cloud.
+
+        :param index: Optional index in Deepset Cloud
+                      If None, the EvaluationSetClient's default index (self.index) will be used.
+        :param workspace: Optional workspace in Deepset Cloud
+                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+
+        :return: Number of labels for the given (or defaulting) index
+        """
         evaluation_set = self._get_evaluation_set(index=index, workspace=workspace)
         return evaluation_set[0]["total_labels"]
 
     def get_evaluation_set_names(self, workspace: Optional[str] = None):
+        """
+        Searches for all evaluation set names in the given workspace in Deepset Cloud.
+
+        :param workspace: Optional workspace in Deepset Cloud
+                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+
+        :return: list of Label
+        """
         evaluation_sets_response = self._get_evaluation_set(index=None, workspace=workspace)
 
         return [eval_set["name"] for eval_set in evaluation_sets_response]
