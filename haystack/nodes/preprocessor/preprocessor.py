@@ -262,8 +262,8 @@ class PreProcessor(BasePreProcessor):
 
         if isinstance(document, dict):
             document = Document.from_dict(document, id_hash_keys=id_hash_keys)
-
         assert isinstance(document, Document)
+
         if not split_by:
             return [document]
 
@@ -273,10 +273,6 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary and split_by != "word":
             raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
 
-        if isinstance(document, dict):
-            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
-
-        assert isinstance(document, Document)
         text = document.content
 
         if split_respect_sentence_boundary and split_by == "word":
@@ -347,7 +343,7 @@ class PreProcessor(BasePreProcessor):
         # create new document dicts for each text split
         documents = []
         for i, txt in enumerate(text_splits):
-            doc = Document(content=txt, content_type="text", meta=document.meta, id_hash_keys=id_hash_keys)
+            doc = Document(content=txt, content_type="text", meta=deepcopy(document.meta), id_hash_keys=id_hash_keys)
             if doc.meta is None:
                 doc.meta = {}
             doc.meta["_split_id"] = i

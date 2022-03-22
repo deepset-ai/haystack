@@ -4,6 +4,7 @@ from re import search
 
 import pytest
 from haystack.nodes.connector import Crawler
+from haystack.schema import Document
 
 
 def test_crawler_url_none_exception(tmp_path):
@@ -114,9 +115,9 @@ def test_crawler_return_document(tmp_path):
 
     for json_file, document in zip(docs_path, documents):
         assert isinstance(json_file, Path)
-        assert isinstance(document, dict)
+        assert isinstance(document, Document)
 
         with open(json_file.absolute(), "r") as read_file:
             file_content = json.load(read_file)
-            assert file_content["meta"] == document["meta"]
-            assert file_content["content"] == document["content"]
+            assert file_content["meta"] == document.meta
+            assert file_content["content"] == document.content

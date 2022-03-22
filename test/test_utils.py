@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-from haystack.utils.preprocessing import convert_files_to_dicts, tika_convert_files_to_dicts
+from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.augment_squad import augment_squad
 from haystack.utils.squad_data import SquadData
@@ -31,7 +31,7 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
 
 
 def test_convert_files_to_dicts():
-    documents = convert_files_to_dicts(
+    documents = convert_files_to_docs(
         dir_path=(SAMPLES_PATH).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
     )
     assert documents and len(documents) > 0
@@ -39,7 +39,7 @@ def test_convert_files_to_dicts():
 
 @pytest.mark.tika
 def test_tika_convert_files_to_dicts():
-    documents = tika_convert_files_to_dicts(dir_path=SAMPLES_PATH, clean_func=clean_wiki_text, split_paragraphs=True)
+    documents = tika_convert_files_to_docs(dir_path=SAMPLES_PATH, clean_func=clean_wiki_text, split_paragraphs=True)
     assert documents and len(documents) > 0
 
 

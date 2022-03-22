@@ -46,8 +46,8 @@ def test_preprocess_word_split():
     documents = preprocessor.process(document)
     for i, doc in enumerate(documents):
         if i == 0:
-            assert len(doc["content"].split(" ")) == 14
-        assert len(doc["content"].split(" ")) <= 15 or doc["content"].startswith("This is to trick")
+            assert len(doc.content.split(" ")) == 14
+        assert len(doc.content.split(" ")) <= 15 or doc.content.startswith("This is to trick")
     assert len(documents) == 8
 
     preprocessor = PreProcessor(
@@ -87,8 +87,8 @@ def test_clean_header_footer():
 
     assert len(documents) == 1
 
-    assert "This is a header." not in documents[0]["content"]
-    assert "footer" not in documents[0]["content"]
+    assert "This is a header." not in documents[0].content
+    assert "footer" not in documents[0].content
 
 
 def test_remove_substrings():
@@ -104,8 +104,8 @@ def test_remove_substrings():
     preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki", "🪲"])
     documents = preprocessor.process(document)
 
-    assert "This is a header." not in documents[0]["content"]
-    assert "wiki" not in documents[0]["content"]
-    assert "🪲" not in documents[0]["content"]
-    assert "whitespace" in documents[0]["content"]
-    assert "✨" in documents[0]["content"]
+    assert "This is a header." not in documents[0].content
+    assert "wiki" not in documents[0].content
+    assert "🪲" not in documents[0].content
+    assert "whitespace" in documents[0].content
+    assert "✨" in documents[0].content
