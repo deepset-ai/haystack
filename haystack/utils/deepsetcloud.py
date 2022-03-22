@@ -680,7 +680,7 @@ class EvaluationSetClient:
         evaluation_set = self._get_evaluation_set(index=index, workspace=workspace)
         return evaluation_set[0]["total_labels"]
 
-    def list_all_names(self, workspace: Optional[str] = None):
+    def get_evaluation_set_names(self, workspace: Optional[str] = None):
         evaluation_sets_response = self._get_evaluation_set(index=None, workspace=workspace)
 
         return [eval_set["name"] for eval_set in evaluation_sets_response]

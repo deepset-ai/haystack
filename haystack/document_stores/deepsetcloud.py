@@ -445,6 +445,14 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         raise NotImplementedError("DeepsetCloudDocumentStore currently does not support writing documents.")
 
+    def get_evaluation_set_names(self) -> List[str]:
+        """
+        Returns a list of names for uploaded evaluation sets to deepset cloud.
+
+        :return: list of evaluation set names
+        """
+        return self.evaluation_set_client.list_all_names()
+
     def get_all_labels(
         self,
         index: Optional[str] = None,
