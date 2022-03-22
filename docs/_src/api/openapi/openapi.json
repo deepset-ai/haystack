@@ -615,13 +615,6 @@
                         "items": {
                             "type": "number"
                         }
-                    },
-                    "id_hash_keys": {
-                        "title": "Id Hash Keys",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
                     }
                 }
             },
