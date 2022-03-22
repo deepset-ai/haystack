@@ -39,13 +39,13 @@ def eval_data_from_json(
         if "title" not in data["data"][0]:
             logger.warning(f"No title information found for documents in QA file: {filename}")
 
-        for document in data["data"]:
+        for squad_document in data["data"]:
             if max_docs:
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
-                document, preprocessor, open_domain
+                squad_document, preprocessor, open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -87,9 +87,9 @@ def eval_data_from_jsonl(
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
-            document_dict = json.loads(document)
+            squad_document = json.loads(document)
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
-                document_dict, preprocessor, open_domain
+                squad_document, preprocessor, open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -155,9 +155,9 @@ def _extract_docs_and_labels_from_dict(
             splits: List[Document] = []
             offset = 0
             for d in splits_dicts:
-                id = f"{d['id']}-{d['meta']['_split_id']}"
-                d["meta"]["_split_offset"] = offset
-                offset += len(d["content"])
+                id = f"{d.id}-{d.meta['_split_id']}"
+                d.meta["_split_offset"] = offset
+                offset += len(d.content)
                 # offset correction based on splitting method
                 if preprocessor.split_by == "word":
                     offset += 1
@@ -165,7 +165,7 @@ def _extract_docs_and_labels_from_dict(
                     offset += 2
                 else:
                     raise NotImplementedError
-                mydoc = Document(content=d["content"], id=id, meta=d["meta"])
+                mydoc = Document(content=d.content, id=id, meta=d.meta)
                 splits.append(mydoc)
         else:
             splits = [cur_full_doc]
@@ -473,7 +473,7 @@ def elasticsearch_index_to_document_store(
         query["query"]["bool"]["filter"] = filters
     records = scan(client=es_client, query=query, index=original_index_name)
     number_of_records = es_client.count(index=original_index_name, body=query)["count"]
-    haystack_documents: List[Dict] = []
+    haystack_documents: List[Document] = []
     for idx, record in enumerate(tqdm(records, total=number_of_records, desc="Converting ES Records")):
         # Write batch_size number of documents to haystack DocumentStore
         if (idx + 1) % batch_size == 0:
@@ -483,25 +483,25 @@ def elasticsearch_index_to_document_store(
         # Get content and metadata of current record
         content = record["_source"].pop(original_content_field, "")
         if content:
-            record_doc = {"content": content, "meta": {}}
+            record_doc = Document(content=content, meta={})
 
             if original_name_field is not None:
                 if original_name_field in record["_source"]:
-                    record_doc["meta"]["name"] = record["_source"].pop(original_name_field)
+                    record_doc.meta["name"] = record["_source"].pop(original_name_field)
             # Only add selected metadata fields
             if included_metadata_fields is not None:
                 for metadata_field in included_metadata_fields:
                     if metadata_field in record["_source"]:
-                        record_doc["meta"][metadata_field] = record["_source"][metadata_field]
+                        record_doc.meta[metadata_field] = record["_source"][metadata_field]
             # Add all metadata fields except for those in excluded_metadata_fields
             else:
                 if excluded_metadata_fields is not None:
                     for metadata_field in excluded_metadata_fields:
                         record["_source"].pop(metadata_field, None)
-                record_doc["meta"].update(record["_source"])
+                record_doc.meta.update(record["_source"])
 
             if store_original_ids:
-                record_doc["meta"]["_original_es_id"] = record["_id"]
+                record_doc.meta["_original_es_id"] = record["_id"]
 
             # Apply preprocessor if provided
             preprocessed_docs = preprocessor.process(record_doc) if preprocessor is not None else [record_doc]
