@@ -108,7 +108,7 @@ class PreProcessor(BasePreProcessor):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
-        id_hash_keys: Optional[List[str]] = None
+        id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
 
         """
@@ -178,7 +178,7 @@ class PreProcessor(BasePreProcessor):
             clean_header_footer=clean_header_footer,
             clean_empty_lines=clean_empty_lines,
             remove_substrings=remove_substrings,
-            id_hash_keys=id_hash_keys
+            id_hash_keys=id_hash_keys,
         )
         split_documents = self.split(
             document=cleaned_document,
@@ -186,14 +186,16 @@ class PreProcessor(BasePreProcessor):
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
-            id_hash_keys=id_hash_keys
+            id_hash_keys=id_hash_keys,
         )
         return split_documents
 
-    def _process_batch(self, documents: List[Union[dict, Document]], id_hash_keys: Optional[List[str]] = None,
-                       **kwargs) -> List[Document]:
-        nested_docs = [self._process_single(d, id_hash_keys=id_hash_keys, **kwargs)
-                       for d in tqdm(documents, unit="docs")]
+    def _process_batch(
+        self, documents: List[Union[dict, Document]], id_hash_keys: Optional[List[str]] = None, **kwargs
+    ) -> List[Document]:
+        nested_docs = [
+            self._process_single(d, id_hash_keys=id_hash_keys, **kwargs) for d in tqdm(documents, unit="docs")
+        ]
         return [d for x in nested_docs for d in x]
 
     def clean(

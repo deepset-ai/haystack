@@ -153,8 +153,9 @@ class ParsrConverter(BaseConverter):
                             text += f"{current_paragraph}\n\n"
 
                     elif element["type"] == "table":
-                        table = self._convert_table_element(element, parsr_output["pages"], page_idx, elem_idx, meta,
-                                                            id_hash_keys)
+                        table = self._convert_table_element(
+                            element, parsr_output["pages"], page_idx, elem_idx, meta, id_hash_keys
+                        )
                         tables.append(table)
 
         if valid_languages:

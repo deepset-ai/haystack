@@ -164,13 +164,15 @@ class Crawler(BaseComponent):
                         )
                     )
                 for url, extracted_sublink in sub_links.items():
-                    file_paths += self._write_to_files(extracted_sublink, output_dir=output_dir, base_url=url,
-                                                       id_hash_keys=id_hash_keys)
+                    file_paths += self._write_to_files(
+                        extracted_sublink, output_dir=output_dir, base_url=url, id_hash_keys=id_hash_keys
+                    )
 
         return file_paths
 
-    def _write_to_files(self, urls: List[str], output_dir: Path, base_url: str = None,
-                        id_hash_keys: Optional[List[str]] = None) -> List[Path]:
+    def _write_to_files(
+        self, urls: List[str], output_dir: Path, base_url: str = None, id_hash_keys: Optional[List[str]] = None
+    ) -> List[Path]:
         paths = []
         for link in urls:
             logger.info(f"writing contents from `{link}`")

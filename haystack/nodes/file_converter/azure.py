@@ -140,7 +140,7 @@ class AzureConverter(BaseConverter):
         file_path: Path,
         meta: Optional[Dict[str, str]] = None,
         valid_languages: Optional[List[str]] = None,
-        id_hash_keys: Optional[List[str]] = None
+        id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
         Extract text and tables from the JSON output of Azure's Form Recognizer service.
@@ -178,7 +178,7 @@ class AzureConverter(BaseConverter):
         meta: Optional[Dict[str, str]],
         valid_languages: Optional[List[str]],
         file_path: Path,
-        id_hash_keys: Optional[List[str]] = None
+        id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         tables = self._convert_tables(result, meta, id_hash_keys)
         text = self._convert_text(result, meta, id_hash_keys)
@@ -199,8 +199,9 @@ class AzureConverter(BaseConverter):
 
         return docs
 
-    def _convert_tables(self, result: AnalyzeResult, meta: Optional[Dict[str, str]],
-                        id_hash_keys: Optional[List[str]] = None) -> List[Document]:
+    def _convert_tables(
+        self, result: AnalyzeResult, meta: Optional[Dict[str, str]], id_hash_keys: Optional[List[str]] = None
+    ) -> List[Document]:
         converted_tables = []
 
         for table in result.tables:
@@ -270,13 +271,15 @@ class AzureConverter(BaseConverter):
                 table_meta = {"preceding_context": preceding_context, "following_context": following_context}
 
             table_df = pd.DataFrame(columns=table_list[0], data=table_list[1:])
-            converted_tables.append(Document(content=table_df, content_type="table", meta=table_meta,
-                                             id_hash_keys=id_hash_keys))
+            converted_tables.append(
+                Document(content=table_df, content_type="table", meta=table_meta, id_hash_keys=id_hash_keys)
+            )
 
         return converted_tables
 
-    def _convert_text(self, result: AnalyzeResult, meta: Optional[Dict[str, str]],
-                      id_hash_keys: Optional[List[str]] = None) -> Document:
+    def _convert_text(
+        self, result: AnalyzeResult, meta: Optional[Dict[str, str]], id_hash_keys: Optional[List[str]] = None
+    ) -> Document:
         text = ""
         table_spans_by_page = defaultdict(list)
         for table in result.tables:

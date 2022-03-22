@@ -12,8 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 def convert_files_to_docs(
-    dir_path: str, clean_func: Optional[Callable] = None, split_paragraphs: bool = False,
-    encoding: Optional[str] = None, id_hash_keys: Optional[List[str]] = None
+    dir_path: str,
+    clean_func: Optional[Callable] = None,
+    split_paragraphs: bool = False,
+    encoding: Optional[str] = None,
+    id_hash_keys: Optional[List[str]] = None,
 ) -> List[Document]:
     """
     Convert all files(.txt, .pdf, .docx) in the sub-directories of the given path to Documents that can be written to a
@@ -61,8 +64,9 @@ def convert_files_to_docs(
                 encoding = "Latin1"
             logger.info("Converting {}".format(path))
             # PDFToTextConverter, TextConverter, and DocxToTextConverter return a list containing a single Document
-            document = suffix2converter[suffix].convert(file_path=path, meta=None, encoding=encoding,
-                                                        id_hash_keys=id_hash_keys)[0]
+            document = suffix2converter[suffix].convert(
+                file_path=path, meta=None, encoding=encoding, id_hash_keys=id_hash_keys
+            )[0]
             text = document.content
 
             if clean_func:
@@ -72,11 +76,13 @@ def convert_files_to_docs(
                 for para in text.split("\n\n"):
                     if not para.strip():  # skip empty paragraphs
                         continue
-                    documents.append(Document(content=para, content_type="text", meta={"name": path.name},
-                                              id_hash_keys=id_hash_keys))
+                    documents.append(
+                        Document(content=para, content_type="text", meta={"name": path.name}, id_hash_keys=id_hash_keys)
+                    )
             else:
-                documents.append(Document(content=text, content_type="text", meta={"name": path.name},
-                                          id_hash_keys=id_hash_keys))
+                documents.append(
+                    Document(content=text, content_type="text", meta={"name": path.name}, id_hash_keys=id_hash_keys)
+                )
 
     return documents
 
@@ -166,13 +172,17 @@ def tika_convert_files_to_docs(
                             last_para += " " + para
                         else:
                             if last_para:
-                                documents.append(Document(content=last_para, content_type="text", meta=meta,
-                                                          id_hash_keys=id_hash_keys))
+                                documents.append(
+                                    Document(
+                                        content=last_para, content_type="text", meta=meta, id_hash_keys=id_hash_keys
+                                    )
+                                )
                             last_para = para
                     # don't forget the last one
                     if last_para:
-                        documents.append(Document(content=last_para, content_type="text", meta=meta,
-                                                  id_hash_keys=id_hash_keys))
+                        documents.append(
+                            Document(content=last_para, content_type="text", meta=meta, id_hash_keys=id_hash_keys)
+                        )
 
         else:
             if clean_func:
