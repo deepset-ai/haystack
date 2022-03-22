@@ -261,7 +261,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
     def load(  # type: ignore
         cls,
         load_dir: Union[str, Path],
-        device: torch.device,
+        device: Union[str, torch.device],
         strict: bool = True,
         lm_name: Optional[str] = None,
         processor: Optional[Processor] = None,
@@ -283,6 +283,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                        the PredictionHead (see torch.nn.module.load_state_dict()).
         :param processor: Processor to populate prediction head with information coming from tasks.
         """
+        device = torch.device(device)
         # Language Model
         if lm_name:
             language_model = LanguageModel.load(load_dir, haystack_lm_name=lm_name)
@@ -642,13 +643,14 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         self.device = device
 
     @classmethod
-    def load(cls, load_dir: Union[str, Path], device: torch.device, **kwargs):  # type: ignore
+    def load(cls, load_dir: Union[str, Path], device: Union[str, torch.device], **kwargs):  # type: ignore
         """
         Loads an ONNXAdaptiveModel from a directory.
 
         :param load_dir: Location where the ONNXAdaptiveModel is stored.
         :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """
+        device = torch.device(device)
         load_dir = Path(load_dir)
         import onnxruntime
 
