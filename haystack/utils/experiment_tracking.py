@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def flatten_dict(dict_to_flatten: dict, prefix: str = ""):
-    flat_dict = dict()
+    flat_dict = {}
     for k, v in dict_to_flatten.items():
         if isinstance(v, dict):
             flat_dict.update(flatten_dict(v, prefix + k + "_"))

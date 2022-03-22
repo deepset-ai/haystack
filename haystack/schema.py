@@ -1055,5 +1055,6 @@ class EvaluationDataset:
     def __len__(self) -> int:
         return len(self.labels)
 
-    def __hash__(self):
-        return super().__hash__()  # todo: calculate hash to ensure same labels result in same hash
+    # todo: calculate hash to ensure same labels result in same hash
+    # def __hash__(self):
+    #     return super().__hash__()  
