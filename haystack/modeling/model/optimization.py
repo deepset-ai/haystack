@@ -162,7 +162,9 @@ def initialize_optimizer(
         schedule_opts["num_training_steps"] = num_train_optimization_steps
 
     # Log params
-    ExperimentTracker.log_params({"use_amp": use_amp, "num_train_optimization_steps": schedule_opts["num_training_steps"]})
+    ExperimentTracker.log_params(
+        {"use_amp": use_amp, "num_train_optimization_steps": schedule_opts["num_training_steps"]}
+    )
 
     # Get optimizer from pytorch, transformers or apex
     optimizer = _get_optim(model, optimizer_opts)

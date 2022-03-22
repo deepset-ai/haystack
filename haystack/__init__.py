@@ -101,7 +101,12 @@ except ImportError:
     pass
 
 from haystack.modeling.evaluation import eval
-from haystack.modeling.logger import MLFlowExperimentTracker, StdoutExperimentTracker, ExperimentTracker, NoExperimentTracker
+from haystack.modeling.logger import (
+    MLFlowExperimentTracker,
+    StdoutExperimentTracker,
+    ExperimentTracker,
+    NoExperimentTracker,
+)
 from haystack.nodes.other import JoinDocuments, Docs2Answers, JoinAnswers, RouteDocuments
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.file_classifier import FileTypeClassifier
