@@ -5,7 +5,7 @@ import os
 import time
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
-from haystack import Label, Document
+from haystack import Label, Document, Answer
 
 try:
     from typing import Literal
@@ -673,12 +673,12 @@ class EvaluationSetClient:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="user-feedback",
-                answer=label_dict["answer"],
+                answer=Answer(label_dict["answer"]),
                 id=label_dict["label_id"],
-                no_answer=True if label_dict.get("answer", None) else False,
+                no_answer=False if label_dict.get("answer", None) else True,
                 pipeline_id=None,
-                created_at=label_dict["created_at"],
-                updated_at=label_dict["updated_at"],
+                created_at=None,
+                updated_at=None,
                 meta=label_dict["meta"],
                 filters={},
             )

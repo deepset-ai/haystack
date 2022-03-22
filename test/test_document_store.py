@@ -1,3 +1,6 @@
+from typing import List
+from uuid import uuid4
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -1631,6 +1634,174 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
     )
     assert len(filtered_docs) > 0
     assert len(filtered_docs) < len(docs)
+
+
+@pytest.mark.parametrize(
+    "body, expected_count",
+    [
+        (
+            {
+                "data": [
+                    {
+                        "evaluation_set_id": uuid4(),
+                        "name": DC_TEST_INDEX,
+                        "created_at": "2022-03-22T13:40:27.535Z",
+                        "matched_labels": 2,
+                        "total_labels": 10,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+            10,
+        ),
+        (
+            {
+                "data": [
+                    {
+                        "evaluation_set_id": uuid4(),
+                        "name": DC_TEST_INDEX,
+                        "created_at": "2022-03-22T13:40:27.535Z",
+                        "matched_labels": 0,
+                        "total_labels": 0,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+            0,
+        ),
+    ],
+)
+@responses.activate
+def test_DeepsetCloudDocumentStore_count_of_labels(deepset_cloud_document_store, body: dict, expected_count: int):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=body,
+            query_params={"name": DC_TEST_INDEX},
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    count = deepset_cloud_document_store.get_labels_count()
+    assert count == expected_count
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_lists_indecies(deepset_cloud_document_store):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body={
+                "data": [
+                    {
+                        "evaluation_set_id": uuid4(),
+                        "name": DC_TEST_INDEX,
+                        "created_at": "2022-03-22T13:40:27.535Z",
+                        "matched_labels": 2,
+                        "total_labels": 10,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    names = deepset_cloud_document_store.get_evaluation_set_names()
+    assert names == [DC_TEST_INDEX]
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_lists_indecies(deepset_cloud_document_store):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body={
+                "data": [
+                    {
+                        "evaluation_set_id": uuid4(),
+                        "name": DC_TEST_INDEX,
+                        "created_at": "2022-03-22T13:40:27.535Z",
+                        "matched_labels": 2,
+                        "total_labels": 10,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    names = deepset_cloud_document_store.get_evaluation_set_names()
+    assert names == [DC_TEST_INDEX]
+
+
+@pytest.mark.parametrize(
+    "response_body, expected_result",
+    [
+        (
+            [
+                {
+                    "label_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "query": "What is berlin?",
+                    "answer": "biggest city in germany",
+                    "answer_start": 0,
+                    "answer_end": 0,
+                    "meta": {},
+                    "context": "Berlin is the biggest city in germany.",
+                    "external_file_name": "string",
+                    "file_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "state": "Label matching status",
+                    "candidates": "Candidates that were found in the label <-> file matching",
+                }
+            ],
+            [
+                Label(
+                    query="What is berlin?",
+                    document=Document(content="Berlin is the biggest city in germany."),
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    origin="user-feedback",
+                    answer=Answer("biggest city in germany"),
+                    id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    no_answer=False,
+                    pipeline_id=None,
+                    created_at=None,
+                    updated_at=None,
+                    meta={},
+                    filters={},
+                )
+            ],
+        ),
+        ([], []),
+    ],
+)
+@responses.activate
+def test_DeepsetCloudDocumentStore_lists_indecies(
+    deepset_cloud_document_store, response_body: dict, expected_result: List[Label]
+):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=response_body,
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    labels = deepset_cloud_document_store.get_all_labels(index=DC_TEST_INDEX)
+    assert labels == expected_result
 
 
 @responses.activate
