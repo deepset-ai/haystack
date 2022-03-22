@@ -20,7 +20,7 @@ from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
-from haystack.utils.experiment_tracking import ExperimentTracker
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 try:
     from apex import amp
@@ -378,11 +378,11 @@ class Trainer:
         loss = self.adjust_loss(loss)
         if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0]:
             if self.local_rank in [-1, 0]:
-                ExperimentTracker.log_metrics(
+                tracker.track_metrics(
                     {"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step
                 )
                 if self.log_learning_rate:
-                    ExperimentTracker.log_metrics(
+                    tracker.track_metrics(
                         {"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step
                     )
         if self.use_amp:
@@ -411,7 +411,7 @@ class Trainer:
 
     def log_params(self):
         params = {"epochs": self.epochs, "n_gpu": self.n_gpu, "device": self.device}
-        ExperimentTracker.log_params(params)
+        tracker.track_params(params)
 
     @classmethod
     def create_or_load_checkpoint(

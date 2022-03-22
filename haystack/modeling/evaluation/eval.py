@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.utils.experiment_tracking import ExperimentTracker
+from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.modeling.visual import BUSH_SEP
 
 
@@ -151,7 +151,7 @@ class Evaluator:
                 if logging:
                     if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
                         if isinstance(metric_val, numbers.Number):
-                            ExperimentTracker.log_metrics(
+                            tracker.track_metrics(
                                 metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val}, step=steps
                             )
                 # print via standard python logger

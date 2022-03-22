@@ -36,7 +36,7 @@ except ImportError:
 
 
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.utils.experiment_tracking import ExperimentTracker
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 
 class WrappedDataParallel(DataParallel):
@@ -162,7 +162,7 @@ def initialize_optimizer(
         schedule_opts["num_training_steps"] = num_train_optimization_steps
 
     # Log params
-    ExperimentTracker.log_params(
+    tracker.track_params(
         {"use_amp": use_amp, "num_train_optimization_steps": schedule_opts["num_training_steps"]}
     )
 
@@ -192,8 +192,8 @@ def _get_optim(model, opts: Dict):
 
     # Logging
     logger.info(f"Loading optimizer `{optimizer_name}`: '{opts}'")
-    ExperimentTracker.log_params(opts)
-    ExperimentTracker.log_params({"optimizer_name": optimizer_name})
+    tracker.track_params(opts)
+    tracker.track_params({"optimizer_name": optimizer_name})
 
     weight_decay = opts.pop("weight_decay", None)
     no_decay = opts.pop("no_decay", None)
@@ -282,15 +282,15 @@ def get_scheduler(optimizer, opts):
     # convert from warmup proportion to steps if required
     if "num_warmup_steps" in allowed_args and "num_warmup_steps" not in opts and "warmup_proportion" in opts:
         opts["num_warmup_steps"] = int(opts["warmup_proportion"] * opts["num_training_steps"])
-        ExperimentTracker.log_params({"warmup_proportion": opts["warmup_proportion"]})
+        tracker.track_params({"warmup_proportion": opts["warmup_proportion"]})
 
     # only pass args that are supported by the constructor
     constructor_opts = {k: v for k, v in opts.items() if k in allowed_args}
 
     # Logging
     logger.info(f"Loading schedule `{schedule_name}`: '{constructor_opts}'")
-    ExperimentTracker.log_params(constructor_opts)
-    ExperimentTracker.log_params({"schedule_name": schedule_name})
+    tracker.track_params(constructor_opts)
+    tracker.track_params({"schedule_name": schedule_name})
 
     scheduler = sched_constructor(optimizer, **constructor_opts)
     scheduler.opts = opts  # save the opts with the scheduler to use in load/save

@@ -20,9 +20,9 @@ from haystack.utils.export_utils import (
 from haystack.utils.squad_data import SquadData
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 from haystack.utils.experiment_tracking import (
-    ExperimentTracker,
-    NoExperimentTracker,
-    BaseExperimentTracker,
-    MLFlowExperimentTracker,
-    StdoutExperimentTracker,
+    Tracker,
+    NoTrackingHead,
+    BaseTrackingHead,
+    MLFlowTrackingHead,
+    StdoutTrackingHead,
 )

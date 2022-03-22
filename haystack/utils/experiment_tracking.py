@@ -19,7 +19,7 @@ def flatten_dict(dict_to_flatten: dict, prefix: str = ""):
     return flat_dict
 
 
-class BaseExperimentTracker(ABC):
+class BaseTrackingHead(ABC):
     """
     Base class for tracking experiments.
 
@@ -33,15 +33,15 @@ class BaseExperimentTracker(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def log_metrics(self, metrics: Dict[str, Any], step: int):
+    def track_metrics(self, metrics: Dict[str, Any], step: int):
         raise NotImplementedError()
 
     @abstractmethod
-    def log_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
         raise NotImplementedError()
 
     @abstractmethod
-    def log_params(self, params: Dict[str, Any]):
+    def track_params(self, params: Dict[str, Any]):
         raise NotImplementedError()
 
     @abstractmethod
@@ -49,31 +49,31 @@ class BaseExperimentTracker(ABC):
         raise NotImplementedError()
 
 
-class NoExperimentTracker(BaseExperimentTracker):
+class NoTrackingHead(BaseTrackingHead):
     def init_experiment(
         self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
     ):
         pass
 
-    def log_metrics(self, metrics: Dict[str, Any], step: int):
+    def track_metrics(self, metrics: Dict[str, Any], step: int):
         pass
 
-    def log_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
         pass
 
-    def log_params(self, params: Dict[str, Any]):
+    def track_params(self, params: Dict[str, Any]):
         pass
 
     def end_run(self):
         pass
 
 
-class ExperimentTracker:
+class Tracker:
     """
     Facade for tracking experiments.
     """
 
-    tracker: BaseExperimentTracker = NoExperimentTracker()
+    tracker: BaseTrackingHead = NoTrackingHead()
 
     @classmethod
     def init_experiment(
@@ -82,27 +82,27 @@ class ExperimentTracker:
         cls.tracker.init_experiment(experiment_name=experiment_name, run_name=run_name, tags=tags, nested=nested)
 
     @classmethod
-    def log_metrics(cls, metrics: Dict[str, Any], step: int):
-        cls.tracker.log_metrics(metrics=metrics, step=step)
+    def track_metrics(cls, metrics: Dict[str, Any], step: int):
+        cls.tracker.track_metrics(metrics=metrics, step=step)
 
     @classmethod
-    def log_artifacts(cls, dir_path: Union[str, Path], artifact_path: str = None):
-        cls.tracker.log_artifacts(dir_path=dir_path, artifact_path=artifact_path)
+    def track_artifacts(cls, dir_path: Union[str, Path], artifact_path: str = None):
+        cls.tracker.track_artifacts(dir_path=dir_path, artifact_path=artifact_path)
 
     @classmethod
-    def log_params(cls, params: Dict[str, Any]):
-        cls.tracker.log_params(params=params)
+    def track_params(cls, params: Dict[str, Any]):
+        cls.tracker.track_params(params=params)
 
     @classmethod
     def end_run(cls):
         cls.tracker.end_run()
 
     @classmethod
-    def set_tracker(cls, tracker: BaseExperimentTracker):
+    def set_tracking_head(cls, tracker: BaseTrackingHead):
         cls.tracker = tracker
 
 
-class StdoutExperimentTracker(BaseExperimentTracker):
+class StdoutTrackingHead(BaseTrackingHead):
     """Minimal logger printing metrics and params to stdout.
     Useful for services like AWS SageMaker, where you parse metrics from the actual logs"""
 
@@ -111,20 +111,20 @@ class StdoutExperimentTracker(BaseExperimentTracker):
     ):
         logger.info(f"\n **** Starting experiment '{experiment_name}' (Run: {run_name})  ****")
 
-    def log_metrics(self, metrics: Dict[str, Any], step: int):
+    def track_metrics(self, metrics: Dict[str, Any], step: int):
         logger.info(f"Logged metrics at step {step}: \n {metrics}")
 
-    def log_params(self, params: Dict[str, Any]):
+    def track_params(self, params: Dict[str, Any]):
         logger.info(f"Logged parameters: \n {params}")
 
-    def log_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
         logger.warning(f"Cannot log artifacts with StdoutLogger: \n {dir_path}")
 
     def end_run(self):
         logger.info(f"**** End of Experiment **** ")
 
 
-class MLFlowExperimentTracker(BaseExperimentTracker):
+class MLFlowTrackingHead(BaseTrackingHead):
     """
     Logger for MLFlow experiment tracking.
     """
@@ -147,7 +147,7 @@ class MLFlowExperimentTracker(BaseExperimentTracker):
                 f"tracking_uri to an empty string to use that."
             )
 
-    def log_metrics(self, metrics: Dict[str, Any], step: int):
+    def track_metrics(self, metrics: Dict[str, Any], step: int):
         try:
             metrics = flatten_dict(metrics)
             mlflow.log_metrics(metrics, step=step)
@@ -156,7 +156,7 @@ class MLFlowExperimentTracker(BaseExperimentTracker):
         except Exception as e:
             logger.warning(f"Failed to log metrics: {e}")
 
-    def log_params(self, params: Dict[str, Any]):
+    def track_params(self, params: Dict[str, Any]):
         try:
             params = flatten_dict(params)
             mlflow.log_params(params)
@@ -165,7 +165,7 @@ class MLFlowExperimentTracker(BaseExperimentTracker):
         except Exception as e:
             logger.warning(f"Failed to log params: {e}")
 
-    def log_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
         try:
             mlflow.log_artifacts(dir_path, artifact_path)
         except ConnectionError:
