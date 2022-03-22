@@ -516,13 +516,13 @@ class BaseDocumentStore(BaseComponent):
     def _create_document_field_map(self) -> Dict:
         pass
 
-    def run(
+    def run(  # type: ignore
         self,
         documents: List[Union[dict, Document]],
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         id_hash_keys: Optional[List[str]] = None,
-    ):  # type: ignore
+    ):
         """
         Run requests of document stores
 
