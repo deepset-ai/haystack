@@ -212,8 +212,6 @@ TODO drop params
 #### normalize\_embedding
 
 ```python
-@staticmethod
-@njit
 def normalize_embedding(emb: np.ndarray) -> None
 ```
 
