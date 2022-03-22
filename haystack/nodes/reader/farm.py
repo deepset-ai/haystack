@@ -777,7 +777,9 @@ class FARMReader(BaseReader):
 
         return result
 
-    def eval_on_file(self, data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None):
+    def eval_on_file(
+        self, data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None
+    ):
         """
         Performs evaluation on a SQuAD-formatted file.
         Returns a dict containing the following metrics:
