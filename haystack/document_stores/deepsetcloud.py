@@ -65,6 +65,10 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                 f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}"
             )
 
+        self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
+        )
+
         super().__init__()
 
     def get_all_documents(
@@ -447,10 +451,10 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        return self.evaluation_set_client.get_labels(index=index)
 
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        raise self.evaluation_set_client.get_labels_count(index=index)
 
     def write_labels(
         self,
