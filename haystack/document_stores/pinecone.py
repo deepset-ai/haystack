@@ -18,7 +18,6 @@ from haystack.errors import DocumentStoreError
 
 
 logger = logging.getLogger(__name__)
-#
 
 
 class PineconeDocumentStore(SQLDocumentStore):
