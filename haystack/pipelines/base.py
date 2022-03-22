@@ -34,7 +34,6 @@ from haystack.pipelines.config import (
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
-from haystack.utils.environment import get_or_create_env_meta_data
 
 try:
     from ray import serve
@@ -802,7 +801,6 @@ class Pipeline(BasePipeline):
                 "pipeline_index": document_store.index,
                 "pipeline_index_documents": document_store.get_document_count(),
                 "type": "offline/evaluation",
-                "environment": get_or_create_env_meta_data(),
             }
         )
 

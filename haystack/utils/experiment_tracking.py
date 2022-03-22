@@ -5,6 +5,8 @@ from typing import Any, Dict, Union
 import mlflow
 from requests.exceptions import ConnectionError
 
+from haystack.utils.environment import get_or_create_env_meta_data
+
 
 logger = logging.getLogger(__name__)
 
@@ -125,13 +127,13 @@ class StdoutTrackingHead(BaseTrackingHead):
 
 
 class MLFlowTrackingHead(BaseTrackingHead):
-    """
-    Logger for MLFlow experiment tracking.
-    """
-
-    def __init__(self, tracking_uri: str) -> None:
+    def __init__(self, tracking_uri: str, auto_track_environment: bool = True) -> None:
+        """
+        Logger for MLFlow experiment tracking.
+        """
         super().__init__()
         self.tracking_uri = tracking_uri
+        self.auto_track_environment = auto_track_environment
 
     def init_experiment(
         self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
@@ -140,6 +142,8 @@ class MLFlowTrackingHead(BaseTrackingHead):
             mlflow.set_tracking_uri(self.tracking_uri)
             mlflow.set_experiment(experiment_name)
             mlflow.start_run(run_name=run_name, nested=nested, tags=tags)
+            if self.auto_track_environment:
+                mlflow.log_params({"environment": get_or_create_env_meta_data()})
         except ConnectionError:
             raise Exception(
                 f"MLFlow cannot connect to the remote server at {self.tracking_uri}.\n"
