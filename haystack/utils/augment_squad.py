@@ -23,6 +23,7 @@ Arguments:
     model: Huggingface MLM model identifier.
 """
 
+from typing import Tuple, List, Union
 
 import torch
 from torch.nn import functional as F
@@ -37,7 +38,6 @@ import argparse
 import json
 import logging
 from tqdm import tqdm
-from typing import Tuple, List
 
 logger = logging.getLogger(__name__)
 
@@ -210,18 +210,19 @@ def augment(
 
 
 def augment_squad(
-    model: str,
-    tokenizer: str,
+    model: str: "bert-base-uncased",
+    tokenizer: str: "bert-base-uncased",
     squad_path: Path,
     output_path: Path,
     glove_path: Path = Path("glove.txt"),
     multiplication_factor: int = 20,
     word_possibilities: int = 20,
     replace_probability: float = 0.4,
-    device: str = "cpu:0",
+    device: Union[str, torch.device] = "cpu:0",
     batch_size: int = 16,
 ):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
+    device = torch.device(device)
     # loading model and tokenizer
     transformers_model = AutoModelForMaskedLM.from_pretrained(model)
     transformers_model.to(device)
