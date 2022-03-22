@@ -377,7 +377,19 @@ jobs:
         run: |
           pip install .[test]
 
+      - name: Files related to Pinecone
+        id: pinecone-files
+        uses: tj-actions/changed-files@v18.4
+        with:
+          files: |
+            **/document_stores/pinecone.py
+            **/document_stores/sql.py
+            **/document_stores/base.py
+            **/document_stores/filter_utils.py
+
       - name: Run tests
         env:
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-        run: pytest -s test/test_document_store.py test/test_pipeline.py test/test_standard_pipelines.py test/test_pipeline_extractive_qa.py --document_store_type="pinecone"
+        if: steps.pinecone-files.outputs.any_changed == 'true'
+        run: |
+          pytest -s test/test_document_store.py test/test_pipeline.py test/test_standard_pipelines.py test/test_pipeline_extractive_qa.py --document_store_type="pinecone"
