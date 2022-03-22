@@ -385,6 +385,7 @@ jobs:
             **/document_stores/pinecone.py
             **/document_stores/sql.py
             **/document_stores/base.py
+            **/document_stores/filter_utils.py
 
       - name: Run tests
         env:
