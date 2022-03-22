@@ -44,7 +44,6 @@ class Document:
     meta: Dict[str, Any]
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: Optional[List[str]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
