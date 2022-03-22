@@ -398,7 +398,7 @@ Dict containing query and answers
 #### eval\_on\_file
 
 ```python
-def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[torch.device] = None)
+def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None)
 ```
 
 Performs evaluation on a SQuAD-formatted file.
@@ -420,7 +420,7 @@ Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's dev
 #### eval
 
 ```python
-def eval(document_store: BaseDocumentStore, device: Optional[torch.device] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
+def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -445,7 +445,7 @@ Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's dev
 #### calibrate\_confidence\_scores
 
 ```python
-def calibrate_confidence_scores(document_store: BaseDocumentStore, device: Optional[torch.device] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
+def calibrate_confidence_scores(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
 ```
 
 Calibrates confidence scores on evaluation documents in the DocumentStore.
