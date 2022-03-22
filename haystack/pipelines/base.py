@@ -826,7 +826,7 @@ class Pipeline(BasePipeline):
             eval_result_dir.mkdir(exist_ok=True)
             eval_result.save(out_dir=eval_result_dir)
             metrics_logger.log_artifacts(eval_result_dir, artifact_path="eval_result")
-            self.save_to_yaml(path=Path(temp_dir)/"pipeline.yaml")
+            self.save_to_yaml(path=Path(temp_dir) / "pipeline.yaml")
             metrics_logger.log_artifacts(temp_dir)
 
         metrics_logger.end_run()
