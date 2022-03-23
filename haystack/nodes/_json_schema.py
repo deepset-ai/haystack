@@ -482,7 +482,6 @@ def update_json_schema(
             dump(latest_schema, latest_schema_path)
             logger.info(f"Schema updated in {destination_path / latest_schema_path}")
 
-
             # Update the JSON schema index too
             if update_index:
                 index = load(destination_path / index_name)
