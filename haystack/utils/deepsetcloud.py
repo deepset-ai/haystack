@@ -725,11 +725,11 @@ class EvaluationSetClient:
 
         url = self._build_workspace_url(workspace=workspace)
         evaluation_set_url = f"{url}/evaluation_sets"
-        evaluation_sets_response = self.client.get(
-            url=evaluation_set_url, query_params={"name": evaluation_set_name}
-        ).json()
 
-        return evaluation_sets_response.get("data", [])
+        for response in self.client.get_with_auto_paging(
+            url=evaluation_set_url, query_params={"name": evaluation_set_name}
+        ):
+            return response.json().get("data", [])
 
     def _get_labels_from_evaluation_set(
         self, workspace: Optional[str] = None, evaluation_set_id: Optional[str] = None
