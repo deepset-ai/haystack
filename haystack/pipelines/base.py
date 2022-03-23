@@ -782,7 +782,7 @@ class Pipeline(BasePipeline):
     ) -> EvaluationResult:
         """
         Starts an experiment run that evaluates the pipeline using pipeline.eval() by running the pipeline once per query in debug mode
-        and putting together all data that is needed for evaluation, e.g. calculating metrics. 
+        and putting together all data that is needed for evaluation, e.g. calculating metrics.
         The resulting data is collected and tracked by an experiment tracking tool (currently we only support mlflow).
 
         This method starts an experiment run. Each experiment run is part of at least one experiment.

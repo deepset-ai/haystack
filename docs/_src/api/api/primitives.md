@@ -431,3 +431,21 @@ Loads the evaluation result from disk. Expects one csv file per node. See save()
 
 - `load_dir`: The directory containing the csv files.
 
+<a id="schema.EvaluationDataset"></a>
+
+## EvaluationDataset
+
+```python
+class EvaluationDataset()
+```
+
+<a id="schema.EvaluationDataset.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(name: str, labels: List[MultiLabel]) -> None
+```
+
+Set of labels belonging together and forming a well-specified and referenceable evaluation dataset.
+

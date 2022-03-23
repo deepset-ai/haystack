@@ -55,6 +55,7 @@ class NoTrackingHead(BaseTrackingHead):
     """
     Null object implementation of a tracking head: i.e. does nothing.
     """
+
     def init_experiment(
         self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
     ):
