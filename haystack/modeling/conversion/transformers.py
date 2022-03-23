@@ -50,7 +50,7 @@ class Converter:
         model_name_or_path,
         device: Union[str, torch.device],
         revision: str = None,
-        task_type: str = 'question_answering',
+        task_type: str = "question_answering",
         processor: Processor = None,
         use_auth_token: Union[bool, str] = None,
         **kwargs,

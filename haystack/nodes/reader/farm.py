@@ -790,7 +790,7 @@ class FARMReader(BaseReader):
         :param data_dir: The directory in which the test set can be found
         :param test_filename: The name of the file containing the test data in SQuAD format.
         :param device: The device on which the tensors should be processed.
-               Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda") 
+               Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
                or use the Reader's device by default.
         """
         if device is None:
@@ -841,7 +841,7 @@ class FARMReader(BaseReader):
 
         :param document_store: DocumentStore containing the evaluation documents
         :param device: The device on which the tensors should be processed.
-                       Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda") 
+                       Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
                        or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
@@ -1031,7 +1031,7 @@ class FARMReader(BaseReader):
 
         :param document_store: DocumentStore containing the evaluation documents
         :param device: The device on which the tensors should be processed.
-                       Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda") 
+                       Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
                        or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
