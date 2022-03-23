@@ -43,7 +43,9 @@ logger = logging.getLogger(__name__)
 
 
 def load_glove(
-    glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: Union[str, torch.device] = torch.device("cpu:0")
+    glove_path: Path = Path("glove.txt"),
+    vocab_size: int = 100_000,
+    device: Union[str, torch.device] = torch.device("cpu:0"),
 ) -> Tuple[dict, dict, torch.Tensor]:
     """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
 
