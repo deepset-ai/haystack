@@ -1720,11 +1720,14 @@ def test_DeepsetCloudDocumentStore_lists_evaluation_set_names(deepset_cloud_docu
     assert names == [DC_TEST_INDEX]
 
 
-@pytest.mark.parametrize(
-    "response_body, expected_result",
-    [
-        (
-            [
+@responses.activate
+def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set(deepset_cloud_document_store):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=[
                 {
                     "label_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                     "query": "What is berlin?",
@@ -1739,43 +1742,43 @@ def test_DeepsetCloudDocumentStore_lists_evaluation_set_names(deepset_cloud_docu
                     "candidates": "Candidates that were found in the label <-> file matching",
                 }
             ],
-            [
-                Label(
-                    query="What is berlin?",
-                    document=Document(content="Berlin is the biggest city in germany."),
-                    is_correct_answer=True,
-                    is_correct_document=True,
-                    origin="user-feedback",
-                    answer=Answer("biggest city in germany"),
-                    id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    no_answer=False,
-                    pipeline_id=None,
-                    created_at=None,
-                    updated_at=None,
-                    meta={},
-                    filters={},
-                )
-            ],
-        ),
-        ([], []),
-    ],
-)
-@responses.activate
-def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set(
-    deepset_cloud_document_store, response_body: dict, expected_result: List[Label]
-):
-    if MOCK_DC:
-        responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
-            status=200,
-            body=response_body,
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
     labels = deepset_cloud_document_store.get_all_labels(evaluation_set_name=DC_TEST_INDEX)
-    assert labels == expected_result
+    assert labels == [
+        Label(
+            query="What is berlin?",
+            document=Document(content="Berlin is the biggest city in germany."),
+            is_correct_answer=True,
+            is_correct_document=True,
+            origin="user-feedback",
+            answer=Answer("biggest city in germany"),
+            id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            no_answer=False,
+            pipeline_id=None,
+            created_at=None,
+            updated_at=None,
+            meta={},
+            filters={},
+        )
+    ]
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
+    deepset_cloud_document_store,
+):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET, url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets", status=200, body=[]
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    with pytest.raises(DeepsetCloudError):
+        deepset_cloud_document_store.get_all_labels(evaluation_set_name=DC_TEST_INDEX)
 
 
 @responses.activate

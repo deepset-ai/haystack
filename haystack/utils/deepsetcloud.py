@@ -656,6 +656,7 @@ class EvaluationSetClient:
     def get_labels(self, evaluation_set_name: str, workspace: Optional[str] = None) -> List[Label]:
         """
         Searches for labels for a given evaluation set in deepset cloud. Returns a list of all found labels.
+        If no labels were found, raises DeepsetCloudError.
 
         :param evaluation_set_name: name of the evaluation set for which labels should be fetched
         :param workspace: Optional workspace in Deepset Cloud
@@ -663,7 +664,10 @@ class EvaluationSetClient:
 
         :return: list of Label
         """
-        evaluation_set = self._get_evaluation_set(evaluation_set_name=evaluation_set_name, workspace=workspace)[0]
+        try:
+            evaluation_set = self._get_evaluation_set(evaluation_set_name=evaluation_set_name, workspace=workspace)[0]
+        except IndexError:
+            raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set_name}")
 
         labels = self._get_labels_from_evaluation_set(
             workspace=workspace, evaluation_set_id=evaluation_set["evaluation_set_id"]
