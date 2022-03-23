@@ -8,4 +8,6 @@ logging.basicConfig(level=logging.INFO)
 sys.path.append(".")
 from haystack.nodes._json_schema import update_json_schema
 
-update_json_schema(update_index=True, destination_path=Path(__file__).parent.parent.parent / "haystack" / "json-schemas")
+update_json_schema(
+    update_index=True, destination_path=Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
+)
