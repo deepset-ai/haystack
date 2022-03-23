@@ -243,7 +243,7 @@ class PDFToTextOCRConverter(BaseConverter):
             for image in images:
                 temp_img = tempfile.NamedTemporaryFile(dir=os.path.dirname(os.path.realpath(__file__)), suffix=".jpeg")
                 image.save(temp_img.name)
-                pages.append(self.image_2_text.convert(temp_img.name)[0]["content"])
+                pages.append(self.image_2_text.convert(temp_img.name)[0].content)
         except Exception as exception:
             logger.error(f"File {file_path} has an error \n {exception}")
 
