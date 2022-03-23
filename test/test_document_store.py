@@ -1674,7 +1674,9 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
     ],
 )
 @responses.activate
-def test_DeepsetCloudDocumentStore_count_of_labels(deepset_cloud_document_store, body: dict, expected_count: int):
+def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
+    deepset_cloud_document_store, body: dict, expected_count: int
+):
     if MOCK_DC:
         responses.add(
             method=responses.GET,
@@ -1691,35 +1693,7 @@ def test_DeepsetCloudDocumentStore_count_of_labels(deepset_cloud_document_store,
 
 
 @responses.activate
-def test_DeepsetCloudDocumentStore_lists_indecies(deepset_cloud_document_store):
-    if MOCK_DC:
-        responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
-            status=200,
-            body={
-                "data": [
-                    {
-                        "evaluation_set_id": uuid4(),
-                        "name": DC_TEST_INDEX,
-                        "created_at": "2022-03-22T13:40:27.535Z",
-                        "matched_labels": 2,
-                        "total_labels": 10,
-                    }
-                ],
-                "has_more": False,
-                "total": 1,
-            },
-        )
-    else:
-        responses.add_passthru(DC_API_ENDPOINT)
-
-    names = deepset_cloud_document_store.get_evaluation_set_names()
-    assert names == [DC_TEST_INDEX]
-
-
-@responses.activate
-def test_DeepsetCloudDocumentStore_lists_indecies(deepset_cloud_document_store):
+def test_DeepsetCloudDocumentStore_lists_evaluation_set_names(deepset_cloud_document_store):
     if MOCK_DC:
         responses.add(
             method=responses.GET,
@@ -1787,7 +1761,7 @@ def test_DeepsetCloudDocumentStore_lists_indecies(deepset_cloud_document_store):
     ],
 )
 @responses.activate
-def test_DeepsetCloudDocumentStore_lists_indecies(
+def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set(
     deepset_cloud_document_store, response_body: dict, expected_result: List[Label]
 ):
     if MOCK_DC:
@@ -1800,7 +1774,7 @@ def test_DeepsetCloudDocumentStore_lists_indecies(
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
-    labels = deepset_cloud_document_store.get_all_labels(index=DC_TEST_INDEX)
+    labels = deepset_cloud_document_store.get_all_labels(evaluation_set_name=DC_TEST_INDEX)
     assert labels == expected_result
 
 

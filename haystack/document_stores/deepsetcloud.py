@@ -24,6 +24,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         api_endpoint: Optional[str] = None,
         similarity: str = "dot_product",
         return_embedding: bool = False,
+        evaluation_set_name: str = "default",
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -66,7 +67,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             )
 
         self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
-            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, evaluation_set_name=evaluation_set_name
         )
 
         super().__init__()
@@ -455,34 +456,35 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
     def get_all_labels(
         self,
-        index: Optional[str] = None,
+        evaluation_set_name: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """
         Returns a list of labels for the given index name.
 
-        :param index: Optional name of index where the documents will search for labels.
-                      If None, the DocumentStore's default index (self.index) will be used.
+        :param evaluation_set_name: Optional name of evaluation set for which labels should be searched.
+                      If None, the DocumentStore's default evaluation_set_name (self.evaluation_set_name) will be used.
         :filters: Not supported.
         :param headers: Not supported.
 
         :return: list of Labels.
         """
-        return self.evaluation_set_client.get_labels(index=index)
+        return self.evaluation_set_client.get_labels(evaluation_set_name=evaluation_set_name)
 
-    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
+    def get_label_count(
+        self, evaluation_set_name: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+    ) -> int:
         """
         Counts the number of labels for the given index and returns the value.
 
-        :param index: Optional name of index for which the labels should be counted.
+        :param evaluation_set_name: Optional evaluation set name for which the labels should be counted.
                       If None, the DocumentStore's default index (self.index) will be used.
         :param headers: Not supported.
 
-
         :return: number of labels for the given index
         """
-        raise self.evaluation_set_client.get_labels_count(index=index)
+        raise self.evaluation_set_client.get_labels_count(evaluation_set_name=evaluation_set_name)
 
     def write_labels(
         self,
