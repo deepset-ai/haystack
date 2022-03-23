@@ -92,7 +92,7 @@ p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 #### \_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
+def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -103,7 +103,10 @@ See https://huggingface.co/cross-encoder for full list of available models
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `top_k`: The maximum number of documents to return
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+The strings will be converted into pytorch devices, so use the string notation described here:
+https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+(e.g. ["cuda:0"]).
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
 
