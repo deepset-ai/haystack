@@ -277,7 +277,7 @@ class BaseRetriever(BaseComponent):
             document_objects = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
             embeddings = self.embed_documents(document_objects)  # type: ignore
             for doc, emb in zip(documents, embeddings):
-                doc["embedding"] = emb
+                doc.embedding = emb
         output = {"documents": documents}
         return output, "output_1"
 
