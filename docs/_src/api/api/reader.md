@@ -413,7 +413,8 @@ Returns a dict containing the following metrics:
 - `data_dir`: The directory in which the test set can be found
 - `test_filename`: The name of the file containing the test data in SQuAD format.
 - `device`: The device on which the tensors should be processed.
-Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
+Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+or use the Reader's device by default.
 
 <a id="farm.FARMReader.eval"></a>
 
@@ -434,7 +435,8 @@ Returns a dict containing the following metrics:
 
 - `document_store`: DocumentStore containing the evaluation documents
 - `device`: The device on which the tensors should be processed.
-Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
+Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+or use the Reader's device by default.
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
@@ -454,7 +456,8 @@ Calibrates confidence scores on evaluation documents in the DocumentStore.
 
 - `document_store`: DocumentStore containing the evaluation documents
 - `device`: The device on which the tensors should be processed.
-Choose from torch.device("cpu") and torch.device("cuda") or use the Reader's device by default.
+Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+or use the Reader's device by default.
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
