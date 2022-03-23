@@ -435,6 +435,7 @@ def update_json_schema(
         unstable_versions_block = [{"const": haystack_version}]
         new_schema["properties"]["version"]["oneOf"] = [{"const": haystack_version}]
         dump(new_schema, destination_path / filename)
+        logger.info(f"Schema saved in {destination_path / filename}")
 
         # Update schema index with a whole new entry
         if update_index:
@@ -479,6 +480,8 @@ def update_json_schema(
             unstable_versions_block = supported_versions_block
             latest_schema["properties"]["version"]["oneOf"] = supported_versions_block
             dump(latest_schema, latest_schema_path)
+            logger.info(f"Schema updated in {destination_path / latest_schema_path}")
+
 
             # Update the JSON schema index too
             if update_index:
@@ -492,3 +495,4 @@ def update_json_schema(
     unstable_schema["$id"] = f"{SCHEMA_URL}{unstable_filename}"
     unstable_schema["properties"]["version"]["oneOf"] = [{"const": "unstable"}] + unstable_versions_block
     dump(unstable_schema, destination_path / unstable_filename)
+    logger.info(f"Unstable schema saved in {destination_path / unstable_filename}")
