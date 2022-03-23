@@ -492,7 +492,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         model_name_or_path: Union[str, Path],
         device: torch.device,
         revision: Optional[str] = None,
-        task_type: str = 'question_answering',
+        task_type: str = "question_answering",
         processor: Optional[Processor] = None,
         use_auth_token: Optional[Union[bool, str]] = None,
         **kwargs,
