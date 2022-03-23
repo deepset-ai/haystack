@@ -1058,6 +1058,9 @@ class EvaluationResult:
 
 class EvaluationDataset:
     def __init__(self, name: str, labels: List[MultiLabel]) -> None:
+        """
+        Set of labels belonging together and forming a well-specified and referenceable evaluation dataset.
+        """
         self.name = name
         self.labels = labels
 

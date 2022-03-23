@@ -25,7 +25,7 @@ class BaseTrackingHead(ABC):
     """
     Base class for tracking experiments.
 
-    This class can be extended to implement custom logging backends like MLFlow, Tensorboard, or Sacred.
+    This class can be extended to implement custom logging backends like MLflow, WandB, or TensorBoard.
     """
 
     @abstractmethod
@@ -52,6 +52,9 @@ class BaseTrackingHead(ABC):
 
 
 class NoTrackingHead(BaseTrackingHead):
+    """
+    Null object implementation of a tracking head: i.e. does nothing.
+    """
     def init_experiment(
         self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
     ):
@@ -105,8 +108,10 @@ class Tracker:
 
 
 class StdoutTrackingHead(BaseTrackingHead):
-    """Minimal logger printing metrics and params to stdout.
-    Useful for services like AWS SageMaker, where you parse metrics from the actual logs"""
+    """
+    Experiment tracking head printing metrics and params to stdout.
+    Useful for services like AWS SageMaker, where you parse metrics from the actual logs
+    """
 
     def init_experiment(
         self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
@@ -129,7 +134,7 @@ class StdoutTrackingHead(BaseTrackingHead):
 class MLflowTrackingHead(BaseTrackingHead):
     def __init__(self, tracking_uri: str, auto_track_environment: bool = True) -> None:
         """
-        Logger for MLFlow experiment tracking.
+        Experiment tracking head for MLflow.
         """
         super().__init__()
         self.tracking_uri = tracking_uri
@@ -146,8 +151,8 @@ class MLflowTrackingHead(BaseTrackingHead):
                 mlflow.log_params({"environment": get_or_create_env_meta_data()})
         except ConnectionError:
             raise Exception(
-                f"MLFlow cannot connect to the remote server at {self.tracking_uri}.\n"
-                f"MLFlow also supports logging runs locally to files. Set the MLFlowLogger "
+                f"MLflow cannot connect to the remote server at {self.tracking_uri}.\n"
+                f"MLflow also supports logging runs locally to files. Set the MLflowTrackingHead "
                 f"tracking_uri to an empty string to use that."
             )
 
@@ -156,7 +161,7 @@ class MLflowTrackingHead(BaseTrackingHead):
             metrics = flatten_dict(metrics)
             mlflow.log_metrics(metrics, step=step)
         except ConnectionError:
-            logger.warning(f"ConnectionError in logging metrics to MLFlow.")
+            logger.warning(f"ConnectionError in logging metrics to MLflow.")
         except Exception as e:
             logger.warning(f"Failed to log metrics: {e}")
 
@@ -165,7 +170,7 @@ class MLflowTrackingHead(BaseTrackingHead):
             params = flatten_dict(params)
             mlflow.log_params(params)
         except ConnectionError:
-            logger.warning("ConnectionError in logging params to MLFlow")
+            logger.warning("ConnectionError in logging params to MLflow")
         except Exception as e:
             logger.warning(f"Failed to log params: {e}")
 
@@ -173,7 +178,7 @@ class MLflowTrackingHead(BaseTrackingHead):
         try:
             mlflow.log_artifacts(dir_path, artifact_path)
         except ConnectionError:
-            logger.warning(f"ConnectionError in logging artifacts to MLFlow")
+            logger.warning(f"ConnectionError in logging artifacts to MLflow")
         except Exception as e:
             logger.warning(f"Failed to log artifacts: {e}")
 

@@ -780,6 +780,46 @@ class Pipeline(BasePipeline):
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
     ) -> EvaluationResult:
+        """
+        Starts an experiment run that evaluates the pipeline using pipeline.eval() by running the pipeline once per query in debug mode
+        and putting together all data that is needed for evaluation, e.g. calculating metrics. 
+        The resulting data is collected and tracked by an experiment tracking tool (currently we only support mlflow).
+
+        This method starts an experiment run. Each experiment run is part of at least one experiment.
+        An experiment typically consists of multiple runs. Within the experiment tracking tool you can compare experiment runs across the experiment.
+        E.g. you can call run_eval_experiment() multiple times with different params and its respecting experiment_run_names and later on compare the results in mlflow.
+
+        :param dataset: The dataset containing the labels to evaluate on
+        :param experiment_name: The name of the experiment
+        :param experiment_run_name: The name of the experiment run
+        :param experiment_tracking_uri: The uri of the experiment tracking server to track the results to.
+        :param params: Dictionary of parameters to be dispatched to the nodes.
+                    If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                    If you want to pass it to targeted nodes, you can do:
+                    {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+        :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+                    The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                    More info in the paper: https://arxiv.org/abs/2108.06130
+                    Models:
+                    - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+                    Not all cross encoders can be used because of different return types.
+                    If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+                    - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+                    - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+                    - Large model for German only: "deepset/gbert-large-sts"
+        :param sas_batch_size: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+        :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+                            Falls back to CPU if no GPU is available.
+        :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+                    This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+                    If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+                    If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+                    The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+                    To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+                    The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+                    values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+        """
         mlflow_head = MLflowTrackingHead(tracking_uri=experiment_tracking_uri)
         tracker.set_tracking_head(mlflow_head)
         tracker.init_experiment(
