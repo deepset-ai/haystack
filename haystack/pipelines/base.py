@@ -792,14 +792,14 @@ class Pipeline(BasePipeline):
             {
                 "dataset_name": dataset.name,
                 "dataset_hash": hash(dataset),
-                "dataset_labels": len(dataset),
+                "dataset_label_count": len(dataset),
                 "sas_model_name_or_path": sas_model_name_or_path,
                 "sas_batch_size": sas_batch_size,
                 "sas_use_gpu": sas_use_gpu,
                 "pipeline_params": params,
                 "pipeline_name": document_store.index,  # TODO: revise
                 "pipeline_index": document_store.index,
-                "pipeline_index_documents": document_store.get_document_count(),
+                "pipeline_index_document_count": document_store.get_document_count(),
                 "type": "offline/evaluation",
             }
         )

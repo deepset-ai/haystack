@@ -597,6 +597,17 @@ class MultiLabel:
     def __str__(self):
         return f"<MultiLabel: {self.to_dict()}>"
 
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__) and self.labels == other.labels
+        )
+
+    def __hash__(self):
+        h = self.id
+        for label in sorted(self.labels):
+            h = h ^ hash(label)
+        return h
+
 
 def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
     """
@@ -1055,6 +1066,13 @@ class EvaluationDataset:
     def __len__(self) -> int:
         return len(self.labels)
 
-    # todo: calculate hash to ensure same labels result in same hash
-    # def __hash__(self):
-    #     return super().__hash__()
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__) and self.labels == other.labels and self.name == other.name
+        )
+
+    def __hash__(self):
+        h = hash(self.name)
+        for label in sorted(self.labels):
+            h = h ^ hash(label)
+        return h
