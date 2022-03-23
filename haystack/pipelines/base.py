@@ -501,6 +501,7 @@ class Pipeline(BasePipeline):
                     f"The '{name}' node can only input from {self.root_node}. "
                     f"Set the 'inputs' parameter to ['{self.root_node}']"
                 )
+            #edges_count = self.graph.graph.
             self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
