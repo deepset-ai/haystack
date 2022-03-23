@@ -218,7 +218,6 @@ class Document:
             and getattr(other, "score", None) == self.score
             and getattr(other, "meta", None) == self.meta
             and np.array_equal(getattr(other, "embedding", None), self.embedding)
-            and getattr(other, "id_hash_keys", None) == self.id_hash_keys
         )
 
     def __repr__(self):
