@@ -398,7 +398,7 @@ Dict containing query and answers
 #### eval\_on\_file
 
 ```python
-def eval_on_file(data_dir: str, test_filename: str, device: Optional[str] = None)
+def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None)
 ```
 
 Performs evaluation on a SQuAD-formatted file.
@@ -410,16 +410,18 @@ Returns a dict containing the following metrics:
 
 **Arguments**:
 
-- `data_dir` (`Path or str`): The directory in which the test set can be found
-- `test_filename` (`str`): The name of the file containing the test data in SQuAD format.
-- `device` (`str`): The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+- `data_dir`: The directory in which the test set can be found
+- `test_filename`: The name of the file containing the test data in SQuAD format.
+- `device`: The device on which the tensors should be processed.
+Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+or use the Reader's device by default.
 
 <a id="farm.FARMReader.eval"></a>
 
 #### eval
 
 ```python
-def eval(document_store: BaseDocumentStore, device: Optional[str] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
+def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -432,7 +434,9 @@ Returns a dict containing the following metrics:
 **Arguments**:
 
 - `document_store`: DocumentStore containing the evaluation documents
-- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+- `device`: The device on which the tensors should be processed.
+Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+or use the Reader's device by default.
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
@@ -443,7 +447,7 @@ Returns a dict containing the following metrics:
 #### calibrate\_confidence\_scores
 
 ```python
-def calibrate_confidence_scores(document_store: BaseDocumentStore, device: Optional[str] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
+def calibrate_confidence_scores(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
 ```
 
 Calibrates confidence scores on evaluation documents in the DocumentStore.
@@ -451,7 +455,9 @@ Calibrates confidence scores on evaluation documents in the DocumentStore.
 **Arguments**:
 
 - `document_store`: DocumentStore containing the evaluation documents
-- `device`: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+- `device`: The device on which the tensors should be processed.
+Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+or use the Reader's device by default.
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
