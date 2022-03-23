@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 try:
     from numba import njit  # pylint: disable=import-error
 except (ImportError, ModuleNotFoundError):
-    logger.info("Numba not found, replacing njit() with no-op implementation. " "Enable it with 'pip install numba'.")
+    logger.info("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
 
     def njit(f):
         return f
@@ -47,6 +47,7 @@ class BaseKnowledgeGraph(BaseComponent):
         output = {"sparql_result": result}
         return output, "output_1"
 
+    @abstractmethod
     def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         raise NotImplementedError
 
