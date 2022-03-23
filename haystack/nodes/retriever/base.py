@@ -276,7 +276,7 @@ class BaseRetriever(BaseComponent):
             documents = deepcopy(documents)
             document_objects = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
             embeddings = self.embed_documents(document_objects)  # type: ignore
-            for doc, emb in zip(documents, embeddings):
+            for doc, emb in zip(document_objects, embeddings):
                 doc.embedding = emb
         output = {"documents": documents}
         return output, "output_1"
