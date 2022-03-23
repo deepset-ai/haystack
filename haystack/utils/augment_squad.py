@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_glove(
-    glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: torch.device = torch.device("cpu:0")
+    glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: Union[str, torch.device] = torch.device("cpu:0")
 ) -> Tuple[dict, dict, torch.Tensor]:
     """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
 
@@ -180,8 +180,9 @@ def augment(
     word_possibilities: int = 20,
     replace_probability: float = 0.4,
     batch_size: int = 16,
-    device: torch.device = torch.device("cpu:0"),
+    device: Union[str, torch.device] = torch.device("cpu:0"),
 ) -> List[str]:
+    device = torch.device(device)
     # returns a list of different augmented versions of the text
     replacements = get_replacements(
         glove_word_id_mapping=word_id_mapping,
