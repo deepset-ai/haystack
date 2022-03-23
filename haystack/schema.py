@@ -598,9 +598,7 @@ class MultiLabel:
         return f"<MultiLabel: {self.to_dict()}>"
 
     def __eq__(self, other):
-        return (
-            isinstance(other, self.__class__) and self.labels == other.labels
-        )
+        return isinstance(other, self.__class__) and self.labels == other.labels
 
     def __hash__(self):
         h = self.id
@@ -1067,9 +1065,7 @@ class EvaluationDataset:
         return len(self.labels)
 
     def __eq__(self, other):
-        return (
-            isinstance(other, self.__class__) and self.labels == other.labels and self.name == other.name
-        )
+        return isinstance(other, self.__class__) and self.labels == other.labels and self.name == other.name
 
     def __hash__(self):
         h = hash(self.name)
