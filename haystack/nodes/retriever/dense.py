@@ -54,7 +54,7 @@ class DensePassageRetriever(BaseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
@@ -102,8 +102,11 @@ class DensePassageRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
+                        will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
@@ -111,7 +114,7 @@ class DensePassageRetriever(BaseRetriever):
         super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
@@ -193,7 +196,7 @@ class DensePassageRetriever(BaseRetriever):
             embeds_dropout_prob=0.1,
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
-            device=str(self.devices[0]),
+            device=self.devices[0],
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
@@ -548,7 +551,7 @@ class TableTextRetriever(BaseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
@@ -582,8 +585,11 @@ class TableTextRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
+                        training will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
@@ -591,7 +597,7 @@ class TableTextRetriever(BaseRetriever):
         super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
@@ -699,7 +705,7 @@ class TableTextRetriever(BaseRetriever):
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
             lm3_output_types=["per_sequence"],
-            device=str(self.devices[0]),
+            device=self.devices[0],
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
@@ -1075,7 +1081,7 @@ class EmbeddingRetriever(BaseRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
@@ -1101,8 +1107,11 @@ class EmbeddingRetriever(BaseRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
+                        training will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
@@ -1110,7 +1119,7 @@ class EmbeddingRetriever(BaseRetriever):
         super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
