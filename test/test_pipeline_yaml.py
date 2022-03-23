@@ -299,7 +299,7 @@ def test_load_yaml_custom_component_with_no_init(tmp_path):
 
 
 def test_load_yaml_custom_component_neednt_call_super(tmp_path):
-    """ This is a side-effect. Here for behavior documentation only """
+    """This is a side-effect. Here for behavior documentation only"""
 
     class CustomNode(BaseComponent):
         outgoing_edges = 1
