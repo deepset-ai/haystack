@@ -226,7 +226,7 @@ def test_query_with_no_documents_and_no_answers(client: TestClient):
     assert response_json["answers"] == []
 
 
-def  test_write_feedback(populated_client: TestClient):
+def test_write_feedback(populated_client: TestClient):
     response = populated_client.post(url="/feedback", json=FEEDBACK)
     assert 200 == response.status_code
 
