@@ -23,6 +23,6 @@ from haystack.utils.experiment_tracking import (
     Tracker,
     NoTrackingHead,
     BaseTrackingHead,
-    MLFlowTrackingHead,
+    MLflowTrackingHead,
     StdoutTrackingHead,
 )

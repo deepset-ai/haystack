@@ -126,7 +126,7 @@ class StdoutTrackingHead(BaseTrackingHead):
         logger.info(f"**** End of Experiment **** ")
 
 
-class MLFlowTrackingHead(BaseTrackingHead):
+class MLflowTrackingHead(BaseTrackingHead):
     def __init__(self, tracking_uri: str, auto_track_environment: bool = True) -> None:
         """
         Logger for MLFlow experiment tracking.

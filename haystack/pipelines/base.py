@@ -19,7 +19,7 @@ from transformers import pipelines
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-from haystack.utils.experiment_tracking import Tracker as tracker, MLFlowTrackingHead
+from haystack.utils.experiment_tracking import Tracker as tracker, MLflowTrackingHead
 from haystack.nodes.evaluator.evaluator import (
     calculate_em_str_multi,
     calculate_f1_str_multi,
@@ -780,7 +780,7 @@ class Pipeline(BasePipeline):
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
     ) -> EvaluationResult:
-        mlflow_head = MLFlowTrackingHead(tracking_uri=experiment_tracking_uri)
+        mlflow_head = MLflowTrackingHead(tracking_uri=experiment_tracking_uri)
         tracker.set_tracking_head(mlflow_head)
         tracker.init_experiment(
             experiment_name=experiment_name, run_name=experiment_run_name, tags={experiment_name: "True"}
