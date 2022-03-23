@@ -18,7 +18,6 @@ FEEDBACK = {
         "id": "fc18c987a8312e72a47fb1524f230bb0",
         "meta": {},
         "embedding": None,
-        "id_hash_keys": None,
     },
     "answer": {
         "answer": "Adobe Systems",
@@ -227,7 +226,7 @@ def test_query_with_no_documents_and_no_answers(client: TestClient):
     assert response_json["answers"] == []
 
 
-def test_write_feedback(populated_client: TestClient):
+def  test_write_feedback(populated_client: TestClient):
     response = populated_client.post(url="/feedback", json=FEEDBACK)
     assert 200 == response.status_code
 
