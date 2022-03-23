@@ -492,7 +492,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         model_name_or_path: Union[str, Path],
         device: torch.device,
         revision: Optional[str] = None,
-        task_type: Optional[str] = None,
+        task_type: str = 'question_answering',
         processor: Optional[Processor] = None,
         use_auth_token: Optional[Union[bool, str]] = None,
         **kwargs,
@@ -511,11 +511,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                               See https://huggingface.co/models for full list
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param device: On which hardware the conversion should take place. Choose from torch.device("cpu") or torch.device("cuda")
-        :param task_type: One of :
-                          - 'question_answering'
-                          More tasks coming soon ...
+        :param task_type: 'question_answering'. More tasks coming soon ...
         :param processor: Processor to populate prediction head with information coming from tasks.
-        :type processor: Processor
         :return: AdaptiveModel
         """
         return conv.Converter.convert_from_transformers(
