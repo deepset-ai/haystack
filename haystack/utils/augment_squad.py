@@ -210,11 +210,11 @@ def augment(
 
 
 def augment_squad(
-    model: str: "bert-base-uncased",
-    tokenizer: str: "bert-base-uncased",
     squad_path: Path,
     output_path: Path,
     glove_path: Path = Path("glove.txt"),
+    model: str = "bert-base-uncased",
+    tokenizer: str = "bert-base-uncased",
     multiplication_factor: int = 20,
     word_possibilities: int = 20,
     replace_probability: float = 0.4,
