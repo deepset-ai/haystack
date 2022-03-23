@@ -151,7 +151,7 @@ def test_elasticsearch_custom_query():
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store, retriever, docs):
@@ -182,7 +182,7 @@ def test_dpr_embedding(document_store, retriever, docs):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)

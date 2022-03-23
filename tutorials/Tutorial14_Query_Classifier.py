@@ -15,8 +15,8 @@ from haystack.nodes import (
 def tutorial14_query_classifier():
 
     # Download and prepare data - 517 Wikipedia articles for Game of Thrones
-    doc_dir = "data/article_txt_got"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
+    doc_dir = "data/tutorial14"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt14.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # convert files to dicts containing documents that can be indexed to our datastore

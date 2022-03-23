@@ -194,6 +194,137 @@ def test_get_config_creates_two_different_dependent_components_of_same_type():
         assert expected_component in config["components"]
 
 
+def test_get_config_reuses_same_dependent_components():
+    child = ChildComponent()
+    parent = ParentComponent(dependent=child)
+    pipeline = Pipeline()
+    pipeline.add_node(component=parent, name="parent", inputs=["Query"])
+    pipeline.add_node(component=child, name="child", inputs=["parent"])
+    config = pipeline.get_config()
+
+    expected_pipelines = [
+        {"name": "query", "nodes": [{"name": "parent", "inputs": ["Query"]}, {"name": "child", "inputs": ["parent"]}]}
+    ]
+    expected_components = [
+        {"name": "parent", "type": "ParentComponent", "params": {"dependent": "child"}},
+        {"name": "child", "type": "ChildComponent", "params": {}},
+    ]
+
+    config = pipeline.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_creates_different_components_if_instances_differ():
+    child_a = ChildComponent()
+    child_b = ChildComponent()
+    child_c = ChildComponent()
+    parent = ParentComponent(dependent=child_a)
+    parent2 = ParentComponent(dependent=child_b)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="ParentA", inputs=["Query"])
+    p_ensemble.add_node(component=parent2, name="ParentB", inputs=["Query"])
+    p_ensemble.add_node(component=child_c, name="Child", inputs=["Query"])
+
+    expected_components = [
+        {"name": "ParentA", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+        {"name": "ParentB", "type": "ParentComponent", "params": {"dependent": "ChildComponent_2"}},
+        {"name": "ChildComponent_2", "type": "ChildComponent", "params": {}},
+        {"name": "Child", "type": "ChildComponent", "params": {}},
+    ]
+
+    expected_pipelines = [
+        {
+            "name": "query",
+            "nodes": [
+                {"name": "ParentA", "inputs": ["Query"]},
+                {"name": "ParentB", "inputs": ["Query"]},
+                {"name": "Child", "inputs": ["Query"]},
+            ],
+        }
+    ]
+
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_reuses_same_unnamed_dependent_components():
+    child = ChildComponent()
+    parent = ParentComponent(dependent=child)
+    parent2 = ParentComponent(dependent=child)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="ParentA", inputs=["Query"])
+    p_ensemble.add_node(component=parent2, name="ParentB", inputs=["Query"])
+
+    expected_components = [
+        {"name": "ParentA", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+        {"name": "ParentB", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+    ]
+
+    expected_pipelines = [
+        {"name": "query", "nodes": [{"name": "ParentA", "inputs": ["Query"]}, {"name": "ParentB", "inputs": ["Query"]}]}
+    ]
+
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_multi_level_dependencies():
+    child = ChildComponent()
+    intermediate = ParentComponent(dependent=child)
+    parent = ParentComponent(dependent=intermediate)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="Parent", inputs=["Query"])
+
+    expected_components = [
+        {"name": "Parent", "type": "ParentComponent", "params": {"dependent": "ParentComponent"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+        {"name": "ParentComponent", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+    ]
+
+    expected_pipelines = [{"name": "query", "nodes": [{"name": "Parent", "inputs": ["Query"]}]}]
+
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
+def test_get_config_multi_level_dependencies_of_same_type():
+    child = ChildComponent()
+    second_intermediate = ParentComponent(dependent=child)
+    intermediate = ParentComponent(dependent=second_intermediate)
+    parent = ParentComponent(dependent=intermediate)
+    p_ensemble = Pipeline()
+    p_ensemble.add_node(component=parent, name="ParentComponent", inputs=["Query"])
+
+    expected_components = [
+        {"name": "ParentComponent_3", "type": "ParentComponent", "params": {"dependent": "ChildComponent"}},
+        {"name": "ParentComponent_2", "type": "ParentComponent", "params": {"dependent": "ParentComponent_3"}},
+        {"name": "ParentComponent", "type": "ParentComponent", "params": {"dependent": "ParentComponent_2"}},
+        {"name": "ChildComponent", "type": "ChildComponent", "params": {}},
+    ]
+
+    expected_pipelines = [{"name": "query", "nodes": [{"name": "ParentComponent", "inputs": ["Query"]}]}]
+
+    config = p_ensemble.get_config()
+    for expected_pipeline in expected_pipelines:
+        assert expected_pipeline in config["pipelines"]
+    for expected_component in expected_components:
+        assert expected_component in config["components"]
+
+
 def test_get_config_component_with_superclass_arguments():
     class CustomBaseDocumentStore(MockDocumentStore):
         def __init__(self, base_parameter: str):
@@ -387,6 +518,31 @@ def test_generate_code_is_component_order_invariant():
         pipeline_config["components"] = components
         code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=False)
         assert code == expected_code
+
+
+def test_generate_code_can_handle_weak_cyclic_pipelines():
+    config = {
+        "version": "unstable",
+        "components": [
+            {"name": "parent", "type": "ParentComponent", "params": {"dependent": "child"}},
+            {"name": "child", "type": "ChildComponent", "params": {}},
+        ],
+        "pipelines": [
+            {
+                "name": "query",
+                "nodes": [{"name": "parent", "inputs": ["Query"]}, {"name": "child", "inputs": ["parent"]}],
+            }
+        ],
+    }
+    code = generate_code(pipeline_config=config, generate_imports=False)
+    assert code == (
+        "child = ChildComponent()\n"
+        "parent = ParentComponent(dependent=child)\n"
+        "\n"
+        "pipeline = Pipeline()\n"
+        'pipeline.add_node(component=parent, name="parent", inputs=["Query"])\n'
+        'pipeline.add_node(component=child, name="child", inputs=["parent"])'
+    )
 
 
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])

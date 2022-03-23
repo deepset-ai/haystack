@@ -30,8 +30,8 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     # them in Elasticsearch.
     # Let's first get some documents that we want to query
     # Here: 517 Wikipedia articles for Game of Thrones
-    doc_dir = "data/article_txt_got"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
+    doc_dir = "data/tutorial3"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt3.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # convert files to dicts containing documents that can be indexed to our datastore

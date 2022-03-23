@@ -4,17 +4,16 @@ import pandas as pd
 from haystack import Document
 from haystack.document_stores import FAISSDocumentStore
 from haystack.nodes import RAGenerator, DensePassageRetriever
-from haystack.utils import print_answers
+from haystack.utils import print_answers, fetch_archive_from_http
 
 
 def tutorial7_rag_generator():
     # Add documents from which you want generate answers
     # Download a csv containing some sample documents data
     # Here some sample documents data
-    temp = requests.get(
-        "https://raw.githubusercontent.com/deepset-ai/haystack/master/tutorials/small_generator_dataset.csv"
-    )
-    open("small_generator_dataset.csv", "wb").write(temp.content)
+    doc_dir = "data/tutorial7/"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/small_generator_dataset.csv.zip"
+    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Get dataframe with columns "title", and "text"
     df = pd.read_csv("small_generator_dataset.csv", sep=",")
