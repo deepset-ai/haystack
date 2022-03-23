@@ -39,7 +39,10 @@ def exportable_to_yaml(init_func):
             self._component_config = {"params": {}, "type": type(self).__name__}
 
         # Make sure it runs only on the __init__of the implementations, not in superclasses
-        if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
+        # NOTE: we use 'in' because inner classes's __qualname__ will include the parent class'
+        #   name, like: ParentClass.InnerClass.__init__. 
+        #   Inner classes are heavily used in tests. 
+        if f"{self.__class__.__name__}.{init_func.__name__}" in init_func.__qualname__:
 
             # Store all the named input parameters in self._component_config
             for k, v in kwargs.items():

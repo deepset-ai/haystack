@@ -11,6 +11,7 @@ from haystack import Pipeline
 from haystack.nodes import _json_schema
 from haystack.nodes import FileTypeClassifier
 from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError
+from haystack.nodes.base import BaseComponent
 
 from .conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
 from . import conftest
@@ -274,11 +275,65 @@ def test_load_yaml_custom_component(tmp_path):
     assert pipeline.get_node("custom_node").param == 1
 
 
+def test_load_yaml_custom_component_with_no_init(tmp_path):
+    class CustomNode(MockNode):
+        pass
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomNode
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert isinstance(pipeline.get_node("custom_node"), CustomNode)
+
+
+def test_load_yaml_custom_component_neednt_call_super(tmp_path):
+    """ This is a side-effect. Here for behavior documentation only """
+
+    class CustomNode(BaseComponent):
+        outgoing_edges = 1
+
+        def __init__(self, param: int):
+            self.param = param
+
+        def run(self, *a, **k):
+            pass
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomNode
+              params:
+                param: 1
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert isinstance(pipeline.get_node("custom_node"), CustomNode)
+    assert pipeline.get_node("custom_node").param == 1
+
+
 def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
     class CustomNode(MockNode):
-        def __init__(self):
-            super().__init__()
-
         @abstractmethod
         def abstract_method(self):
             pass
@@ -792,3 +847,45 @@ def test_save_yaml_overwrite(tmp_path):
     with open(tmp_path / "saved_pipeline.yml", "r") as saved_yaml:
         content = saved_yaml.read()
         assert content != ""
+
+
+def test_save_yaml_with_custom_node_kwargs(tmp_path):
+    class CustomNode(MockNode):
+        def __init__(self, param: int):
+            super().__init__()
+            self.param = param
+
+    pipeline = Pipeline()
+    pipeline.add_node(CustomNode(param=1), name="custom_node", inputs=["Query"])
+    pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
+
+    print(pipeline.get_node("custom_node")._component_config)
+
+    with open(tmp_path / "saved_pipeline.yml", "r") as saved_yaml:
+        content = saved_yaml.read()
+
+        assert content.count("custom_node") == 2
+        assert "CustomNode" in content
+        assert "param: 1" in content
+        assert "Query" in content
+        assert f"version: {haystack.__version__}" in content
+
+
+def test_save_yaml_with_custom_node_args(tmp_path):
+    class CustomNode(MockNode):
+        def __init__(self, param: int):
+            super().__init__()
+            self.param = param
+
+    pipeline = Pipeline()
+    pipeline.add_node(CustomNode(1), name="custom_node", inputs=["Query"])
+    pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
+
+    with open(tmp_path / "saved_pipeline.yml", "r") as saved_yaml:
+        content = saved_yaml.read()
+
+        assert content.count("custom_node") == 2
+        assert "CustomNode" in content
+        assert not "param: 1" in content
+        assert "Query" in content
+        assert f"version: {haystack.__version__}" in content
