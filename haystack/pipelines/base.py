@@ -1,5 +1,4 @@
 from __future__ import annotations
-from os import pipe
 import tempfile
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
@@ -15,7 +14,6 @@ import networkx as nx
 from abc import ABC, abstractmethod
 from pandas.core.frame import DataFrame
 from tqdm import tqdm
-from transformers import pipelines
 import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
@@ -100,7 +98,14 @@ class PipelineBundle:
         return config
 
     def _merge_configs(self, query_config: Dict[str, Any], index_config: Dict[str, Any]) -> Dict[str, Any]:
-        return {**query_config, **index_config}
+        components = list({c["name"]: c for c in (index_config["components"] + query_config["components"])}.values())
+        pipelines = index_config["pipelines"] + query_config["pipelines"]
+
+        return {
+            "version": index_config["version"],
+            "components": components,
+            "pipelines": pipelines
+        }
 
 
 class BasePipeline(ABC):
@@ -792,7 +797,6 @@ class Pipeline(BasePipeline):
         ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
         return ndcg, map_, recall, precision
 
-    @send_event
     @classmethod
     def run_eval_experiment(
         cls,
@@ -806,7 +810,7 @@ class Pipeline(BasePipeline):
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
-        keep_index: bool = False,
+        reuse_index: bool = False,
     ) -> EvaluationResult:
         """
         Starts an experiment run that evaluates the pipeline bundle using pipeline.eval() by indexing the corpus and running the query pipeline once per query in debug mode
@@ -847,8 +851,8 @@ class Pipeline(BasePipeline):
                     To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
                     The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
                     values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
-        :param keep_index: Whether to keep the index after evaluation.
-                           If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+        :param reuse_index: Whether to reuse existing non-empty index and to keep the index after evaluation.
+                           If True the index will be kept after evaluation and no indexing will take place if index has already documents. Otherwise it will be deleted immediately afterwards.
                            Defaults to False.
         """
         mlflow_head = MLflowTrackingHead(tracking_uri=experiment_tracking_uri)
@@ -859,8 +863,8 @@ class Pipeline(BasePipeline):
         tracker.track_params(
             {
                 "dataset_name": dataset.name,
-                "dataset_hash": hash(dataset),
                 "dataset_label_count": len(dataset),
+                "dataset": dataset.meta,
                 "sas_model_name_or_path": sas_model_name_or_path,
                 "sas_batch_size": sas_batch_size,
                 "sas_use_gpu": sas_use_gpu,
@@ -877,14 +881,20 @@ class Pipeline(BasePipeline):
 
         # check index before eval
         document_store = pipeline_bundle.get_document_store()
-        if document_store.get_document_count() > 0:
-            raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+        document_count = document_store.get_document_count()
 
-        logger.info(f"indexing {len(corpus)} documents...")
-        pipeline_bundle.index_pipeline.run(
-            file_paths=corpus.file_paths, meta=corpus.file_metas, params=pipeline_bundle.index_params
-        )
-        logger.info(f"indexing finished.")
+        if document_count > 0:
+            if not reuse_index:
+                raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+        else:
+            logger.info(f"indexing {len(corpus)} documents...")
+            pipeline_bundle.index_pipeline.run(
+                file_paths=corpus.file_paths, meta=corpus.file_metas, params=pipeline_bundle.index_params
+            )
+            logger.info(f"indexing finished.")
+            document_count = document_store.get_document_count()
+
+        tracker.track_params({"pipeline_index_document_count": document_count})
 
         eval_result = pipeline_bundle.query_pipeline.eval(
             labels=dataset.labels,
@@ -914,7 +924,7 @@ class Pipeline(BasePipeline):
         tracker.end_run()
 
         # Clean up document store
-        if not keep_index and document_store.index is not None:
+        if not reuse_index and document_store.index is not None:
             logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
             document_store.delete_index(document_store.index)
 
