@@ -444,7 +444,7 @@ class EvaluationDataset()
 #### \_\_init\_\_
 
 ```python
-def __init__(name: str, labels: List[MultiLabel]) -> None
+def __init__(name: str, labels: List[MultiLabel], meta: Dict[str, Any] = {}) -> None
 ```
 
 Set of labels belonging together and forming a well-specified and referenceable evaluation dataset.

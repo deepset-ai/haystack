@@ -440,7 +440,7 @@ then be found in the dict returned by this method under the key "_debug"
 
 ```python
 @classmethod
-def eval_beir(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict = {}, query_params: dict = {}, dataset: str = "scifact", dataset_dir: Path = Path("."), top_k_values: List[int] = [1, 3, 5, 10, 100, 1000], keep_index: bool = False) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]
+def eval_beir(cls, pipeline_bundle: PipelineBundle, dataset: str = "scifact", dataset_dir: Path = Path("."), top_k_values: List[int] = [1, 3, 5, 10, 100, 1000], keep_index: bool = False) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]
 ```
 
 Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
@@ -469,10 +469,11 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 
 ```python
 @send_event
-def run_eval_experiment(dataset: EvaluationDataset, experiment_name: str, experiment_run_name: str, experiment_tracking_uri: str, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False) -> EvaluationResult
+@classmethod
+def run_eval_experiment(cls, pipeline_bundle: PipelineBundle, dataset: EvaluationDataset, corpus: Corpus, experiment_name: str, experiment_run_name: str, experiment_tracking_uri: str, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, keep_index: bool = False) -> EvaluationResult
 ```
 
-Starts an experiment run that evaluates the pipeline using pipeline.eval() by running the pipeline once per query in debug mode
+Starts an experiment run that evaluates the pipeline bundle using pipeline.eval() by indexing the corpus and running the query pipeline once per query in debug mode
 
 and putting together all data that is needed for evaluation, e.g. calculating metrics.
 The resulting data is collected and tracked by an experiment tracking tool (currently we only support mlflow).
@@ -513,6 +514,9 @@ The isolated evaluation calculates the upper bound of each node's evaluation met
 To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
 The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
 values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+- `keep_index`: Whether to keep the index after evaluation.
+If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+Defaults to False.
 
 <a id="base.Pipeline.eval"></a>
 
@@ -928,7 +932,7 @@ class _HaystackBeirRetrieverAdapter()
 #### \_\_init\_\_
 
 ```python
-def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict)
+def __init__(pipeline_bundle: PipelineBundle)
 ```
 
 Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
