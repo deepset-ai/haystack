@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing
 from typing import Any, Optional, Dict, List, Union, Optional
 from dataclasses import asdict
+from haystack.errors import HaystackError
 
 try:
     from typing import Literal
@@ -602,8 +603,9 @@ class MultiLabel:
 
     def __hash__(self):
         h = self.id
-        for label in sorted(self.labels):
-            h = h ^ hash(label)
+        label_hashes = sorted(hash(label) for label in self.labels)
+        for label_hash in label_hashes:
+            h = h ^ hash(label_hash)
         return h
 
 
@@ -1057,21 +1059,28 @@ class EvaluationResult:
 
 
 class EvaluationDataset:
-    def __init__(self, name: str, labels: List[MultiLabel]) -> None:
+    def __init__(self, name: str, labels: List[MultiLabel], meta: Dict[str, Any] = {}) -> None:
         """
         Set of labels belonging together and forming a well-specified and referenceable evaluation dataset.
         """
         self.name = name
         self.labels = labels
+        self.meta = meta
 
     def __len__(self) -> int:
         return len(self.labels)
 
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.labels == other.labels and self.name == other.name
 
-    def __hash__(self):
-        h = hash(self.name)
-        for label in sorted(self.labels):
-            h = h ^ hash(label)
-        return h
+class Corpus:
+    def __init__(self, name: str, file_paths: List[str], file_metas: Dict[str, Any], meta: Dict[str, Any] = {}) -> None:
+        if len(file_paths) != len(file_metas):
+            raise HaystackError("file_paths and file_metas must be of same length.")
+        self.file_paths = file_paths
+        self.file_metas = file_metas
+        self.name = name
+        self.meta = meta
+
+    def __len__(self):
+        if len(self.file_paths) != len(self.file_metas):
+            raise HaystackError("file_paths and file_metas are not of same length.")
+        return len(self.file_paths)

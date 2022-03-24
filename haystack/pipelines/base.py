@@ -43,7 +43,7 @@ except:
     serve = None  # type: ignore
 
 from haystack import __version__
-from haystack.schema import EvaluationDataset, EvaluationResult, MultiLabel, Document
+from haystack.schema import Corpus, EvaluationDataset, EvaluationResult, MultiLabel, Document
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
@@ -67,6 +67,40 @@ class RootNode(BaseComponent):
 
     def run(self, root_node: str):  # type: ignore
         return {}, "output_1"
+
+
+class PipelineBundle:
+    def __init__(
+        self,
+        name: str,
+        query_pipeline: Pipeline,
+        index_pipeline: Pipeline,
+        query_params: Dict[str, Any] = {},
+        index_params: Dict[str, Any] = {},
+        meta: Dict[str, Any] = {},
+    ) -> None:
+        self.name = name
+        self.query_pipeline = query_pipeline
+        self.index_pipeline = index_pipeline
+        self.query_params = query_params
+        self.index_params = index_params
+        self.meta = meta
+
+    def get_document_store(self) -> BaseDocumentStore:
+        index_doc_store = self.index_pipeline.get_document_store()
+        query_doc_store = self.query_pipeline.get_document_store()
+        if index_doc_store is None or index_doc_store != query_doc_store:
+            raise HaystackError("Query and index pipeline must have the same document store.")
+        return index_doc_store
+
+    def get_config(self) -> Dict[str, Any]:
+        query_config = self.query_pipeline.get_config()
+        index_config = self.index_pipeline.get_config()
+        config = self._merge_configs(query_config, index_config)
+        return config
+
+    def _merge_configs(self, query_config: Dict[str, Any], index_config: Dict[str, Any]) -> Dict[str, Any]:
+        return {**query_config, **index_config}
 
 
 class BasePipeline(ABC):
@@ -693,10 +727,7 @@ class Pipeline(BasePipeline):
     @classmethod
     def eval_beir(
         cls,
-        index_pipeline: Pipeline,
-        query_pipeline: Pipeline,
-        index_params: dict = {},
-        query_params: dict = {},
+        pipeline_bundle: PipelineBundle,
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
         top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
@@ -733,25 +764,19 @@ class Pipeline(BasePipeline):
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
 
         # check index before eval
-        document_store = index_pipeline.get_document_store()
-        if document_store is not None:
-            if document_store.get_document_count() > 0:
-                raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+        document_store = pipeline_bundle.get_document_store()
+        if document_store.get_document_count() > 0:
+            raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
 
-            if hasattr(document_store, "search_fields"):
-                search_fields = getattr(document_store, "search_fields")
-                if "name" not in search_fields:
-                    logger.warning(
-                        "Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. "
-                        "Please set search_fields appropriately."
-                    )
+        if hasattr(document_store, "search_fields"):
+            search_fields = getattr(document_store, "search_fields")
+            if "name" not in search_fields:
+                logger.warning(
+                    "Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. "
+                    "Please set search_fields appropriately."
+                )
 
-        haystack_retriever = _HaystackBeirRetrieverAdapter(
-            index_pipeline=index_pipeline,
-            query_pipeline=query_pipeline,
-            index_params=index_params,
-            query_params=query_params,
-        )
+        haystack_retriever = _HaystackBeirRetrieverAdapter(pipeline_bundle=pipeline_bundle)
         retriever = EvaluateRetrieval(haystack_retriever, k_values=top_k_values)
 
         # Retrieve results (format of results is identical to qrels)
@@ -768,20 +793,23 @@ class Pipeline(BasePipeline):
         return ndcg, map_, recall, precision
 
     @send_event
+    @classmethod
     def run_eval_experiment(
-        self,
+        cls,
+        pipeline_bundle: PipelineBundle,
         dataset: EvaluationDataset,
+        corpus: Corpus,
         experiment_name: str,
         experiment_run_name: str,
         experiment_tracking_uri: str,
-        params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
+        keep_index: bool = False,
     ) -> EvaluationResult:
         """
-        Starts an experiment run that evaluates the pipeline using pipeline.eval() by running the pipeline once per query in debug mode
+        Starts an experiment run that evaluates the pipeline bundle using pipeline.eval() by indexing the corpus and running the query pipeline once per query in debug mode
         and putting together all data that is needed for evaluation, e.g. calculating metrics.
         The resulting data is collected and tracked by an experiment tracking tool (currently we only support mlflow).
 
@@ -819,15 +847,15 @@ class Pipeline(BasePipeline):
                     To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
                     The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
                     values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+        :param keep_index: Whether to keep the index after evaluation.
+                           If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+                           Defaults to False.
         """
         mlflow_head = MLflowTrackingHead(tracking_uri=experiment_tracking_uri)
         tracker.set_tracking_head(mlflow_head)
         tracker.init_experiment(
             experiment_name=experiment_name, run_name=experiment_run_name, tags={experiment_name: "True"}
         )
-        document_store = self.get_document_store()
-        if document_store is None:
-            raise HaystackError("Pipeline does not contain a document store.")
         tracker.track_params(
             {
                 "dataset_name": dataset.name,
@@ -836,17 +864,31 @@ class Pipeline(BasePipeline):
                 "sas_model_name_or_path": sas_model_name_or_path,
                 "sas_batch_size": sas_batch_size,
                 "sas_use_gpu": sas_use_gpu,
-                "pipeline_params": params,
-                "pipeline_name": document_store.index,  # TODO: revise
-                "pipeline_index": document_store.index,
-                "pipeline_index_document_count": document_store.get_document_count(),
+                "pipeline_name": pipeline_bundle.name,
+                "pipeline_index_params": pipeline_bundle.index_params,
+                "pipeline_query_params": pipeline_bundle.query_params,
+                "pipeline": pipeline_bundle.meta,
+                "corpus_name": corpus.name,
+                "corpus_file_count": len(corpus),
+                "corpus": corpus.meta,
                 "type": "offline/evaluation",
             }
         )
 
-        eval_result = self.eval(
+        # check index before eval
+        document_store = pipeline_bundle.get_document_store()
+        if document_store.get_document_count() > 0:
+            raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+
+        logger.info(f"indexing {len(corpus)} documents...")
+        pipeline_bundle.index_pipeline.run(
+            file_paths=corpus.file_paths, meta=corpus.file_metas, params=pipeline_bundle.index_params
+        )
+        logger.info(f"indexing finished.")
+
+        eval_result = pipeline_bundle.query_pipeline.eval(
             labels=dataset.labels,
-            params=params,
+            params=pipeline_bundle.query_params,
             sas_model_name_or_path=sas_model_name_or_path,
             sas_batch_size=sas_batch_size,
             sas_use_gpu=sas_use_gpu,
@@ -865,10 +907,17 @@ class Pipeline(BasePipeline):
             eval_result_dir.mkdir(exist_ok=True)
             eval_result.save(out_dir=eval_result_dir)
             tracker.track_artifacts(eval_result_dir, artifact_path="eval_result")
-            self.save_to_yaml(path=Path(temp_dir) / "pipeline.yaml")
+            with open(Path(temp_dir) / "pipelines.yaml", "w") as outfile:
+                yaml.dump(pipeline_bundle.get_config(), outfile, default_flow_style=False)
             tracker.track_artifacts(temp_dir)
 
         tracker.end_run()
+
+        # Clean up document store
+        if not keep_index and document_store.index is not None:
+            logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+            document_store.delete_index(document_store.index)
+
         return eval_result
 
     @send_event
@@ -1744,7 +1793,7 @@ class _RayDeploymentWrapper:
 
 
 class _HaystackBeirRetrieverAdapter:
-    def __init__(self, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict):
+    def __init__(self, pipeline_bundle: PipelineBundle):
         """
         Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
         This has nothing to do with Haystack's retriever classes.
@@ -1755,10 +1804,7 @@ class _HaystackBeirRetrieverAdapter:
         :param index_params: The params to use during indexing (see pipeline.run's params).
         :param query_params: The params to use during querying (see pipeline.run's params).
         """
-        self.index_pipeline = index_pipeline
-        self.query_pipeline = query_pipeline
-        self.index_params = index_params
-        self.query_params = query_params
+        self.pipeline_bundle = pipeline_bundle
 
     def search(
         self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, score_function: str, **kwargs
@@ -1774,16 +1820,18 @@ class _HaystackBeirRetrieverAdapter:
                 metas.append({"id": id, "name": doc.get("title", None)})
 
             logger.info(f"indexing {len(corpus)} documents...")
-            self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
+            self.pipeline_bundle.index_pipeline.run(
+                file_paths=file_paths, meta=metas, params=self.pipeline_bundle.index_params
+            )
             logger.info(f"indexing finished.")
 
             # adjust query_params to ensure top_k is retrieved
-            query_params = copy.deepcopy(self.query_params)
+            query_params = copy.deepcopy(self.pipeline_bundle.query_params)
             query_params["top_k"] = top_k
 
             results = {}
             for q_id, query in tqdm(queries.items(), total=len(queries)):
-                res = self.query_pipeline.run(query=query, params=query_params)
+                res = self.pipeline_bundle.query_pipeline.run(query=query, params=query_params)
                 docs = res["documents"]
                 query_results = {doc.meta["id"]: doc.score for doc in docs}
                 results[q_id] = query_results

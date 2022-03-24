@@ -149,7 +149,7 @@ class MLflowTrackingHead(BaseTrackingHead):
             mlflow.set_experiment(experiment_name)
             mlflow.start_run(run_name=run_name, nested=nested, tags=tags)
             if self.auto_track_environment:
-                mlflow.log_params({"environment": get_or_create_env_meta_data()})
+                mlflow.log_params(flatten_dict({"environment": get_or_create_env_meta_data()}))
         except ConnectionError:
             raise Exception(
                 f"MLflow cannot connect to the remote server at {self.tracking_uri}.\n"
