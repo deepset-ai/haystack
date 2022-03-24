@@ -101,11 +101,7 @@ class PipelineBundle:
         components = list({c["name"]: c for c in (index_config["components"] + query_config["components"])}.values())
         pipelines = index_config["pipelines"] + query_config["pipelines"]
 
-        return {
-            "version": index_config["version"],
-            "components": components,
-            "pipelines": pipelines
-        }
+        return {"version": index_config["version"], "components": components, "pipelines": pipelines}
 
 
 class BasePipeline(ABC):

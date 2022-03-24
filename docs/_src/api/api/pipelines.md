@@ -468,9 +468,8 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 #### run\_eval\_experiment
 
 ```python
-@send_event
 @classmethod
-def run_eval_experiment(cls, pipeline_bundle: PipelineBundle, dataset: EvaluationDataset, corpus: Corpus, experiment_name: str, experiment_run_name: str, experiment_tracking_uri: str, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, keep_index: bool = False) -> EvaluationResult
+def run_eval_experiment(cls, pipeline_bundle: PipelineBundle, dataset: EvaluationDataset, corpus: Corpus, experiment_name: str, experiment_run_name: str, experiment_tracking_uri: str, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
 ```
 
 Starts an experiment run that evaluates the pipeline bundle using pipeline.eval() by indexing the corpus and running the query pipeline once per query in debug mode
@@ -514,8 +513,8 @@ The isolated evaluation calculates the upper bound of each node's evaluation met
 To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
 The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
 values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
-- `keep_index`: Whether to keep the index after evaluation.
-If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+- `reuse_index`: Whether to reuse existing non-empty index and to keep the index after evaluation.
+If True the index will be kept after evaluation and no indexing will take place if index has already documents. Otherwise it will be deleted immediately afterwards.
 Defaults to False.
 
 <a id="base.Pipeline.eval"></a>
