@@ -703,8 +703,8 @@ class EvaluationSetClient:
 
         :return: Number of labels for the given (or defaulting) index
         """
-        evaluation_set = self._get_evaluation_set(evaluation_set_name=evaluation_set_name, workspace=workspace)
-        return evaluation_set[0]["total_labels"]
+        evaluation_set = next(self._get_evaluation_set(evaluation_set_name=evaluation_set_name, workspace=workspace))
+        return evaluation_set["total_labels"]
 
     def get_evaluation_set_names(self, workspace: Optional[str] = None):
         """
@@ -719,7 +719,7 @@ class EvaluationSetClient:
 
         return [eval_set["name"] for eval_set in evaluation_sets_response]
 
-    def _get_evaluation_set(self, evaluation_set_name: Optional[str], workspace: Optional[str] = None) -> List[dict]:
+    def _get_evaluation_set(self, evaluation_set_name: Optional[str], workspace: Optional[str] = None) -> Generator:
         if not evaluation_set_name:
             evaluation_set_name = self.evaluation_set_name
 
@@ -729,7 +729,7 @@ class EvaluationSetClient:
         for response in self.client.get_with_auto_paging(
             url=evaluation_set_url, query_params={"name": evaluation_set_name}
         ):
-            return response.json().get("data", [])
+            return response
 
     def _get_labels_from_evaluation_set(
         self, workspace: Optional[str] = None, evaluation_set_id: Optional[str] = None
