@@ -1693,7 +1693,7 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
 
 
 @responses.activate
-def test_DeepsetCloudDocumentStore_lists_evaluation_set_names(deepset_cloud_document_store):
+def test_DeepsetCloudDocumentStore_lists_evaluation_sets(deepset_cloud_document_store):
     response_evaluation_set = {
         "evaluation_set_id": uuid4(),
         "name": DC_TEST_INDEX,
@@ -1716,11 +1716,30 @@ def test_DeepsetCloudDocumentStore_lists_evaluation_set_names(deepset_cloud_docu
 
 
 @responses.activate
-def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set(deepset_cloud_document_store):
+def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_cloud_document_store):
     if MOCK_DC:
+        eval_set_id = uuid4()
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/",
+            status=200,
+            body={
+                "data": [
+                    {
+                        "evaluation_set_id": eval_set_id,
+                        "name": DC_TEST_INDEX,
+                        "created_at": "2022-03-22T13:40:27.535Z",
+                        "matched_labels": 1,
+                        "total_labels": 1,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+        )
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{eval_set_id}",
             status=200,
             body=[
                 {

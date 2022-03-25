@@ -456,7 +456,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
     def get_all_labels(
         self,
-        label_index: Optional[str] = None,
+        index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
@@ -470,7 +470,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :return: list of Labels.
         """
-        return self.evaluation_set_client.get_labels(label_index=label_index)
+        return self.evaluation_set_client.get_labels(label_index=index)
 
     def get_label_count(self, label_index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """

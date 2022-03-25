@@ -651,7 +651,7 @@ class EvaluationSetClient:
         self.workspace = workspace
         self.label_index = label_index
 
-    def get_labels(self, label_index: str, workspace: Optional[str] = None) -> List[Label]:
+    def get_labels(self, label_index: Optional[str], workspace: Optional[str] = None) -> List[Label]:
         """
         Searches for labels for a given evaluation set in deepset cloud. Returns a list of all found labels.
         If no labels were found, raises DeepsetCloudError.
@@ -726,11 +726,11 @@ class EvaluationSetClient:
         evaluation_set_url = f"{url}/evaluation_sets"
 
         for response in self.client.get_with_auto_paging(url=evaluation_set_url, query_params={"name": label_index}):
-            return response
+            yield response
 
     def _get_labels_from_evaluation_set(
         self, workspace: Optional[str] = None, evaluation_set_id: Optional[str] = None
-    ) -> Generator[dict]:
+    ) -> Generator:
         url = f"{self._build_workspace_url(workspace=workspace)}/evaluation_sets/{evaluation_set_id}"
         labels = self.client.get(url=url).json()
 
