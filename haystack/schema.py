@@ -14,11 +14,11 @@ import logging
 import time
 import json
 import ast
+from dataclasses import asdict
 
 import mmh3
 import numpy as np
 import pandas as pd
-from dataclasses import asdict
 
 from pydantic import BaseConfig
 from pydantic.json import pydantic_encoder

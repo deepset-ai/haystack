@@ -3,11 +3,12 @@ from typing import Any, Dict, List, Optional
 import re
 import os
 import copy
+import json
 import logging
 from pathlib import Path
-from networkx import DiGraph
+
 import yaml
-import json
+from networkx import DiGraph
 from jsonschema.validators import Draft7Validator
 from jsonschema.exceptions import ValidationError
 

@@ -5,13 +5,15 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-import requests
 import json
-from pathlib import Path
 import copy
 import logging
+from pathlib import Path
+
+import requests
 
 from haystack.nodes.file_converter import BaseConverter
+
 
 logger = logging.getLogger(__name__)
 

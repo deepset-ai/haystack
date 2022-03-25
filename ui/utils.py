@@ -2,8 +2,9 @@ from typing import List, Dict, Any, Tuple, Optional
 
 import os
 import logging
-import requests
 from time import sleep
+
+import requests
 import streamlit as st
 
 

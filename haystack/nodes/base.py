@@ -10,7 +10,6 @@ import logging
 from haystack.schema import Document, MultiLabel
 from haystack.errors import PipelineSchemaError
 from haystack.telemetry import send_custom_event
-from haystack.errors import HaystackError
 
 
 logger = logging.getLogger(__name__)

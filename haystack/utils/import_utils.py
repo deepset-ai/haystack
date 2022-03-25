@@ -3,10 +3,12 @@ from typing import Optional
 import io
 import tarfile
 import zipfile
-import requests
 import logging
 import importlib
 from pathlib import Path
+
+import requests
+
 from haystack.telemetry import send_tutorial_event
 
 logger = logging.getLogger(__name__)

@@ -2,10 +2,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
 
 import time
 import logging
-import numpy as np
-import torch
 from copy import deepcopy
 from collections import defaultdict
+
+import numpy as np
+import torch
 from tqdm import tqdm
 
 from haystack.schema import Document, Label

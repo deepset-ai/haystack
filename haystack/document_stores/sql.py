@@ -2,9 +2,9 @@ from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
 import itertools
-import numpy as np
 from uuid import uuid4
 
+import numpy as np
 try:
     from sqlalchemy import (
         and_,
@@ -29,7 +29,6 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore
-
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 

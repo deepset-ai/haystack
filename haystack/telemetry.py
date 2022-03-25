@@ -1,4 +1,3 @@
-# coding: utf-8
 """
     Telemetry
     Haystack reports anonymous usage statistics to support continuous software improvements for all its users.
@@ -6,22 +5,23 @@
     You can opt-out of sharing usage statistics by setting the environment variable HAYSTACK_TELEMETRY_ENABLED to "False" or calling disable_telemetry().
     You can log all events to the local file specified in LOG_PATH for inspection by setting the environment variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to "True".
 """
+from typing import List, Dict, Any, Optional
+
+import os
 import sys
 import uuid
+import logging
+import platform
 from enum import Enum
 from functools import wraps
 from pathlib import Path
-from typing import List, Dict, Any, Optional
 
 import yaml
-
-import logging
-import haystack
-import transformers
 import torch
 import posthog
-import os
-import platform
+import transformers
+
+import haystack
 
 posthog.api_key = "phc_F5v11iI2YHkoP6Er3cPILWSrLhY3D6UY4dEMga4eoaa"
 posthog.host = "https://tm.hs.deepset.ai"

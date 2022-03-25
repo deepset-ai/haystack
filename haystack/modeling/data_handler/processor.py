@@ -1,28 +1,28 @@
-import inspect
-import json
-import logging
+from typing import Optional, Dict, List, Union, Any, Iterable
+
 import os
+import json
+import uuid
+import inspect
+import logging
 import random
 import tarfile
 import tempfile
-import uuid
-import requests
-from tqdm import tqdm
-from abc import ABC, abstractmethod
-from inspect import signature
 from pathlib import Path
-from typing import Optional, Dict, List, Union, Any, Iterable
-
-from torch.utils.data import TensorDataset
+from inspect import signature
+from abc import ABC, abstractmethod
 
 import numpy as np
+import requests
+from tqdm import tqdm
+from torch.utils.data import TensorDataset
+
 from haystack.modeling.model.tokenization import (
     Tokenizer,
     tokenize_batch_question_answering,
     tokenize_with_metadata,
     truncate_sequences,
 )
-
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset
 from haystack.modeling.data_handler.samples import (
     Sample,

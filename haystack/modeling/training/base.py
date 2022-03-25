@@ -3,11 +3,11 @@ from typing import Optional, Union, Tuple, List, Callable
 import sys
 import shutil
 import logging
+from pathlib import Path
+
 import dill
 import numpy
 from tqdm import tqdm
-from pathlib import Path
-
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel

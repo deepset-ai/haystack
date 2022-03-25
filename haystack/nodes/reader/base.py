@@ -1,11 +1,12 @@
 from typing import List, Optional, Sequence, Dict, Tuple
 
-import numpy as np
-from scipy.special import expit
 from abc import abstractmethod
 from copy import deepcopy
 from functools import wraps
 from time import perf_counter
+
+import numpy as np
+from scipy.special import expit
 
 from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent

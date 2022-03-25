@@ -3,11 +3,12 @@ from typing import TYPE_CHECKING, Any, Union, List, Optional, Dict, Generator
 import json
 import logging
 import warnings
-import numpy as np
-from copy import deepcopy
 from pathlib import Path
-from tqdm.auto import tqdm
+from copy import deepcopy
 from inspect import Signature, signature
+
+import numpy as np
+from tqdm.auto import tqdm
 
 try:
     import faiss

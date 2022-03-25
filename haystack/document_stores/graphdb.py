@@ -1,7 +1,8 @@
 from typing import Dict, Optional
 
-import requests
 from pathlib import Path
+
+import requests
 from requests.auth import HTTPBasicAuth
 
 try:

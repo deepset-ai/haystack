@@ -1,8 +1,9 @@
 from typing import Dict, List, Optional
 
 import logging
-import pandas as pd
 from collections import OrderedDict, namedtuple
+
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
