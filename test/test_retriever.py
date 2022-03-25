@@ -82,7 +82,7 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
         retriever_with_docs, TfidfRetriever
     ):
         # single filter
-        result = retriever_with_docs.retrieve(query="godzilla", filters={"name": ["filename3"]}, top_k=5)
+        result = retriever_with_docs.retrieve(query="Christelle", filters={"name": ["filename3"]}, top_k=5)
         assert len(result) == 1
         assert type(result[0]) == Document
         assert result[0].content == "My name is Christelle and I live in Paris"
@@ -90,14 +90,14 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
 
         # multiple filters
         result = retriever_with_docs.retrieve(
-            query="godzilla", filters={"name": ["filename2"], "meta_field": ["test2", "test3"]}, top_k=5
+            query="Paul", filters={"name": ["filename2"], "meta_field": ["test2", "test3"]}, top_k=5
         )
         assert len(result) == 1
         assert type(result[0]) == Document
         assert result[0].meta["name"] == "filename2"
 
         result = retriever_with_docs.retrieve(
-            query="godzilla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
+            query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
         )
         assert len(result) == 0
 
