@@ -1682,8 +1682,7 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
             method=responses.GET,
             url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
             status=200,
-            body=body,
-            query_params={"name": DC_TEST_INDEX},
+            body=json.dumps(body),
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
@@ -1694,15 +1693,11 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
 
 @responses.activate
 def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set_raises_DC_error_when_nothing_found(
-    deepset_cloud_document_store, body: dict, expected_count: int
+    deepset_cloud_document_store,
 ):
     if MOCK_DC:
         responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
-            status=200,
-            body={},
-            query_params={"name": DC_TEST_INDEX},
+            method=responses.GET, url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets", status=200, body="{}"
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
@@ -1725,7 +1720,7 @@ def test_DeepsetCloudDocumentStore_lists_evaluation_sets(deepset_cloud_document_
             method=responses.GET,
             url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
             status=200,
-            body={"data": [response_evaluation_set], "has_more": False, "total": 1},
+            body=json.dumps({"data": [response_evaluation_set], "has_more": False, "total": 1}),
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
@@ -1742,19 +1737,21 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
             method=responses.GET,
             url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/",
             status=200,
-            body={
-                "data": [
-                    {
-                        "evaluation_set_id": eval_set_id,
-                        "name": DC_TEST_INDEX,
-                        "created_at": "2022-03-22T13:40:27.535Z",
-                        "matched_labels": 1,
-                        "total_labels": 1,
-                    }
-                ],
-                "has_more": False,
-                "total": 1,
-            },
+            body=json.dumps(
+                {
+                    "data": [
+                        {
+                            "evaluation_set_id": eval_set_id,
+                            "name": DC_TEST_INDEX,
+                            "created_at": "2022-03-22T13:40:27.535Z",
+                            "matched_labels": 1,
+                            "total_labels": 1,
+                        }
+                    ],
+                    "has_more": False,
+                    "total": 1,
+                }
+            ),
         )
         responses.add(
             method=responses.GET,
@@ -1779,7 +1776,7 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
-    labels = deepset_cloud_document_store.get_all_labels(label_index=DC_TEST_INDEX)
+    labels = deepset_cloud_document_store.get_all_labels(index=DC_TEST_INDEX)
     assert labels == [
         Label(
             query="What is berlin?",
@@ -1811,7 +1808,7 @@ def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deep
         responses.add_passthru(DC_API_ENDPOINT)
 
     with pytest.raises(DeepsetCloudError, match=f"No evaluation set found with the name {DC_TEST_INDEX}"):
-        deepset_cloud_document_store.get_all_labels(label_index=DC_TEST_INDEX)
+        deepset_cloud_document_store.get_all_labels(index=DC_TEST_INDEX)
 
 
 @responses.activate
