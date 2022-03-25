@@ -4,6 +4,7 @@ from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
 from typing import List, Optional, Generator, Set, Union
+import warnings
 
 import nltk
 from more_itertools import windowed
@@ -114,6 +115,9 @@ class PreProcessor(BasePreProcessor):
         """
         Perform document cleaning and splitting. Can take a single document or a list of documents as input and returns a list of documents.
         """
+        if not isinstance(documents, list):
+            warnings.warn("Using a single Document as argument to the 'documents' parameter is deprecated. Use a list "
+                          "of (a single) Document instead.", DeprecationWarning, 2)
 
         kwargs = {
             "clean_whitespace": clean_whitespace,

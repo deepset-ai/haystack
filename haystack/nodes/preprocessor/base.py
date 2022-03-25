@@ -22,7 +22,8 @@ class BasePreProcessor(BaseComponent):
         split_respect_sentence_boundary: Optional[bool] = True,
     ) -> List[Document]:
         """
-        Perform document cleaning and splitting. Takes a single document as input and returns a list of documents.
+        Perform document cleaning and splitting. Takes a single Document or a List of Documents as input and returns a
+        list of Documents.
         """
         raise NotImplementedError
 
