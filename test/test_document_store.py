@@ -1,7 +1,6 @@
 from typing import List
 from uuid import uuid4
 
-import labels as labels
 import numpy as np
 import pandas as pd
 import pytest
