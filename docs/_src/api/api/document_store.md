@@ -4267,7 +4267,7 @@ These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "tot
 #### get\_all\_labels
 
 ```python
-def get_all_labels(label_index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]
+def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]
 ```
 
 Returns a list of labels for the given index name.
