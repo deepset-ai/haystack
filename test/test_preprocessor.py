@@ -20,7 +20,7 @@ in the sentence.
 
 
 def test_preprocess_sentence_split():
-    document = {"content": TEXT}
+    document = Document(content=TEXT)
     preprocessor = PreProcessor(
         split_length=1, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
     )
@@ -35,7 +35,7 @@ def test_preprocess_sentence_split():
 
 
 def test_preprocess_word_split():
-    document = {"content": TEXT}
+    document = Document(content=TEXT)
     preprocessor = PreProcessor(
         split_length=10, split_overlap=0, split_by="word", split_respect_sentence_boundary=False
     )
@@ -62,7 +62,7 @@ def test_preprocess_word_split():
 
 
 def test_preprocess_passage_split():
-    document = {"content": TEXT}
+    document = Document(content=TEXT)
     preprocessor = PreProcessor(
         split_length=1, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
     )
@@ -92,14 +92,14 @@ def test_clean_header_footer():
 
 
 def test_remove_substrings():
-    document = {"content": "This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b."}
+    document = Document(content="This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b.")
 
     # check that the file contains the substrings we are about to remove
-    assert "This is a header." in document["content"]
-    assert "wiki" in document["content"]
-    assert "🪲" in document["content"]
-    assert "whitespace" in document["content"]
-    assert "✨" in document["content"]
+    assert "This is a header." in document.content
+    assert "wiki" in document.content
+    assert "🪲" in document.content
+    assert "whitespace" in document.content
+    assert "✨" in document.content
 
     preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki", "🪲"])
     documents = preprocessor.process(document)
