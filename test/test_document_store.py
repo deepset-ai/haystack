@@ -1741,7 +1741,7 @@ def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set(deepset_clo
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
-    labels = deepset_cloud_document_store.get_all_labels(evaluation_set_name=DC_TEST_INDEX)
+    labels = deepset_cloud_document_store.get_all_labels(label_index=DC_TEST_INDEX)
     assert labels == [
         Label(
             query="What is berlin?",
@@ -1773,7 +1773,7 @@ def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deep
         responses.add_passthru(DC_API_ENDPOINT)
 
     with pytest.raises(DeepsetCloudError):
-        deepset_cloud_document_store.get_all_labels(evaluation_set_name=DC_TEST_INDEX)
+        deepset_cloud_document_store.get_all_labels(label_index=DC_TEST_INDEX)
 
 
 @responses.activate
