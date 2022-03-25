@@ -116,8 +116,12 @@ class PreProcessor(BasePreProcessor):
         Perform document cleaning and splitting. Can take a single document or a list of documents as input and returns a list of documents.
         """
         if not isinstance(documents, list):
-            warnings.warn("Using a single Document as argument to the 'documents' parameter is deprecated. Use a list "
-                          "of (a single) Document instead.", DeprecationWarning, 2)
+            warnings.warn(
+                "Using a single Document as argument to the 'documents' parameter is deprecated. Use a list "
+                "of (a single) Document instead.",
+                DeprecationWarning,
+                2,
+            )
 
         kwargs = {
             "clean_whitespace": clean_whitespace,
@@ -347,7 +351,7 @@ class PreProcessor(BasePreProcessor):
         # create new document dicts for each text split
         documents = []
         for i, txt in enumerate(text_splits):
-            doc = Document(content=txt, meta=deepcopy(document.meta) or {},  id_hash_keys=id_hash_keys)
+            doc = Document(content=txt, meta=deepcopy(document.meta) or {}, id_hash_keys=id_hash_keys)
             doc.meta["_split_id"] = i
             documents.append(doc)
 

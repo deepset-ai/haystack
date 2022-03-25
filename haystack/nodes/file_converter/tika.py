@@ -148,7 +148,5 @@ class TikaConverter(BaseConverter):
                 )
 
         text = "\f".join(cleaned_pages)
-        document = Document(
-            content=text, meta={**parsed["metadata"], **(meta or {})}, id_hash_keys=id_hash_keys
-        )
+        document = Document(content=text, meta={**parsed["metadata"], **(meta or {})}, id_hash_keys=id_hash_keys)
         return [document]
