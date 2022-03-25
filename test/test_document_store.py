@@ -1694,30 +1694,25 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
 
 @responses.activate
 def test_DeepsetCloudDocumentStore_lists_evaluation_set_names(deepset_cloud_document_store):
+    response_evaluation_set = {
+        "evaluation_set_id": uuid4(),
+        "name": DC_TEST_INDEX,
+        "created_at": "2022-03-22T13:40:27.535Z",
+        "matched_labels": 2,
+        "total_labels": 10,
+    }
     if MOCK_DC:
         responses.add(
             method=responses.GET,
             url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
             status=200,
-            body={
-                "data": [
-                    {
-                        "evaluation_set_id": uuid4(),
-                        "name": DC_TEST_INDEX,
-                        "created_at": "2022-03-22T13:40:27.535Z",
-                        "matched_labels": 2,
-                        "total_labels": 10,
-                    }
-                ],
-                "has_more": False,
-                "total": 1,
-            },
+            body={"data": [response_evaluation_set], "has_more": False, "total": 1},
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
-    names = deepset_cloud_document_store.get_evaluation_set_names()
-    assert names == [DC_TEST_INDEX]
+    evaluation_sets = deepset_cloud_document_store.get_evaluation_sets()
+    assert evaluation_sets == [response_evaluation_set]
 
 
 @responses.activate

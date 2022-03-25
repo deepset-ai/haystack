@@ -706,18 +706,19 @@ class EvaluationSetClient:
         evaluation_set = next(self._get_evaluation_set(evaluation_set_name=evaluation_set_name, workspace=workspace))
         return evaluation_set["total_labels"]
 
-    def get_evaluation_set_names(self, workspace: Optional[str] = None):
+    def get_evaluation_sets(self, workspace: Optional[str] = None) -> List[dict]:
         """
         Searches for all evaluation set names in the given workspace in Deepset Cloud.
 
         :param workspace: Optional workspace in Deepset Cloud
                           If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
 
-        :return: list of Label
+        :return: List of dictionaries that represent deepset Cloud evaluation sets.
+                 These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
         """
         evaluation_sets_response = self._get_evaluation_set(evaluation_set_name=None, workspace=workspace)
 
-        return [eval_set["name"] for eval_set in evaluation_sets_response]
+        return [eval_set for eval_set in evaluation_sets_response]
 
     def _get_evaluation_set(self, evaluation_set_name: Optional[str], workspace: Optional[str] = None) -> Generator:
         if not evaluation_set_name:
