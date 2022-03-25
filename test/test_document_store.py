@@ -1,6 +1,7 @@
 from typing import List
 from uuid import uuid4
 
+import labels as labels
 import numpy as np
 import pandas as pd
 import pytest
@@ -1688,8 +1689,27 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
-    count = deepset_cloud_document_store.get_labels_count()
+    count = deepset_cloud_document_store.get_labels_count(label_index=DC_TEST_INDEX)
     assert count == expected_count
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set_raises_DC_error_when_nothing_found(
+    deepset_cloud_document_store, body: dict, expected_count: int
+):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body={},
+            query_params={"name": DC_TEST_INDEX},
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    with pytest.raises(DeepsetCloudError, match=f"No evaluation set found with the name {DC_TEST_INDEX}"):
+        deepset_cloud_document_store.get_labels_count(label_index=DC_TEST_INDEX)
 
 
 @responses.activate

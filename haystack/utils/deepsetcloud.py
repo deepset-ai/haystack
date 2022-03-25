@@ -701,7 +701,11 @@ class EvaluationSetClient:
 
         :return: Number of labels for the given (or defaulting) index
         """
-        evaluation_set = next(self._get_evaluation_set(label_index=label_index, workspace=workspace))
+        try:
+            evaluation_set = next(self._get_evaluation_set(label_index=label_index, workspace=workspace))
+        except StopIteration:
+            raise DeepsetCloudError(f"No evaluation set found with the name {label_index}")
+
         return evaluation_set["total_labels"]
 
     def get_evaluation_sets(self, workspace: Optional[str] = None) -> List[dict]:
