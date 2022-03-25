@@ -30,7 +30,7 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
 """
 
 
-def test_convert_files_to_dicts():
+def test_convert_files_to_docs():
     documents = convert_files_to_docs(
         dir_path=(SAMPLES_PATH).absolute(), clean_func=clean_wiki_text, split_paragraphs=True
     )
@@ -38,7 +38,7 @@ def test_convert_files_to_dicts():
 
 
 @pytest.mark.tika
-def test_tika_convert_files_to_dicts():
+def test_tika_convert_files_to_docs():
     documents = tika_convert_files_to_docs(dir_path=SAMPLES_PATH, clean_func=clean_wiki_text, split_paragraphs=True)
     assert documents and len(documents) > 0
 
