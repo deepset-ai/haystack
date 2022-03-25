@@ -69,7 +69,13 @@ def get_component_definitions(pipeline_config: Dict[str, Any], overwrite_with_en
     return component_definitions
 
 
-def read_pipeline_config_from_yaml(path: Path):
+def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
+    """
+    Parses YAML files into Python objects.
+    Fails if the file does not exist.
+    """
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Not found: {path}")
     with open(path, "r", encoding="utf-8") as stream:
         return yaml.safe_load(stream)
 
@@ -113,12 +119,6 @@ def build_component_dependency_graph(
     :param component_definitions: the definition of the pipeline components (e.g. use get_component_definitions() to obtain it)
     """
     graph = DiGraph()
-    for node in pipeline_definition["nodes"]:
-        node_name = node["name"]
-        graph.add_node(node_name)
-        for input in node["inputs"]:
-            if input in component_definitions:
-                graph.add_edge(input, node_name)
     for component_name, component_definition in component_definitions.items():
         params = component_definition.get("params", {})
         referenced_components: List[str] = list()
@@ -129,6 +129,17 @@ def build_component_dependency_graph(
                 referenced_components.append(param_value)
         for referenced_component in referenced_components:
             graph.add_edge(referenced_component, component_name)
+    for node in pipeline_definition["nodes"]:
+        node_name = node["name"]
+        graph.add_node(node_name)
+        for input in node["inputs"]:
+            if input in component_definitions:
+                # Special case for (actually permitted) cyclic dependencies between two components:
+                # e.g. DensePassageRetriever depends on ElasticsearchDocumentStore.
+                # In indexing pipelines ElasticsearchDocumentStore depends on DensePassageRetriever's output.
+                # But this second dependency is looser, so we neglect it.
+                if not graph.has_edge(node_name, input):
+                    graph.add_edge(input, node_name)
     return graph
 
 
@@ -195,16 +206,18 @@ def validate_config(pipeline_config: Dict) -> None:
                     logger.info(
                         f"Missing definition for node of type {validation.instance['type']}. Looking into local classes..."
                     )
-                    missing_component = BaseComponent.get_subclass(validation.instance["type"])
-                    schema = inject_definition_in_schema(node=missing_component, schema=schema)
+                    missing_component_class = BaseComponent.get_subclass(validation.instance["type"])
+                    schema = inject_definition_in_schema(node_class=missing_component_class, schema=schema)
                     loaded_custom_nodes.append(validation.instance["type"])
                     continue
 
-                # A node with the given name was imported, but something else is wrong with it.
+                # A node with the given name was in the schema, but something else is wrong with it.
                 # Probably it references unknown classes in its init parameters.
                 raise PipelineSchemaError(
-                    f"Cannot process node of type {validation.instance['type']}. Make sure its __init__ function "
-                    "does not reference external classes, but uses only Python primitive types."
+                    f"Node of type {validation.instance['type']} found, but it failed validation. Possible causes:\n"
+                    " - The node is missing some mandatory parameter\n"
+                    " - Wrong indentation of some parameter in YAML\n"
+                    "See the stacktrace for more information."
                 ) from validation
 
             # Format the error to make it as clear as possible

@@ -336,9 +336,7 @@ class BaseDocumentStore(BaseComponent):
     ) -> int:
         pass
 
-    @staticmethod
-    @njit  # (fastmath=True)
-    def normalize_embedding(emb: np.ndarray) -> None:
+    def normalize_embedding(self, emb: np.ndarray) -> None:
         """
         Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix
         (2D array).
@@ -347,16 +345,26 @@ class BaseDocumentStore(BaseComponent):
 
         # Single vec
         if len(emb.shape) == 1:
-            norm = np.sqrt(emb.dot(emb))  # faster than np.linalg.norm()
-            if norm != 0.0:
-                emb /= norm
+            self._normalize_embedding_1D(emb)
         # 2D matrix
         else:
-            for vec in emb:
-                vec = np.ascontiguousarray(vec)
-                norm = np.sqrt(vec.dot(vec))
-                if norm != 0.0:
-                    vec /= norm
+            self._normalize_embedding_2D(emb)
+
+    @staticmethod
+    @njit  # (fastmath=True)
+    def _normalize_embedding_1D(emb: np.ndarray) -> None:
+        norm = np.sqrt(emb.dot(emb))  # faster than np.linalg.norm()
+        if norm != 0.0:
+            emb /= norm
+
+    @staticmethod
+    @njit  # (fastmath=True)
+    def _normalize_embedding_2D(emb: np.ndarray) -> None:
+        for vec in emb:
+            vec = np.ascontiguousarray(vec)
+            norm = np.sqrt(vec.dot(vec))
+            if norm != 0.0:
+                vec /= norm
 
     def finalize_raw_score(self, raw_score: float, similarity: Optional[str]) -> float:
         if similarity == "cosine":
@@ -505,6 +513,16 @@ class BaseDocumentStore(BaseComponent):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
+        pass
+
+    @abstractmethod
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
         pass
 
     @abstractmethod
