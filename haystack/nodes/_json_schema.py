@@ -360,7 +360,7 @@ def new_version_entry(version):
 
 
 def update_json_schema(
-    update_index: bool, destination_path: Path = JSON_SCHEMAS_PATH, index_name: Path = "haystack-pipeline.schema.json"
+    update_index: bool, destination_path: Path = JSON_SCHEMAS_PATH, index_name: str = "haystack-pipeline.schema.json"
 ):
     # Locate the latest schema's path
     latest_schema_path = destination_path / Path(
