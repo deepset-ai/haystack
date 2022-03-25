@@ -147,7 +147,7 @@ class PDFToTextConverter(BaseConverter):
                 )
 
         text = "\f".join(cleaned_pages)
-        document = Document(content=text, content_type="text", meta=meta, id_hash_keys=id_hash_keys)
+        document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]
 
     def _read_pdf(self, file_path: Path, layout: bool, encoding: Optional[str] = "Latin1") -> List[str]:
@@ -248,6 +248,6 @@ class PDFToTextOCRConverter(BaseConverter):
             logger.error(f"File {file_path} has an error \n {exception}")
 
         raw_text = "\f".join(pages)
-        document = Document(content=raw_text, content_type="text", meta=meta, id_hash_keys=id_hash_keys)
+        document = Document(content=raw_text, meta=meta, id_hash_keys=id_hash_keys)
 
         return [document]

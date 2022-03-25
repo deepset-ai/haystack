@@ -343,9 +343,7 @@ class PreProcessor(BasePreProcessor):
         # create new document dicts for each text split
         documents = []
         for i, txt in enumerate(text_splits):
-            doc = Document(content=txt, content_type="text", meta=deepcopy(document.meta), id_hash_keys=id_hash_keys)
-            if doc.meta is None:
-                doc.meta = {}
+            doc = Document(content=txt, meta=deepcopy(document.meta) or {},  id_hash_keys=id_hash_keys)
             doc.meta["_split_id"] = i
             documents.append(doc)
 

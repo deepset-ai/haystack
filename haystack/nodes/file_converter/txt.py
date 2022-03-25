@@ -80,5 +80,5 @@ class TextConverter(BaseConverter):
                 )
 
         text = "".join(cleaned_pages)
-        document = Document(content=text, content_type="text", meta=meta, id_hash_keys=id_hash_keys)
+        document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]

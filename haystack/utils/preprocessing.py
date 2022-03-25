@@ -77,11 +77,11 @@ def convert_files_to_docs(
                     if not para.strip():  # skip empty paragraphs
                         continue
                     documents.append(
-                        Document(content=para, content_type="text", meta={"name": path.name}, id_hash_keys=id_hash_keys)
+                        Document(content=para, meta={"name": path.name}, id_hash_keys=id_hash_keys)
                     )
             else:
                 documents.append(
-                    Document(content=text, content_type="text", meta={"name": path.name}, id_hash_keys=id_hash_keys)
+                    Document(content=text, meta={"name": path.name}, id_hash_keys=id_hash_keys)
                 )
 
     return documents
@@ -174,19 +174,19 @@ def tika_convert_files_to_docs(
                             if last_para:
                                 documents.append(
                                     Document(
-                                        content=last_para, content_type="text", meta=meta, id_hash_keys=id_hash_keys
+                                        content=last_para, meta=meta, id_hash_keys=id_hash_keys
                                     )
                                 )
                             last_para = para
                     # don't forget the last one
                     if last_para:
                         documents.append(
-                            Document(content=last_para, content_type="text", meta=meta, id_hash_keys=id_hash_keys)
+                            Document(content=last_para, meta=meta, id_hash_keys=id_hash_keys)
                         )
 
         else:
             if clean_func:
                 text = clean_func(text)
-            documents.append(Document(content=text, content_type="text", meta=meta, id_hash_keys=id_hash_keys))
+            documents.append(Document(content=text, meta=meta, id_hash_keys=id_hash_keys))
 
     return documents
