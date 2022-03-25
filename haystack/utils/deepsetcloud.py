@@ -663,8 +663,8 @@ class EvaluationSetClient:
         :return: list of Label
         """
         try:
-            evaluation_set = self._get_evaluation_set(label_index=label_index, workspace=workspace)[0]
-        except IndexError:
+            evaluation_set = next(self._get_evaluation_set(label_index=label_index, workspace=workspace))
+        except StopIteration:
             raise DeepsetCloudError(f"No evaluation set found with the name {label_index}")
 
         labels = self._get_labels_from_evaluation_set(
