@@ -4247,6 +4247,61 @@ exists.
 
 None
 
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_evaluation_sets"></a>
+
+#### get\_evaluation\_sets
+
+```python
+def get_evaluation_sets() -> List[dict]
+```
+
+Returns a list of uploaded evaluation sets to deepset cloud.
+
+**Returns**:
+
+list of evaluation sets as dicts
+These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_labels"></a>
+
+#### get\_all\_labels
+
+```python
+def get_all_labels(label_index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]
+```
+
+Returns a list of labels for the given index name.
+
+**Arguments**:
+
+- `label_index`: Optional name of evaluation set for which labels should be searched.
+If None, the DocumentStore's default label_index (self.label_index) will be used.
+- `headers`: Not supported.
+
+**Returns**:
+
+list of Labels.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_label_count"></a>
+
+#### get\_label\_count
+
+```python
+def get_label_count(label_index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
+```
+
+Counts the number of labels for the given index and returns the value.
+
+**Arguments**:
+
+- `label_index`: Optional evaluation set name for which the labels should be counted.
+If None, the DocumentStore's default index (self.index) will be used.
+- `headers`: Not supported.
+
+**Returns**:
+
+number of labels for the given index
+
 <a id="pinecone"></a>
 
 # Module pinecone
