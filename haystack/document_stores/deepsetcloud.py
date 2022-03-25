@@ -407,7 +407,13 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                                      Defaults to False.
         """
         doc_dicts = self.client.query(
-            query=query, filters=filters, top_k=top_k, custom_query=custom_query, index=index, all_terms_must_match=all_terms_must_match, headers=headers
+            query=query,
+            filters=filters,
+            top_k=top_k,
+            custom_query=custom_query,
+            index=index,
+            all_terms_must_match=all_terms_must_match,
+            headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
         return docs

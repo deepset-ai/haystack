@@ -325,7 +325,7 @@ class IndexClient:
             "query_emb": query_emb,
             "similarity": similarity,
             "return_embedding": return_embedding,
-            "all_terms_must_match": all_terms_must_match
+            "all_terms_must_match": all_terms_must_match,
         }
         response = self.client.post(url=query_url, json=request, headers=headers)
         return response.json()
