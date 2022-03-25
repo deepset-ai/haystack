@@ -1071,9 +1071,12 @@ class EvaluationDataset:
         return len(self.labels)
 
 
-class Corpus:
-    def __init__(self, name: str, file_paths: List[str], file_metas: Dict[str, Any], meta: Dict[str, Any] = {}) -> None:
-        if len(file_paths) != len(file_metas):
+class FileCorpus:
+    def __init__(self, name: str, file_paths: List[str], file_metas: List[Dict[str, Any]] = None, meta: Dict[str, Any] = {}) -> None:
+        """
+        Set of files belonging together and forming a well-specified and referenceable file corpus.
+        """
+        if file_metas is not None and len(file_paths) != len(file_metas):
             raise HaystackError("file_paths and file_metas must be of same length.")
         self.file_paths = file_paths
         self.file_metas = file_metas
@@ -1081,6 +1084,4 @@ class Corpus:
         self.meta = meta
 
     def __len__(self):
-        if len(self.file_paths) != len(self.file_metas):
-            raise HaystackError("file_paths and file_metas are not of same length.")
         return len(self.file_paths)
