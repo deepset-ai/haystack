@@ -1049,7 +1049,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 "size": str(top_k),
                 "query": {
                     "bool": {
-                        "should": [
+                        "must": [
                             {"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}
                         ]
                     }
