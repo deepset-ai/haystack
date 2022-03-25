@@ -1791,7 +1791,7 @@ def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deep
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
-    with pytest.raises(DeepsetCloudError):
+    with pytest.raises(DeepsetCloudError, match=f"No evaluation set found with the name {DC_TEST_INDEX}"):
         deepset_cloud_document_store.get_all_labels(label_index=DC_TEST_INDEX)
 
 
