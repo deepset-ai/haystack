@@ -5,7 +5,7 @@ import os
 import time
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
-from haystack import Label, Document, Answer
+from haystack.schema import Label, Document, Answer
 
 try:
     from typing import Literal
