@@ -1,11 +1,5 @@
 from haystack.document_stores import FAISSDocumentStore, MilvusDocumentStore
-from haystack.utils import (
-    clean_wiki_text,
-    print_answers,
-    launch_milvus,
-    convert_files_to_docs,
-    fetch_archive_from_http,
-)
+from haystack.utils import clean_wiki_text, print_answers, launch_milvus, convert_files_to_docs, fetch_archive_from_http
 from haystack.nodes import FARMReader, DensePassageRetriever
 
 
