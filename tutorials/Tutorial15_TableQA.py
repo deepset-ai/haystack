@@ -47,7 +47,7 @@ def tutorial15_tableqa():
 
         return processed_tables
 
-    tables = read_tables("data/ottqa_tables_sample.json")
+    tables = read_tables(f"{doc_dir}/tables.json")
     document_store.write_documents(tables, index="document")
 
     ### Retriever
@@ -139,7 +139,7 @@ def tutorial15_tableqa():
     print_answers(predictions, details="minimum")
 
     # Example query whose answer resides in a table
-    predictions = text_table_qa_pipeline.run(query="What is the Senior Bowl?")
+    predictions = text_table_qa_pipeline.run(query="Who was Thomas Alva Edison?")
     # We can see both text passages and tables as contexts of the predicted answers.
     print_answers(predictions, details="minimum")
 
