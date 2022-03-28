@@ -26,7 +26,7 @@ def tutorial15_tableqa():
     # Here: 1000 tables from OTT-QA
 
     doc_dir = "data/tutorial15"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/ottqa_tables_sample.json.zip"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/ottqa_sample.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Add the tables to the DocumentStore
@@ -50,7 +50,7 @@ def tutorial15_tableqa():
 
         return processed_tables
 
-    tables = read_ottqa_tables("data/ottqa_tables_sample.json")
+    tables = read_ottqa_tables(f"{doc_dir}/ottqa_tables_sample.json")
     document_store.write_documents(tables, index="document")
 
     ### Retriever
