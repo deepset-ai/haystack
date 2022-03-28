@@ -213,7 +213,7 @@ class Processor(ABC):
         max_seq_len: int,
         doc_stride: int,
         revision: str = None,
-        tokenizer_class = None,
+        tokenizer_class=None,
         tokenizer_args: Optional[Dict] = None,
         transformers_args: Optional[Dict] = None,
         use_fast: bool = True,

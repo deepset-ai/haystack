@@ -55,7 +55,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None, **kwargs, ,)
+def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None, transformers_args: Optional[Dict] = None)
 ```
 
 **Arguments**:
@@ -108,6 +108,8 @@ from the model for the predicted span.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
 the local token will be used, which must be previously created via `transformer-cli login`.
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `transformer_args`: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+(for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
 
 <a id="farm.FARMReader.train"></a>
 

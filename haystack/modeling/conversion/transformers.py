@@ -54,7 +54,7 @@ class Converter:
         task_type: str = "question_answering",
         processor: Processor = None,
         use_auth_token: Union[bool, str] = None,
-        transformer_args: Optional[Dict] = None
+        transformer_args: Optional[Dict] = None,
     ):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
@@ -79,7 +79,9 @@ class Converter:
         if not isinstance(transformer_args, dict):
             transformer_args = {}
 
-        lm = LanguageModel.load(model_name_or_path, revision=revision, use_auth_token=use_auth_token, transformer_args=transformer_args)
+        lm = LanguageModel.load(
+            model_name_or_path, revision=revision, use_auth_token=use_auth_token, transformer_args=transformer_args
+        )
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]
