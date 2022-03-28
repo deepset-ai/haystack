@@ -359,9 +359,7 @@ def new_version_entry(version):
 
 
 def update_json_schema(
-    update_index: bool,
-    destination_path: Path = JSON_SCHEMAS_PATH,
-    index_path: Path = JSON_SCHEMAS_PATH / "haystack-pipeline.schema.json",
+    update_index: bool, destination_path: Path = JSON_SCHEMAS_PATH, index_name: str = "haystack-pipeline.schema.json"
 ):
     # Locate the latest schema's path
     latest_schema_path = destination_path / Path(
@@ -425,23 +423,24 @@ def update_json_schema(
 
             # Update the JSON schema index too
             if update_index:
-                index = load(index_path)
+                index = load(destination_path / index_name)
                 index["oneOf"][-1]["allOf"][0]["properties"]["version"]["oneOf"] = supported_versions_block
-                dump(index, index_path)
+                dump(index, destination_path / index_name)
 
         # Dump the new schema file
         new_schema["$id"] = f"{SCHEMA_URL}{filename}"
         unstable_versions_block = [{"const": haystack_version}]
         new_schema["properties"]["version"]["oneOf"] = [{"const": haystack_version}]
         dump(new_schema, destination_path / filename)
+        logger.info(f"Schema saved in {destination_path / filename}")
 
         # Update schema index with a whole new entry
         if update_index:
-            index = load(index_path)
+            index = load(destination_path / index_name)
             new_entry = new_version_entry(haystack_version)
             if all(new_entry != entry for entry in index["oneOf"]):
                 index["oneOf"].append(new_version_entry(haystack_version))
-            dump(index, index_path)
+            dump(index, destination_path / index_name)
 
     # If the two schemas are compatible, no need to write a new one:
     # Just add the new version to the list of versions supported by
@@ -478,12 +477,13 @@ def update_json_schema(
             unstable_versions_block = supported_versions_block
             latest_schema["properties"]["version"]["oneOf"] = supported_versions_block
             dump(latest_schema, latest_schema_path)
+            logger.info(f"Schema updated in {destination_path / latest_schema_path}")
 
             # Update the JSON schema index too
             if update_index:
-                index = load(index_path)
+                index = load(destination_path / index_name)
                 index["oneOf"][-1]["allOf"][0]["properties"]["version"]["oneOf"] = supported_versions_block
-                dump(index, index_path)
+                dump(index, destination_path / index_name)
 
     # Update the unstable schema (for tests and internal use).
     unstable_filename = "haystack-pipeline-unstable.schema.json"
@@ -491,3 +491,4 @@ def update_json_schema(
     unstable_schema["$id"] = f"{SCHEMA_URL}{unstable_filename}"
     unstable_schema["properties"]["version"]["oneOf"] = [{"const": "unstable"}] + unstable_versions_block
     dump(unstable_schema, destination_path / unstable_filename)
+    logger.info(f"Unstable schema saved in {destination_path / unstable_filename}")
