@@ -21,7 +21,7 @@ import torch
 import posthog
 import transformers
 
-import haystack
+from haystack import __version__
 
 posthog.api_key = "phc_F5v11iI2YHkoP6Er3cPILWSrLhY3D6UY4dEMga4eoaa"
 posthog.host = "https://tm.hs.deepset.ai"
@@ -235,7 +235,7 @@ def _get_or_create_telemetry_meta_data() -> Dict[str, Any]:
             "os_family": platform.system(),
             "os_machine": platform.machine(),
             "python_version": platform.python_version(),
-            "haystack_version": haystack.__version__,
+            "haystack_version": __version__,
             "transformers_version": transformers.__version__,
             "torch_version": torch.__version__,
             "torch_cuda_version": torch.version.cuda if torch.cuda.is_available() else 0,

@@ -5,7 +5,7 @@ from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
 
 from haystack.schema import Document
-from haystack.nodes.summarizer import BaseSummarizer
+from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.modeling.utils import initialize_device_settings
 
 

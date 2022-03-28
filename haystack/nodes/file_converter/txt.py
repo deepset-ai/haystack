@@ -2,7 +2,7 @@ from typing import List, Optional, Any, Dict
 
 import logging
 from pathlib import Path
-from haystack.nodes.file_converter import BaseConverter
+from haystack.nodes.file_converter.base import BaseConverter
 
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ from typing import Union
 import torch
 from transformers import AutoModelForQuestionAnswering
 
-from haystack.modeling.model import adaptive_model as am
+from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import QuestionAnsweringHead
 from haystack.modeling.data_handler.processor import Processor
@@ -88,7 +88,7 @@ class Converter:
 
         if task_type == "question_answering":
             ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, **kwargs)
-            adaptive_model = am.AdaptiveModel(
+            adaptive_model = AdaptiveModel(
                 language_model=lm,
                 prediction_heads=[ph],
                 embeds_dropout_prob=0.1,
@@ -96,7 +96,7 @@ class Converter:
                 device=device,
             )
         elif task_type == "embeddings":
-            adaptive_model = am.AdaptiveModel(
+            adaptive_model = AdaptiveModel(
                 language_model=lm,
                 prediction_heads=[],
                 embeds_dropout_prob=0.1,

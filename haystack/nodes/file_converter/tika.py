@@ -7,7 +7,7 @@ from html.parser import HTMLParser
 import requests
 from tika import parser as tikaparser
 
-from haystack.nodes.file_converter import BaseConverter
+from haystack.nodes.file_converter.base import BaseConverter
 
 
 logger = logging.getLogger(__name__)

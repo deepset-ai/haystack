@@ -22,10 +22,9 @@ logging.getLogger("haystack").setLevel(logging.INFO)
 
 import pandas as pd
 
-from haystack import pipelines
 from haystack.schema import Document, Answer, Label, MultiLabel, Span
-from haystack.nodes import BaseComponent
-from haystack.pipelines import Pipeline
+from haystack.nodes.base import BaseComponent
+from haystack.pipelines.base import Pipeline
 
 
 pd.options.display.max_colwidth = 80
@@ -66,6 +65,7 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
 
 # This self-import is used to monkey-patch, keep for now
 import haystack  # pylint: disable=import-self
+from haystack import pipelines
 from haystack.nodes import (
     connector,
     document_classifier,

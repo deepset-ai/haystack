@@ -13,7 +13,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "ocr", ie)
 
-from haystack.nodes.file_converter import BaseConverter, ImageToTextConverter
+from haystack.nodes.file_converter.base import BaseConverter, ImageToTextConverter
 
 
 logger = logging.getLogger(__name__)

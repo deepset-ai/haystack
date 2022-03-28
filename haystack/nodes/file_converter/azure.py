@@ -7,7 +7,7 @@ import copy
 from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
 from azure.core.credentials import AzureKeyCredential
 
-from haystack.nodes.file_converter import BaseConverter
+from haystack.nodes.file_converter.base import BaseConverter
 
 logger = logging.getLogger(__name__)
 

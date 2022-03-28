@@ -20,8 +20,8 @@ from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 from haystack.schema import Document, Answer, Span
-from haystack.document_stores import BaseDocumentStore
-from haystack.nodes.reader import BaseReader
+from haystack.document_stores.base import BaseDocumentStore
+from haystack.nodes.reader.base import BaseReader
 
 
 logger = logging.getLogger(__name__)
