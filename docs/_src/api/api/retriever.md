@@ -107,12 +107,16 @@ class ElasticsearchRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: KeywordDocumentStore, top_k: int = 10, custom_query: Optional[str] = None)
+def __init__(document_store: KeywordDocumentStore, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None)
 ```
 
 **Arguments**:
 
 - `document_store`: an instance of an ElasticsearchDocumentStore to retrieve documents from.
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to False.
 - `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
  Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
  that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
