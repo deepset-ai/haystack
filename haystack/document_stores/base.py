@@ -662,6 +662,7 @@ class KeywordDocumentStore(BaseDocumentStore):
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -736,6 +737,10 @@ class KeywordDocumentStore(BaseDocumentStore):
         :param custom_query: Custom query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to False.
         """
 
 

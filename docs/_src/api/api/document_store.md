@@ -305,7 +305,7 @@ Base class for implementing Document Stores that support keyword searches.
 
 ```python
 @abstractmethod
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -382,6 +382,10 @@ operation.
 - `custom_query`: Custom query to be executed.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to False.
 
 <a id="base.get_batches_from_generator"></a>
 
@@ -762,7 +766,7 @@ Return all labels in the document store
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -903,6 +907,10 @@ You will find the highlighted output in the returned Document's meta field by ke
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to false.
 
 <a id="elasticsearch.ElasticsearchDocumentStore.query_by_embedding"></a>
 
@@ -4135,7 +4143,7 @@ operation.
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -4212,6 +4220,10 @@ operation.
 - `custom_query`: Custom query to be executed.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to requests
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to False.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.write_documents"></a>
 

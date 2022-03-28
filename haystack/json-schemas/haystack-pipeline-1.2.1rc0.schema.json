@@ -1630,6 +1630,11 @@
               "default": 10,
               "type": "integer"
             },
+            "all_terms_must_match": {
+              "title": "All Terms Must Match",
+              "default": false,
+              "type": "boolean"
+            },
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
@@ -1674,6 +1679,11 @@
               "title": "Top K",
               "default": 10,
               "type": "integer"
+            },
+            "all_terms_must_match": {
+              "title": "All Terms Must Match",
+              "default": false,
+              "type": "boolean"
             },
             "custom_query": {
               "title": "Custom Query",
