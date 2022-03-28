@@ -1,6 +1,7 @@
 from __future__ import annotations
 from os import pipe
-from typing import Dict, List, Optional, Any, Set
+import tempfile
+from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 import copy
 import json
@@ -16,6 +17,7 @@ from jsonschema import Draft7Validator
 from jsonschema.exceptions import ValidationError
 from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
+from tqdm import tqdm
 from transformers import pipelines
 import yaml
 from networkx import DiGraph
@@ -45,7 +47,7 @@ except:
 
 from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
-from haystack.errors import PipelineError, PipelineConfigError
+from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -576,7 +578,7 @@ class Pipeline(BasePipeline):
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
+        meta: Optional[Union[dict, List[dict]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
@@ -690,6 +692,83 @@ class Pipeline(BasePipeline):
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
+
+    @classmethod
+    def eval_beir(
+        cls,
+        index_pipeline: Pipeline,
+        query_pipeline: Pipeline,
+        index_params: dict = {},
+        query_params: dict = {},
+        dataset: str = "scifact",
+        dataset_dir: Path = Path("."),
+        top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+        keep_index: bool = False,
+    ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
+        """
+        Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
+        See https://github.com/beir-cellar/beir for more information.
+
+        :param index_pipeline: The indexing pipeline to use.
+        :param query_pipeline: The query pipeline to evaluate.
+        :param index_params: The params to use during indexing (see pipeline.run's params).
+        :param query_params: The params to use during querying (see pipeline.run's params).
+        :param dataset: The BEIR dataset to use.
+        :param dataset_dir: The directory to store the dataset to.
+        :param top_k_values: The top_k values each metric will be calculated for.
+        :param keep_index: Whether to keep the index after evaluation.
+                           If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+                           Defaults to False.
+
+        Returns a tuple containing the ncdg, map, recall and precision scores.
+        Each metric is represented by a dictionary containing the scores for each top_k value.
+        """
+        try:
+            from beir import util
+            from beir.datasets.data_loader import GenericDataLoader
+            from beir.retrieval.evaluation import EvaluateRetrieval
+        except ModuleNotFoundError as e:
+            raise HaystackError("beir is not installed. Please run `pip install farm-haystack[beir]`...") from e
+
+        url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
+        data_path = util.download_and_unzip(url, dataset_dir)
+        logger.info(f"Dataset downloaded here: {data_path}")
+        corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
+
+        # check index before eval
+        document_store = index_pipeline.get_document_store()
+        if document_store is not None:
+            if document_store.get_document_count() > 0:
+                raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+
+            if hasattr(document_store, "search_fields"):
+                search_fields = getattr(document_store, "search_fields")
+                if "name" not in search_fields:
+                    logger.warning(
+                        "Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. "
+                        "Please set search_fields appropriately."
+                    )
+
+        haystack_retriever = _HaystackBeirRetrieverAdapter(
+            index_pipeline=index_pipeline,
+            query_pipeline=query_pipeline,
+            index_params=index_params,
+            query_params=query_params,
+        )
+        retriever = EvaluateRetrieval(haystack_retriever, k_values=top_k_values)
+
+        # Retrieve results (format of results is identical to qrels)
+        results = retriever.retrieve(corpus, queries)
+
+        # Clean up document store
+        if not keep_index and document_store is not None and document_store.index is not None:
+            logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+            document_store.delete_index(document_store.index)
+
+        # Evaluate your retrieval using NDCG@k, MAP@K ...
+        logger.info(f"Retriever evaluation for k in: {retriever.k_values}")
+        ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
+        return ndcg, map_, recall, precision
 
     @send_event
     def eval(
@@ -1561,3 +1640,51 @@ class _RayDeploymentWrapper:
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
         return self.node._dispatch_run(*args, **kwargs)
+
+
+class _HaystackBeirRetrieverAdapter:
+    def __init__(self, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict):
+        """
+        Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
+        This has nothing to do with Haystack's retriever classes.
+        See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
+
+        :param index_pipeline: The indexing pipeline to use.
+        :param query_pipeline: The query pipeline to evaluate.
+        :param index_params: The params to use during indexing (see pipeline.run's params).
+        :param query_params: The params to use during querying (see pipeline.run's params).
+        """
+        self.index_pipeline = index_pipeline
+        self.query_pipeline = query_pipeline
+        self.index_params = index_params
+        self.query_params = query_params
+
+    def search(
+        self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, score_function: str, **kwargs
+    ) -> Dict[str, Dict[str, float]]:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_paths = []
+            metas = []
+            for id, doc in corpus.items():
+                file_path = f"{temp_dir}/{id}"
+                with open(file_path, "w") as f:
+                    f.write(doc["text"])
+                file_paths.append(file_path)
+                metas.append({"id": id, "name": doc.get("title", None)})
+
+            logger.info(f"indexing {len(corpus)} documents...")
+            self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
+            logger.info(f"indexing finished.")
+
+            # adjust query_params to ensure top_k is retrieved
+            query_params = copy.deepcopy(self.query_params)
+            query_params["top_k"] = top_k
+
+            results = {}
+            for q_id, query in tqdm(queries.items(), total=len(queries)):
+                res = self.query_pipeline.run(query=query, params=query_params)
+                docs = res["documents"]
+                query_results = {doc.meta["id"]: doc.score for doc in docs}
+                results[q_id] = query_results
+
+            return results

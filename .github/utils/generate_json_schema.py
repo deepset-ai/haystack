@@ -1,5 +1,6 @@
 import sys
 import logging
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 
@@ -7,4 +8,6 @@ logging.basicConfig(level=logging.INFO)
 sys.path.append(".")
 from haystack.nodes._json_schema import update_json_schema
 
-update_json_schema(update_index=True)
+update_json_schema(
+    update_index=True, destination_path=Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
+)

@@ -1,7 +1,7 @@
 changelog:
   exclude:
     labels:
-      - ignore-for-release
+      - ignore-for-release-notes
   categories:
     - title: Breaking Changes
       labels:
@@ -17,6 +17,9 @@ changelog:
         - topic:document_store
         - topic:elasticsearch
         - topic:faiss
+        - topic:milvus
+        - topic:weaviate
+        - topic:pinecone
         - topic:sql
     - title: REST API
       labels:
@@ -24,7 +27,6 @@ changelog:
     - title: UI / Demo
       labels:
         - topic:ui
-        - topic:demo
     - title: Documentation
       labels:
         - type:documentation

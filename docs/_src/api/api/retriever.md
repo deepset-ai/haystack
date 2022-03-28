@@ -107,12 +107,16 @@ class ElasticsearchRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: KeywordDocumentStore, top_k: int = 10, custom_query: Optional[str] = None)
+def __init__(document_store: KeywordDocumentStore, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None)
 ```
 
 **Arguments**:
 
 - `document_store`: an instance of an ElasticsearchDocumentStore to retrieve documents from.
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to False.
 - `custom_query`: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
  Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
  that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
@@ -312,7 +316,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -362,8 +366,11 @@ Options: `dot_product` (Default) or `cosine`
 Increase if errors like "encoded data exceeds max_size ..." come up
 - `progress_bar`: Whether to show a tqdm progress bar or not.
 Can be helpful to disable in production deployments to keep the logs clean.
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+These strings will be converted into pytorch devices, so use the string notation described here:
+https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+(e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
+will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
 the local token will be used, which must be previously created via `transformer-cli login`.
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
@@ -520,7 +527,7 @@ Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -556,8 +563,11 @@ Options: `dot_product` (Default) or `cosine`
 Increase if errors like "encoded data exceeds max_size ..." come up
 - `progress_bar`: Whether to show a tqdm progress bar or not.
 Can be helpful to disable in production deployments to keep the logs clean.
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+These strings will be converted into pytorch devices, so use the string notation described here:
+https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+(e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
+training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
 the local token will be used, which must be previously created via `transformer-cli login`.
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
@@ -695,7 +705,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -721,8 +731,11 @@ Options:
 Default: -1 (very last layer).
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+These strings will be converted into pytorch devices, so use the string notation described here:
+https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+(e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
+training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
 the local token will be used, which must be previously created via `transformer-cli login`.
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained

@@ -212,8 +212,6 @@ TODO drop params
 #### normalize\_embedding
 
 ```python
-@staticmethod
-@njit
 def normalize_embedding(emb: np.ndarray) -> None
 ```
 
@@ -249,6 +247,25 @@ When set to None (default) all available eval documents are used.
 - `open_domain`: Set this to True if your file is an open domain dataset where two different answers to the
 same question might be found in different contexts.
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+
+<a id="base.BaseDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+@abstractmethod
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
 
 <a id="base.BaseDocumentStore.run"></a>
 
@@ -288,7 +305,7 @@ Base class for implementing Document Stores that support keyword searches.
 
 ```python
 @abstractmethod
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -365,6 +382,10 @@ operation.
 - `custom_query`: Custom query to be executed.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to False.
 
 <a id="base.get_batches_from_generator"></a>
 
@@ -745,7 +766,7 @@ Return all labels in the document store
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -886,6 +907,10 @@ You will find the highlighted output in the returned Document's meta field by ke
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to false.
 
 <a id="elasticsearch.ElasticsearchDocumentStore.query_by_embedding"></a>
 
@@ -1842,6 +1867,24 @@ Example:
 
 None
 
+<a id="memory.InMemoryDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a id="memory.InMemoryDocumentStore.delete_labels"></a>
 
 #### delete\_labels
@@ -2127,6 +2170,24 @@ have their ID in the list).
 
 None
 
+<a id="sql.SQLDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a id="sql.SQLDocumentStore.delete_labels"></a>
 
 #### delete\_labels
@@ -2366,6 +2427,24 @@ Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
 If filters are provided along with a list of IDs, this method deletes the
 intersection of the two query results (documents that match the filters and
 have their ID in the list).
+
+**Returns**:
+
+None
+
+<a id="faiss.FAISSDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
 
 **Returns**:
 
@@ -2636,6 +2715,24 @@ Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
 If filters are provided along with a list of IDs, this method deletes the
 intersection of the two query results (documents that match the filters and
 have their ID in the list).
+
+**Returns**:
+
+None
+
+<a id="milvus1.Milvus1DocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
 
 **Returns**:
 
@@ -2927,6 +3024,24 @@ Delete all documents (from SQL AND Milvus).
 - `index`: (SQL) index name for storing the docs and metadata
 - `filters`: Optional filters to narrow down the search space.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
+
+**Returns**:
+
+None
+
+<a id="milvus2.Milvus2DocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
 
 **Returns**:
 
@@ -3565,6 +3680,24 @@ operation.
 
 None
 
+<a id="weaviate.WeaviateDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a id="weaviate.WeaviateDocumentStore.delete_labels"></a>
 
 #### delete\_labels
@@ -4010,7 +4143,7 @@ operation.
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -4087,6 +4220,10 @@ operation.
 - `custom_query`: Custom query to be executed.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to requests
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to False.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.write_documents"></a>
 
