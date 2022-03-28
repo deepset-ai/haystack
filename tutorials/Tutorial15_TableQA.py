@@ -25,8 +25,8 @@ def tutorial15_tableqa():
     # Let's first fetch some tables that we want to query
     # Here: 1000 tables + texts
 
-    doc_dir = "data"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/table_text_dataset.zip"
+    doc_dir = "data/tutorial15"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/ottqa_tables_sample.json.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Add the tables to the DocumentStore

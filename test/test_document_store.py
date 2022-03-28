@@ -19,7 +19,7 @@ from .conftest import (
 )
 from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.utils import es_index_to_document_store
+from haystack.document_stores.utils import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -125,7 +125,9 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate", "pinecone"], indirect=True
+)
 def test_write_with_duplicate_doc_ids_custom_index(document_store):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -218,7 +220,9 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory", "pinecone"], indirect=True
+)
 def test_extended_filter(document_store_with_docs):
     # Test comparison operators individually
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})
@@ -712,7 +716,7 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
 def test_labels(document_store):
     label = Label(
         query="question1",
@@ -800,7 +804,7 @@ def test_labels(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
 def test_multilabel(document_store):
     labels = [
         Label(
@@ -916,7 +920,7 @@ def test_multilabel(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
 def test_multilabel_no_answer(document_store):
     labels = [
         Label(
@@ -1171,7 +1175,7 @@ def test_multilabel_meta_aggregations(document_store):
             assert multi_label.filters == l.filters
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate", "pinecone"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
@@ -1711,7 +1715,7 @@ def test_elasticsearch_search_field_mapping():
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_brownfield_support(document_store_with_docs):
     new_document_store = InMemoryDocumentStore()
-    new_document_store = es_index_to_document_store(
+    new_document_store = elasticsearch_index_to_document_store(
         document_store=new_document_store,
         original_index_name="haystack_test",
         original_content_field="content",
@@ -1733,7 +1737,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert original_content == transferred_content
 
     # Test transferring docs with PreProcessor
-    new_document_store = es_index_to_document_store(
+    new_document_store = elasticsearch_index_to_document_store(
         document_store=new_document_store,
         original_index_name="haystack_test",
         original_content_field="content",

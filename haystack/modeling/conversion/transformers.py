@@ -1,11 +1,13 @@
 import logging
 from typing import Union
 
+import torch
 from transformers import AutoModelForQuestionAnswering
 
 from haystack.modeling.model import adaptive_model as am
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import QuestionAnsweringHead
+from haystack.modeling.data_handler.processor import Processor
 
 
 logger = logging.getLogger(__name__)
@@ -46,10 +48,10 @@ class Converter:
     @staticmethod
     def convert_from_transformers(
         model_name_or_path,
-        device,
-        revision=None,
-        task_type=None,
-        processor=None,
+        device: Union[str, torch.device],
+        revision: str = None,
+        task_type: str = "question_answering",
+        processor: Processor = None,
         use_auth_token: Union[bool, str] = None,
         **kwargs,
     ):
@@ -65,14 +67,10 @@ class Converter:
                                               - deepset/bert-large-uncased-whole-word-masking-squad2
 
                                               See https://huggingface.co/models for full list
-        :param device: "cpu" or "cuda"
+        :param device: torch.device("cpu") or torch.device("cuda")
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :type revision: str
-        :param task_type: One of :
-                          - 'question_answering'
-                          More tasks coming soon ...
-        :param processor: populates prediction head with information coming from tasks
-        :type processor: Processor
+                         Right now accepts only 'question_answering'.
+        :param processor: populates prediction head with information coming from tasks.
         :return: AdaptiveModel
         """
 
