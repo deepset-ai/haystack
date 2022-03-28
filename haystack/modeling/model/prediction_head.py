@@ -288,7 +288,7 @@ class QuestionAnsweringHead(PredictionHead):
         self.use_confidence_scores_for_ranking = use_confidence_scores_for_ranking
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore
+    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, transformer_args: Optional[Dict] = None):  # type: ignore
         """
         Load a prediction head from a saved Haystack or transformers model. `pretrained_model_name_or_path`
         can be one of the following:
@@ -304,6 +304,9 @@ class QuestionAnsweringHead(PredictionHead):
 
                                               See https://huggingface.co/models for full list
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param transformer_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+                                 (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
+
         """
         if (
             os.path.exists(pretrained_model_name_or_path)
@@ -316,7 +319,7 @@ class QuestionAnsweringHead(PredictionHead):
             # b) transformers style
             # load all weights from model
             full_qa_model = AutoModelForQuestionAnswering.from_pretrained(
-                pretrained_model_name_or_path, revision=revision, **kwargs
+                pretrained_model_name_or_path, revision=revision, **transformer_args
             )
             # init empty head
             head = cls(layer_dims=[full_qa_model.config.hidden_size, 2], task_name="question_answering")

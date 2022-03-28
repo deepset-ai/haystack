@@ -60,7 +60,7 @@ class FARMReader(BaseReader):
         local_files_only=False,
         force_download=False,
         use_auth_token: Optional[Union[str, bool]] = None,
-        **kwargs,
+        transformers_args: Optional[Dict] = None,
     ):
 
         """
@@ -112,6 +112,8 @@ class FARMReader(BaseReader):
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param transformer_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+                                 (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
         """
         super().__init__()
 
@@ -136,7 +138,7 @@ class FARMReader(BaseReader):
             force_download=force_download,
             devices=self.devices,
             use_auth_token=use_auth_token,
-            **kwargs,
+            transformers_args=transformers_args,
         )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost

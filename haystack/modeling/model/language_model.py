@@ -111,7 +111,10 @@ class LanguageModel(nn.Module):
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
         use_auth_token: Union[bool, str] = None,
-        **kwargs,
+        n_added_tokens: int = 0,
+        language_model_class: str = None,
+        revision: str = None,
+        transformers_args: Optional[Dict] = None,
     ):
         """
         Load a pretrained language model either by
@@ -151,12 +154,14 @@ class LanguageModel(nn.Module):
         or can be manually supplied via `language_model_class`.
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param language_model_class: (Optional) Name of the language model class to load (e.g. `Bert`)
+        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param transformer_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+                                 (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
         """
-        n_added_tokens = kwargs.pop("n_added_tokens", 0)
-        language_model_class = kwargs.pop("language_model_class", None)
-        kwargs["revision"] = kwargs.get("revision", None)
+        # Make sure "revision" is in transformers' args
+        transformers_args["revision"] = transformers_args.get("revision", None)
+
         logger.info("LOADING MODEL")
         logger.info("=============")
         config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
@@ -170,12 +175,12 @@ class LanguageModel(nn.Module):
             logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
             if language_model_class is None:
                 language_model_class = cls.get_language_model_class(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **transformers_args
                 )
 
             if language_model_class:
                 language_model = cls.subclasses[language_model_class].load(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **transformers_args
                 )
             else:
                 language_model = None
@@ -205,11 +210,11 @@ class LanguageModel(nn.Module):
         return language_model
 
     @staticmethod
-    def get_language_model_class(model_name_or_path, use_auth_token: Union[str, bool] = None, **kwargs):
+    def get_language_model_class(model_name_or_path, use_auth_token: Union[str, bool] = None, transformer_kwargs: Optional[dict] = None):
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
 
-        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, **transformer_kwargs)
         model_type = config.model_type
         if model_type == "xlm-roberta":
             language_model_class = "XLMRoberta"

@@ -208,15 +208,15 @@ class Processor(ABC):
     @classmethod
     def convert_from_transformers(
         cls,
-        tokenizer_name_or_path,
-        task_type,
-        max_seq_len,
-        doc_stride,
-        revision=None,
-        tokenizer_class=None,
-        tokenizer_args=None,
-        use_fast=True,
-        **kwargs,
+        tokenizer_name_or_path: str,
+        task_type: str,
+        max_seq_len: int,
+        doc_stride: int,
+        revision: str = None,
+        tokenizer_class = None,
+        tokenizer_args: Optional[Dict] = None,
+        transformers_args: Optional[Dict] = None,
+        use_fast: bool = True,
     ):
         tokenizer_args = tokenizer_args or {}
         tokenizer = Tokenizer.load(
@@ -225,7 +225,7 @@ class Processor(ABC):
             use_fast=use_fast,
             revision=revision,
             **tokenizer_args,
-            **kwargs,
+            **transformers_args,
         )
 
         # TODO infer task_type automatically from config (if possible)

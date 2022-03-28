@@ -495,7 +495,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         task_type: str = "question_answering",
         processor: Optional[Processor] = None,
         use_auth_token: Optional[Union[bool, str]] = None,
-        **kwargs,
+        transformers_args: Optional[Dict] = None,
     ):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
@@ -513,6 +513,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :param device: On which hardware the conversion should take place. Choose from torch.device("cpu") or torch.device("cuda")
         :param task_type: 'question_answering'. More tasks coming soon ...
         :param processor: Processor to populate prediction head with information coming from tasks.
+        :param transformer_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+                                 (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
         :return: AdaptiveModel
         """
         return conv.Converter.convert_from_transformers(
@@ -522,7 +524,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             task_type=task_type,
             processor=processor,
             use_auth_token=use_auth_token,
-            **kwargs,
+            transformers_args=transformers_args,
         )
 
     @classmethod

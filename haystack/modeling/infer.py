@@ -130,7 +130,7 @@ class Inferencer:
         multithreading_rust: bool = True,
         devices: Optional[List[torch.device]] = None,
         use_auth_token: Union[bool, str] = None,
-        **kwargs,
+        transformers_args: Optional[Dict] = None,
     ):
         """
         Load an Inferencer incl. all relevant components (model, tokenizer, processor ...) either by
@@ -170,6 +170,8 @@ class Inferencer:
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
         :param devices: List of devices to perform inference on. (Currently, only the first device in the list is used.)
+        :param transformer_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+                                 (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
         :return: An instance of the Inferencer.
         """
         if tokenizer_args is None:
@@ -203,7 +205,7 @@ class Inferencer:
                 device=devices[0],  # type: ignore
                 task_type=task_type,
                 use_auth_token=use_auth_token,
-                **kwargs,
+                transformers_args=transformers_args,
             )
             processor = Processor.convert_from_transformers(
                 model_name_or_path,
@@ -215,7 +217,7 @@ class Inferencer:
                 tokenizer_args=tokenizer_args,
                 use_fast=use_fast,
                 use_auth_token=use_auth_token,
-                **kwargs,
+                transformers_args=transformers_args,
             )
 
         # override processor attributes loaded from config or HF with inferencer params

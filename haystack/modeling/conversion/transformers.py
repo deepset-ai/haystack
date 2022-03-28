@@ -1,5 +1,6 @@
+from typing import Union, Optional, Dict
+
 import logging
-from typing import Union
 
 import torch
 from transformers import AutoModelForQuestionAnswering
@@ -53,7 +54,7 @@ class Converter:
         task_type: str = "question_answering",
         processor: Processor = None,
         use_auth_token: Union[bool, str] = None,
-        **kwargs,
+        transformer_args: Optional[Dict] = None
     ):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
@@ -71,10 +72,14 @@ class Converter:
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
                          Right now accepts only 'question_answering'.
         :param processor: populates prediction head with information coming from tasks.
+        :param transformer_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+                                 (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
         :return: AdaptiveModel
         """
+        if not isinstance(transformer_args, dict):
+            transformer_args = {}
 
-        lm = LanguageModel.load(model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs)
+        lm = LanguageModel.load(model_name_or_path, revision=revision, use_auth_token=use_auth_token, transformer_args=transformer_args)
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]
@@ -87,7 +92,7 @@ class Converter:
                 )
 
         if task_type == "question_answering":
-            ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, **kwargs)
+            ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, transformer_args=transformer_args)
             adaptive_model = am.AdaptiveModel(
                 language_model=lm,
                 prediction_heads=[ph],
