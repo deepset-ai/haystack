@@ -15,15 +15,13 @@ def tutorial9_dpr_training():
     s3_url_train = "https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-nq-train.json.gz"
     s3_url_dev = "https://dl.fbaipublicfiles.com/dpr/data/retriever/biencoder-nq-dev.json.gz"
 
-    fetch_archive_from_http(s3_url_train, output_dir=doc_dir + "train/")
-    fetch_archive_from_http(s3_url_dev, output_dir=doc_dir + "dev/")
+    fetch_archive_from_http(s3_url_train, output_dir=doc_dir + "/train")
+    fetch_archive_from_http(s3_url_dev, output_dir=doc_dir + "/dev")
 
     ## Option 1: Training DPR from Scratch
 
     # Here are the variables to specify our training data, the models that we use to initialize DPR
     # and the directory where we'll be saving the model
-
-    doc_dir = "data/dpr_training/"
 
     train_filename = "train/biencoder-nq-train.json"
     dev_filename = "dev/biencoder-nq-dev.json"
