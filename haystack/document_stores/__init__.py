@@ -15,6 +15,7 @@ OpenSearchDocumentStore = safe_import(
 
 SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
 FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumentStore", "faiss")
+PineconeDocumentStore = safe_import("haystack.document_stores.pinecone", "PineconeDocumentStore", "pinecone")
 if os.getenv("MILVUS1_ENABLED"):
     MilvusDocumentStore = safe_import("haystack.document_stores.milvus1", "Milvus1DocumentStore", "milvus1")
 else:
