@@ -1,11 +1,18 @@
 import os
 from subprocess import Popen, PIPE, STDOUT
-from haystack.utils import fetch_archive_from_http, convert_files_to_dicts, clean_wiki_text, launch_es, print_answers
+from haystack.utils import (
+    fetch_archive_from_http,
+    convert_files_to_dicts,
+    clean_wiki_text,
+    launch_es,
+    print_answers,
+    print_documents,
+)
 from haystack.pipelines import Pipeline, RootNode
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes import (
     ElasticsearchRetriever,
-    DensePassageRetriever,
+    EmbeddingRetriever,
     FARMReader,
     TransformersQueryClassifier,
     SklearnQueryClassifier,
@@ -32,8 +39,12 @@ def tutorial14_query_classifier():
     es_retriever = ElasticsearchRetriever(document_store=document_store)
 
     # Initialize dense retriever
-    dpr_retriever = DensePassageRetriever(document_store)
-    document_store.update_embeddings(dpr_retriever, update_existing_embeddings=False)
+    embedding_retriever = EmbeddingRetriever(
+        document_store=document_store,
+        model_format="sentence_transformers",
+        embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+    )
+    document_store.update_embeddings(embedding_retriever, update_existing_embeddings=False)
 
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
 
@@ -44,16 +55,16 @@ def tutorial14_query_classifier():
     sklearn_keyword_classifier = Pipeline()
     sklearn_keyword_classifier.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
     sklearn_keyword_classifier.add_node(
-        component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"]
+        component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_1"]
     )
     sklearn_keyword_classifier.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
-    sklearn_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "DPRRetriever"])
+    sklearn_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"])
     sklearn_keyword_classifier.draw("pipeline_classifier.png")
 
     # Run only the dense retriever on the full sentence query
     res_1 = sklearn_keyword_classifier.run(query="Who is the father of Arya Stark?")
     print("\n===============================")
-    print("DPR Results" + "\n" + "=" * 15)
+    print("Embedding Retriever Results" + "\n" + "=" * 15)
     print_answers(res_1, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
@@ -65,7 +76,7 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_3 = sklearn_keyword_classifier.run(query="which country was jon snow filmed ?")
     print("\n===============================")
-    print("DPR Results" + "\n" + "=" * 15)
+    print("Embedding Retriever Results" + "\n" + "=" * 15)
     print_answers(res_3, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
@@ -77,7 +88,7 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_5 = sklearn_keyword_classifier.run(query="who are the younger brothers of arya stark ?")
     print("\n===============================")
-    print("DPR Results" + "\n" + "=" * 15)
+    print("Embedding Retriever Results" + "\n" + "=" * 15)
     print_answers(res_5, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
@@ -95,18 +106,20 @@ def tutorial14_query_classifier():
         component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"]
     )
     transformer_keyword_classifier.add_node(
-        component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"]
+        component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_1"]
     )
     transformer_keyword_classifier.add_node(
         component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
     )
-    transformer_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "DPRRetriever"])
+    transformer_keyword_classifier.add_node(
+        component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"]
+    )
     transformer_keyword_classifier.draw("pipeline_classifier.png")
 
     # Run only the dense retriever on the full sentence query
     res_1 = transformer_keyword_classifier.run(query="Who is the father of Arya Stark?")
     print("\n===============================")
-    print("DPR Results" + "\n" + "=" * 15)
+    print("Embedding Retriever Results" + "\n" + "=" * 15)
     print_answers(res_1, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
@@ -118,7 +131,7 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_3 = transformer_keyword_classifier.run(query="which country was jon snow filmed ?")
     print("\n===============================")
-    print("DPR Results" + "\n" + "=" * 15)
+    print("Embedding Retriever Results" + "\n" + "=" * 15)
     print_answers(res_3, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
@@ -130,7 +143,7 @@ def tutorial14_query_classifier():
     # Run only the dense retriever on the full sentence query
     res_5 = transformer_keyword_classifier.run(query="who are the younger brothers of arya stark ?")
     print("\n===============================")
-    print("DPR Results" + "\n" + "=" * 15)
+    print("Embedding Retriever Results" + "\n" + "=" * 15)
     print_answers(res_5, details="minimum")
 
     # Run only the sparse retriever on a keyword based query
@@ -145,11 +158,11 @@ def tutorial14_query_classifier():
 
     # Here we build the pipeline
     transformer_question_classifier = Pipeline()
-    transformer_question_classifier.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["Query"])
+    transformer_question_classifier.add_node(component=embedding_retriever, name="DPRRetriever", inputs=["Query"])
     transformer_question_classifier.add_node(
         component=TransformersQueryClassifier(model_name_or_path="shahrukhx01/question-vs-statement-classifier"),
         name="QueryClassifier",
-        inputs=["DPRRetriever"],
+        inputs=["EmbeddingRetriever"],
     )
     transformer_question_classifier.add_node(component=reader, name="QAReader", inputs=["QueryClassifier.output_1"])
     transformer_question_classifier.draw("question_classifier.png")
@@ -157,14 +170,13 @@ def tutorial14_query_classifier():
     # Run only the QA reader on the question query
     res_1 = transformer_question_classifier.run(query="Who is the father of Arya Stark?")
     print("\n===============================")
-    print("DPR Results" + "\n" + "=" * 15)
+    print("Embedding Retriever Results" + "\n" + "=" * 15)
     print_answers(res_1, details="minimum")
 
-    # Show only DPR results
     res_2 = transformer_question_classifier.run(query="Arya Stark was the daughter of a Lord.")
     print("\n===============================")
     print("ES Results" + "\n" + "=" * 15)
-    print_answers(res_2, details="minimum")
+    print_documents(res_2)
 
     # Here we create the keyword vs question/statement query classifier
 
