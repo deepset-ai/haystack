@@ -17,7 +17,6 @@ from haystack.document_stores.utils import convert_date_to_rfc3339
 
 try:
     from weaviate import client, AuthClientPassword
-    from weaviate.batch import Batch
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -458,7 +457,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
-                # docs_batch = Batch(self.weaviate_client)
                 for idx, doc in enumerate(document_batch):
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
@@ -492,8 +490,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     for date_field in date_fields:
                         _doc[date_field] = convert_date_to_rfc3339(_doc[date_field])
 
-                    docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
-
+                    self.weaviate_client.batch.add_data_object(
+                        data_object=_doc,
+                        class_name=index,
+                        uuid=doc_id,
+                        vector=vector,
+                    )
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create_objects()
                 # Weaviate returns errors for every failed document in the batch
@@ -564,10 +566,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if filters:
             filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
             result = (
-                self.weaviate_client.query.aggregate(index).with_fields("meta { count }").with_where(filter_dict).do()
+                self.weaviate_client.query.aggregate(index).with_meta_count().with_where(filter_dict).do()
             )
         else:
-            result = self.weaviate_client.query.aggregate(index).with_fields("meta { count }").do()
+            result = self.weaviate_client.query.aggregate(index).with_meta_count().do()
 
         if "data" in result:
             if "Aggregate" in result.get("data"):
