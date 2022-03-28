@@ -54,7 +54,7 @@ def tutorial8_preprocessing():
 
     # Haystack also has a convenience function that will automatically apply the right converter to each file in a directory.
 
-    all_docs = convert_files_to_dicts(dir_path=doc_dir)
+    all_docs = convert_files_to_docs(dir_path=doc_dir)
 
     """
     
