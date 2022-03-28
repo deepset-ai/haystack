@@ -38,11 +38,7 @@ def tutorial15_tableqa():
                 current_columns = table["header"]
                 current_rows = table["data"]
                 current_df = pd.DataFrame(columns=current_columns, data=current_rows)
-                document = Document(
-                    content=current_df,
-                    content_type="table",
-                    id=key,
-                )
+                document = Document(content=current_df, content_type="table", id=key)
                 processed_tables.append(document)
 
         return processed_tables
