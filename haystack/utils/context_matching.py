@@ -2,7 +2,7 @@ from typing import Generator, Iterable, Optional, Tuple, List, Union
 
 import re
 from itertools import groupby
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
 from collections import namedtuple
 
 from rapidfuzz import fuzz
