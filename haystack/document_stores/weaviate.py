@@ -491,10 +491,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         _doc[date_field] = convert_date_to_rfc3339(_doc[date_field])
 
                     self.weaviate_client.batch.add_data_object(
-                        data_object=_doc,
-                        class_name=index,
-                        uuid=doc_id,
-                        vector=vector,
+                        data_object=_doc, class_name=index, uuid=doc_id, vector=vector
                     )
                 # Ingest a batch of documents
                 results = self.weaviate_client.batch.create_objects()
@@ -565,9 +562,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         doc_count = 0
         if filters:
             filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
-            result = (
-                self.weaviate_client.query.aggregate(index).with_meta_count().with_where(filter_dict).do()
-            )
+            result = self.weaviate_client.query.aggregate(index).with_meta_count().with_where(filter_dict).do()
         else:
             result = self.weaviate_client.query.aggregate(index).with_meta_count().do()
 
