@@ -38,13 +38,13 @@ def eval_data_from_json(
         if "title" not in data["data"][0]:
             logger.warning(f"No title information found for documents in QA file: {filename}")
 
-        for document in data["data"]:
+        for squad_document in data["data"]:
             if max_docs:
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
-                document, preprocessor, open_domain
+                squad_document, preprocessor, open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -86,9 +86,9 @@ def eval_data_from_jsonl(
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
-            document_dict = json.loads(document)
+            squad_document = json.loads(document)
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
-                document_dict, preprocessor, open_domain
+                squad_document, preprocessor, open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -148,15 +148,14 @@ def _extract_docs_and_labels_from_dict(
         ## Create Document
         cur_full_doc = Document(content=paragraph["context"], meta=cur_meta)
         if preprocessor is not None:
-            splits_dicts = preprocessor.process(cur_full_doc.to_dict())
+            splits_docs = preprocessor.process(cur_full_doc)
             # we need to pull in _split_id into the document id for unique reference in labels
-            # todo: PreProcessor should work on Documents instead of dicts
             splits: List[Document] = []
             offset = 0
-            for d in splits_dicts:
-                id = f"{d['id']}-{d['meta']['_split_id']}"
-                d["meta"]["_split_offset"] = offset
-                offset += len(d["content"])
+            for d in splits_docs:
+                id = f"{d.id}-{d.meta['_split_id']}"
+                d.meta["_split_offset"] = offset
+                offset += len(d.content)
                 # offset correction based on splitting method
                 if preprocessor.split_by == "word":
                     offset += 1
@@ -164,7 +163,7 @@ def _extract_docs_and_labels_from_dict(
                     offset += 2
                 else:
                     raise NotImplementedError
-                mydoc = Document(content=d["content"], id=id, meta=d["meta"])
+                mydoc = Document(content=d.content, id=id, meta=d.meta)
                 splits.append(mydoc)
         else:
             splits = [cur_full_doc]
@@ -278,4 +277,3 @@ def convert_date_to_rfc3339(date: str) -> str:
         converted_date = parsed_datetime.isoformat()
 
     return converted_date
-

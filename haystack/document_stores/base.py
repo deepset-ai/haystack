@@ -531,7 +531,13 @@ class BaseDocumentStore(BaseComponent):
     def _create_document_field_map(self) -> Dict:
         pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None):  # type: ignore
+    def run(  # type: ignore
+        self,
+        documents: List[Union[dict, Document]],
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        id_hash_keys: Optional[List[str]] = None,
+    ):
         """
         Run requests of document stores
 
@@ -547,7 +553,10 @@ class BaseDocumentStore(BaseComponent):
         """
 
         field_map = self._create_document_field_map()
-        doc_objects = [Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) for d in documents]
+        doc_objects = [
+            Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) if isinstance(d, dict) else d
+            for d in documents
+        ]
         self.write_documents(documents=doc_objects, index=index, headers=headers)
         return {}, "output_1"
 
@@ -658,6 +667,7 @@ class KeywordDocumentStore(BaseDocumentStore):
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -732,6 +742,10 @@ class KeywordDocumentStore(BaseDocumentStore):
         :param custom_query: Custom query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to False.
         """
 
 
