@@ -160,6 +160,8 @@ class LanguageModel(nn.Module):
                                  (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
         """
         # Make sure "revision" is in transformers' args
+        if not transformers_args:
+            transformers_args = {}
         transformers_args["revision"] = transformers_args.get("revision", None)
 
         logger.info("LOADING MODEL")

@@ -217,8 +217,11 @@ class Processor(ABC):
         tokenizer_args: Optional[Dict] = None,
         transformers_args: Optional[Dict] = None,
         use_fast: bool = True,
-    ):
+    ) -> "Processor":
+
         tokenizer_args = tokenizer_args or {}
+        transformers_args = transformers_args or {}
+
         tokenizer = Tokenizer.load(
             tokenizer_name_or_path,
             tokenizer_class=tokenizer_class,
@@ -229,6 +232,8 @@ class Processor(ABC):
         )
 
         # TODO infer task_type automatically from config (if possible)
+        processor: "Processor"
+        
         if task_type == "question_answering":
             processor = SquadProcessor(
                 tokenizer=tokenizer,
