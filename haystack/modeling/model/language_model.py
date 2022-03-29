@@ -102,7 +102,7 @@ class LanguageModel(nn.Module):
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
 
-    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor, **kwargs):
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor):
         raise NotImplementedError
 
     @classmethod
@@ -368,7 +368,7 @@ class LanguageModel(nn.Module):
 
         return language
 
-    def formatted_preds(self, logits, samples, ignore_first_token=True, padding_mask=None, input_ids=None, **kwargs):
+    def formatted_preds(self, logits, samples, ignore_first_token=True, padding_mask=None, input_ids=None):
         """
         Extracting vectors from language model (e.g. for extracting sentence embeddings).
         Different pooling strategies and layers are available and will be determined from the object attributes
@@ -383,7 +383,6 @@ class LanguageModel(nn.Module):
                                    Many models have here a special token like [CLS] that you don't want to include into your average of token embeddings.
         :param padding_mask: Mask for the padding tokens. Those will also not be included in the pooling operations to prevent a bias by the number of padding tokens.
         :param input_ids: ids of the tokens in the vocab
-        :param kwargs: kwargs
         :return: list of dicts containing preds, e.g. [{"context": "some text", "vec": [-0.01, 0.5 ...]}]
         """
         if not hasattr(self, "extraction_layer") or not hasattr(self, "extraction_strategy"):
@@ -467,7 +466,7 @@ class Bert(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
         """
         Load a pretrained model by supplying
 
@@ -478,8 +477,9 @@ class Bert(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         bert = cls()
-        if "haystack_lm_name" in kwargs:
-            bert.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            bert.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             bert.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -488,11 +488,11 @@ class Bert(LanguageModel):
             # Haystack style
             bert_config = BertConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            bert.model = BertModel.from_pretrained(haystack_lm_model, config=bert_config, **kwargs)
+            bert.model = BertModel.from_pretrained(haystack_lm_model, config=bert_config, **transformers_args)
             bert.language = bert.model.config.language
         else:
             # Pytorch-transformer Style
-            bert.model = BertModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            bert.model = BertModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             bert.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         return bert
 
@@ -553,7 +553,7 @@ class Albert(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
         """
         Load a language model either by supplying
 
@@ -567,8 +567,9 @@ class Albert(LanguageModel):
         :return: Language Model
         """
         albert = cls()
-        if "haystack_lm_name" in kwargs:
-            albert.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            albert.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             albert.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -577,11 +578,11 @@ class Albert(LanguageModel):
             # Haystack style
             config = AlbertConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            albert.model = AlbertModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
+            albert.model = AlbertModel.from_pretrained(haystack_lm_model, config=config, **transformers_args)
             albert.language = albert.model.config.language
         else:
             # Huggingface transformer Style
-            albert.model = AlbertModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            albert.model = AlbertModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             albert.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         return albert
 
@@ -643,7 +644,7 @@ class Roberta(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
         """
         Load a language model either by supplying
 
@@ -657,8 +658,9 @@ class Roberta(LanguageModel):
         :return: Language Model
         """
         roberta = cls()
-        if "haystack_lm_name" in kwargs:
-            roberta.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            roberta.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             roberta.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -667,11 +669,11 @@ class Roberta(LanguageModel):
             # Haystack style
             config = RobertaConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            roberta.model = RobertaModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
+            roberta.model = RobertaModel.from_pretrained(haystack_lm_model, config=config, **transformers_args)
             roberta.language = roberta.model.config.language
         else:
             # Huggingface transformer Style
-            roberta.model = RobertaModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            roberta.model = RobertaModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             roberta.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         return roberta
 
@@ -733,7 +735,7 @@ class XLMRoberta(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
         """
         Load a language model either by supplying
 
@@ -747,8 +749,9 @@ class XLMRoberta(LanguageModel):
         :return: Language Model
         """
         xlm_roberta = cls()
-        if "haystack_lm_name" in kwargs:
-            xlm_roberta.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            xlm_roberta.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             xlm_roberta.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -757,11 +760,11 @@ class XLMRoberta(LanguageModel):
             # Haystack style
             config = XLMRobertaConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            xlm_roberta.model = XLMRobertaModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
+            xlm_roberta.model = XLMRobertaModel.from_pretrained(haystack_lm_model, config=config, **transformers_args)
             xlm_roberta.language = xlm_roberta.model.config.language
         else:
             # Huggingface transformer Style
-            xlm_roberta.model = XLMRobertaModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            xlm_roberta.model = XLMRobertaModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             xlm_roberta.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         return xlm_roberta
 
@@ -830,7 +833,7 @@ class DistilBert(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
         """
         Load a pretrained model by supplying
 
@@ -841,8 +844,9 @@ class DistilBert(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         distilbert = cls()
-        if "haystack_lm_name" in kwargs:
-            distilbert.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            distilbert.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             distilbert.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -851,11 +855,11 @@ class DistilBert(LanguageModel):
             # Haystack style
             config = DistilBertConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            distilbert.model = DistilBertModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
+            distilbert.model = DistilBertModel.from_pretrained(haystack_lm_model, config=config, **transformers_args)
             distilbert.language = distilbert.model.config.language
         else:
             # Pytorch-transformer Style
-            distilbert.model = DistilBertModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            distilbert.model = DistilBertModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             distilbert.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         config = distilbert.model.config
 
@@ -926,7 +930,7 @@ class XLNet(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
         """
         Load a language model either by supplying
 
@@ -940,8 +944,9 @@ class XLNet(LanguageModel):
         :return: Language Model
         """
         xlnet = cls()
-        if "haystack_lm_name" in kwargs:
-            xlnet.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            xlnet.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             xlnet.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -950,11 +955,11 @@ class XLNet(LanguageModel):
             # Haystack style
             config = XLNetConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            xlnet.model = XLNetModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
+            xlnet.model = XLNetModel.from_pretrained(haystack_lm_model, config=config, **transformers_args)
             xlnet.language = xlnet.model.config.language
         else:
             # Pytorch-transformer Style
-            xlnet.model = XLNetModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            xlnet.model = XLNetModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             xlnet.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
             config = xlnet.model.config
         # XLNet does not provide a pooled_output by default. Therefore, we need to initialize an extra pooler.
@@ -1038,7 +1043,7 @@ class Electra(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
         """
         Load a pretrained model by supplying
 
@@ -1049,8 +1054,9 @@ class Electra(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         electra = cls()
-        if "haystack_lm_name" in kwargs:
-            electra.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            electra.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             electra.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Transformers format
@@ -1059,11 +1065,11 @@ class Electra(LanguageModel):
             # Haystack style
             config = ElectraConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            electra.model = ElectraModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
+            electra.model = ElectraModel.from_pretrained(haystack_lm_model, config=config, **transformers_args)
             electra.language = electra.model.config.language
         else:
             # Transformers Style
-            electra.model = ElectraModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            electra.model = ElectraModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             electra.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         config = electra.model.config
 
@@ -1133,7 +1139,7 @@ class Camembert(Roberta):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
         """
         Load a language model either by supplying
 
@@ -1147,8 +1153,9 @@ class Camembert(Roberta):
         :return: Language Model
         """
         camembert = cls()
-        if "haystack_lm_name" in kwargs:
-            camembert.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            camembert.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             camembert.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -1157,11 +1164,11 @@ class Camembert(Roberta):
             # Haystack style
             config = CamembertConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            camembert.model = CamembertModel.from_pretrained(haystack_lm_model, config=config, **kwargs)
+            camembert.model = CamembertModel.from_pretrained(haystack_lm_model, config=config, **transformers_args)
             camembert.language = camembert.model.config.language
         else:
             # Huggingface transformer Style
-            camembert.model = CamembertModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            camembert.model = CamembertModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             camembert.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         return camembert
 
@@ -1183,7 +1190,8 @@ class DPRQuestionEncoder(LanguageModel):
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
         use_auth_token: Union[str, bool] = None,
-        **kwargs,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
     ):
         """
         Load a pretrained model by supplying
@@ -1194,9 +1202,12 @@ class DPRQuestionEncoder(LanguageModel):
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRQuestionEncoder
         """
+        transformers_args = transformers_args or {}
+
         dpr_question_encoder = cls()
-        if "haystack_lm_name" in kwargs:
-            dpr_question_encoder.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            dpr_question_encoder.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             dpr_question_encoder.name = pretrained_model_name_or_path
 
@@ -1210,7 +1221,7 @@ class DPRQuestionEncoder(LanguageModel):
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(
-                    haystack_lm_model, config=dpr_config, **kwargs
+                    haystack_lm_model, config=dpr_config, **transformers_args
                 )
             else:
                 if original_model_config.model_type != "bert":
@@ -1219,11 +1230,11 @@ class DPRQuestionEncoder(LanguageModel):
                         f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors."
                     )
                 original_config_dict = vars(original_model_config)
-                original_config_dict.update(kwargs)
+                original_config_dict.update(transformers_args)
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
-                language_model_class = cls.get_language_model_class(haystack_lm_config, use_auth_token, **kwargs)
+                language_model_class = cls.get_language_model_class(haystack_lm_config, use_auth_token=use_auth_token, transformers_args=transformers_args)
                 dpr_question_encoder.model.base_model.bert_model = (
                     cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
                 )
@@ -1235,7 +1246,7 @@ class DPRQuestionEncoder(LanguageModel):
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRQuestionEncoder model
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **transformers_args
                 )
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRQuestionEncoder
@@ -1247,7 +1258,7 @@ class DPRQuestionEncoder(LanguageModel):
                         f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors."
                     )
                 original_config_dict = vars(original_model_config)
-                original_config_dict.update(kwargs)
+                original_config_dict.update(transformers_args)
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
@@ -1288,8 +1299,7 @@ class DPRQuestionEncoder(LanguageModel):
         self,
         query_input_ids: torch.Tensor,
         query_segment_ids: torch.Tensor,
-        query_attention_mask: torch.Tensor,
-        **kwargs,
+        query_attention_mask: torch.Tensor
     ):
         """
         Perform the forward pass of the DPRQuestionEncoder model.
@@ -1339,7 +1349,8 @@ class DPRContextEncoder(LanguageModel):
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
         use_auth_token: Union[str, bool] = None,
-        **kwargs,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
     ):
         """
         Load a pretrained model by supplying
@@ -1350,9 +1361,11 @@ class DPRContextEncoder(LanguageModel):
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRContextEncoder
         """
+        transformers_args = transformers_args or {}
         dpr_context_encoder = cls()
-        if "haystack_lm_name" in kwargs:
-            dpr_context_encoder.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            dpr_context_encoder.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             dpr_context_encoder.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -1366,7 +1379,7 @@ class DPRContextEncoder(LanguageModel):
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
                 dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(
-                    haystack_lm_model, config=dpr_config, use_auth_token=use_auth_token, **kwargs
+                    haystack_lm_model, config=dpr_config, use_auth_token=use_auth_token, **transformers_args
                 )
             else:
                 if original_model_config.model_type != "bert":
@@ -1375,11 +1388,11 @@ class DPRContextEncoder(LanguageModel):
                         f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors."
                     )
                 original_config_dict = vars(original_model_config)
-                original_config_dict.update(kwargs)
+                original_config_dict.update(transformers_args)
                 dpr_context_encoder.model = transformers.DPRContextEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
-                language_model_class = cls.get_language_model_class(haystack_lm_config, **kwargs)
+                language_model_class = cls.get_language_model_class(haystack_lm_config=haystack_lm_config, transformers_args=transformers_args)
                 dpr_context_encoder.model.base_model.bert_model = (
                     cls.subclasses[language_model_class]
                     .load(str(pretrained_model_name_or_path), use_auth_token=use_auth_token)
@@ -1395,7 +1408,7 @@ class DPRContextEncoder(LanguageModel):
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRContextEncoder model
                 dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs
+                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **transformers_args
                 )
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRContextEncoder
@@ -1407,7 +1420,7 @@ class DPRContextEncoder(LanguageModel):
                         f"Bert based encoders are supported that need input_ids,token_type_ids,attention_mask as input tensors."
                     )
                 original_config_dict = vars(original_model_config)
-                original_config_dict.update(kwargs)
+                original_config_dict.update(transformers_args)
                 dpr_context_encoder.model = transformers.DPRContextEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
@@ -1447,8 +1460,7 @@ class DPRContextEncoder(LanguageModel):
         self,
         passage_input_ids: torch.Tensor,
         passage_segment_ids: torch.Tensor,
-        passage_attention_mask: torch.Tensor,
-        **kwargs,
+        passage_attention_mask: torch.Tensor
     ):
         """
         Perform the forward pass of the DPRContextEncoder model.
@@ -1508,7 +1520,13 @@ class BigBird(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def load(
+        cls, 
+        pretrained_model_name_or_path: Union[Path, str], 
+        language: str = None, 
+        haystack_lm_name: Optional[str] = None, 
+        transformers_args: Optional[Dict[str, Any]] = None
+    ):
         """
         Load a pretrained model by supplying
 
@@ -1519,8 +1537,9 @@ class BigBird(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         big_bird = cls()
-        if "haystack_lm_name" in kwargs:
-            big_bird.name = kwargs["haystack_lm_name"]
+        if haystack_lm_name:
+            big_bird.name = haystack_lm_name
+            transformers_args["haystack_lm_name"] = haystack_lm_name
         else:
             big_bird.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
@@ -1529,11 +1548,11 @@ class BigBird(LanguageModel):
             # Haystack style
             big_bird_config = BigBirdConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            big_bird.model = BigBirdModel.from_pretrained(haystack_lm_model, config=big_bird_config, **kwargs)
+            big_bird.model = BigBirdModel.from_pretrained(haystack_lm_model, config=big_bird_config, **transformers_args)
             big_bird.language = big_bird.model.config.language
         else:
             # Pytorch-transformer Style
-            big_bird.model = BigBirdModel.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
+            big_bird.model = BigBirdModel.from_pretrained(str(pretrained_model_name_or_path), **transformers_args)
             big_bird.language = cls._get_or_infer_language_from_name(language, pretrained_model_name_or_path)
         return big_bird
 
@@ -1543,8 +1562,7 @@ class BigBird(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
         Perform the forward pass of the BigBird model.
