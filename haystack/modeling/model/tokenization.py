@@ -70,7 +70,7 @@ class Tokenizer:
         pretrained_model_name_or_path: Union[Path, str],
         revision: str = None,
         tokenizer_class: str = None,
-        use_fast: bool=True,
+        use_fast: bool = True,
         use_auth_token: Union[bool, str] = None,
         **kwargs,
     ):

@@ -108,7 +108,7 @@ from the model for the predicted span.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
 the local token will be used, which must be previously created via `transformer-cli login`.
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
-- `transformer_args`: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+- `transformers_args`: extra key/value pairs accepted by the relevant `.from_pretrained()` method
 (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
 
 <a id="farm.FARMReader.train"></a>
