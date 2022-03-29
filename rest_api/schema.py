@@ -4,11 +4,10 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+from haystack.schema import Answer, Document, Label
 from pydantic import BaseModel, Field, Extra
 from pydantic import BaseConfig
 from pydantic.dataclasses import dataclass as pydantic_dataclass
-
-from haystack.schema import Answer, Document, Label
 
 
 BaseConfig.arbitrary_types_allowed = True

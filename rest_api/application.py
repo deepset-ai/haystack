@@ -5,11 +5,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.routing import APIRoute
 from fastapi.openapi.utils import get_openapi
 from starlette.middleware.cors import CORSMiddleware
+from haystack import __version__ as haystack_version
 
 from rest_api.controller.errors.http_error import http_error_handler
 from rest_api.config import ROOT_PATH
 from rest_api.controller.router import router as api_router
-from haystack import __version__ as haystack_version
 
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")

@@ -6,12 +6,12 @@ import json
 from pathlib import Path
 from numpy import ndarray
 
-from pydantic import BaseConfig
-from fastapi import APIRouter
-
 import haystack
 from haystack.pipelines.base import Pipeline
 from haystack.telemetry import send_event_if_public_demo
+from pydantic import BaseConfig
+from fastapi import APIRouter
+
 from rest_api.config import PIPELINE_YAML_PATH, QUERY_PIPELINE_NAME
 from rest_api.config import LOG_LEVEL, CONCURRENT_REQUEST_PER_WORKER
 from rest_api.schema import QueryRequest, QueryResponse

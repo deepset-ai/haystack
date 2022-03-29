@@ -7,9 +7,6 @@ import shutil
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
-from pydantic import BaseModel
-
 from haystack.pipelines.base import Pipeline
 from haystack.errors import PipelineConfigError
 from haystack.pipelines.config import (
@@ -18,6 +15,9 @@ from haystack.pipelines.config import (
     read_pipeline_config_from_yaml,
     validate_config,
 )
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from pydantic import BaseModel
+
 from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
 from rest_api.controller.utils import as_form
 
