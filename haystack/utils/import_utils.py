@@ -89,7 +89,7 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
         elif archive_extension == "gz" and not "tar.gz" in url:
             gzip_archive = gzip.GzipFile(fileobj=io.BytesIO(request_data.content))
             file_content = gzip_archive.read()
-            file_name = url.split("/")[-1][:-(len(archive_extension) + 1)]
+            file_name = url.split("/")[-1][: -(len(archive_extension) + 1)]
             with open(f"{output_dir}/{file_name}", "wb") as file:
                 file.write(file_content)
         elif archive_extension in ["gz", "bz2", "xz"]:
