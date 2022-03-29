@@ -1,4 +1,10 @@
-from typing import Optional, List
+from typing import Optional, List, Union
+
+from tqdm.auto import tqdm
+from elasticsearch.helpers import scan
+
+from haystack.document_stores import BaseDocumentStore
+from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
 
 def open_search_index_to_document_store(
