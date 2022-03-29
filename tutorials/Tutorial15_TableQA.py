@@ -11,7 +11,6 @@ from haystack.nodes.retriever import TableTextRetriever
 from haystack.nodes import TableReader, FARMReader, RouteDocuments, JoinAnswers, ParsrConverter
 
 
-
 def tutorial15_tableqa():
 
     # Recommended: Start Elasticsearch using Docker via the Haystack utility function
@@ -143,7 +142,6 @@ def tutorial15_tableqa():
 
         return processed_passages
 
-
     passages = read_texts(f"{doc_dir}/texts.json")
     document_store.write_documents(passages)
 
@@ -178,7 +176,6 @@ def tutorial15_tableqa():
                 )
                 processed_labels.append(MultiLabel(labels=[label]))
         return processed_labels
-
 
     table_labels = read_labels(f"{doc_dir}/labels.json", tables)
     passage_labels = read_labels(f"{doc_dir}/labels.json", passages)
