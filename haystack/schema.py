@@ -225,7 +225,7 @@ class Document:
 
     def __str__(self):
         # In some cases, self.content is None (therefore not subscriptable)
-        if not self.content:
+        if self.content is None:
             return f"<Document: id={self.id}, content=None>"
         return f"<Document: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}'>"
 
