@@ -9,7 +9,7 @@ from typing import Iterable, Dict, Union, List, Optional, Callable
 import numpy
 import torch
 from torch import nn
-from transformers import AutoConfig
+from transformers import AutoConfig, AutoModelForQuestionAnswering
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
 from haystack.modeling.data_handler.processor import Processor

@@ -4,8 +4,6 @@ from typing import Dict, List, Optional, Tuple, Union, Generator
 import json
 import logging
 from datetime import datetime
-from elasticsearch.helpers import scan
-from tqdm.auto import tqdm
 
 from haystack.schema import Document, Label, Answer, Span
 from haystack.nodes.preprocessor import PreProcessor

@@ -4,7 +4,6 @@ import io
 import gzip
 import tarfile
 import zipfile
-import requests
 import logging
 import importlib
 from pathlib import Path

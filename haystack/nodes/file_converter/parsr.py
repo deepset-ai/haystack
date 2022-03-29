@@ -1,7 +1,4 @@
 from typing import Optional, Dict, List, Any
-
-from haystack.errors import HaystackError
-
 try:
     from typing import Literal
 except ImportError:
@@ -17,6 +14,7 @@ import pandas as pd
 
 from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
+from haystack.errors import HaystackError
 
 
 logger = logging.getLogger(__name__)

@@ -10,7 +10,7 @@ from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
 
 def open_search_index_to_document_store(
-    document_store: "BaseDocumentStore",
+    document_store: BaseDocumentStore,
     original_index_name: str,
     original_content_field: str,
     original_name_field: Optional[str] = None,
@@ -33,7 +33,7 @@ def open_search_index_to_document_store(
     verify_certs: bool = False,
     timeout: int = 30,
     use_system_proxy: bool = False,
-) -> "BaseDocumentStore":
+) -> BaseDocumentStore:
     """
     This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
     the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
@@ -109,7 +109,7 @@ def open_search_index_to_document_store(
 
 
 def elasticsearch_index_to_document_store(
-    document_store: "BaseDocumentStore",
+    document_store: BaseDocumentStore,
     original_index_name: str,
     original_content_field: str,
     original_name_field: Optional[str] = None,
@@ -132,7 +132,7 @@ def elasticsearch_index_to_document_store(
     verify_certs: bool = True,
     timeout: int = 30,
     use_system_proxy: bool = False,
-) -> "BaseDocumentStore":
+) -> BaseDocumentStore:
     """
     This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
     the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
