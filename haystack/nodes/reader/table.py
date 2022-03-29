@@ -140,7 +140,9 @@ class TableReader(BaseReader):
                 logger.warning(f"Skipping document with id {document.id} in TableReader, as it is not of type table.")
                 continue
             if document.content.shape[0] == 0:
-                logger.warning(f"Skipping document with id {document.id} in TableReader as it does not contain any rows.")
+                logger.warning(
+                    f"Skipping document with id {document.id} in TableReader as it does not contain any rows."
+                )
                 continue
 
             table: pd.DataFrame = document.content
