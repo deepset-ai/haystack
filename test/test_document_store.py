@@ -1688,7 +1688,7 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
-    count = deepset_cloud_document_store.get_labels_count(label_index=DC_TEST_INDEX)
+    count = deepset_cloud_document_store.get_label_count(label_index=DC_TEST_INDEX)
     assert count == expected_count
 
 
@@ -1698,13 +1698,16 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set_raises_DC_
 ):
     if MOCK_DC:
         responses.add(
-            method=responses.GET, url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets", status=200, body="{}"
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=json.dumps({"data": [], "has_more": False, "total": 0}),
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
     with pytest.raises(DeepsetCloudError, match=f"No evaluation set found with the name {DC_TEST_INDEX}"):
-        deepset_cloud_document_store.get_labels_count(label_index=DC_TEST_INDEX)
+        deepset_cloud_document_store.get_label_count(label_index=DC_TEST_INDEX)
 
 
 @responses.activate
@@ -1736,7 +1739,7 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
         eval_set_id = uuid4()
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/",
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets?name={DC_TEST_INDEX}&page_number=1",
             status=200,
             body=json.dumps(
                 {
@@ -1803,7 +1806,10 @@ def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deep
 ):
     if MOCK_DC:
         responses.add(
-            method=responses.GET, url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets", status=200, body="[]"
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=json.dumps({"data": [], "has_more": False, "total": 0}),
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
