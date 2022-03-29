@@ -233,7 +233,7 @@ class Processor(ABC):
 
         # TODO infer task_type automatically from config (if possible)
         processor: "Processor"
-        
+
         if task_type == "question_answering":
             processor = SquadProcessor(
                 tokenizer=tokenizer,
