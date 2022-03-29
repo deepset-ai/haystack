@@ -20,7 +20,7 @@ in the sentence.
 
 
 def test_preprocess_sentence_split():
-    document = {"content": TEXT}
+    document = Document(content=TEXT)
     preprocessor = PreProcessor(
         split_length=1, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
     )
@@ -35,7 +35,7 @@ def test_preprocess_sentence_split():
 
 
 def test_preprocess_word_split():
-    document = {"content": TEXT}
+    document = Document(content=TEXT)
     preprocessor = PreProcessor(
         split_length=10, split_overlap=0, split_by="word", split_respect_sentence_boundary=False
     )
@@ -46,8 +46,8 @@ def test_preprocess_word_split():
     documents = preprocessor.process(document)
     for i, doc in enumerate(documents):
         if i == 0:
-            assert len(doc["content"].split(" ")) == 14
-        assert len(doc["content"].split(" ")) <= 15 or doc["content"].startswith("This is to trick")
+            assert len(doc.content.split(" ")) == 14
+        assert len(doc.content.split(" ")) <= 15 or doc.content.startswith("This is to trick")
     assert len(documents) == 8
 
     preprocessor = PreProcessor(
@@ -62,7 +62,7 @@ def test_preprocess_word_split():
 
 
 def test_preprocess_passage_split():
-    document = {"content": TEXT}
+    document = Document(content=TEXT)
     preprocessor = PreProcessor(
         split_length=1, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
     )
@@ -87,25 +87,25 @@ def test_clean_header_footer():
 
     assert len(documents) == 1
 
-    assert "This is a header." not in documents[0]["content"]
-    assert "footer" not in documents[0]["content"]
+    assert "This is a header." not in documents[0].content
+    assert "footer" not in documents[0].content
 
 
 def test_remove_substrings():
-    document = {"content": "This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b."}
+    document = Document(content="This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b.")
 
     # check that the file contains the substrings we are about to remove
-    assert "This is a header." in document["content"]
-    assert "wiki" in document["content"]
-    assert "🪲" in document["content"]
-    assert "whitespace" in document["content"]
-    assert "✨" in document["content"]
+    assert "This is a header." in document.content
+    assert "wiki" in document.content
+    assert "🪲" in document.content
+    assert "whitespace" in document.content
+    assert "✨" in document.content
 
     preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki", "🪲"])
     documents = preprocessor.process(document)
 
-    assert "This is a header." not in documents[0]["content"]
-    assert "wiki" not in documents[0]["content"]
-    assert "🪲" not in documents[0]["content"]
-    assert "whitespace" in documents[0]["content"]
-    assert "✨" in documents[0]["content"]
+    assert "This is a header." not in documents[0].content
+    assert "wiki" not in documents[0].content
+    assert "🪲" not in documents[0].content
+    assert "whitespace" in documents[0].content
+    assert "✨" in documents[0].content

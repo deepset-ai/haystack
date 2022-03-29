@@ -535,7 +535,13 @@ class BaseDocumentStore(BaseComponent):
     def _create_document_field_map(self) -> Dict:
         pass
 
-    def run(self, documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None):  # type: ignore
+    def run(  # type: ignore
+        self,
+        documents: List[Union[dict, Document]],
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        id_hash_keys: Optional[List[str]] = None,
+    ):
         """
         Run requests of document stores
 
@@ -551,7 +557,10 @@ class BaseDocumentStore(BaseComponent):
         """
 
         field_map = self._create_document_field_map()
-        doc_objects = [Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) for d in documents]
+        doc_objects = [
+            Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) if isinstance(d, dict) else d
+            for d in documents
+        ]
         self.write_documents(documents=doc_objects, index=index, headers=headers)
         return {}, "output_1"
 

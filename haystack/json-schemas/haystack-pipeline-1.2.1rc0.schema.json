@@ -1315,6 +1315,13 @@
               "title": "Merge Multiple Column Headers",
               "default": true,
               "type": "boolean"
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
@@ -1373,6 +1380,13 @@
             "overwrite_existing_files": {
               "title": "Overwrite Existing Files",
               "default": true
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
@@ -1587,6 +1601,13 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -2154,6 +2175,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -2285,6 +2313,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -2322,6 +2357,13 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -2366,6 +2408,13 @@
               "default": [
                 "eng"
               ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -2454,6 +2503,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -2531,6 +2587,13 @@
               "title": "Language",
               "default": "en",
               "type": "string"
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -3306,6 +3369,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -3393,6 +3463,13 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"

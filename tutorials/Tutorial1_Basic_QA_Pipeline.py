@@ -11,7 +11,7 @@
 
 import logging
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.utils import clean_wiki_text, convert_files_to_dicts, fetch_archive_from_http, print_answers, launch_es
+from haystack.utils import clean_wiki_text, convert_files_to_docs, fetch_archive_from_http, print_answers, launch_es
 from haystack.nodes import FARMReader, TransformersReader, ElasticsearchRetriever
 
 
@@ -58,12 +58,12 @@ def tutorial1_basic_qa_pipeline():
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # convert files to dicts containing documents that can be indexed to our datastore
-    dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+    docs = convert_files_to_docs(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
     # You can optionally supply a cleaning function that is applied to each doc (e.g. to remove footers)
     # It must take a str as input, and return a str.
 
     # Now, let's write the docs to our DB.
-    document_store.write_documents(dicts)
+    document_store.write_documents(docs)
 
     # ## Initalize Retriever & Reader
     #
