@@ -156,7 +156,7 @@ class LanguageModel(nn.Module):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         :param language_model_class: (Optional) Name of the language model class to load (e.g. `Bert`)
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param transformer_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+        :param transformers_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
                                  (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
         """
         # Make sure "revision" is in transformers' args

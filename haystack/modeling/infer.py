@@ -170,7 +170,7 @@ class Inferencer:
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
         :param devices: List of devices to perform inference on. (Currently, only the first device in the list is used.)
-        :param transformer_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
+        :param transformers_args: extra key/value pairs accepted by the relevant `.from_pretrained()` method
                                  (for example https://huggingface.co/transformers/v3.0.2/model_doc/auto.html#transformers.AutoConfig.from_pretrained)
         :return: An instance of the Inferencer.
         """
