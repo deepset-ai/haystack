@@ -69,7 +69,7 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
     if not path.exists():
         path.mkdir(parents=True)
 
-    if "deepset.ai-farm-qa/datasets" in url or "dl.fbaipublicfiles.com" in url:
+    if "deepset.ai-farm-qa/datasets" in url or "dl.fbaipublicfiles.com" in url or "fandom-qa.s3" in url:
         send_tutorial_event(url=url)
 
     is_not_empty = len(list(Path(path).rglob("*"))) > 0

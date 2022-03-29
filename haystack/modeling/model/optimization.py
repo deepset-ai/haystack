@@ -1,5 +1,5 @@
 # TODO analyse if this optimization is needed or whether we can use HF transformers code
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import inspect
 import logging
@@ -73,7 +73,7 @@ def initialize_optimizer(
     model: AdaptiveModel,
     n_batches: int,
     n_epochs: int,
-    device,
+    device: torch.device,
     learning_rate: float,
     optimizer_opts: Dict[Any, Any] = None,
     schedule_opts: Dict[Any, Any] = None,
@@ -90,7 +90,7 @@ def initialize_optimizer(
     :param model: model to optimize (e.g. trimming weights to fp16 / mixed precision)
     :param n_batches: number of batches for training
     :param n_epochs: number of epochs for training
-    :param device:
+    :param device: Which hardware will be used by the optimizer. Either torch.device("cpu") or torch.device("cuda").
     :param learning_rate: Learning rate
     :param optimizer_opts: Dict to customize the optimizer. Choose any optimizer available from torch.optim, apex.optimizers or
                            transformers.optimization by supplying the class name and the parameters for the constructor.
@@ -295,14 +295,20 @@ def get_scheduler(optimizer, opts):
     return scheduler
 
 
-def optimize_model(model, device, local_rank, optimizer=None, distributed=False, use_amp=None):
+def optimize_model(
+    model: "AdaptiveModel",
+    device: torch.device,
+    local_rank: int,
+    optimizer=None,
+    distributed: Optional[bool] = False,
+    use_amp: Optional[str] = None,
+):
     """
     Wraps MultiGPU or distributed usage around a model
     No support for ONNX models
 
     :param model: model to optimize (e.g. trimming weights to fp16 / mixed precision)
-    :type model: AdaptiveModel
-    :param device: either gpu or cpu, get the device from initialize_device_settings()
+    :param device: either torch.device("cpu") or torch.device("cuda"). Get the device from `initialize_device_settings()`
     :param distributed: Whether training on distributed machines
     :param local_rank: rank of the machine in a distributed setting
     :param use_amp: Optimization level of nvidia's automatic mixed precision (AMP). The higher the level, the faster the model.

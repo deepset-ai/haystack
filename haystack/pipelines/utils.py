@@ -182,13 +182,15 @@ def print_eval_report(
     }
 
     if metrics_filter is not None:
-        for metric_mode in calculated_metrics:
-            calculated_metrics[metric_mode] = {
+        calculated_metrics = {
+            metric_mode: {
                 node: metrics
                 if node not in metrics_filter
                 else {metric: value for metric, value in metrics.items() if metric in metrics_filter[node]}
-                for node, metrics in calculated_metrics[metric_mode].items()
+                for node, metrics in node_metrics_dict.items()
             }
+            for metric_mode, node_metrics_dict in calculated_metrics.items()
+        }
 
     pipeline_overview = _format_pipeline_overview(calculated_metrics=calculated_metrics, graph=graph)
     wrong_examples_report = _format_wrong_examples_report(eval_result=eval_result, n_wrong_examples=n_wrong_examples)

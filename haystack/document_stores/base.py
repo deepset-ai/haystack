@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 try:
     from numba import njit  # pylint: disable=import-error
 except (ImportError, ModuleNotFoundError):
-    logger.info("Numba not found, replacing njit() with no-op implementation. " "Enable it with 'pip install numba'.")
+    logger.info("Numba not found, replacing njit() with no-op implementation. Enable it with 'pip install numba'.")
 
     def njit(f):
         return f
@@ -47,6 +47,7 @@ class BaseKnowledgeGraph(BaseComponent):
         output = {"sparql_result": result}
         return output, "output_1"
 
+    @abstractmethod
     def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         raise NotImplementedError
 
@@ -341,9 +342,7 @@ class BaseDocumentStore(BaseComponent):
     ) -> int:
         pass
 
-    @staticmethod
-    @njit  # (fastmath=True)
-    def normalize_embedding(emb: np.ndarray) -> None:
+    def normalize_embedding(self, emb: np.ndarray) -> None:
         """
         Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix
         (2D array).
@@ -352,16 +351,26 @@ class BaseDocumentStore(BaseComponent):
 
         # Single vec
         if len(emb.shape) == 1:
-            norm = np.sqrt(emb.dot(emb))  # faster than np.linalg.norm()
-            if norm != 0.0:
-                emb /= norm
+            self._normalize_embedding_1D(emb)
         # 2D matrix
         else:
-            for vec in emb:
-                vec = np.ascontiguousarray(vec)
-                norm = np.sqrt(vec.dot(vec))
-                if norm != 0.0:
-                    vec /= norm
+            self._normalize_embedding_2D(emb)
+
+    @staticmethod
+    @njit  # (fastmath=True)
+    def _normalize_embedding_1D(emb: np.ndarray) -> None:
+        norm = np.sqrt(emb.dot(emb))  # faster than np.linalg.norm()
+        if norm != 0.0:
+            emb /= norm
+
+    @staticmethod
+    @njit  # (fastmath=True)
+    def _normalize_embedding_2D(emb: np.ndarray) -> None:
+        for vec in emb:
+            vec = np.ascontiguousarray(vec)
+            norm = np.sqrt(vec.dot(vec))
+            if norm != 0.0:
+                vec /= norm
 
     def finalize_raw_score(self, raw_score: float, similarity: Optional[str]) -> float:
         if similarity == "cosine":
@@ -653,6 +662,7 @@ class KeywordDocumentStore(BaseDocumentStore):
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -727,6 +737,10 @@ class KeywordDocumentStore(BaseDocumentStore):
         :param custom_query: Custom query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to False.
         """
 
 

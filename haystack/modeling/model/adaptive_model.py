@@ -169,7 +169,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float,
         lm_output_types: Union[str, List[str]],
-        device: str,
+        device: torch.device,
         loss_aggregation_fn: Optional[Callable] = None,
     ):
         """
@@ -182,7 +182,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                 "per_sequence", a single embedding will be extracted to represent the full
                                 input sequence. Can either be a single string, or a list of strings,
                                 one for each prediction head.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         :param loss_aggregation_fn: Function to aggregate the loss of multiple prediction heads.
                                     Input: loss_per_head (list of tensors), global_step (int), batch (dict)
                                     Output: aggregated loss (tensor)
@@ -258,13 +258,13 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # Need to save config and pipeline
 
     @classmethod
-    def load(  #  type: ignore
+    def load(  # type: ignore
         cls,
-        load_dir: Union[str, Path],  #  type: ignore
-        device: str,  #  type: ignore
-        strict: bool = True,  #  type: ignore
-        lm_name: Optional[str] = None,  #  type: ignore
-        processor: Optional[Processor] = None,  #  type: ignore
+        load_dir: Union[str, Path],
+        device: Union[str, torch.device],
+        strict: bool = True,
+        lm_name: Optional[str] = None,
+        processor: Optional[Processor] = None,
     ):
         """
         Loads an AdaptiveModel from a directory. The directory must contain:
@@ -277,12 +277,13 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         * vocab.txt vocab file for language model, turning text to Wordpiece Tokens
 
         :param load_dir: Location where the AdaptiveModel is stored.
-        :param device: To which device we want to sent the model, either cpu or cuda.
+        :param device: To which device we want to sent the model, either torch.device("cpu") or torch.device("cuda").
         :param lm_name: The name to assign to the loaded language model.
         :param strict: Whether to strictly enforce that the keys loaded from saved model match the ones in
                        the PredictionHead (see torch.nn.module.load_state_dict()).
         :param processor: Processor to populate prediction head with information coming from tasks.
         """
+        device = torch.device(device)
         # Language Model
         if lm_name:
             language_model = LanguageModel.load(load_dir, haystack_lm_name=lm_name)
@@ -489,9 +490,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
     def convert_from_transformers(
         cls,
         model_name_or_path: Union[str, Path],
-        device: str,
+        device: torch.device,
         revision: Optional[str] = None,
-        task_type: Optional[str] = None,
+        task_type: str = "question_answering",
         processor: Optional[Processor] = None,
         use_auth_token: Optional[Union[bool, str]] = None,
         **kwargs,
@@ -509,12 +510,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
                                               See https://huggingface.co/models for full list
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param device: "cpu" or "cuda"
-        :param task_type: One of :
-                          - 'question_answering'
-                          More tasks coming soon ...
+        :param device: On which hardware the conversion should take place. Choose from torch.device("cpu") or torch.device("cuda")
+        :param task_type: 'question_answering'. More tasks coming soon ...
         :param processor: Processor to populate prediction head with information coming from tasks.
-        :type processor: Processor
         :return: AdaptiveModel
         """
         return conv.Converter.convert_from_transformers(
@@ -570,7 +568,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             tokenizer_name_or_path=model_name, task_type=task_type, max_seq_len=256, doc_stride=128, use_fast=True
         )
         processor.save(output_path)
-        model = AdaptiveModel.convert_from_transformers(model_name, device="cpu", task_type=task_type)
+        model = AdaptiveModel.convert_from_transformers(model_name, device=torch.device("cpu"), task_type=task_type)
         model.save(output_path)
         os.remove(output_path / "language_model.bin")  # remove the actual PyTorch model(only configs are required)
 
@@ -617,14 +615,14 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         language_model_class: str,
         language: str,
         prediction_heads: List[PredictionHead],
-        device: str,
+        device: torch.device,
     ):
         """
         :param onnx_session: ? # TODO
         :param language_model_class: Class of LanguageModel
         :param langauge: Language the model is trained for.
         :param prediction_heads: A list of models that take embeddings and return logits for a given task.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """
         import onnxruntime
 
@@ -642,13 +640,14 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         self.device = device
 
     @classmethod
-    def load(cls, load_dir: Union[str, Path], device: str, **kwargs):  # type: ignore
+    def load(cls, load_dir: Union[str, Path], device: Union[str, torch.device], **kwargs):  # type: ignore
         """
         Loads an ONNXAdaptiveModel from a directory.
 
         :param load_dir: Location where the ONNXAdaptiveModel is stored.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """
+        device = torch.device(device)
         load_dir = Path(load_dir)
         import onnxruntime
 
@@ -657,7 +656,11 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
         # Use OpenMP optimizations. Only useful for CPU, has little impact for GPUs.
         sess_options.intra_op_num_threads = multiprocessing.cpu_count()
-        onnx_session = onnxruntime.InferenceSession(str(load_dir / "model.onnx"), sess_options)
+
+        providers = kwargs.get(
+            "providers", ["CPUExecutionProvider"] if device.type == "cpu" else ["CUDAExecutionProvider"]
+        )
+        onnx_session = onnxruntime.InferenceSession(str(load_dir / "model.onnx"), sess_options, providers=providers)
 
         # Prediction heads
         _, ph_config_files = cls._get_prediction_head_files(load_dir, strict=False)

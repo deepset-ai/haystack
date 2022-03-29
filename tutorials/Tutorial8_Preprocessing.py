@@ -18,6 +18,8 @@ This tutorial will show you all the tools that Haystack provides to help you cas
 """
 
 # Here are the imports we need
+from pathlib import Path
+
 from haystack.nodes import TextConverter, PDFToTextConverter, DocxToTextConverter, PreProcessor
 from haystack.utils import convert_files_to_dicts, fetch_archive_from_http
 
@@ -42,17 +44,17 @@ def tutorial8_preprocessing():
     # Here are some examples of how you would use file converters
 
     converter = TextConverter(remove_numeric_tables=True, valid_languages=["en"])
-    doc_txt = converter.convert(file_path="data/preprocessing_tutorial/classics.txt", meta=None)[0]
+    doc_txt = converter.convert(file_path=Path(f"{doc_dir}/classics.txt"), meta=None)[0]
 
     converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
-    doc_pdf = converter.convert(file_path="data/preprocessing_tutorial/bert.pdf", meta=None)[0]
+    doc_pdf = converter.convert(file_path=Path(f"{doc_dir}/bert.pdf"), meta=None)[0]
 
     converter = DocxToTextConverter(remove_numeric_tables=False, valid_languages=["en"])
-    doc_docx = converter.convert(file_path="data/preprocessing_tutorial/heavy_metal.docx", meta=None)[0]
+    doc_docx = converter.convert(file_path=Path(f"{doc_dir}/heavy_metal.docx"), meta=None)[0]
 
     # Haystack also has a convenience function that will automatically apply the right converter to each file in a directory.
 
-    all_docs = convert_files_to_dicts(dir_path="data/preprocessing_tutorial")
+    all_docs = convert_files_to_dicts(dir_path=doc_dir)
 
     """
     

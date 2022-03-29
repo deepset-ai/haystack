@@ -36,7 +36,7 @@ class BiAdaptiveModel(nn.Module):
         language_model2: LanguageModel,
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float = 0.1,
-        device: str = "cuda",
+        device: torch.device = torch.device("cuda"),
         lm1_output_types: Union[str, List[str]] = ["per_sequence"],
         lm2_output_types: Union[str, List[str]] = ["per_sequence"],
         loss_aggregation_fn: Optional[Callable] = None,
@@ -57,7 +57,7 @@ class BiAdaptiveModel(nn.Module):
                                  "per_sequence", a single embedding will be extracted to represent the full
                                  input sequence. Can either be a single string, or a list of strings,
                                  one for each prediction head.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         :param loss_aggregation_fn: Function to aggregate the loss of multiple prediction heads.
                                     Input: loss_per_head (list of tensors), global_step (int), batch (dict)
                                     Output: aggregated loss (tensor)
@@ -108,7 +108,7 @@ class BiAdaptiveModel(nn.Module):
     def load(
         cls,
         load_dir: Path,
-        device: str,
+        device: torch.device,
         strict: bool = False,
         lm1_name: str = "lm1",
         lm2_name: str = "lm2",
@@ -130,7 +130,7 @@ class BiAdaptiveModel(nn.Module):
         * special_tokens_map.json
 
         :param load_dir: Location where adaptive model is stored.
-        :param device: To which device we want to sent the model, either cpu or cuda.
+        :param device: To which device we want to sent the model, either torch.device("cpu") or torch.device("cuda").
         :param lm1_name: The name to assign to the first loaded language model (for encoding queries).
         :param lm2_name: The name to assign to the second loaded language model (for encoding context/passages).
         :param strict: Whether to strictly enforce that the keys loaded from saved model match the ones in
@@ -432,8 +432,8 @@ class BiAdaptiveModel(nn.Module):
         cls,
         model_name_or_path1: Union[str, Path],
         model_name_or_path2: Union[str, Path],
-        device: str,
-        task_type: str,
+        device: torch.device,
+        task_type: str = "text_similarity",
         processor: Optional[Processor] = None,
         similarity_function: str = "dot_product",
     ):
@@ -451,9 +451,8 @@ class BiAdaptiveModel(nn.Module):
                                       Exemplary public names:
                                       - facebook/dpr-ctx_encoder-single-nq-base
                                       - deepset/bert-large-uncased-whole-word-masking-squad2
-        :param device: "cpu" or "cuda"
-        :param task_type: 'text_similarity'
-                          More tasks coming soon ...
+        :param device: On which hardware the conversion is going to run on. Either torch.device("cpu") or torch.device("cuda")
+        :param task_type: 'text_similarity' More tasks coming soon ...
         :param processor: populates prediction head with information coming from tasks
         :type processor: Processor
         :return: AdaptiveModel
