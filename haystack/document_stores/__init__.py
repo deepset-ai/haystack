@@ -8,9 +8,7 @@ from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.utils import (
     eval_data_from_json,
     eval_data_from_jsonl,
-    squad_json_to_jsonl,
-    elasticsearch_index_to_document_store,
-    open_search_index_to_document_store,
+    squad_json_to_jsonl
 )
 
 ElasticsearchDocumentStore = safe_import(
@@ -21,6 +19,12 @@ OpenDistroElasticsearchDocumentStore = safe_import(
 )
 OpenSearchDocumentStore = safe_import(
     "haystack.document_stores.elasticsearch", "OpenSearchDocumentStore", "elasticsearch"
+)
+elasticsearch_index_to_document_store = safe_import(
+    "haystack.document_stores.elasticsearch", "elasticsearch_index_to_document_store", "elasticsearch"
+)
+open_search_index_to_document_store = safe_import(
+    "haystack.document_stores.elasticsearch", "open_search_index_to_document_store", "elasticsearch"
 )
 
 SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
