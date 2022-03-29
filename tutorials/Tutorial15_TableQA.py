@@ -1,12 +1,15 @@
+import os
 import json
 
 import pandas as pd
 
+from haystack import Label, MultiLabel, Answer
 from haystack.utils import launch_es, fetch_archive_from_http, print_answers
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack import Document, Pipeline
 from haystack.nodes.retriever import TableTextRetriever
-from haystack.nodes import TableReader, FARMReader, RouteDocuments, JoinAnswers
+from haystack.nodes import TableReader, FARMReader, RouteDocuments, JoinAnswers, ParsrConverter
+
 
 
 def tutorial15_tableqa():
@@ -129,6 +132,21 @@ def tutorial15_tableqa():
     text_table_qa_pipeline.add_node(component=table_reader, name="TableReader", inputs=["RouteDocuments.output_2"])
     text_table_qa_pipeline.add_node(component=join_answers, name="JoinAnswers", inputs=["TextReader", "TableReader"])
 
+    # Add texts to the document store
+    def read_texts(filename):
+        processed_passages = []
+        with open(filename) as passages:
+            passages = json.load(passages)
+            for key, content in passages.items():
+                document = Document(content=content, content_type="text", id=key)
+                processed_passages.append(document)
+
+        return processed_passages
+
+
+    passages = read_texts(f"{doc_dir}/texts.json")
+    document_store.write_documents(passages)
+
     # Example query whose answer resides in a text passage
     predictions = text_table_qa_pipeline.run(query="Which country does the film Macaroni come from?")
     # We can see both text passages and tables as contexts of the predicted answers.
@@ -138,6 +156,49 @@ def tutorial15_tableqa():
     predictions = text_table_qa_pipeline.run(query="Who was Thomas Alva Edison?")
     # We can see both text passages and tables as contexts of the predicted answers.
     print_answers(predictions, details="minimum")
+
+    ### Evaluation
+    # To evaluate our pipeline, we can use haystack's evaluation feature. We just need to convert our labels into `MultiLabel` objects and the `eval` method will do the rest.
+
+    def read_labels(filename, tables):
+        processed_labels = []
+        with open(filename) as labels:
+            labels = json.load(labels)
+            for table in tables:
+                if table.id not in labels:
+                    continue
+                label = labels[table.id]
+                label = Label(
+                    query=label["query"],
+                    document=table,
+                    is_correct_answer=True,
+                    is_correct_document=True,
+                    answer=Answer(answer=label["answer"]),
+                    origin="gold-label",
+                )
+                processed_labels.append(MultiLabel(labels=[label]))
+        return processed_labels
+
+
+    table_labels = read_labels(f"{doc_dir}/labels.json", tables)
+    passage_labels = read_labels(f"{doc_dir}/labels.json", passages)
+
+    eval_results = text_table_qa_pipeline.eval(table_labels + passage_labels, params={"top_k": 10})
+
+    # Calculating and printing the evaluation metrics
+    print(eval_results.calculate_metrics())
+
+    ## Adding tables from PDFs
+    # It can sometimes be hard to provide your data in form of a pandas DataFrame.
+    # For this case, we provide the `ParsrConverter` wrapper that can help you to convert, for example, a PDF file into a document that you can index.
+    os.system("docker run -d -p 3001:3001 axarev/parsr")
+    os.system("wget https://www.w3.org/WAI/WCAG21/working-examples/pdf-table/table.pdf")
+
+    converter = ParsrConverter()
+    docs = converter.convert("table.pdf")
+    tables = [doc for doc in docs if doc["content_type"] == "table"]
+
+    print(tables)
 
 
 if __name__ == "__main__":
