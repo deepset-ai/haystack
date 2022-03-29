@@ -9,6 +9,7 @@ from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
 from azure.core.credentials import AzureKeyCredential
 import pandas as pd
 
+from haystack.errors import HaystackError
 from haystack.nodes.file_converter import BaseConverter
 from haystack.schema import Document
 
@@ -187,7 +188,9 @@ class AzureConverter(BaseConverter):
         if valid_languages:
             file_text = text.content
             for table in tables:
-                assert isinstance(table.content, pd.DataFrame)
+                # Mainly needed for type checking
+                if not isinstance(table.content, pd.DataFrame):
+                    raise HaystackError("Document's content field must be of type 'pd.DataFrame'.")
                 for _, row in table.content.iterrows():
                     for _, cell in row.items():
                         file_text += f" {cell}"

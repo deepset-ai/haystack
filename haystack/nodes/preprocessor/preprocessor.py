@@ -10,6 +10,7 @@ import nltk
 from more_itertools import windowed
 from tqdm import tqdm
 
+from haystack.nodes.errors import HaystackError
 from haystack.nodes.preprocessor import BasePreProcessor
 from haystack.schema import Document
 
@@ -225,7 +226,9 @@ class PreProcessor(BasePreProcessor):
         if isinstance(document, dict):
             document = Document.from_dict(document, id_hash_keys=id_hash_keys)
 
-        assert isinstance(document, Document)
+        # Mainly needed for type checking
+        if not isinstance(document, Document):
+            raise HaystackError("Document must not be of type 'dict' but of type 'Document'.")
         text = document.content
         if clean_header_footer:
             text = self._find_and_remove_header_footer(
@@ -270,7 +273,9 @@ class PreProcessor(BasePreProcessor):
 
         if isinstance(document, dict):
             document = Document.from_dict(document, id_hash_keys=id_hash_keys)
-        assert isinstance(document, Document)
+        # Mainly needed for type checking
+        if not isinstance(document, Document):
+            raise HaystackError("Document must not be of type 'dict' but of type 'Document'.")
 
         if not split_by:
             return [document]
