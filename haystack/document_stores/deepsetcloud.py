@@ -493,7 +493,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :return: number of labels for the given index
         """
-        raise self.evaluation_set_client.get_labels_count(label_index=label_index)
+        return self.evaluation_set_client.get_labels_count(label_index=label_index)
 
     def write_labels(
         self,
