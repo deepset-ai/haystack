@@ -1761,21 +1761,23 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
             method=responses.GET,
             url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{eval_set_id}",
             status=200,
-            body=[
-                {
-                    "label_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "query": "What is berlin?",
-                    "answer": "biggest city in germany",
-                    "answer_start": 0,
-                    "answer_end": 0,
-                    "meta": {},
-                    "context": "Berlin is the biggest city in germany.",
-                    "external_file_name": "string",
-                    "file_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                    "state": "Label matching status",
-                    "candidates": "Candidates that were found in the label <-> file matching",
-                }
-            ],
+            body=json.dumps(
+                [
+                    {
+                        "label_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "query": "What is berlin?",
+                        "answer": "biggest city in germany",
+                        "answer_start": 0,
+                        "answer_end": 0,
+                        "meta": {},
+                        "context": "Berlin is the biggest city in germany.",
+                        "external_file_name": "string",
+                        "file_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "state": "Label matching status",
+                        "candidates": "Candidates that were found in the label <-> file matching",
+                    }
+                ]
+            ),
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
