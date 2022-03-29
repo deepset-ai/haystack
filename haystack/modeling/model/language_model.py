@@ -212,7 +212,9 @@ class LanguageModel(nn.Module):
         return language_model
 
     @staticmethod
-    def get_language_model_class(model_name_or_path, use_auth_token: Union[str, bool] = None, transformer_kwargs: Optional[dict] = None):
+    def get_language_model_class(
+        model_name_or_path, use_auth_token: Union[str, bool] = None, transformer_kwargs: Optional[dict] = None
+    ):
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
 

@@ -2057,6 +2057,10 @@
                   "type": "string"
                 }
               ]
+            },
+            "transformers_args": {
+              "title": "Transformers Args",
+              "type": "object"
             }
           },
           "required": [
