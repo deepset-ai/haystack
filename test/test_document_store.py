@@ -1644,7 +1644,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
             {
                 "data": [
                     {
-                        "evaluation_set_id": uuid4(),
+                        "evaluation_set_id": str(uuid4()),
                         "name": DC_TEST_INDEX,
                         "created_at": "2022-03-22T13:40:27.535Z",
                         "matched_labels": 2,
@@ -1660,7 +1660,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
             {
                 "data": [
                     {
-                        "evaluation_set_id": uuid4(),
+                        "evaluation_set_id": str(uuid4()),
                         "name": DC_TEST_INDEX,
                         "created_at": "2022-03-22T13:40:27.535Z",
                         "matched_labels": 0,
@@ -1710,7 +1710,7 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set_raises_DC_
 @responses.activate
 def test_DeepsetCloudDocumentStore_lists_evaluation_sets(deepset_cloud_document_store):
     response_evaluation_set = {
-        "evaluation_set_id": uuid4(),
+        "evaluation_set_id": str(uuid4()),
         "name": DC_TEST_INDEX,
         "created_at": "2022-03-22T13:40:27.535Z",
         "matched_labels": 2,
@@ -1742,7 +1742,7 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
                 {
                     "data": [
                         {
-                            "evaluation_set_id": eval_set_id,
+                            "evaluation_set_id": str(eval_set_id),
                             "name": DC_TEST_INDEX,
                             "created_at": "2022-03-22T13:40:27.535Z",
                             "matched_labels": 1,
@@ -1803,7 +1803,7 @@ def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deep
 ):
     if MOCK_DC:
         responses.add(
-            method=responses.GET, url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets", status=200, body=[]
+            method=responses.GET, url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets", status=200, body="[]"
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
