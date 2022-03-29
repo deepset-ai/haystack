@@ -2,8 +2,11 @@ from typing import List, Optional, Dict, Union, Generator, Set, Any
 
 import os
 import logging
+from pathlib import Path
 import multiprocessing as mp
 from functools import partial
+
+
 from tqdm import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
@@ -129,7 +132,7 @@ class Inferencer:
         tokenizer_args: Dict = None,
         multithreading_rust: bool = True,
         devices: Optional[List[torch.device]] = None,
-        use_auth_token: Union[bool, str] = None,
+        use_auth_token: Optional[Union[bool, str]] = None,
         transformers_args: Optional[Dict] = None,
     ):
         """
@@ -287,7 +290,7 @@ class Inferencer:
                 self.process_pool.join()
             self.process_pool = None
 
-    def save(self, path: str):
+    def save(self, path: Path):
         self.model.save(path)
         self.processor.save(path)
 

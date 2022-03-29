@@ -216,7 +216,7 @@ class Processor(ABC):
         tokenizer_class=None,
         tokenizer_args: Optional[Dict] = None,
         transformers_args: Optional[Dict] = None,
-        use_auth_token: bool = False,
+        use_auth_token: Optional[Union[bool, str]] = False,
         use_fast: bool = True,
     ) -> "Processor":
 

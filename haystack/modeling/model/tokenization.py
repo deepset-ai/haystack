@@ -18,6 +18,8 @@ Tokenization classes.
 from __future__ import absolute_import, division, print_function, unicode_literals
 from typing import Dict, Any, Tuple, Optional, List, Union
 
+from pathlib import Path
+
 import re
 import logging
 import numpy as np
@@ -65,7 +67,7 @@ class Tokenizer:
     @classmethod
     def load(
         cls,
-        pretrained_model_name_or_path: str,
+        pretrained_model_name_or_path: Union[Path, str],
         revision: str = None,
         tokenizer_class: str = None,
         use_fast: bool=True,
