@@ -15,7 +15,7 @@ from transformers.convert_graph_to_onnx import convert, quantize as quantize_mod
 import haystack.modeling.conversion.transformers as conv
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
-from haystack.modeling.model.prediction_head import PredictionHead
+from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
 from haystack.modeling.logger import MLFlowLogger as MlLogger
 
 
@@ -582,54 +582,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
     def get_language(self):
         return self.language_model.language
-
-    def convert_to_transformers(self):
-        """
-        Convert an adaptive model to huggingface's transformers format. Returns a list containing one model for each
-        prediction head.
-
-        :return: List of huggingface transformers models.
-        """
-        return conv.Converter.convert_to_transformers(self)
-
-    @classmethod
-    def convert_from_transformers(
-        cls,
-        model_name_or_path: Union[str, Path],
-        device: torch.device,
-        revision: Optional[str] = None,
-        task_type: str = "question_answering",
-        processor: Optional[Processor] = None,
-        use_auth_token: Optional[Union[bool, str]] = None,
-        **kwargs,
-    ):
-        """
-        Load a (downstream) model from huggingface's transformers format. Use cases:
-         - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
-         - compare models without switching frameworks
-         - use model directly for inference
-
-        :param model_name_or_path: local path of a saved model or name of a public one.
-                                              Exemplary public names:
-                                              - distilbert-base-uncased-distilled-squad
-                                              - deepset/bert-large-uncased-whole-word-masking-squad2
-
-                                              See https://huggingface.co/models for full list
-        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param device: On which hardware the conversion should take place. Choose from torch.device("cpu") or torch.device("cuda")
-        :param task_type: 'question_answering'. More tasks coming soon ...
-        :param processor: Processor to populate prediction head with information coming from tasks.
-        :return: AdaptiveModel
-        """
-        return conv.Converter.convert_from_transformers(
-            model_name_or_path,
-            revision=revision,
-            device=device,
-            task_type=task_type,
-            processor=processor,
-            use_auth_token=use_auth_token,
-            **kwargs,
-        )
 
     @classmethod
     def convert_to_onnx(
