@@ -213,12 +213,12 @@ class LanguageModel(nn.Module):
 
     @staticmethod
     def get_language_model_class(
-        model_name_or_path, use_auth_token: Union[str, bool] = None, transformer_kwargs: Optional[dict] = None
+        model_name_or_path, use_auth_token: Union[str, bool] = None, transformers_args: Optional[dict] = None
     ):
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
 
-        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, **transformer_kwargs)
+        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, **transformer_args)
         model_type = config.model_type
         if model_type == "xlm-roberta":
             language_model_class = "XLMRoberta"
