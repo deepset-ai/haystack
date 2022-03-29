@@ -55,7 +55,7 @@ def tutorial5_evaluation():
     # Those objects are then indexed in their respective document and label index in the document store.
     # The method can be used with any dataset in SQuAD format.
     document_store.add_eval_data(
-        filename="../data/nq/nq_dev_subset_v2.json",
+        filename="data/tutorial5/nq_dev_subset_v2.json",
         doc_index=doc_index,
         label_index=label_index,
         preprocessor=preprocessor,
