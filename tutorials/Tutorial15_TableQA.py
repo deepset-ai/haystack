@@ -88,7 +88,7 @@ def tutorial15_tableqa():
 
     reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq", max_seq_len=512)
 
-    # Try the TableReader on one Table (highest-scored retrieved table)
+    # Try the TableReader on one Table
 
     table_doc = document_store.get_document_by_id("36964e90-3735-4ba1-8e6a-bec236e88bb2")
     print(table_doc.content)
