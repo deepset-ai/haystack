@@ -466,7 +466,13 @@ class Bert(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         Load a pretrained model by supplying
 
@@ -553,7 +559,13 @@ class Albert(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         Load a language model either by supplying
 
@@ -644,7 +656,13 @@ class Roberta(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         Load a language model either by supplying
 
@@ -735,7 +753,13 @@ class XLMRoberta(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         Load a language model either by supplying
 
@@ -833,7 +857,13 @@ class DistilBert(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         Load a pretrained model by supplying
 
@@ -930,7 +960,13 @@ class XLNet(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         Load a language model either by supplying
 
@@ -1043,7 +1079,13 @@ class Electra(LanguageModel):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         Load a pretrained model by supplying
 
@@ -1139,7 +1181,13 @@ class Camembert(Roberta):
 
     @classmethod
     @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, haystack_lm_name: Optional[str] = None, transformers_args: Optional[Dict[str, Any]] = None):
+    def load(
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         Load a language model either by supplying
 
@@ -1234,7 +1282,9 @@ class DPRQuestionEncoder(LanguageModel):
                 dpr_question_encoder.model = transformers.DPRQuestionEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
-                language_model_class = cls.get_language_model_class(haystack_lm_config, use_auth_token=use_auth_token, transformers_args=transformers_args)
+                language_model_class = cls.get_language_model_class(
+                    haystack_lm_config, use_auth_token=use_auth_token, transformers_args=transformers_args
+                )
                 dpr_question_encoder.model.base_model.bert_model = (
                     cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
                 )
@@ -1296,10 +1346,7 @@ class DPRQuestionEncoder(LanguageModel):
         super(DPRQuestionEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
     def forward(  # type: ignore
-        self,
-        query_input_ids: torch.Tensor,
-        query_segment_ids: torch.Tensor,
-        query_attention_mask: torch.Tensor
+        self, query_input_ids: torch.Tensor, query_segment_ids: torch.Tensor, query_attention_mask: torch.Tensor
     ):
         """
         Perform the forward pass of the DPRQuestionEncoder model.
@@ -1392,7 +1439,9 @@ class DPRContextEncoder(LanguageModel):
                 dpr_context_encoder.model = transformers.DPRContextEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
-                language_model_class = cls.get_language_model_class(haystack_lm_config=haystack_lm_config, transformers_args=transformers_args)
+                language_model_class = cls.get_language_model_class(
+                    haystack_lm_config=haystack_lm_config, transformers_args=transformers_args
+                )
                 dpr_context_encoder.model.base_model.bert_model = (
                     cls.subclasses[language_model_class]
                     .load(str(pretrained_model_name_or_path), use_auth_token=use_auth_token)
@@ -1457,10 +1506,7 @@ class DPRContextEncoder(LanguageModel):
         super(DPRContextEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
     def forward(  # type: ignore
-        self,
-        passage_input_ids: torch.Tensor,
-        passage_segment_ids: torch.Tensor,
-        passage_attention_mask: torch.Tensor
+        self, passage_input_ids: torch.Tensor, passage_segment_ids: torch.Tensor, passage_attention_mask: torch.Tensor
     ):
         """
         Perform the forward pass of the DPRContextEncoder model.
@@ -1521,11 +1567,11 @@ class BigBird(LanguageModel):
     @classmethod
     @silence_transformers_logs
     def load(
-        cls, 
-        pretrained_model_name_or_path: Union[Path, str], 
-        language: str = None, 
-        haystack_lm_name: Optional[str] = None, 
-        transformers_args: Optional[Dict[str, Any]] = None
+        cls,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        haystack_lm_name: Optional[str] = None,
+        transformers_args: Optional[Dict[str, Any]] = None,
     ):
         """
         Load a pretrained model by supplying
@@ -1548,7 +1594,9 @@ class BigBird(LanguageModel):
             # Haystack style
             big_bird_config = BigBirdConfig.from_pretrained(haystack_lm_config)
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            big_bird.model = BigBirdModel.from_pretrained(haystack_lm_model, config=big_bird_config, **transformers_args)
+            big_bird.model = BigBirdModel.from_pretrained(
+                haystack_lm_model, config=big_bird_config, **transformers_args
+            )
             big_bird.language = big_bird.model.config.language
         else:
             # Pytorch-transformer Style
@@ -1562,7 +1610,7 @@ class BigBird(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the BigBird model.
