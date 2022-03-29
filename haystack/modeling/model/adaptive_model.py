@@ -12,7 +12,6 @@ from torch import nn
 from transformers import AutoConfig
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
-import haystack.modeling.conversion.transformers as conv
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
