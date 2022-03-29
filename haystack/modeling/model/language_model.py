@@ -177,12 +177,12 @@ class LanguageModel(nn.Module):
             logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
             if language_model_class is None:
                 language_model_class = cls.get_language_model_class(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **transformers_args
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, transformers_args=transformers_args
                 )
 
             if language_model_class:
                 language_model = cls.subclasses[language_model_class].load(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **transformers_args
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, transformers_args=transformers_args
                 )
             else:
                 language_model = None
