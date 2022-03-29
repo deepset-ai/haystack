@@ -18,7 +18,6 @@ FEEDBACK = {
         "id": "fc18c987a8312e72a47fb1524f230bb0",
         "meta": {},
         "embedding": None,
-        "id_hash_keys": None,
     },
     "answer": {
         "answer": "Adobe Systems",

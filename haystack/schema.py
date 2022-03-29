@@ -44,7 +44,6 @@ class Document:
     meta: Dict[str, Any]
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: Optional[List[str]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -219,7 +218,6 @@ class Document:
             and getattr(other, "score", None) == self.score
             and getattr(other, "meta", None) == self.meta
             and np.array_equal(getattr(other, "embedding", None), self.embedding)
-            and getattr(other, "id_hash_keys", None) == self.id_hash_keys
         )
 
     def __repr__(self):
