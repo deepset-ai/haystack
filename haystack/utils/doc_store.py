@@ -21,7 +21,7 @@ def launch_es(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f'docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'
+            f'docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'
         ],
         shell=True,
     )
@@ -44,7 +44,7 @@ def launch_opensearch(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {OPENSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f'docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.2.4'
+            f'docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.2.4'
         ],
         shell=True,
     )
@@ -63,7 +63,7 @@ def launch_weaviate(sleep=15):
     logger.debug("Starting Weaviate ...")
     status = subprocess.run(
         [
-            "docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --name {WEAVIATE_CONTAINER_NAME} semitechnologies/weaviate:1.7.2"
+            f"docker start {WEAVIATE_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --name {WEAVIATE_CONTAINER_NAME} semitechnologies/weaviate:1.7.2"
         ],
         shell=True,
     )
@@ -155,7 +155,7 @@ def launch_milvus1(sleep=15):
     )
     status = subprocess.run(
         [
-            f"docker run -d --name {MILVUS1_CONTAINER_NAME} \
+            f"docker start {MILVUS1_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d --name {MILVUS1_CONTAINER_NAME} \
           -p 19530:19530 \
           -p 19121:19121 \
           milvusdb/milvus:1.1.0-cpu-d050721-5e559c"
