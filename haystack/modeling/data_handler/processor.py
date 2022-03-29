@@ -216,6 +216,7 @@ class Processor(ABC):
         tokenizer_class=None,
         tokenizer_args: Optional[Dict] = None,
         transformers_args: Optional[Dict] = None,
+        use_auth_token: bool = False,
         use_fast: bool = True,
     ) -> "Processor":
 
@@ -227,6 +228,7 @@ class Processor(ABC):
             tokenizer_class=tokenizer_class,
             use_fast=use_fast,
             revision=revision,
+            use_auth_token=use_auth_token,
             **tokenizer_args,
             **transformers_args,
         )
@@ -255,7 +257,7 @@ class Processor(ABC):
 
         return processor
 
-    def save(self, save_dir: str):
+    def save(self, save_dir: Path):
         """
         Saves the vocabulary to file and also creates a json file containing all the
         information needed to load the same processor.

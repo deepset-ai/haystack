@@ -65,10 +65,10 @@ class Tokenizer:
     @classmethod
     def load(
         cls,
-        pretrained_model_name_or_path,
-        revision=None,
-        tokenizer_class=None,
-        use_fast=True,
+        pretrained_model_name_or_path: str,
+        revision: str = None,
+        tokenizer_class: str = None,
+        use_fast: bool=True,
         use_auth_token: Union[bool, str] = None,
         **kwargs,
     ):
@@ -77,16 +77,11 @@ class Tokenizer:
         model config or define it manually via `tokenizer_class`.
 
         :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
-        :type pretrained_model_name_or_path: str
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :type revision: str
         :param tokenizer_class: (Optional) Name of the tokenizer class to load (e.g. `BertTokenizer`)
-        :type tokenizer_class: str
         :param use_fast: (Optional, False by default) Indicate if Haystack should try to load the fast version of the tokenizer (True) or
             use the Python one (False).
             Only DistilBERT, BERT and Electra fast tokenizers are supported.
-        :type use_fast: bool
-        :param kwargs:
         :return: Tokenizer
         """
         pretrained_model_name_or_path = str(pretrained_model_name_or_path)
