@@ -1,3 +1,4 @@
+import mimetypes
 from multiprocessing.sharedctypes import Value
 from typing import List, Union
 from pathlib import Path
@@ -5,7 +6,11 @@ import magic
 from haystack.nodes.base import BaseComponent
 
 
-DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]
+DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html", "pptx", "odt", "mp3", "png", "zip"]
+"""
+FOLDER_NAMES contains the names of the folders in the samples folder
+"""
+FOLDER_NAMES = ["docs", "pdf", "markdown", "docx", "html", "pptx", "odt", "mp3", "png", "zip"]
 
 
 class FileTypeClassifier(BaseComponent):
@@ -41,8 +46,8 @@ class FileTypeClassifier(BaseComponent):
 
         :param file_path: the path to extract the extension from
         """
-        extension = magic.from_file(file_path, mime=True)
-        return '.' + extension.split('.')[-1]
+        extension = magic.from_file(str(file_path), mime=True)
+        return mimetypes.guess_extension(extension)
 
 
     def _get_extension(self, file_paths: List[Path]) -> str:
@@ -52,14 +57,14 @@ class FileTypeClassifier(BaseComponent):
         If this is not true, it throws an exception.
 
         :param file_paths: the paths to extract the extension from
-        :return: a set of strings with all the extensions (without duplicates)
+        :return: a set of strings with all the extensions (without duplicates), the extension will be guessed if the file has none
         """
-        extension = file_paths[0].suffix
+        extension = file_paths[0].suffix.lower()
         if extension == '':
             extension = self._estimate_extension(file_paths[0])
 
         for path in file_paths:
-            path_suffix = path.suffix
+            path_suffix = path.suffix.lower()
             if path_suffix == '':
                 path_suffix = self._estimate_extension(path)
             if path_suffix != extension:
