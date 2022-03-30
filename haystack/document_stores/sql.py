@@ -571,8 +571,8 @@ class SQLDocumentStore(BaseDocumentStore):
             id=row.id,
             no_answer=row.no_answer,
             pipeline_id=row.pipeline_id,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
+            created_at=str(row.created_at),
+            updated_at=str(row.updated_at),
             meta=row.meta,
         )
         return label

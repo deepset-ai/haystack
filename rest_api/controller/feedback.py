@@ -1,16 +1,20 @@
-from typing import Dict, Union, Optional
+from typing import Dict, List, Union, Optional
 
 import json
 import logging
 
-from fastapi import APIRouter
+from fastapi import FastAPI, APIRouter
 from haystack.schema import Label
+from haystack.document_stores import BaseDocumentStore
 from rest_api.schema import FilterRequest, LabelSerialized, CreateLabelSerialized
-from rest_api.controller.search import DOCUMENT_STORE
+from rest_api.utils import get_app, get_pipelines
 
-router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+router = APIRouter()
+app: FastAPI = get_app()
+document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
 
 
 @router.post("/feedback")
@@ -28,16 +32,16 @@ def post_feedback(feedback: Union[LabelSerialized, CreateLabelSerialized]):
         feedback.origin = "user-feedback"
 
     label = Label(**feedback.dict())
-    DOCUMENT_STORE.write_labels([label])
+    document_store.write_labels([label])
 
 
-@router.get("/feedback")
+@router.get("/feedback", response_model=List[LabelSerialized])
 def get_feedback():
     """
     This endpoint allows the API user to retrieve all the feedback that has been submitted
     through the `POST /feedback` endpoint.
     """
-    labels = DOCUMENT_STORE.get_all_labels()
+    labels = document_store.get_all_labels()
     return labels
 
 
@@ -48,9 +52,9 @@ def delete_feedback():
     feedback that has been sumbitted through the
     `POST /feedback` endpoint
     """
-    all_labels = DOCUMENT_STORE.get_all_labels()
+    all_labels = document_store.get_all_labels()
     user_label_ids = [label.id for label in all_labels if label.origin == "user-feedback"]
-    DOCUMENT_STORE.delete_labels(ids=user_label_ids)
+    document_store.delete_labels(ids=user_label_ids)
 
 
 @router.post("/eval-feedback")
@@ -73,7 +77,7 @@ def get_feedback_metrics(filters: FilterRequest = None):
     else:
         filters_content = {"origin": ["user-feedback"]}
 
-    labels = DOCUMENT_STORE.get_all_labels(filters=filters_content)
+    labels = document_store.get_all_labels(filters=filters_content)
 
     res: Dict[str, Optional[Union[float, int]]]
     if len(labels) > 0:
@@ -100,9 +104,9 @@ def export_feedback(
     The context_size param can be used to limit response size for large documents.
     """
     if only_positive_labels:
-        labels = DOCUMENT_STORE.get_all_labels(filters={"is_correct_answer": [True], "origin": ["user-feedback"]})
+        labels = document_store.get_all_labels(filters={"is_correct_answer": [True], "origin": ["user-feedback"]})
     else:
-        labels = DOCUMENT_STORE.get_all_labels(filters={"origin": ["user-feedback"]})
+        labels = document_store.get_all_labels(filters={"origin": ["user-feedback"]})
         # Filter out the labels where the passage is correct but answer is wrong (in SQuAD this matches
         # neither a "positive example" nor a negative "is_impossible" one)
         labels = [l for l in labels if not (l.is_correct_document is True and l.is_correct_answer is False)]
