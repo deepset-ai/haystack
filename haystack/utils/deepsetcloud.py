@@ -810,7 +810,7 @@ class DeepsetCloud:
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         workspace: str = "default",
-        label_index: str = "default",
+        evaluation_set: str = "default",
     ) -> EvaluationSetClient:
         """
         Creates a client to communicate with Deepset Cloud labels.
@@ -820,8 +820,8 @@ class DeepsetCloud:
         :param api_endpoint: The URL of the Deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param workspace: workspace in Deepset Cloud
-        :param label_index: name of the evaluation set in Deepset Cloud
+        :param evaluation_set: name of the evaluation set in Deepset Cloud
 
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
-        return EvaluationSetClient(client=client, workspace=workspace, evaluation_set=label_index)
+        return EvaluationSetClient(client=client, workspace=workspace, evaluation_set=evaluation_set)

@@ -53,7 +53,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         """
         self.index = index
-        self.label_index = index
+        self.label_index = label_index
         self.duplicate_documents = duplicate_documents
         self.similarity = similarity
         self.return_embedding = return_embedding
@@ -69,7 +69,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             )
 
         self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
-            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, label_index=label_index
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, evaluation_set=label_index
         )
 
         super().__init__()
@@ -477,7 +477,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         Returns a list of labels for the given index name.
 
-        :param label_index: Optional name of evaluation set for which labels should be searched.
+        :param index: Optional name of evaluation set for which labels should be searched.
                       If None, the DocumentStore's default label_index (self.label_index) will be used.
         :filters: Not supported.
         :param headers: Not supported.
