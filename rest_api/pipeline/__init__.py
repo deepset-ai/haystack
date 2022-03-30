@@ -48,6 +48,7 @@ def setup_pipelines() -> Dict[str, Any]:
             raise PipelineConfigError("Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore are not supported by the REST APIs.")
 
     except PipelineConfigError as e:
+        indexing_pipeline = None
         logger.error(f"{e.message}\nFile Upload API will not be available.")
 
     finally:

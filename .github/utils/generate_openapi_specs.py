@@ -5,7 +5,7 @@ import sys
 import shutil
 
 sys.path.append(".")
-from rest_api.utils import get_openapi_specs   # pylint: disable=wrong-import-position
+from rest_api.utils import get_openapi_specs, get_app, get_pipelines   # pylint: disable=wrong-import-position
 from haystack import __version__   # pylint: disable=wrong-import-position
 
 REST_PATH = Path("./rest_api").absolute()
@@ -17,6 +17,9 @@ os.environ["PIPELINE_YAML_PATH"] = PIPELINE_PATH
 
 print(f"Loading OpenAPI specs from {APP_PATH} with pipeline at {PIPELINE_PATH}")
 
+# To initialize the app and the pipelines
+get_app() 
+get_pipelines()
 
 # Generate the openapi specs
 specs = get_openapi_specs()
