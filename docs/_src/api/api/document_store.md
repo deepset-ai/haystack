@@ -4285,7 +4285,7 @@ Returns a list of labels for the given index name.
 
 **Arguments**:
 
-- `label_index`: Optional name of evaluation set for which labels should be searched.
+- `index`: Optional name of evaluation set for which labels should be searched.
 If None, the DocumentStore's default label_index (self.label_index) will be used.
 - `headers`: Not supported.
 
