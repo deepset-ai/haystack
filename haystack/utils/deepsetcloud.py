@@ -640,34 +640,36 @@ class PipelineClient:
 
 
 class EvaluationSetClient:
-    def __init__(self, client: DeepsetCloudClient, workspace: Optional[str] = None, label_index: Optional[str] = None):
+    def __init__(
+        self, client: DeepsetCloudClient, workspace: Optional[str] = None, evaluation_set: Optional[str] = None
+    ):
         """
         A client to communicate with Deepset Cloud evaluation sets and labels.
 
         :param client: Deepset Cloud client
         :param workspace: workspace in Deepset Cloud
-        :param label_index: name of the label index
+        :param evaluation_set: name of the label index
 
         """
         self.client = client
         self.workspace = workspace
-        self.label_index = label_index
+        self.evaluation_set = evaluation_set
 
-    def get_labels(self, label_index: Optional[str], workspace: Optional[str] = None) -> List[Label]:
+    def get_labels(self, evaluation_set: Optional[str], workspace: Optional[str] = None) -> List[Label]:
         """
         Searches for labels for a given evaluation set in deepset cloud. Returns a list of all found labels.
         If no labels were found, raises DeepsetCloudError.
 
-        :param label_index: name of the evaluation set for which labels should be fetched
+        :param evaluation_set: name of the evaluation set for which labels should be fetched
         :param workspace: Optional workspace in Deepset Cloud
                           If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
 
         :return: list of Label
         """
         try:
-            evaluation_set = next(self._get_evaluation_set(label_index=label_index, workspace=workspace))
+            evaluation_set = next(self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace))
         except StopIteration:
-            raise DeepsetCloudError(f"No evaluation set found with the name {label_index}")
+            raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
         labels = self._get_labels_from_evaluation_set(
             workspace=workspace, evaluation_set_id=evaluation_set["evaluation_set_id"]
@@ -692,11 +694,11 @@ class EvaluationSetClient:
             for label_dict in labels
         ]
 
-    def get_labels_count(self, label_index: Optional[str] = None, workspace: Optional[str] = None) -> int:
+    def get_labels_count(self, evaluation_set: Optional[str] = None, workspace: Optional[str] = None) -> int:
         """
         Counts labels for a given evaluation set in deepset cloud.
 
-        :param label_index: Optional index in Deepset Cloud
+        :param evaluation_set: Optional index in Deepset Cloud
                             If None, the EvaluationSetClient's default index (self.index) will be used.
         :param workspace: Optional workspace in Deepset Cloud
                           If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
@@ -704,9 +706,9 @@ class EvaluationSetClient:
         :return: Number of labels for the given (or defaulting) index
         """
         try:
-            evaluation_set = next(self._get_evaluation_set(label_index=label_index, workspace=workspace))
+            evaluation_set = next(self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace))
         except StopIteration:
-            raise DeepsetCloudError(f"No evaluation set found with the name {label_index}")
+            raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
         return evaluation_set["total_labels"]
 
@@ -720,18 +722,18 @@ class EvaluationSetClient:
         :return: List of dictionaries that represent deepset Cloud evaluation sets.
                  These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
         """
-        evaluation_sets_response = self._get_evaluation_set(label_index=None, workspace=workspace)
+        evaluation_sets_response = self._get_evaluation_set(evaluation_set=None, workspace=workspace)
 
         return [eval_set for eval_set in evaluation_sets_response]
 
-    def _get_evaluation_set(self, label_index: Optional[str], workspace: Optional[str] = None) -> Generator:
-        if not label_index:
-            label_index = self.label_index
+    def _get_evaluation_set(self, evaluation_set: Optional[str], workspace: Optional[str] = None) -> Generator:
+        if not evaluation_set:
+            evaluation_set = self.evaluation_set
 
         url = self._build_workspace_url(workspace=workspace)
         evaluation_set_url = f"{url}/evaluation_sets"
 
-        for response in self.client.get_with_auto_paging(url=evaluation_set_url, query_params={"name": label_index}):
+        for response in self.client.get_with_auto_paging(url=evaluation_set_url, query_params={"name": evaluation_set}):
             yield response
 
     def _get_labels_from_evaluation_set(
@@ -818,4 +820,4 @@ class DeepsetCloud:
 
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
-        return EvaluationSetClient(client=client, workspace=workspace, label_index=label_index)
+        return EvaluationSetClient(client=client, workspace=workspace, evaluation_set=label_index)

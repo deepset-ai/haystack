@@ -24,6 +24,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         api_endpoint: Optional[str] = None,
         similarity: str = "dot_product",
         return_embedding: bool = False,
+        label_index: str = "default",
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -46,6 +47,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param label_index: index for the evaluation set interface
+
         :param return_embedding: To return document embedding.
 
         """
@@ -66,7 +69,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             )
 
         self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
-            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, label_index=index
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, label_index=label_index
         )
 
         super().__init__()
@@ -481,19 +484,19 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :return: list of Labels.
         """
-        return self.evaluation_set_client.get_labels(label_index=index)
+        return self.evaluation_set_client.get_labels(evaluation_set=index)
 
-    def get_label_count(self, label_index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
+    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Counts the number of labels for the given index and returns the value.
 
-        :param label_index: Optional evaluation set name for which the labels should be counted.
-                      If None, the DocumentStore's default index (self.index) will be used.
+        :param index: Optional evaluation set name for which the labels should be counted.
+                      If None, the DocumentStore's default label_index (self.label_index) will be used.
         :param headers: Not supported.
 
         :return: number of labels for the given index
         """
-        return self.evaluation_set_client.get_labels_count(label_index=label_index)
+        return self.evaluation_set_client.get_labels_count(evaluation_set=index)
 
     def write_labels(
         self,

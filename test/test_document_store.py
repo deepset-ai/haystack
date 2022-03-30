@@ -1688,7 +1688,7 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 
-    count = deepset_cloud_document_store.get_label_count(label_index=DC_TEST_INDEX)
+    count = deepset_cloud_document_store.get_label_count(index=DC_TEST_INDEX)
     assert count == expected_count
 
 
