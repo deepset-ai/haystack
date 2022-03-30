@@ -3938,7 +3938,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False)
+def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -3964,6 +3964,7 @@ exists.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
@@ -4297,15 +4298,15 @@ list of Labels.
 #### get\_label\_count
 
 ```python
-def get_label_count(label_index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Counts the number of labels for the given index and returns the value.
 
 **Arguments**:
 
-- `label_index`: Optional evaluation set name for which the labels should be counted.
-If None, the DocumentStore's default index (self.index) will be used.
+- `index`: Optional evaluation set name for which the labels should be counted.
+If None, the DocumentStore's default label_index (self.label_index) will be used.
 - `headers`: Not supported.
 
 **Returns**:
