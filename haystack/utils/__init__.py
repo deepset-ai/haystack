@@ -1,4 +1,4 @@
-from haystack.utils.preprocessing import convert_files_to_dicts, tika_convert_files_to_dicts
+from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.import_utils import fetch_archive_from_http
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.doc_store import (
@@ -18,3 +18,4 @@ from haystack.utils.export_utils import (
     convert_labels_to_squad,
 )
 from haystack.utils.squad_data import SquadData
+from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts

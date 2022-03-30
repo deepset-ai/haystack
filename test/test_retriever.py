@@ -15,7 +15,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetri
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from conftest import SAMPLES_PATH
+from .conftest import SAMPLES_PATH
 
 
 @pytest.fixture()
@@ -82,7 +82,7 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
         retriever_with_docs, TfidfRetriever
     ):
         # single filter
-        result = retriever_with_docs.retrieve(query="godzilla", filters={"name": ["filename3"]}, top_k=5)
+        result = retriever_with_docs.retrieve(query="Christelle", filters={"name": ["filename3"]}, top_k=5)
         assert len(result) == 1
         assert type(result[0]) == Document
         assert result[0].content == "My name is Christelle and I live in Paris"
@@ -90,14 +90,14 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
 
         # multiple filters
         result = retriever_with_docs.retrieve(
-            query="godzilla", filters={"name": ["filename2"], "meta_field": ["test2", "test3"]}, top_k=5
+            query="Paul", filters={"name": ["filename2"], "meta_field": ["test2", "test3"]}, top_k=5
         )
         assert len(result) == 1
         assert type(result[0]) == Document
         assert result[0].meta["name"] == "filename2"
 
         result = retriever_with_docs.retrieve(
-            query="godzilla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
+            query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
         )
         assert len(result) == 0
 
@@ -151,7 +151,7 @@ def test_elasticsearch_custom_query():
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store, retriever, docs):
@@ -182,7 +182,7 @@ def test_dpr_embedding(document_store, retriever, docs):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
@@ -244,8 +244,8 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-def test_dpr_saving_and_loading(retriever, document_store):
-    retriever.save("test_dpr_save")
+def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
+    retriever.save(f"{tmp_path}/test_dpr_save")
 
     def sum_params(model):
         s = []
@@ -258,7 +258,7 @@ def test_dpr_saving_and_loading(retriever, document_store):
     original_sum_passage = sum_params(retriever.passage_encoder)
     del retriever
 
-    loaded_retriever = DensePassageRetriever.load("test_dpr_save", document_store)
+    loaded_retriever = DensePassageRetriever.load(f"{tmp_path}/test_dpr_save", document_store)
 
     loaded_sum_query = sum_params(loaded_retriever.query_encoder)
     loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)
@@ -292,8 +292,8 @@ def test_dpr_saving_and_loading(retriever, document_store):
 
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.embedding_dim(512)
-def test_table_text_retriever_saving_and_loading(retriever, document_store):
-    retriever.save("test_table_text_retriever_save")
+def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_store):
+    retriever.save(f"{tmp_path}/test_table_text_retriever_save")
 
     def sum_params(model):
         s = []
@@ -307,7 +307,7 @@ def test_table_text_retriever_saving_and_loading(retriever, document_store):
     original_sum_table = sum_params(retriever.table_encoder)
     del retriever
 
-    loaded_retriever = TableTextRetriever.load("test_table_text_retriever_save", document_store)
+    loaded_retriever = TableTextRetriever.load(f"{tmp_path}/test_table_text_retriever_save", document_store)
 
     loaded_sum_query = sum_params(loaded_retriever.query_encoder)
     loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)
@@ -479,3 +479,73 @@ def test_elasticsearch_highlight():
 
     assert len(results[0].meta["highlighted"]) == 1
     assert results[0].meta["highlighted"]["title"] == ["**Green**", "**tea** components"]
+
+
+def test_elasticsearch_filter_must_not_increase_results():
+    index = "filter_must_not_increase_results"
+    client = Elasticsearch()
+    client.indices.delete(index=index, ignore=[404])
+    documents = [
+        {
+            "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
+            "meta": {"content_type": "text"},
+            "id": "1",
+        },
+        {
+            "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
+            "meta": {"content_type": "text"},
+            "id": "2",
+        },
+        {
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+            "meta": {"content_type": "text"},
+            "id": "3",
+        },
+        {
+            "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
+            "meta": {"content_type": "text"},
+            "id": "4",
+        },
+    ]
+    doc_store = ElasticsearchDocumentStore(index=index)
+    doc_store.write_documents(documents)
+    results_wo_filter = doc_store.query(query="drink")
+    assert len(results_wo_filter) == 1
+    results_w_filter = doc_store.query(query="drink", filters={"content_type": "text"})
+    assert len(results_w_filter) == 1
+    doc_store.delete_index(index)
+
+
+def test_elasticsearch_all_terms_must_match():
+    index = "all_terms_must_match"
+    client = Elasticsearch()
+    client.indices.delete(index=index, ignore=[404])
+    documents = [
+        {
+            "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
+            "meta": {"content_type": "text"},
+            "id": "1",
+        },
+        {
+            "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
+            "meta": {"content_type": "text"},
+            "id": "2",
+        },
+        {
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+            "meta": {"content_type": "text"},
+            "id": "3",
+        },
+        {
+            "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
+            "meta": {"content_type": "text"},
+            "id": "4",
+        },
+    ]
+    doc_store = ElasticsearchDocumentStore(index=index)
+    doc_store.write_documents(documents)
+    results_wo_all_terms_must_match = doc_store.query(query="drink green tea")
+    assert len(results_wo_all_terms_must_match) == 4
+    results_w_all_terms_must_match = doc_store.query(query="drink green tea", all_terms_must_match=True)
+    assert len(results_w_all_terms_must_match) == 1
+    doc_store.delete_index(index)

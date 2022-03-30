@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
-from conftest import (
+from .conftest import (
     deepset_cloud_fixture,
     get_document_store,
     MOCK_DC,
@@ -19,7 +19,7 @@ from conftest import (
 )
 from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.utils import es_index_to_document_store
+from haystack.document_stores.utils import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -125,7 +125,9 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate", "pinecone"], indirect=True
+)
 def test_write_with_duplicate_doc_ids_custom_index(document_store):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -218,7 +220,9 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory", "pinecone"], indirect=True
+)
 def test_extended_filter(document_store_with_docs):
     # Test comparison operators individually
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})
@@ -393,13 +397,9 @@ def test_get_all_documents_generator(document_store):
 
 @pytest.mark.parametrize("update_existing_documents", [True, False])
 def test_update_existing_documents(document_store, update_existing_documents):
-    original_docs = [
-        {"content": "text1_orig", "id": "1", "meta_field_for_count": "a"},
-    ]
+    original_docs = [{"content": "text1_orig", "id": "1", "meta_field_for_count": "a"}]
 
-    updated_docs = [
-        {"content": "text1_new", "id": "1", "meta_field_for_count": "a"},
-    ]
+    updated_docs = [{"content": "text1_new", "id": "1", "meta_field_for_count": "a"}]
 
     document_store.write_documents(original_docs)
     assert document_store.get_document_count() == 1
@@ -436,10 +436,7 @@ def test_write_document_meta(document_store):
 
 
 def test_write_document_index(document_store):
-    documents = [
-        {"content": "text1", "id": "1"},
-        {"content": "text2", "id": "2"},
-    ]
+    documents = [{"content": "text1", "id": "1"}, {"content": "text2", "id": "2"}]
     document_store.write_documents([documents[0]], index="haystack_test_one")
     assert len(document_store.get_all_documents(index="haystack_test_one")) == 1
 
@@ -492,9 +489,7 @@ def test_update_embeddings(document_store, retriever):
         assert type(doc.embedding) is np.ndarray
 
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_0"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_0"]}, return_embedding=True
     )
     assert len(documents) == 2
     for doc in documents:
@@ -502,9 +497,7 @@ def test_update_embeddings(document_store, retriever):
     np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding, decimal=4)
 
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_0", "value_5"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_0", "value_5"]}, return_embedding=True
     )
     documents_with_value_0 = [doc for doc in documents if doc.meta["meta_field"] == "value_0"]
     documents_with_value_5 = [doc for doc in documents if doc.meta["meta_field"] == "value_5"]
@@ -624,9 +617,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with same content (text) get same embedding
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_text_0"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_text_0"]}, return_embedding=True
     )
     assert len(documents) == 2
     for doc in documents:
@@ -635,9 +626,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with same content (table) get same embedding
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_table_0"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_table_0"]}, return_embedding=True
     )
     assert len(documents) == 2
     for doc in documents:
@@ -646,9 +635,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents wih different content (text) get different embedding
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_text_1", "value_text_2"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_text_1", "value_text_2"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -656,9 +643,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with different content (table) get different embeddings
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_table_1", "value_table_2"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_table_1", "value_table_2"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -666,9 +651,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with different content (table + text) get different embeddings
     documents = document_store.get_all_documents(
-        index="haystack_test_one",
-        filters={"meta_field": ["value_text_1", "value_table_1"]},
-        return_embedding=True,
+        index="haystack_test_one", filters={"meta_field": ["value_text_1", "value_table_1"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -733,7 +716,7 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
 def test_labels(document_store):
     label = Label(
         query="question1",
@@ -821,7 +804,7 @@ def test_labels(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
 def test_multilabel(document_store):
     labels = [
         Label(
@@ -937,7 +920,7 @@ def test_multilabel(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
 def test_multilabel_no_answer(document_store):
     labels = [
         Label(
@@ -1192,7 +1175,7 @@ def test_multilabel_meta_aggregations(document_store):
             assert multi_label.filters == l.filters
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate", "pinecone"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
 def test_update_meta(document_store):
     documents = [
@@ -1615,7 +1598,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
         responses.add(
             method=responses.POST,
             url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-            match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50})],
+            match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50, "all_terms_must_match": False})],
             status=200,
             body=query_winterfell_response,
         )
@@ -1629,6 +1612,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
                         "query": "winterfell",
                         "top_k": 50,
                         "filters": {"file_id": [query_winterfell_docs[0]["meta"]["file_id"]]},
+                        "all_terms_must_match": False,
                     }
                 )
             ],
@@ -1732,7 +1716,7 @@ def test_elasticsearch_search_field_mapping():
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_brownfield_support(document_store_with_docs):
     new_document_store = InMemoryDocumentStore()
-    new_document_store = es_index_to_document_store(
+    new_document_store = elasticsearch_index_to_document_store(
         document_store=new_document_store,
         original_index_name="haystack_test",
         original_content_field="content",
@@ -1754,7 +1738,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert original_content == transferred_content
 
     # Test transferring docs with PreProcessor
-    new_document_store = es_index_to_document_store(
+    new_document_store = elasticsearch_index_to_document_store(
         document_store=new_document_store,
         original_index_name="haystack_test",
         original_content_field="content",

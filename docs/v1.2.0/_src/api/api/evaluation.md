@@ -20,6 +20,21 @@ https://haystack.deepset.ai/tutorials/evaluation).
 EvalDocuments node is deprecated and will be removed in a future version.
 Please use pipeline.eval() instead.
 
+<a id="evaluator.EvalDocuments.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(debug: bool = False, open_domain: bool = True, top_k: int = 10)
+```
+
+**Arguments**:
+
+- `open_domain`: When True, a document is considered correctly retrieved so long as the answer string can be found within it.
+When False, correct retrieval is evaluated based on document_id.
+- `debug`: When True, a record of each sample and its evaluation will be stored in EvalDocuments.log
+- `top_k`: calculate eval metrics for top k results, e.g., recall@k
+
 <a id="evaluator.EvalDocuments.run"></a>
 
 #### run
@@ -57,6 +72,31 @@ open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
 
 EvalAnswers node is deprecated and will be removed in a future version.
 Please use pipeline.eval() instead.
+
+<a id="evaluator.EvalAnswers.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(skip_incorrect_retrieval: bool = True, open_domain: bool = True, sas_model: str = None, debug: bool = False)
+```
+
+**Arguments**:
+
+- `skip_incorrect_retrieval`: When set to True, this eval will ignore the cases where the retriever returned no correct documents
+- `open_domain`: When True, extracted answers are evaluated purely on string similarity rather than the position of the extracted answer
+- `sas_model`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+More info in the paper: https://arxiv.org/abs/2108.06130
+Models:
+- You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+  Not all cross encoders can be used because of different return types.
+  If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+- Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+- Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+- Large model for German only: "deepset/gbert-large-sts"
+- `debug`: When True, a record of each sample and its evaluation will be stored in EvalAnswers.log
 
 <a id="evaluator.EvalAnswers.run"></a>
 

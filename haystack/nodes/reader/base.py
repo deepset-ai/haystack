@@ -78,8 +78,8 @@ class BaseReader(BaseComponent):
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
         self.query_count += 1
+        predict = self.timing(self.predict, "query_time")
         if documents:
-            predict = self.timing(self.predict, "query_time")
             results = predict(query=query, documents=documents, top_k=top_k)
         else:
             results = {"answers": []}

@@ -113,30 +113,8 @@ class FARMReader(BaseReader):
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
+        super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path,
-            model_version=model_version,
-            context_window_size=context_window_size,
-            batch_size=batch_size,
-            use_gpu=use_gpu,
-            no_ans_boost=no_ans_boost,
-            return_no_answer=return_no_answer,
-            top_k=top_k,
-            top_k_per_candidate=top_k_per_candidate,
-            top_k_per_sample=top_k_per_sample,
-            num_processes=num_processes,
-            max_seq_len=max_seq_len,
-            doc_stride=doc_stride,
-            progress_bar=progress_bar,
-            duplicate_filtering=duplicate_filtering,
-            proxies=proxies,
-            local_files_only=local_files_only,
-            force_download=force_download,
-            use_confidence_scores=use_confidence_scores,
-            **kwargs,
-        )
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
         self.return_no_answers = return_no_answer
@@ -175,6 +153,7 @@ class FARMReader(BaseReader):
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
+        self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
 
     def _training_procedure(
         self,
@@ -798,7 +777,9 @@ class FARMReader(BaseReader):
 
         return result
 
-    def eval_on_file(self, data_dir: str, test_filename: str, device: Optional[str] = None):
+    def eval_on_file(
+        self, data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None
+    ):
         """
         Performs evaluation on a SQuAD-formatted file.
         Returns a dict containing the following metrics:
@@ -807,14 +788,16 @@ class FARMReader(BaseReader):
             - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
         :param data_dir: The directory in which the test set can be found
-        :type data_dir: Path or str
         :param test_filename: The name of the file containing the test data in SQuAD format.
-        :type test_filename: str
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
-        :type device: str
+        :param device: The device on which the tensors should be processed.
+               Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+               or use the Reader's device by default.
         """
         if device is None:
             device = self.devices[0]
+        else:
+            device = torch.device(device)
+
         eval_processor = SquadProcessor(
             tokenizer=self.inferencer.processor.tokenizer,
             max_seq_len=self.inferencer.processor.max_seq_len,
@@ -843,7 +826,7 @@ class FARMReader(BaseReader):
     def eval(
         self,
         document_store: BaseDocumentStore,
-        device: Optional[str] = None,
+        device: Optional[Union[str, torch.device]] = None,
         label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold-label",
@@ -857,7 +840,9 @@ class FARMReader(BaseReader):
               - "top_n_accuracy": Proportion of predicted answers that overlap with correct answer
 
         :param document_store: DocumentStore containing the evaluation documents
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+        :param device: The device on which the tensors should be processed.
+                       Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+                       or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
@@ -865,6 +850,9 @@ class FARMReader(BaseReader):
         """
         if device is None:
             device = self.devices[0]
+        else:
+            device = torch.device(device)
+
         if self.top_k_per_candidate != 4:
             logger.info(
                 f"Performing Evaluation using top_k_per_candidate = {self.top_k_per_candidate} \n"
@@ -922,10 +910,7 @@ class FARMReader(BaseReader):
                             )
                             continue
                         aggregated_per_question[aggregation_key]["answers"].append(
-                            {
-                                "text": label.answer.answer,
-                                "answer_start": label.answer.offsets_in_document[0].start,
-                            }
+                            {"text": label.answer.answer, "answer_start": label.answer.offsets_in_document[0].start}
                         )
                         aggregated_per_question[aggregation_key]["is_impossible"] = False
                     # create new one
@@ -1036,7 +1021,7 @@ class FARMReader(BaseReader):
     def calibrate_confidence_scores(
         self,
         document_store: BaseDocumentStore,
-        device: Optional[str] = None,
+        device: Optional[Union[str, torch.device]] = None,
         label_index: str = "label",
         doc_index: str = "eval_document",
         label_origin: str = "gold_label",
@@ -1045,7 +1030,9 @@ class FARMReader(BaseReader):
         Calibrates confidence scores on evaluation documents in the DocumentStore.
 
         :param document_store: DocumentStore containing the evaluation documents
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda" or use the Reader's device by default.
+        :param device: The device on which the tensors should be processed.
+                       Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
+                       or use the Reader's device by default.
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored

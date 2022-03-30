@@ -30,7 +30,8 @@ class FileTypeClassifier(BaseComponent):
         if len(set(supported_types)) != len(supported_types):
             raise ValueError("supported_types can't contain duplicate values.")
 
-        self.set_config(supported_types=supported_types)
+        super().__init__()
+
         self.supported_types = supported_types
 
     def _get_extension(self, file_paths: List[Path]) -> str:

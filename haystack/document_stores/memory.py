@@ -66,17 +66,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
                                    when running on CPU.
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            index=index,
-            label_index=label_index,
-            embedding_field=embedding_field,
-            embedding_dim=embedding_dim,
-            return_embedding=return_embedding,
-            similarity=similarity,
-            progress_bar=progress_bar,
-            duplicate_documents=duplicate_documents,
-        )
+        super().__init__()
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index
@@ -150,9 +140,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][document.id] = document
 
     def _create_document_field_map(self):
-        return {
-            self.embedding_field: "embedding",
-        }
+        return {self.embedding_field: "embedding"}
 
     def write_labels(
         self,
@@ -754,6 +742,20 @@ class InMemoryDocumentStore(BaseDocumentStore):
             docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
         for doc in docs_to_delete:
             del self.indexes[index][doc.id]
+
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        if index == self.index:
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
+        del self.indexes[index]
 
     def delete_labels(
         self,

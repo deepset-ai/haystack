@@ -23,8 +23,7 @@ def test_qa_format_and_results(adaptive_model_qa, multiprocessing_chunksize):
     ground_truths = ["France", "GameTrailers"]
 
     results = adaptive_model_qa.inference_from_dicts(
-        dicts=qa_inputs_dicts,
-        multiprocessing_chunksize=multiprocessing_chunksize,
+        dicts=qa_inputs_dicts, multiprocessing_chunksize=multiprocessing_chunksize
     )
     # sample results
     # [

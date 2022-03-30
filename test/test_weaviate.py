@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from haystack.schema import Document
-from conftest import get_document_store
+from .conftest import get_document_store
 import uuid
 
 embedding_dim = 768

@@ -79,6 +79,44 @@ With this document_classifier, you can directly get predictions via predict()
 |    p.run(file_paths=file_paths)
  ```
 
+<a id="transformers.TransformersDocumentClassifier.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
+```
+
+Load a text classification model from Transformers.
+
+Available models for the task of text-classification include:
+- ``'bhadresh-savani/distilbert-base-uncased-emotion'``
+- ``'Hate-speech-CNERG/dehatebert-mono-english'``
+
+Available models for the task of zero-shot-classification include:
+- ``'valhalla/distilbart-mnli-12-3'``
+- ``'cross-encoder/nli-distilroberta-base'``
+
+See https://huggingface.co/models for full list of available models.
+Filter for text classification models: https://huggingface.co/models?pipeline_tag=text-classification&sort=downloads
+Filter for zero-shot classification models (NLI): https://huggingface.co/models?pipeline_tag=zero-shot-classification&sort=downloads&search=nli
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'bhadresh-savani/distilbert-base-uncased-emotion'.
+See https://huggingface.co/models for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `use_gpu`: Whether to use GPU (if available).
+- `return_all_scores`: Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
+- `task`: 'text-classification' or 'zero-shot-classification'
+- `labels`: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
+["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
+classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
+or an entailment.
+- `batch_size`: batch size to be processed at once
+- `classification_field`: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
+
 <a id="transformers.TransformersDocumentClassifier.predict"></a>
 
 #### predict

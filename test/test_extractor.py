@@ -20,11 +20,7 @@ def test_extractor(document_store_with_docs):
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run(
-        query="Who lives in Berlin?",
-        params={
-            "ESRetriever": {"top_k": 1},
-            "Reader": {"top_k": 1},
-        },
+        query="Who lives in Berlin?", params={"ESRetriever": {"top_k": 1}, "Reader": {"top_k": 1}}
     )
     entities = [entity["word"] for entity in prediction["answers"][0].meta["entities"]]
     assert "Carla" in entities
@@ -44,11 +40,7 @@ def test_extractor_output_simplifier(document_store_with_docs):
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run(
-        query="Who lives in Berlin?",
-        params={
-            "ESRetriever": {"top_k": 1},
-            "Reader": {"top_k": 1},
-        },
+        query="Who lives in Berlin?", params={"ESRetriever": {"top_k": 1}, "Reader": {"top_k": 1}}
     )
     simplified = simplify_ner_for_qa(prediction)
     assert simplified[0] == {"answer": "Carla", "entities": ["Carla"]}

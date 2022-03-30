@@ -334,13 +334,8 @@ if __name__ == "__main__":
     num_hard_negative_ctxs = args.num_hard_negative_ctxs
     split_dataset = args.split_dataset
 
-    retriever_dpr_config = {
-        "use_gpu": True,
-    }
-    store_dpr_config = {
-        "embedding_field": "embedding",
-        "embedding_dim": 768,
-    }
+    retriever_dpr_config = {"use_gpu": True}
+    store_dpr_config = {"embedding_field": "embedding", "embedding_dim": 768}
 
     retriever_bm25_config: dict = {}
 

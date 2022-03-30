@@ -1,4 +1,4 @@
-version: '1.1.0'
+version: 'unstable'
 
 components:
   - name: Reader
@@ -11,7 +11,6 @@ components:
     type: ElasticsearchRetriever
     params:
       document_store: DocumentStore
-      custom_query: null
   - name: DocumentStore
     type: ElasticsearchDocumentStore
     params:
@@ -29,33 +28,22 @@ components:
     type: TransformersDocumentClassifier
     params:
       batch_size: 16
-      use_gpu: -1
+      use_gpu: false
   - name: QueryTimeDocumentClassifier
     type: TransformersDocumentClassifier
     params:
-      use_gpu: -1
+      use_gpu: false
 
 
 pipelines:
   - name: query_pipeline
-    type: Pipeline
     nodes:
       - name: ESRetriever
         inputs: [Query]
       - name: Reader
         inputs: [ESRetriever]
 
-  - name: ray_query_pipeline
-    type: RayPipeline
-    nodes:
-      - name: ESRetriever
-        replicas: 2
-        inputs: [ Query ]
-      - name: Reader
-        inputs: [ ESRetriever ]
-
   - name: query_pipeline_with_document_classifier
-    type: Pipeline
     nodes:
       - name: ESRetriever
         inputs: [Query]
@@ -65,7 +53,6 @@ pipelines:
         inputs: [QueryTimeDocumentClassifier]
 
   - name: indexing_pipeline
-    type: Pipeline
     nodes:
       - name: PDFConverter
         inputs: [File]
@@ -77,7 +64,6 @@ pipelines:
         inputs: [ESRetriever]
 
   - name: indexing_text_pipeline
-    type: Pipeline
     nodes:
       - name: TextConverter
         inputs: [File]
@@ -89,7 +75,6 @@ pipelines:
         inputs: [ESRetriever]
 
   - name: indexing_pipeline_with_classifier
-    type: Pipeline
     nodes:
       - name: PDFConverter
         inputs: [File]

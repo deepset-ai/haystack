@@ -65,14 +65,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                 f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}"
             )
 
-        self.set_config(
-            workspace=workspace,
-            index=index,
-            duplicate_documents=duplicate_documents,
-            api_endpoint=api_endpoint,
-            similarity=similarity,
-            return_embedding=return_embedding,
-        )
+        super().__init__()
 
     def get_all_documents(
         self,
@@ -334,6 +327,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -407,9 +401,19 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param custom_query: Custom query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to requests
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to False.
         """
         doc_dicts = self.client.query(
-            query=query, filters=filters, top_k=top_k, custom_query=custom_query, index=index, headers=headers
+            query=query,
+            filters=filters,
+            top_k=top_k,
+            custom_query=custom_query,
+            index=index,
+            all_terms_must_match=all_terms_must_match,
+            headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
         return docs
@@ -492,3 +496,6 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ):
         raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+
+    def delete_index(self, index: str):
+        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting indexes.")

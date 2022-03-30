@@ -140,41 +140,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param use_system_proxy: Whether to use system proxy.
 
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            host=host,
-            port=port,
-            username=username,
-            password=password,
-            api_key_id=api_key_id,
-            api_key=api_key,
-            aws4auth=aws4auth,
-            index=index,
-            label_index=label_index,
-            search_fields=search_fields,
-            content_field=content_field,
-            name_field=name_field,
-            embedding_field=embedding_field,
-            embedding_dim=embedding_dim,
-            custom_mapping=custom_mapping,
-            excluded_meta_data=excluded_meta_data,
-            analyzer=analyzer,
-            scheme=scheme,
-            ca_certs=ca_certs,
-            verify_certs=verify_certs,
-            create_index=create_index,
-            duplicate_documents=duplicate_documents,
-            refresh_type=refresh_type,
-            similarity=similarity,
-            timeout=timeout,
-            return_embedding=return_embedding,
-            index_type=index_type,
-            scroll=scroll,
-            skip_missing_embeddings=skip_missing_embeddings,
-            synonyms=synonyms,
-            synonym_type=synonym_type,
-            use_system_proxy=use_system_proxy,
-        )
+        super().__init__()
 
         self.client = self._init_elastic_client(
             host=host,
@@ -354,9 +320,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                     if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
                         raise Exception(
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                            f'In this case deleting the index with `delete_index(index="{index_name}")` will fix your environment. '
                             f"Note, that all data stored in the index will be lost!"
                         )
             if self.embedding_field:
@@ -383,15 +349,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                         {"strings": {"path_match": "*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
                     ],
                 },
-                "settings": {
-                    "analysis": {
-                        "analyzer": {
-                            "default": {
-                                "type": self.analyzer,
-                            }
-                        }
-                    }
-                },
+                "settings": {"analysis": {"analyzer": {"default": {"type": self.analyzer}}}},
             }
 
             if self.synonyms:
@@ -538,15 +496,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if query:
             body["query"] = {
                 "bool": {
-                    "should": [
-                        {
-                            "multi_match": {
-                                "query": query,
-                                "type": "most_fields",
-                                "fields": self.search_fields,
-                            }
-                        }
-                    ]
+                    "should": [{"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}]
                 }
             }
         if filters:
@@ -922,6 +872,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1061,6 +1012,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to false.
         """
 
         if index is None:
@@ -1095,12 +1050,20 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                     "The query provided seems to be not a string, but an object "
                     f"of type {type(query)}. This can cause Elasticsearch to fail."
                 )
+            operator = "AND" if all_terms_must_match else "OR"
             body = {
                 "size": str(top_k),
                 "query": {
                     "bool": {
-                        "should": [
-                            {"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}
+                        "must": [
+                            {
+                                "multi_match": {
+                                    "query": query,
+                                    "type": "most_fields",
+                                    "fields": self.search_fields,
+                                    "operator": operator,
+                                }
+                            }
                         ]
                     }
                 },
@@ -1291,10 +1254,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         return query
 
     def _convert_es_hit_to_document(
-        self,
-        hit: dict,
-        return_embedding: bool,
-        adapt_score_for_embedding: bool = False,
+        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {
@@ -1623,6 +1583,11 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param index: The name of the index to delete.
         :return: None
         """
+        if index == self.index:
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
         self.client.indices.delete(index=index, ignore=[400, 404])
         logger.debug(f"deleted elasticsearch index {index}")
 
@@ -1799,10 +1764,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
         # +1 in similarity to avoid negative numbers (for cosine sim)
-        body: Dict[str, Any] = {
-            "size": top_k,
-            "query": self._get_vector_similarity_query(query_emb, top_k),
-        }
+        body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
@@ -1847,9 +1809,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     ):
                         raise Exception(
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mappings['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{self.pipeline_config['params']['host']}:{self.pipeline_config['params']['port']}/{index_name}\"` will fix your environment. "
+                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                            f'In this case deleting the index with `delete_index(index="{index_name}")` will fix your environment. '
                             f"Note, that all data stored in the index will be lost!"
                         )
 
@@ -1915,15 +1877,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         {"strings": {"path_match": "*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
                     ],
                 },
-                "settings": {
-                    "analysis": {
-                        "analyzer": {
-                            "default": {
-                                "type": self.analyzer,
-                            }
-                        }
-                    }
-                },
+                "settings": {"analysis": {"analyzer": {"default": {"type": self.analyzer}}}},
             }
 
             if self.synonyms:
@@ -2096,13 +2050,10 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
     A DocumentStore which has an Open Distro for Elasticsearch service behind it.
     """
 
-    def __init__(self, host="https://admin:admin@localhost:9200/", similarity="cosine", **kwargs):
+    def __init__(self, similarity="cosine", **kwargs):
         logger.warning(
             "Open Distro for Elasticsearch has been replaced by OpenSearch! "
             "See https://opensearch.org/faq/ for details. "
             "We recommend using the OpenSearchDocumentStore instead."
         )
-        super(OpenDistroElasticsearchDocumentStore, self).__init__(host=host, similarity=similarity, **kwargs)
-
-    def _prepare_hosts(self, host, port):
-        return host
+        super(OpenDistroElasticsearchDocumentStore, self).__init__(similarity=similarity, **kwargs)

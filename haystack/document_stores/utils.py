@@ -39,13 +39,13 @@ def eval_data_from_json(
         if "title" not in data["data"][0]:
             logger.warning(f"No title information found for documents in QA file: {filename}")
 
-        for document in data["data"]:
+        for squad_document in data["data"]:
             if max_docs:
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
-                document, preprocessor, open_domain
+                squad_document, preprocessor, open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -87,9 +87,9 @@ def eval_data_from_jsonl(
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
-            document_dict = json.loads(document)
+            squad_document = json.loads(document)
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
-                document_dict, preprocessor, open_domain
+                squad_document, preprocessor, open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -149,15 +149,14 @@ def _extract_docs_and_labels_from_dict(
         ## Create Document
         cur_full_doc = Document(content=paragraph["context"], meta=cur_meta)
         if preprocessor is not None:
-            splits_dicts = preprocessor.process(cur_full_doc.to_dict())
+            splits_docs = preprocessor.process(cur_full_doc)
             # we need to pull in _split_id into the document id for unique reference in labels
-            # todo: PreProcessor should work on Documents instead of dicts
             splits: List[Document] = []
             offset = 0
-            for d in splits_dicts:
-                id = f"{d['id']}-{d['meta']['_split_id']}"
-                d["meta"]["_split_offset"] = offset
-                offset += len(d["content"])
+            for d in splits_docs:
+                id = f"{d.id}-{d.meta['_split_id']}"
+                d.meta["_split_offset"] = offset
+                offset += len(d.content)
                 # offset correction based on splitting method
                 if preprocessor.split_by == "word":
                     offset += 1
@@ -165,7 +164,7 @@ def _extract_docs_and_labels_from_dict(
                     offset += 2
                 else:
                     raise NotImplementedError
-                mydoc = Document(content=d["content"], id=id, meta=d["meta"])
+                mydoc = Document(content=d.content, id=id, meta=d.meta)
                 splits.append(mydoc)
         else:
             splits = [cur_full_doc]
@@ -281,7 +280,7 @@ def convert_date_to_rfc3339(date: str) -> str:
     return converted_date
 
 
-def es_index_to_document_store(
+def open_search_index_to_document_store(
     document_store: "BaseDocumentStore",
     original_index_name: str,
     original_content_field: str,
@@ -291,6 +290,106 @@ def es_index_to_document_store(
     store_original_ids: bool = True,
     index: Optional[str] = None,
     preprocessor: Optional[PreProcessor] = None,
+    id_hash_keys: Optional[List[str]] = None,
+    batch_size: int = 10_000,
+    host: Union[str, List[str]] = "localhost",
+    port: Union[int, List[int]] = 9200,
+    username: str = "admin",
+    password: str = "admin",
+    api_key_id: Optional[str] = None,
+    api_key: Optional[str] = None,
+    aws4auth=None,
+    scheme: str = "https",
+    ca_certs: Optional[str] = None,
+    verify_certs: bool = False,
+    timeout: int = 30,
+    use_system_proxy: bool = False,
+) -> "BaseDocumentStore":
+    """
+    This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
+    the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
+    on a regular basis in order to add new records of the OpenSearch index to the `DocumentStore`.
+
+    :param document_store: The haystack `DocumentStore` to write the converted `Document` objects to.
+    :param original_index_name: OpenSearch index containing the records to be converted.
+    :param original_content_field: OpenSearch field containing the text to be put in the `content` field of the
+        resulting haystack `Document` objects.
+    :param original_name_field: Optional OpenSearch field containing the title of the Document.
+    :param included_metadata_fields: List of OpenSearch fields that shall be stored in the `meta` field of the
+        resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+        all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
+        `included_metadata_fields` and `excluded_metadata_fields` parameters.
+    :param excluded_metadata_fields: List of OpenSearch fields that shall be excluded from the `meta` field of the
+        resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
+        all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
+        `included_metadata_fields` and `excluded_metadata_fields` parameters.
+    :param store_original_ids: Whether to store the ID a record had in the original OpenSearch index at the
+        `"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
+        if you want to continuously update the `DocumentStore` with new records inside your OpenSearch index. If this
+        parameter was set to `False` on the first call of `open_search_index_to_document_store`,
+        all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
+    :param index: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
+    :param preprocessor: Optional PreProcessor that will be applied on the content field of the original OpenSearch
+        record.
+    :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
+        attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
+        not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
+        In this case the id will be generated by using the content and the defined metadata.
+    :param batch_size: Number of records to process at once.
+    :param host: URL(s) of OpenSearch nodes.
+    :param port: Ports(s) of OpenSearch nodes.
+    :param username: Username (standard authentication via http_auth).
+    :param password: Password (standard authentication via http_auth).
+    :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth).
+    :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth).
+    :param aws4auth: Authentication for usage with AWS OpenSearch
+        (can be generated with the requests-aws4auth package).
+    :param scheme: `"https"` or `"http"`, protocol used to connect to your OpenSearch instance.
+    :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
+        You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
+    :param verify_certs: Whether to be strict about ca certificates.
+    :param timeout: Number of seconds after which an OpenSearch request times out.
+    :param use_system_proxy: Whether to use system proxy.
+    """
+
+    return elasticsearch_index_to_document_store(
+        document_store=document_store,
+        original_index_name=original_index_name,
+        original_content_field=original_content_field,
+        original_name_field=original_name_field,
+        included_metadata_fields=included_metadata_fields,
+        excluded_metadata_fields=excluded_metadata_fields,
+        store_original_ids=store_original_ids,
+        index=index,
+        preprocessor=preprocessor,
+        id_hash_keys=id_hash_keys,
+        batch_size=batch_size,
+        host=host,
+        port=port,
+        username=username,
+        password=password,
+        api_key_id=api_key_id,
+        api_key=api_key,
+        aws4auth=aws4auth,
+        scheme=scheme,
+        ca_certs=ca_certs,
+        verify_certs=verify_certs,
+        timeout=timeout,
+        use_system_proxy=use_system_proxy,
+    )
+
+
+def elasticsearch_index_to_document_store(
+    document_store: "BaseDocumentStore",
+    original_index_name: str,
+    original_content_field: str,
+    original_name_field: Optional[str] = None,
+    included_metadata_fields: Optional[List[str]] = None,
+    excluded_metadata_fields: Optional[List[str]] = None,
+    store_original_ids: bool = True,
+    index: Optional[str] = None,
+    preprocessor: Optional[PreProcessor] = None,
+    id_hash_keys: Optional[List[str]] = None,
     batch_size: int = 10_000,
     host: Union[str, List[str]] = "localhost",
     port: Union[int, List[int]] = 9200,
@@ -326,11 +425,15 @@ def es_index_to_document_store(
     :param store_original_ids: Whether to store the ID a record had in the original Elasticsearch index at the
         `"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
         if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
-        parameter was set to `False` on the first call of `es_index_to_document_store`,
+        parameter was set to `False` on the first call of `elasticsearch_index_to_document_store`,
         all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
     :param index: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
     :param preprocessor: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
         record.
+    :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
+        attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
+        not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
+        In this case the id will be generated by using the content and the defined metadata.
     :param batch_size: Number of records to process at once.
     :param host: URL(s) of Elasticsearch nodes.
     :param port: Ports(s) of Elasticsearch nodes.
@@ -380,7 +483,7 @@ def es_index_to_document_store(
         query["query"]["bool"]["filter"] = filters
     records = scan(client=es_client, query=query, index=original_index_name)
     number_of_records = es_client.count(index=original_index_name, body=query)["count"]
-    haystack_documents: List[Dict] = []
+    haystack_documents: List[Document] = []
     for idx, record in enumerate(tqdm(records, total=number_of_records, desc="Converting ES Records")):
         # Write batch_size number of documents to haystack DocumentStore
         if (idx + 1) % batch_size == 0:
@@ -390,28 +493,30 @@ def es_index_to_document_store(
         # Get content and metadata of current record
         content = record["_source"].pop(original_content_field, "")
         if content:
-            record_doc = {"content": content, "meta": {}}
+            record_doc = Document(content=content, meta={}, id_hash_keys=id_hash_keys)
 
             if original_name_field is not None:
                 if original_name_field in record["_source"]:
-                    record_doc["meta"]["name"] = record["_source"].pop(original_name_field)
+                    record_doc.meta["name"] = record["_source"].pop(original_name_field)
             # Only add selected metadata fields
             if included_metadata_fields is not None:
                 for metadata_field in included_metadata_fields:
                     if metadata_field in record["_source"]:
-                        record_doc["meta"][metadata_field] = record["_source"][metadata_field]
+                        record_doc.meta[metadata_field] = record["_source"][metadata_field]
             # Add all metadata fields except for those in excluded_metadata_fields
             else:
                 if excluded_metadata_fields is not None:
                     for metadata_field in excluded_metadata_fields:
                         record["_source"].pop(metadata_field, None)
-                record_doc["meta"].update(record["_source"])
+                record_doc.meta.update(record["_source"])
 
             if store_original_ids:
-                record_doc["meta"]["_original_es_id"] = record["_id"]
+                record_doc.meta["_original_es_id"] = record["_id"]
 
             # Apply preprocessor if provided
-            preprocessed_docs = preprocessor.process(record_doc) if preprocessor is not None else [record_doc]
+            preprocessed_docs = [record_doc]
+            if preprocessor is not None:
+                preprocessed_docs = preprocessor.process(record_doc, id_hash_keys=id_hash_keys)
 
             haystack_documents.extend(preprocessed_docs)
 

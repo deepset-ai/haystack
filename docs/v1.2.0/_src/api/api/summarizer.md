@@ -82,6 +82,37 @@ See the up-to-date list of available models on
 |      },
 ```
 
+<a id="transformers.TransformersSummarizer.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: bool = True, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False)
+```
+
+Load a Summarization model from Transformers.
+
+See the up-to-date list of available models at
+https://huggingface.co/models?filter=summarization
+
+**Arguments**:
+
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g.
+'facebook/rag-token-nq', 'facebook/rag-sequence-nq'.
+See https://huggingface.co/models?filter=summarization for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `max_length`: Maximum length of summarized text
+- `min_length`: Minimum length of summarized text
+- `use_gpu`: Whether to use GPU (if available).
+- `clean_up_tokenization_spaces`: Whether or not to clean up the potential extra spaces in the text output
+- `separator_for_single_summary`: If `generate_single_summary=True` in `predict()`, we need to join all docs
+into a single text. This separator appears between those subsequent docs.
+- `generate_single_summary`: Whether to generate a single summary for all documents or one summary per document.
+If set to "True", all docs will be joined to a single string that will then
+be summarized.
+Important: The summary will depend on the order of the supplied documents!
+
 <a id="transformers.TransformersSummarizer.predict"></a>
 
 #### predict

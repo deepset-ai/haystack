@@ -102,13 +102,7 @@ class LanguageModel(nn.Module):
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
 
-    def forward(
-        self,
-        input_ids: torch.Tensor,
-        segment_ids: torch.Tensor,
-        padding_mask: torch.Tensor,
-        **kwargs,
-    ):
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor, **kwargs):
         raise NotImplementedError
 
     @classmethod
@@ -347,16 +341,7 @@ class LanguageModel(nn.Module):
 
     @classmethod
     def _infer_language_from_name(cls, name):
-        known_languages = (
-            "german",
-            "english",
-            "chinese",
-            "indian",
-            "french",
-            "polish",
-            "spanish",
-            "multilingual",
-        )
+        known_languages = ("german", "english", "chinese", "indian", "french", "polish", "spanish", "multilingual")
         matches = [lang for lang in known_languages if lang in name]
         if "camembert" in name:
             language = "french"

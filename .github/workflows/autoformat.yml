@@ -40,7 +40,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
-          pip install .[test]
+          pip install .[all]
           pip install rest_api/
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
@@ -69,14 +69,11 @@ jobs:
 
       # Generates the OpenAPI specs file to be used on the documentation website
       - name: Generate OpenAPI Specs
-        run: |
-          pip install rest_api/
-          cd docs/_src/api/openapi/
-          python generate_openapi_specs.py
+        run: python .github/utils/generate_openapi_specs.py
 
       # Generates a new JSON schema for the pipeline YAML validation
       - name: Generate JSON schema for pipelines
-        run: python ./.github/utils/generate_json_schema.py
+        run: python .github/utils/generate_json_schema.py
       
       # Commit the files to GitHub
       - name: Commit files

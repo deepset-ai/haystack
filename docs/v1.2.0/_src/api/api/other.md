@@ -34,3 +34,20 @@ The node allows multiple join modes:
          `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
 * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.
 
+<a id="join_docs.JoinDocuments.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None)
+```
+
+**Arguments**:
+
+- `join_mode`: `concatenate` to combine documents from multiple retrievers `merge` to aggregate scores of
+individual documents, `reciprocal_rank_fusion` to apply rank based scoring.
+- `weights`: A node-wise list(length of list must be equal to the number of input nodes) of weights for
+adjusting document scores when using the `merge` join_mode. By default, equal weight is given
+to each retriever score. This param is not compatible with the `concatenate` join_mode.
+- `top_k_join`: Limit documents to top_k based on the resulting scores of the join.
+

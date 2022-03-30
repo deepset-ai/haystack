@@ -9,18 +9,14 @@ from haystack.nodes.answer_generator import Seq2SeqGenerator
 from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 
 
-from conftest import DOCS_WITH_EMBEDDINGS
+from .conftest import DOCS_WITH_EMBEDDINGS
 
 
 # Keeping few (retriever,document_store) combination to reduce test time
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.slow
 @pytest.mark.generator
-@pytest.mark.parametrize(
-    "retriever,document_store",
-    [("embedding", "memory")],
-    indirect=True,
-)
+@pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
 def test_generator_pipeline_with_translator(
     document_store, retriever, rag_generator, en_to_de_translator, de_to_en_translator
 ):
@@ -64,9 +60,10 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
 @pytest.mark.slow
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
+@pytest.mark.parametrize("retriever", ["retribert", "dpr_lfqa"], indirect=True)
+@pytest.mark.parametrize("lfqa_generator", ["yjernite/bart_eli5", "vblagoje/bart_lfqa"], indirect=True)
 @pytest.mark.embedding_dim(128)
-def test_lfqa_pipeline(document_store, retriever, eli5_generator):
+def test_lfqa_pipeline(document_store, retriever, lfqa_generator):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
     for idx, d in enumerate(DOCS_WITH_EMBEDDINGS):
@@ -74,11 +71,11 @@ def test_lfqa_pipeline(document_store, retriever, eli5_generator):
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
     query = "Tell me about Berlin?"
-    pipeline = GenerativeQAPipeline(retriever=retriever, generator=eli5_generator)
+    pipeline = GenerativeQAPipeline(generator=lfqa_generator, retriever=retriever)
     output = pipeline.run(query=query, params={"top_k": 1})
     answers = output["answers"]
-    assert len(answers) == 1
-    assert "Germany" in answers[0].answer
+    assert len(answers) == 1, answers
+    assert "Germany" in answers[0].answer, answers[0].answer
 
 
 @pytest.mark.slow

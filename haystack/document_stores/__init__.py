@@ -15,6 +15,7 @@ OpenSearchDocumentStore = safe_import(
 
 SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
 FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumentStore", "faiss")
+PineconeDocumentStore = safe_import("haystack.document_stores.pinecone", "PineconeDocumentStore", "pinecone")
 if os.getenv("MILVUS1_ENABLED"):
     MilvusDocumentStore = safe_import("haystack.document_stores.milvus1", "Milvus1DocumentStore", "milvus1")
 else:
@@ -28,5 +29,6 @@ from haystack.document_stores.utils import (
     eval_data_from_json,
     eval_data_from_jsonl,
     squad_json_to_jsonl,
-    es_index_to_document_store,
+    elasticsearch_index_to_document_store,
+    open_search_index_to_document_store,
 )

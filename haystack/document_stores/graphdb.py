@@ -38,8 +38,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         :param index: name of the index (also called repository) stored in the GraphDB instance
         :param prefixes: definitions of namespaces with a new line after each namespace, e.g., PREFIX hp: <https://deepset.ai/harry_potter/>
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(host=host, port=port, username=username, password=password, index=index, prefixes=prefixes)
+        super().__init__()
 
         self.url = f"http://{host}:{port}"
         self.index = index
