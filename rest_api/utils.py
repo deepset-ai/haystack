@@ -42,7 +42,7 @@ def get_app() -> FastAPI:
     )
     app.add_exception_handler(HTTPException, http_error_handler)
     app.include_router(router)
-    
+
     # Simplify operation IDs so that generated API clients have simpler function
     # names (see https://fastapi.tiangolo.com/advanced/path-operation-advanced-configuration/#using-the-path-operation-function-name-as-the-operationid).
     # The operation IDs will be the same as the route names (i.e. the python method names of the endpoints)
@@ -73,5 +73,5 @@ def get_openapi_specs() -> dict:
         version=app.version,
         openapi_version=app.openapi_version,
         description=app.description,
-        routes=app.routes
+        routes=app.routes,
     )

@@ -18,6 +18,7 @@ from haystack.modeling.utils import try_get, all_gather_list
 
 logger = logging.getLogger(__name__)
 
+
 class PredictionHead(nn.Module):
     """
     Takes word embeddings from a language model and generates logits for a given task. Can also convert logits

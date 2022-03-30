@@ -23,7 +23,7 @@ def setup_pipelines() -> Dict[str, Any]:
     from rest_api import config  # pylint: disable=reimported
 
     pipelines = {}
-    
+
     # Load query pipeline
     query_pipeline = Pipeline.load_from_yaml(Path(config.PIPELINE_YAML_PATH), pipeline_name=config.QUERY_PIPELINE_NAME)
     logging.info(f"Loaded pipeline nodes: {query_pipeline.graph.nodes.keys()}")
@@ -33,7 +33,7 @@ def setup_pipelines() -> Dict[str, Any]:
     document_store = query_pipeline.get_document_store()
     logging.info(f"Loaded docstore: {document_store}")
     pipelines["document_store"] = document_store
-        
+
     # Setup concurrency limiter
     concurrency_limiter = RequestLimiter(config.CONCURRENT_REQUEST_PER_WORKER)
     logging.info("Concurrent requests per worker: {CONCURRENT_REQUEST_PER_WORKER}")
@@ -41,11 +41,15 @@ def setup_pipelines() -> Dict[str, Any]:
 
     # Load indexing pipeline (if available)
     try:
-        indexing_pipeline = Pipeline.load_from_yaml(Path(config.PIPELINE_YAML_PATH), pipeline_name=config.INDEXING_PIPELINE_NAME)
+        indexing_pipeline = Pipeline.load_from_yaml(
+            Path(config.PIPELINE_YAML_PATH), pipeline_name=config.INDEXING_PIPELINE_NAME
+        )
         docstore = indexing_pipeline.get_document_store()
         if isinstance(docstore, UNSUPPORTED_DOC_STORES):
             indexing_pipeline = None
-            raise PipelineConfigError("Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore are not supported by the REST APIs.")
+            raise PipelineConfigError(
+                "Indexing pipelines with FAISSDocumentStore or InMemoryDocumentStore are not supported by the REST APIs."
+            )
 
     except PipelineConfigError as e:
         indexing_pipeline = None

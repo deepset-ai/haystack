@@ -80,13 +80,9 @@ def upload_file(
     preprocessors = indexing_pipeline.get_nodes_by_class(PreProcessor)
 
     params = {}
-    for converter in converters: 
+    for converter in converters:
         params[converter.name] = fileconverter_params.dict()
     for preprocessor in preprocessors:
         params[preprocessor.name] = preprocessor_params.dict()
 
-    indexing_pipeline.run(
-        file_paths=file_paths,
-        meta=file_metas,
-        params=params
-    )
+    indexing_pipeline.run(file_paths=file_paths, meta=file_metas, params=params)

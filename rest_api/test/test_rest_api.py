@@ -48,12 +48,11 @@ def exclude_no_answer(responses):
     return responses
 
 
-
 class MockReader(BaseReader):
     outgoing_edges = 1
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
-        return {"query": query, "no_ans_gap": None, "answers": [Answer(answer="Adobe Systems")]} 
+        return {"query": query, "no_ans_gap": None, "answers": [Answer(answer="Adobe Systems")]}
 
     def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
         pass
@@ -84,7 +83,8 @@ def yaml_pipeline_path(tmp_path_factory):
     root_temp = tmp_path_factory.mktemp("tests")
     pipeline_path = root_temp / "test.haystack-pipeline.yml"
     with open(pipeline_path, "w") as pipeline_file:
-        pipeline_file.write(f"""
+        pipeline_file.write(
+            f"""
 version: 'unstable'
 
 components:
@@ -124,7 +124,8 @@ pipelines:
         inputs: [TestPDFConverter]
       - name: TestDocumentStore
         inputs: [TestPreprocessor]
-    """)
+    """
+        )
     return pipeline_path
 
 
@@ -152,8 +153,11 @@ def client(yaml_pipeline_path):
 def populated_client(client: TestClient):
     pipelines = get_pipelines()
     document_store: BaseDocumentStore = pipelines["document_store"]
-    document_store.write_documents([
-        Document(content=dedent("""\
+    document_store.write_documents(
+        [
+            Document(
+                content=dedent(
+                    """\
             History and standardization
             Format (PDF) Adobe Systems made the PDF specification available free of
             charge in 1993. In the early years PDF was popular mainly in desktop
@@ -163,9 +167,13 @@ def populated_client(client: TestClient):
             until it was released as an open standard on July 1, 2008, and published by
             the International Organization for Standardization as ISO 32000-1:2008, at
             which time control of the specification passed to an ISO Committee of
-            volunteer industry experts."""), 
-            meta={"name": "test.txt", "test_key": "test_value", "test_index": "1"}),
-        Document(content=dedent("""\
+            volunteer industry experts."""
+                ),
+                meta={"name": "test.txt", "test_key": "test_value", "test_index": "1"},
+            ),
+            Document(
+                content=dedent(
+                    """\
             In 2008, Adobe published a Public Patent License
             to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe
             that are necessary to make, use, sell, and distribute PDF-compliant
@@ -176,9 +184,12 @@ def populated_client(client: TestClient):
             and indispensable for the full implementation of the ISO 32000-1
             specification. These proprietary technologies are not standardized and their
             specification is published only on Adobe's website. Many of them are also not
-            supported by popular third-party implementations of PDF."""), 
-            meta={"name": "test.txt", "test_key": "test_value", "test_index": "2"})
-    ])
+            supported by popular third-party implementations of PDF."""
+                ),
+                meta={"name": "test.txt", "test_key": "test_value", "test_index": "2"},
+            ),
+        ]
+    )
     yield client
 
 
@@ -194,8 +205,6 @@ def populated_client_with_feedback(populated_client: TestClient):
 def api_document_store():
     pipelines = get_pipelines()
     yield pipelines["document_store"]
-
-
 
 
 def test_get_all_documents(populated_client: TestClient):
@@ -218,7 +227,7 @@ def test_get_documents_with_filters(populated_client: TestClient):
 def test_delete_all_documents(populated_client: TestClient, api_document_store: BaseDocumentStore):
     response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
     assert 200 == response.status_code
- 
+
     remaining_docs = api_document_store.get_all_documents()
     assert len(remaining_docs) == 0
 
@@ -226,7 +235,7 @@ def test_delete_all_documents(populated_client: TestClient, api_document_store: 
 def test_delete_documents_with_filters(populated_client: TestClient, api_document_store: BaseDocumentStore):
     response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {"test_index": ["1"]}}')
     assert 200 == response.status_code
- 
+
     remaining_docs = api_document_store.get_all_documents()
     assert len(remaining_docs) == 1
     assert remaining_docs[0].meta["test_index"] == "2"
@@ -234,11 +243,7 @@ def test_delete_documents_with_filters(populated_client: TestClient, api_documen
 
 def test_file_upload(client: TestClient, api_document_store: BaseDocumentStore):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
-    response = client.post(
-        url="/file-upload",
-        files=file_to_upload,
-        data={"meta": '{"test_key": "test_value"}'},
-    )
+    response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"test_key": "test_value"}'})
     assert 200 == response.status_code
 
     documents = api_document_store.get_all_documents()
@@ -288,7 +293,10 @@ def test_query_with_one_filter(populated_client: TestClient):
 
 
 def test_query_with_one_global_filter(populated_client: TestClient):
-    query_with_filter = {"query": "Who made the PDF specification?", "params": {"filters": {"test_key": ["test_value"]}}}
+    query_with_filter = {
+        "query": "Who made the PDF specification?",
+        "params": {"filters": {"test_key": ["test_value"]}},
+    }
     response = populated_client.post(url="/query", json=query_with_filter)
     assert 200 == response.status_code
     response_json = response.json()
@@ -333,7 +341,7 @@ def test_write_feedback(populated_client: TestClient, api_document_store: BaseDo
     response = populated_client.post(url="/feedback", json=FEEDBACK)
     assert 200 == response.status_code
     assert api_document_store.get_label_count() == 1
-    
+
     label: Label = api_document_store.get_all_labels()[0]
     label_values = label.to_dict()
     for actual_item, expected_item in [(label_values[key], value) for key, value in FEEDBACK.items()]:
@@ -346,7 +354,7 @@ def test_write_feedback_without_id(populated_client: TestClient, api_document_st
     response = populated_client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code
     assert api_document_store.get_label_count() == 1
-    
+
     label: Label = api_document_store.get_all_labels()[0]
     label_values = label.to_dict()
     for actual_item, expected_item in [(label_values[key], value) for key, value in FEEDBACK.items() if key != "id"]:

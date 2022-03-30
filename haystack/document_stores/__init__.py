@@ -5,11 +5,7 @@ from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph,
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
-from haystack.document_stores.utils import (
-    eval_data_from_json,
-    eval_data_from_jsonl,
-    squad_json_to_jsonl
-)
+from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
 ElasticsearchDocumentStore = safe_import(
     "haystack.document_stores.elasticsearch", "ElasticsearchDocumentStore", "elasticsearch"
