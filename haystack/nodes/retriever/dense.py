@@ -1152,9 +1152,8 @@ class EmbeddingRetriever(BaseRetriever):
             )
 
             self.model_format = "sentence_transformers"
-            self.embedding_encoder = _EMBEDDING_ENCODERS["sentence_transformers"](self)
-        else:
-            self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
+
+        self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
 
     def retrieve(
         self,
