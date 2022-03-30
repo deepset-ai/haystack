@@ -318,12 +318,11 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             if self.search_fields:
                 for search_field in self.search_fields:
                     if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
-                        host_data = self.client.transport.hosts[0]
                         raise Exception(
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{host_data['host']}:{host_data['port']}/{index_name}\"` will fix your environment. "
+                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                            f'In this case deleting the index with `delete_index(index="{index_name}")` will fix your environment. '
                             f"Note, that all data stored in the index will be lost!"
                         )
             if self.embedding_field:
@@ -873,6 +872,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1012,6 +1012,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to false.
         """
 
         if index is None:
@@ -1046,12 +1050,20 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                     "The query provided seems to be not a string, but an object "
                     f"of type {type(query)}. This can cause Elasticsearch to fail."
                 )
+            operator = "AND" if all_terms_must_match else "OR"
             body = {
                 "size": str(top_k),
                 "query": {
                     "bool": {
-                        "should": [
-                            {"multi_match": {"query": query, "type": "most_fields", "fields": self.search_fields}}
+                        "must": [
+                            {
+                                "multi_match": {
+                                    "query": query,
+                                    "type": "most_fields",
+                                    "fields": self.search_fields,
+                                    "operator": operator,
+                                }
+                            }
                         ]
                     }
                 },
@@ -1571,6 +1583,11 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param index: The name of the index to delete.
         :return: None
         """
+        if index == self.index:
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
         self.client.indices.delete(index=index, ignore=[400, 404])
         logger.debug(f"deleted elasticsearch index {index}")
 
@@ -1790,12 +1807,11 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         search_field in mappings["properties"]
                         and mappings["properties"][search_field]["type"] != "text"
                     ):
-                        host_data = self.client.transport.hosts[0]
                         raise Exception(
                             f"The search_field '{search_field}' of index '{index_name}' with type '{mappings['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack."
-                            f"In this case deleting the index with `curl -X DELETE \"{host_data['host']}:{host_data['port']}/{index_name}\"` will fix your environment. "
+                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                            f'In this case deleting the index with `delete_index(index="{index_name}")` will fix your environment. '
                             f"Note, that all data stored in the index will be lost!"
                         )
 
@@ -2034,13 +2050,10 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
     A DocumentStore which has an Open Distro for Elasticsearch service behind it.
     """
 
-    def __init__(self, host="https://admin:admin@localhost:9200/", similarity="cosine", **kwargs):
+    def __init__(self, similarity="cosine", **kwargs):
         logger.warning(
             "Open Distro for Elasticsearch has been replaced by OpenSearch! "
             "See https://opensearch.org/faq/ for details. "
             "We recommend using the OpenSearchDocumentStore instead."
         )
-        super(OpenDistroElasticsearchDocumentStore, self).__init__(host=host, similarity=similarity, **kwargs)
-
-    def _prepare_hosts(self, host, port):
-        return host
+        super(OpenDistroElasticsearchDocumentStore, self).__init__(similarity=similarity, **kwargs)

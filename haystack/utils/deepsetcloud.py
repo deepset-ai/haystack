@@ -312,6 +312,7 @@ class IndexClient:
         similarity: Optional[str] = None,
         workspace: Optional[str] = None,
         index: Optional[str] = None,
+        all_terms_must_match: Optional[bool] = None,
         headers: dict = None,
     ) -> List[dict]:
         index_url = self._build_index_url(workspace=workspace, index=index)
@@ -324,6 +325,7 @@ class IndexClient:
             "query_emb": query_emb,
             "similarity": similarity,
             "return_embedding": return_embedding,
+            "all_terms_must_match": all_terms_must_match,
         }
         response = self.client.post(url=query_url, json=request, headers=headers)
         return response.json()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from os import pipe
-from typing import Dict, List, Optional, Any
+import tempfile
+from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 import copy
 import json
@@ -16,6 +17,7 @@ from jsonschema import Draft7Validator
 from jsonschema.exceptions import ValidationError
 from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
+from tqdm import tqdm
 from transformers import pipelines
 import yaml
 from networkx import DiGraph
@@ -45,10 +47,11 @@ except:
 
 from haystack import __version__
 from haystack.schema import EvaluationResult, MultiLabel, Document
-from haystack.errors import PipelineError, PipelineConfigError
+from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.telemetry import send_event
 
 
 logger = logging.getLogger(__name__)
@@ -467,14 +470,14 @@ class Pipeline(BasePipeline):
         self.root_node = None
 
     @property
-    def components(self):
+    def components(self) -> Dict[str, BaseComponent]:
         return {
             name: attributes["component"]
             for name, attributes in self.graph.nodes.items()
             if not isinstance(attributes["component"], RootNode)
         }
 
-    def add_node(self, component, name: str, inputs: List[str]):
+    def add_node(self, component: BaseComponent, name: str, inputs: List[str]):
         """
         Add a new node to the pipeline.
 
@@ -500,6 +503,9 @@ class Pipeline(BasePipeline):
                     f"Root node '{root_node}' is invalid. Available options are {valid_root_nodes}."
                 )
         component.name = name
+        component_names = self._get_all_component_names()
+        component_names.add(name)
+        self._set_sub_component_names(component, component_names=component_names)
         self.graph.add_node(name, component=component, inputs=inputs)
 
         if len(self.graph.nodes) == 2:  # first node added; connect with Root
@@ -572,7 +578,7 @@ class Pipeline(BasePipeline):
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
+        meta: Optional[Union[dict, List[dict]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
@@ -687,12 +693,92 @@ class Pipeline(BasePipeline):
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
 
+    @classmethod
+    def eval_beir(
+        cls,
+        index_pipeline: Pipeline,
+        query_pipeline: Pipeline,
+        index_params: dict = {},
+        query_params: dict = {},
+        dataset: str = "scifact",
+        dataset_dir: Path = Path("."),
+        top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+        keep_index: bool = False,
+    ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
+        """
+        Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
+        See https://github.com/beir-cellar/beir for more information.
+
+        :param index_pipeline: The indexing pipeline to use.
+        :param query_pipeline: The query pipeline to evaluate.
+        :param index_params: The params to use during indexing (see pipeline.run's params).
+        :param query_params: The params to use during querying (see pipeline.run's params).
+        :param dataset: The BEIR dataset to use.
+        :param dataset_dir: The directory to store the dataset to.
+        :param top_k_values: The top_k values each metric will be calculated for.
+        :param keep_index: Whether to keep the index after evaluation.
+                           If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+                           Defaults to False.
+
+        Returns a tuple containing the ncdg, map, recall and precision scores.
+        Each metric is represented by a dictionary containing the scores for each top_k value.
+        """
+        try:
+            from beir import util
+            from beir.datasets.data_loader import GenericDataLoader
+            from beir.retrieval.evaluation import EvaluateRetrieval
+        except ModuleNotFoundError as e:
+            raise HaystackError("beir is not installed. Please run `pip install farm-haystack[beir]`...") from e
+
+        url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
+        data_path = util.download_and_unzip(url, dataset_dir)
+        logger.info(f"Dataset downloaded here: {data_path}")
+        corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
+
+        # check index before eval
+        document_store = index_pipeline.get_document_store()
+        if document_store is not None:
+            if document_store.get_document_count() > 0:
+                raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+
+            if hasattr(document_store, "search_fields"):
+                search_fields = getattr(document_store, "search_fields")
+                if "name" not in search_fields:
+                    logger.warning(
+                        "Field 'name' is not part of your DocumentStore's search_fields. Titles won't be searchable. "
+                        "Please set search_fields appropriately."
+                    )
+
+        haystack_retriever = _HaystackBeirRetrieverAdapter(
+            index_pipeline=index_pipeline,
+            query_pipeline=query_pipeline,
+            index_params=index_params,
+            query_params=query_params,
+        )
+        retriever = EvaluateRetrieval(haystack_retriever, k_values=top_k_values)
+
+        # Retrieve results (format of results is identical to qrels)
+        results = retriever.retrieve(corpus, queries)
+
+        # Clean up document store
+        if not keep_index and document_store is not None and document_store.index is not None:
+            logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+            document_store.delete_index(document_store.index)
+
+        # Evaluate your retrieval using NDCG@k, MAP@K ...
+        logger.info(f"Retriever evaluation for k in: {retriever.k_values}")
+        ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
+        return ndcg, map_, recall, precision
+
+    @send_event
     def eval(
         self,
         labels: List[MultiLabel],
         documents: Optional[List[List[Document]]] = None,
         params: Optional[dict] = None,
         sas_model_name_or_path: str = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
     ) -> EvaluationResult:
         """
@@ -716,6 +802,9 @@ class Pipeline(BasePipeline):
                     - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                     - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
                     - Large model for German only: "deepset/gbert-large-sts"
+        :param sas_batch_size: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+        :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+                            Falls back to CPU if no GPU is available.
         :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
                     This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
                     If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
@@ -758,7 +847,11 @@ class Pipeline(BasePipeline):
                     gold_labels = df["gold_answers"].values
                     predictions = [[a] for a in df["answer"].values]
                     sas, _ = semantic_answer_similarity(
-                        predictions=predictions, gold_labels=gold_labels, sas_model_name_or_path=sas_model_name_or_path
+                        predictions=predictions,
+                        gold_labels=gold_labels,
+                        sas_model_name_or_path=sas_model_name_or_path,
+                        batch_size=sas_batch_size,
+                        use_gpu=sas_use_gpu,
                     )
                     df["sas"] = sas
 
@@ -1159,69 +1252,81 @@ class Pipeline(BasePipeline):
         :param return_defaults: whether to output parameters that have the default values.
         """
         pipeline_name = ROOT_NODE_TO_PIPELINE_NAME[self.root_node.lower()]
-        pipelines: dict = {pipeline_name: {"name": pipeline_name, "nodes": []}}
+        pipeline_definitions: Dict[str, Dict] = {pipeline_name: {"name": pipeline_name, "nodes": []}}
 
-        components = {}
-        for node in self.graph.nodes:
-            if node == self.root_node:
+        component_definitions: Dict[str, Dict] = {}
+        for node_name, node_attributes in self.graph.nodes.items():
+            if node_name == self.root_node:
                 continue
-            component_instance = self.graph.nodes.get(node)["component"]
 
-            component_type = component_instance._component_config["type"]
-            component_params = component_instance._component_config["params"]
-            components[node] = {"name": node, "type": component_type, "params": {}}
+            component: BaseComponent = node_attributes["component"]
+            if node_name != component.name:
+                raise PipelineError(f"Component name '{component.name}' does not match node name '{node_name}'.")
 
-            component_parent_classes = inspect.getmro(type(component_instance))
-            component_signature: dict = {}
-            for component_parent in component_parent_classes:
-                component_signature = {**component_signature, **inspect.signature(component_parent).parameters}
-
-            for param_key, param_value in component_params.items():
-                # A parameter for a Component could be another Component. For instance, a Retriever has
-                # the DocumentStore as a parameter.
-                # Component configs must be a dict with a "type" key. The "type" keys distinguishes between
-                # other parameters like "custom_mapping" that are dicts.
-                # This currently only checks for the case single-level nesting case, wherein, "a Component has another
-                # Component as a parameter". For deeper nesting cases, this function should be made recursive.
-                if isinstance(param_value, dict) and "type" in param_value.keys():  # the parameter is a Component
-                    sub_component = param_value
-                    sub_component_type_name = sub_component["type"]
-                    sub_component_signature = inspect.signature(
-                        BaseComponent._subclasses[sub_component_type_name]
-                    ).parameters
-                    sub_component_params = {
-                        k: v
-                        for k, v in sub_component["params"].items()
-                        if sub_component_signature[k].default != v or return_defaults is True
-                    }
-
-                    sub_component_name = self._generate_component_name(
-                        type_name=sub_component_type_name, params=sub_component_params, existing_components=components
-                    )
-                    components[sub_component_name] = {
-                        "name": sub_component_name,
-                        "type": sub_component_type_name,
-                        "params": sub_component_params,
-                    }
-                    components[node]["params"][param_key] = sub_component_name
-                else:
-                    if component_signature[param_key].default != param_value or return_defaults is True:
-                        components[node]["params"][param_key] = param_value
+            self._add_component_to_definitions(
+                component=component, component_definitions=component_definitions, return_defaults=return_defaults
+            )
 
             # create the Pipeline definition with how the Component are connected
-            pipelines[pipeline_name]["nodes"].append({"name": node, "inputs": list(self.graph.predecessors(node))})
+            pipeline_definitions[pipeline_name]["nodes"].append(
+                {"name": node_name, "inputs": list(self.graph.predecessors(node_name))}
+            )
 
         config = {
-            "components": list(components.values()),
-            "pipelines": list(pipelines.values()),
+            "components": list(component_definitions.values()),
+            "pipelines": list(pipeline_definitions.values()),
             "version": __version__,
         }
         return config
 
-    def _generate_component_name(self, type_name: str, params: Dict[str, Any], existing_components: Dict[str, Any]):
+    def _add_component_to_definitions(
+        self, component: BaseComponent, component_definitions: Dict[str, Dict], return_defaults: bool = False
+    ):
+        """
+        Add the definition of the component and all its dependencies (components too) to the component_definitions dict.
+        This is used to collect all component definitions within Pipeline.get_config()
+        """
+        if component.name is None:
+            raise PipelineError(f"Component with config '{component._component_config}' does not have a name.")
+
+        component_params: Dict[str, Any] = component.get_params(return_defaults)
+        # handling of subcomponents: add to definitions and substitute by reference
+        for param_key, param_value in component_params.items():
+            if isinstance(param_value, BaseComponent):
+                sub_component = param_value
+                self._add_component_to_definitions(sub_component, component_definitions, return_defaults)
+                component_params[param_key] = sub_component.name
+
+        component_definitions[component.name] = {
+            "name": component.name,
+            "type": component.type,
+            "params": component_params,
+        }
+
+    def _get_all_component_names(self, components_to_search: Optional[List[BaseComponent]] = None) -> Set[str]:
+        component_names = set()
+        if components_to_search is None:
+            components_to_search = list(self.components.values())
+        for component in components_to_search:
+            if component.name is not None:
+                component_names.add(component.name)
+                sub_component_names = self._get_all_component_names(component.utilized_components)
+                component_names.update(sub_component_names)
+        return component_names
+
+    def _set_sub_component_names(self, component: BaseComponent, component_names: Set[str]):
+        for sub_component in component.utilized_components:
+            if sub_component.name is None:
+                sub_component.name = self._generate_component_name(
+                    type_name=sub_component.type, existing_component_names=component_names
+                )
+                component_names.add(sub_component.name)
+            self._set_sub_component_names(sub_component, component_names=component_names)
+
+    def _generate_component_name(self, type_name: str, existing_component_names: Set[str]) -> str:
         component_name: str = type_name
         # add number if there are multiple distinct ones of the same type
-        while component_name in existing_components and params != existing_components[component_name]["params"]:
+        while component_name in existing_component_names:
             occupied_num = 1
             if len(component_name) > len(type_name):
                 occupied_num = int(component_name[len(type_name) + 1 :])
@@ -1535,3 +1640,51 @@ class _RayDeploymentWrapper:
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
         return self.node._dispatch_run(*args, **kwargs)
+
+
+class _HaystackBeirRetrieverAdapter:
+    def __init__(self, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict):
+        """
+        Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
+        This has nothing to do with Haystack's retriever classes.
+        See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
+
+        :param index_pipeline: The indexing pipeline to use.
+        :param query_pipeline: The query pipeline to evaluate.
+        :param index_params: The params to use during indexing (see pipeline.run's params).
+        :param query_params: The params to use during querying (see pipeline.run's params).
+        """
+        self.index_pipeline = index_pipeline
+        self.query_pipeline = query_pipeline
+        self.index_params = index_params
+        self.query_params = query_params
+
+    def search(
+        self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, score_function: str, **kwargs
+    ) -> Dict[str, Dict[str, float]]:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_paths = []
+            metas = []
+            for id, doc in corpus.items():
+                file_path = f"{temp_dir}/{id}"
+                with open(file_path, "w") as f:
+                    f.write(doc["text"])
+                file_paths.append(file_path)
+                metas.append({"id": id, "name": doc.get("title", None)})
+
+            logger.info(f"indexing {len(corpus)} documents...")
+            self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
+            logger.info(f"indexing finished.")
+
+            # adjust query_params to ensure top_k is retrieved
+            query_params = copy.deepcopy(self.query_params)
+            query_params["top_k"] = top_k
+
+            results = {}
+            for q_id, query in tqdm(queries.items(), total=len(queries)):
+                res = self.query_pipeline.run(query=query, params=query_params)
+                docs = res["documents"]
+                query_results = {doc.meta["id"]: doc.score for doc in docs}
+                results[q_id] = query_results
+
+            return results
