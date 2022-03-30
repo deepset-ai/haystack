@@ -648,7 +648,7 @@ class EvaluationSetClient:
 
         :param client: Deepset Cloud client
         :param workspace: workspace in Deepset Cloud
-        :param evaluation_set: name of the label index
+        :param evaluation_set: name of the evaluation set to fall back to
 
         """
         self.client = client
@@ -700,9 +700,9 @@ class EvaluationSetClient:
         """
         Counts labels for a given evaluation set in deepset cloud.
 
-        :param evaluation_set: Optional index in Deepset Cloud
-                            If None, the EvaluationSetClient's default index (self.index) will be used.
-        :param workspace: Optional workspace in Deepset Cloud
+        :param evaluation_set: Optional evaluation setin deepset Cloud
+                               If None, the EvaluationSetClient's default evaluation set (self.evaluation_set) will be used.
+        :param workspace: Optional workspace in deepset Cloud
                           If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
 
         :return: Number of labels for the given (or defaulting) index
