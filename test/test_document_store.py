@@ -1707,7 +1707,7 @@ def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set_raises_DC_
         responses.add_passthru(DC_API_ENDPOINT)
 
     with pytest.raises(DeepsetCloudError, match=f"No evaluation set found with the name {DC_TEST_INDEX}"):
-        deepset_cloud_document_store.get_label_count(label_index=DC_TEST_INDEX)
+        deepset_cloud_document_store.get_label_count(index=DC_TEST_INDEX)
 
 
 @responses.activate
