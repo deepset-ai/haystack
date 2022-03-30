@@ -700,7 +700,7 @@ class EvaluationSetClient:
         """
         Counts labels for a given evaluation set in deepset cloud.
 
-        :param evaluation_set: Optional evaluation setin deepset Cloud
+        :param evaluation_set: Optional evaluation set in deepset Cloud
                                If None, the EvaluationSetClient's default evaluation set (self.evaluation_set) will be used.
         :param workspace: Optional workspace in deepset Cloud
                           If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
