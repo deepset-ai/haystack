@@ -1021,7 +1021,7 @@ class FARMReader(BaseReader):
 
         # apply confidence based filtering if enabled
         if self.confidence_threshold is not None:
-            answers = [x for x in answers if x.score >= self.confidence_threshold] # type: ignore
+            answers = [x for x in answers if x.score >= self.confidence_threshold]  # type: ignore
 
         return answers, max_no_ans_gap
 
