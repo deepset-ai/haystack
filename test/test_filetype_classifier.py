@@ -1,6 +1,8 @@
 import pytest
 from pathlib import Path
-from haystack.nodes.file_classifier.file_type import FileTypeClassifier, DEFAULT_TYPES
+from haystack.nodes.file_classifier.file_type import FileTypeClassifier, DEFAULT_TYPES, FOLDER_NAMES
+from .conftest import SAMPLES_PATH
+
 
 
 def test_filetype_classifier_single_file(tmp_path):
@@ -55,3 +57,17 @@ def test_filetype_classifier_too_many_custom_extensions():
 def test_filetype_classifier_duplicate_custom_extensions():
     with pytest.raises(ValueError):
         FileTypeClassifier(supported_types=[f"my_extension", "my_extension"])
+
+
+def test_filetype_classifier_whithout_extension():
+    node = FileTypeClassifier()
+    test_files = []
+    for folder_name in FOLDER_NAMES:
+        test_files.append(SAMPLES_PATH / folder_name / "file_without_extension")
+
+    for edge_index, test_file in enumerate(test_files):
+        output, edge = node.run(test_file)
+        print(edge, edge_index+1)
+        assert edge == f"output_{edge_index+1}"
+        assert output == {"file_paths": [test_file]}
+
