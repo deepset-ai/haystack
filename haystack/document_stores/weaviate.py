@@ -674,7 +674,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
             query = base_query
             if filters:
-                filter_dict = LogicalFilterClause.parse(filters).convert_to_pinecone()
+                filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
                 query = query.with_where(filter_dict)
 
             if all_docs:
