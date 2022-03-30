@@ -667,12 +667,14 @@ class EvaluationSetClient:
         :return: list of Label
         """
         try:
-            evaluation_set = next(self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace))
+            evaluation_sets_response = next(
+                self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+            )
         except StopIteration:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
         labels = self._get_labels_from_evaluation_set(
-            workspace=workspace, evaluation_set_id=evaluation_set["evaluation_set_id"]
+            workspace=workspace, evaluation_set_id=evaluation_sets_response["evaluation_set_id"]
         )
 
         return [
@@ -706,11 +708,13 @@ class EvaluationSetClient:
         :return: Number of labels for the given (or defaulting) index
         """
         try:
-            evaluation_set = next(self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace))
+            evaluation_sets_response = next(
+                self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+            )
         except StopIteration:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
-        return evaluation_set["total_labels"]
+        return evaluation_sets_response["total_labels"]
 
     def get_evaluation_sets(self, workspace: Optional[str] = None) -> List[dict]:
         """
