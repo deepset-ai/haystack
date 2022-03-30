@@ -2,6 +2,7 @@ import time
 
 import numpy as np
 import pandas as pd
+from haystack.document_stores.memory import InMemoryDocumentStore
 import pytest
 from pathlib import Path
 from elasticsearch import Elasticsearch
@@ -11,7 +12,7 @@ from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
-from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetriever
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
@@ -123,7 +124,7 @@ def test_elasticsearch_custom_query():
         document_store=document_store,
         custom_query="""
             {
-                "size": 10, 
+                "size": 10,
                 "query": {
                     "bool": {
                         "should": [{
@@ -138,7 +139,7 @@ def test_elasticsearch_custom_query():
         document_store=document_store,
         custom_query="""
                 {
-                    "size": 10, 
+                    "size": 10,
                     "query": {
                         "bool": {
                             "should": [{
@@ -549,3 +550,14 @@ def test_elasticsearch_all_terms_must_match():
     results_w_all_terms_must_match = doc_store.query(query="drink green tea", all_terms_must_match=True)
     assert len(results_w_all_terms_must_match) == 1
     doc_store.delete_index(index)
+
+
+def test_embeddings_encoder_of_embedding_retriever():
+    document_store = InMemoryDocumentStore()
+
+    retriever = EmbeddingRetriever(
+        document_store=document_store,
+        embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+
+    assert retriever.model_format == "sentence_transformers"
