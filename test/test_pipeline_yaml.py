@@ -1,6 +1,8 @@
 from abc import abstractmethod
+from numpy import mat
 import pytest
 import json
+import logging
 import inspect
 import networkx as nx
 from enum import Enum
@@ -852,7 +854,7 @@ def test_save_yaml_overwrite(tmp_path):
         assert content != ""
 
 
-def test_save_yaml_with_custom_node_with_params(tmp_path):
+def test_save_yaml_with_custom_node_with_params(caplog, tmp_path):
     class CustomNode(MockNode):
         def __init__(self, param: int):
             super().__init__()
@@ -860,13 +862,35 @@ def test_save_yaml_with_custom_node_with_params(tmp_path):
 
     pipeline = Pipeline()
     pipeline.add_node(CustomNode(param=10), name="custom_node", inputs=["Query"])
+
     pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
 
     loaded_pipeline = Pipeline.load_from_yaml(tmp_path / "saved_pipeline.yml")
     
-    original_config = pipeline.get_config()
-    loaded_config = loaded_pipeline.get_config()
+    original_node = pipeline.get_config()["components"][0]
+    loaded_node = loaded_pipeline.get_config()["components"][0]
 
-    for original_component in original_config["components"]:
-        matching_component = [component for component in loaded_config["components"] if component == original_component]
-        assert len(matching_component) == 1
+    assert original_node == loaded_node
+
+
+def test_save_yaml_with_custom_node_with_positional_params(caplog, tmp_path):
+    class CustomNode(MockNode):
+        def __init__(self, param: int = 1):
+            super().__init__()
+            self.param = param
+
+    pipeline = Pipeline()
+    with caplog.at_level(logging.WARNING):
+        pipeline.add_node(CustomNode(10), name="custom_node", inputs=["Query"])
+        assert "Unnamed __init__ parameters will not be saved to YAML " \
+               "if Pipeline.save_to_yaml() is called" in caplog.text
+
+    pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
+
+    loaded_pipeline = Pipeline.load_from_yaml(tmp_path / "saved_pipeline.yml")
+    
+    original_node = pipeline.get_config()["components"][0]
+    loaded_node = loaded_pipeline.get_config()["components"][0]
+
+    assert original_node["params"]["param"] == 10
+    assert loaded_node["params"]["param"] == 1
