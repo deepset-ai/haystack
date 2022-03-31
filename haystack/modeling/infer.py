@@ -482,9 +482,6 @@ class Inferencer:
                     samples=batch_samples,
                     padding_mask=batch.get("padding_mask", None),
                     input_ids=batch.get("input_ids", None)
-                    #tokenizer=self.processor.tokenizer,
-                    #return_class_probs=self.return_class_probs,
-                    #**batch,
                 )
                 preds_all += preds
         return preds_all
