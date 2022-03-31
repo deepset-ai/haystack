@@ -132,9 +132,7 @@ def export_feedback(
             context_to_add = int((context_size - len(answer_text)) / 2)
             start_pos = max(offset_start_in_document - context_to_add, 0)
             additional_context_at_end = max(context_to_add - offset_start_in_document, 0)
-            end_pos = min(
-                offset_start_in_document + len(answer_text) + context_to_add, len(text) - 1
-            )
+            end_pos = min(offset_start_in_document + len(answer_text) + context_to_add, len(text) - 1)
             additional_context_at_start = max(
                 offset_start_in_document + len(answer_text) + context_to_add - len(text), 0
             )
