@@ -293,6 +293,11 @@
               "title": "Return Embedding",
               "default": false,
               "type": "boolean"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "default",
+              "type": "string"
             }
           },
           "additionalProperties": false,
