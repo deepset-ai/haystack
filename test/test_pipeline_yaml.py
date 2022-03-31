@@ -862,7 +862,6 @@ def test_save_yaml_with_custom_node_with_params(caplog, tmp_path):
 
     pipeline = Pipeline()
     pipeline.add_node(CustomNode(param=10), name="custom_node", inputs=["Query"])
-
     pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
 
     loaded_pipeline = Pipeline.load_from_yaml(tmp_path / "saved_pipeline.yml")
