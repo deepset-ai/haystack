@@ -40,6 +40,9 @@ def mock_json_schema(request, monkeypatch, tmp_path):
     # Point the JSON schema path to tmp_path
     monkeypatch.setattr(haystack.pipelines.config, "JSON_SCHEMAS_PATH", tmp_path)
 
+    # Mock Haystack version to be always 'unstable'
+    monkeypatch.setattr(haystack.pipelines.base, "__version__", "unstable")
+
     # Generate mock schema in tmp_path
     filename = f"haystack-pipeline-unstable.schema.json"
     test_schema = _json_schema.get_json_schema(filename=filename, compatible_versions=["unstable"])
@@ -630,7 +633,7 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     node = pipeline.get_node("custom_node")
-    node.some_exotic_parameter == "AnotherClass.CLASS_CONSTANT"
+    assert node.some_exotic_parameter == "AnotherClass.CLASS_CONSTANT"
 
 
 def test_load_yaml_custom_component_with_superclass(tmp_path):
@@ -849,43 +852,21 @@ def test_save_yaml_overwrite(tmp_path):
         assert content != ""
 
 
-def test_save_yaml_with_custom_node_kwargs(tmp_path):
+def test_save_yaml_with_custom_node_with_params(tmp_path):
     class CustomNode(MockNode):
         def __init__(self, param: int):
             super().__init__()
             self.param = param
 
     pipeline = Pipeline()
-    pipeline.add_node(CustomNode(param=1), name="custom_node", inputs=["Query"])
+    pipeline.add_node(CustomNode(param=10), name="custom_node", inputs=["Query"])
     pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
 
-    print(pipeline.get_node("custom_node")._component_config)
+    loaded_pipeline = Pipeline.load_from_yaml(tmp_path / "saved_pipeline.yml")
+    
+    original_config = pipeline.get_config()
+    loaded_config = loaded_pipeline.get_config()
 
-    with open(tmp_path / "saved_pipeline.yml", "r") as saved_yaml:
-        content = saved_yaml.read()
-
-        assert content.count("custom_node") == 2
-        assert "CustomNode" in content
-        assert "param: 1" in content
-        assert "Query" in content
-        assert f"version: {haystack.__version__}" in content
-
-
-def test_save_yaml_with_custom_node_args(tmp_path):
-    class CustomNode(MockNode):
-        def __init__(self, param: int):
-            super().__init__()
-            self.param = param
-
-    pipeline = Pipeline()
-    pipeline.add_node(CustomNode(1), name="custom_node", inputs=["Query"])
-    pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
-
-    with open(tmp_path / "saved_pipeline.yml", "r") as saved_yaml:
-        content = saved_yaml.read()
-
-        assert content.count("custom_node") == 2
-        assert "CustomNode" in content
-        assert not "param: 1" in content
-        assert "Query" in content
-        assert f"version: {haystack.__version__}" in content
+    for original_component in original_config["components"]:
+        matching_component = [component for component in loaded_config["components"] if component == original_component]
+        assert len(matching_component) == 1

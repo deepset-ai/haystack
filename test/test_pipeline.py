@@ -35,6 +35,7 @@ from .conftest import (
     SAMPLES_PATH,
     MockDocumentStore,
     MockRetriever,
+    MockNode,
     deepset_cloud_fixture,
 )
 
@@ -348,6 +349,22 @@ def test_get_config_component_with_superclass_arguments():
     pipeline.get_config()
     assert pipeline.get_document_store().sub_parameter == 10
     assert pipeline.get_document_store().base_parameter == "something"
+
+
+def test_get_config_custom_node_with_params():
+    class CustomNode(MockNode):
+        def __init__(self, param: int):
+            super().__init__()
+            self.param = param
+
+    pipeline = Pipeline()
+    pipeline.add_node(CustomNode(param=10), name="custom_node", inputs=["Query"])
+    config = pipeline.get_config()
+
+    custom_nodes = [component for component in config["components"] if component["name"] == "custom_node"]
+    assert len(custom_nodes) == 1
+    assert len(custom_nodes[0]["params"]) == 1
+    assert custom_nodes[0]["params"]["param"] == 10
 
 
 def test_generate_code_simple_pipeline():
