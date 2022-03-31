@@ -248,6 +248,7 @@ def tutorial5_evaluation():
     # These two approaches return the same values because pipeline.eval() calculates top-n metrics per default.
     # Small discrepancies might occur due to string normalization in pipeline.eval()'s answer-to-label comparison.
     # reader.eval() does not use string normalization.
+    metrics = eval_result_with_upper_bounds.calculate_metrics(eval_mode="isolated")
     print(metrics["Reader"]["exact_match"])
     print(metrics["Reader"]["f1"])
 
