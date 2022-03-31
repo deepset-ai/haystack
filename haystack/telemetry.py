@@ -202,7 +202,7 @@ def send_tutorial_event(url: str):
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt12.zip": "12",
         # Tutorial 13: no dataset available yet
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt14.zip": "14",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/ottqa_sample.zip": "15",
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/table_text_dataset.zip": "15",
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
     }

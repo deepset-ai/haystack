@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import List, Optional, Tuple, Dict
 
 import subprocess
@@ -11,6 +12,7 @@ from pathlib import Path
 import os
 
 import pinecone
+import requests_cache
 import responses
 from sqlalchemy import create_engine, text
 import posthog
@@ -80,6 +82,10 @@ MOCK_DC = True
 
 # Disable telemetry reports when running tests
 posthog.disabled = True
+
+# Cache requests (e.g. huggingface model) to circumvent load protection
+# See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
+requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
 def _sql_session_rollback(self, attr):
