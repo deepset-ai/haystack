@@ -5,6 +5,8 @@ import os
 import time
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
+from haystack.schema import Label, Document, Answer
+
 try:
     from typing import Literal
 except ImportError:
@@ -637,6 +639,122 @@ class PipelineClient:
         return self.client.build_workspace_url(workspace)
 
 
+class EvaluationSetClient:
+    def __init__(
+        self, client: DeepsetCloudClient, workspace: Optional[str] = None, evaluation_set: Optional[str] = None
+    ):
+        """
+        A client to communicate with Deepset Cloud evaluation sets and labels.
+
+        :param client: Deepset Cloud client
+        :param workspace: workspace in Deepset Cloud
+        :param evaluation_set: name of the evaluation set to fall back to
+
+        """
+        self.client = client
+        self.workspace = workspace
+        self.evaluation_set = evaluation_set
+
+    def get_labels(self, evaluation_set: Optional[str], workspace: Optional[str] = None) -> List[Label]:
+        """
+        Searches for labels for a given evaluation set in deepset cloud. Returns a list of all found labels.
+        If no labels were found, raises DeepsetCloudError.
+
+        :param evaluation_set: name of the evaluation set for which labels should be fetched
+        :param workspace: Optional workspace in Deepset Cloud
+                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+
+        :return: list of Label
+        """
+        try:
+            evaluation_sets_response = next(
+                self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+            )
+        except StopIteration:
+            raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
+
+        labels = self._get_labels_from_evaluation_set(
+            workspace=workspace, evaluation_set_id=evaluation_sets_response["evaluation_set_id"]
+        )
+
+        return [
+            Label(
+                query=label_dict["query"],
+                document=Document(content=label_dict["context"]),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="user-feedback",
+                answer=Answer(label_dict["answer"]),
+                id=label_dict["label_id"],
+                no_answer=False if label_dict.get("answer", None) else True,
+                pipeline_id=None,
+                created_at=None,
+                updated_at=None,
+                meta=label_dict["meta"],
+                filters={},
+            )
+            for label_dict in labels
+        ]
+
+    def get_labels_count(self, evaluation_set: Optional[str] = None, workspace: Optional[str] = None) -> int:
+        """
+        Counts labels for a given evaluation set in deepset cloud.
+
+        :param evaluation_set: Optional evaluation set in deepset Cloud
+                               If None, the EvaluationSetClient's default evaluation set (self.evaluation_set) will be used.
+        :param workspace: Optional workspace in deepset Cloud
+                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+
+        :return: Number of labels for the given (or defaulting) index
+        """
+        try:
+            evaluation_sets_response = next(
+                self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+            )
+        except StopIteration:
+            raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
+
+        return evaluation_sets_response["total_labels"]
+
+    def get_evaluation_sets(self, workspace: Optional[str] = None) -> List[dict]:
+        """
+        Searches for all evaluation set names in the given workspace in Deepset Cloud.
+
+        :param workspace: Optional workspace in Deepset Cloud
+                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+
+        :return: List of dictionaries that represent deepset Cloud evaluation sets.
+                 These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
+        """
+        evaluation_sets_response = self._get_evaluation_set(evaluation_set=None, workspace=workspace)
+
+        return [eval_set for eval_set in evaluation_sets_response]
+
+    def _get_evaluation_set(self, evaluation_set: Optional[str], workspace: Optional[str] = None) -> Generator:
+        if not evaluation_set:
+            evaluation_set = self.evaluation_set
+
+        url = self._build_workspace_url(workspace=workspace)
+        evaluation_set_url = f"{url}/evaluation_sets"
+
+        for response in self.client.get_with_auto_paging(url=evaluation_set_url, query_params={"name": evaluation_set}):
+            yield response
+
+    def _get_labels_from_evaluation_set(
+        self, workspace: Optional[str] = None, evaluation_set_id: Optional[str] = None
+    ) -> Generator:
+        url = f"{self._build_workspace_url(workspace=workspace)}/evaluation_sets/{evaluation_set_id}"
+        labels = self.client.get(url=url).json()
+
+        for label in labels:
+            yield label
+
+    def _build_workspace_url(self, workspace: Optional[str] = None):
+        if workspace is None:
+            workspace = self.workspace
+        return self.client.build_workspace_url(workspace)
+
+
 class DeepsetCloud:
     """
     A facade to communicate with Deepset Cloud.
@@ -685,3 +803,25 @@ class DeepsetCloud:
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return PipelineClient(client=client, workspace=workspace, pipeline_config_name=pipeline_config_name)
+
+    @classmethod
+    def get_evaluation_set_client(
+        cls,
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        workspace: str = "default",
+        evaluation_set: str = "default",
+    ) -> EvaluationSetClient:
+        """
+        Creates a client to communicate with Deepset Cloud labels.
+
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param workspace: workspace in Deepset Cloud
+        :param evaluation_set: name of the evaluation set in Deepset Cloud
+
+        """
+        client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
+        return EvaluationSetClient(client=client, workspace=workspace, evaluation_set=evaluation_set)
