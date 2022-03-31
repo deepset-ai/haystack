@@ -669,9 +669,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.data.html?highlight=100#weaviate.data.DataObject.get
         base_query = self.weaviate_client.query.get(class_name=index, properties=properties)
         all_docs: List[Any] = []
-        num_of_documents = self.get_document_count()
-        while len(all_docs) < num_of_documents:
+        num_of_documents = self.get_document_count(index=index, filters=filters)
 
+        while len(all_docs) < num_of_documents:
             query = base_query
             if filters:
                 filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
