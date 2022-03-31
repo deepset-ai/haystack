@@ -199,15 +199,12 @@ def squad_f1(preds, labels):
 
 def top_n_f1(preds, labels):
     f1_scores = []
-    n_docs = len(preds)
-    for i in range(n_docs):
-        candidates = preds[i][0]
+    for pred, label in zip(preds, labels):
+        pred_candidates = pred[0]
         best_f1 = max(
-            [
-                squad_f1_single(candidates, label, pred_idx=idx)
-                for label in labels[i]
-                for idx, _ in enumerate(candidates)
-            ]
+            squad_f1_single([pred_candidate], label_candidate)
+            for label_candidate in label
+            for pred_candidate in pred_candidates
         )
         f1_scores.append(best_f1)
     return np.mean(f1_scores)
