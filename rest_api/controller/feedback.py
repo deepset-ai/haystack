@@ -114,17 +114,17 @@ def export_feedback(
     export_data = []
 
     for label in labels:
+        answer_text = label.answer.answer if label and label.answer else ""
+
         offset_start_in_document = 0
         if label.answer and label.answer.offsets_in_document:
             offset_start_in_document = label.answer.offsets_in_document[0].start
 
         if full_document_context:
             context = label.document.content
-
             answer_start = offset_start_in_document
         else:
             text = label.document.content
-            answer_text = label.answer.answer if label and label.answer else ""
             # the final length of context(including the answer string) is 'context_size'.
             # we try to add equal characters for context before and after the answer string.
             # if either beginning or end of text is reached, we correspondingly
