@@ -8,6 +8,7 @@ from datetime import datetime
 
 import numpy as np
 from tqdm import tqdm
+import weaviate
 
 try:
     from weaviate import client, AuthClientPassword
@@ -264,8 +265,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
         document = None
 
         id = self._sanitize_id(id=id, index=index)
-
-        result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+        result = None
+        try:
+            result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+        except weaviate.exceptions.UnexpectedStatusCodeException as usce:
+            logging.debug(f"Weaviate could not get the document requested: {usce}")
         if result:
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
@@ -288,7 +292,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
         # TODO: better implementation with multiple where filters instead of chatty call below?
         for id in ids:
             id = self._sanitize_id(id=id, index=index)
-            result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+            result = None
+            try:
+                result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+            except weaviate.exceptions.UnexpectedStatusCodeException as usce:
+                logging.debug(f"Weaviate could not get the document requested: {usce}")
             if result:
                 document = self._convert_weaviate_result_to_document(result, return_embedding=True)
                 documents.append(document)
