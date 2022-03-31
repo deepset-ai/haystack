@@ -3,7 +3,7 @@ from haystack.utils import (
     print_answers,
     print_documents,
     fetch_archive_from_http,
-    convert_files_to_dicts,
+    convert_files_to_docs,
     launch_es,
 )
 from pprint import pprint
@@ -27,13 +27,13 @@ def tutorial11_pipelines():
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # convert files to dicts containing documents that can be indexed to our datastore
-    got_dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+    got_docs = convert_files_to_docs(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
 
     # Initialize DocumentStore and index documents
     launch_es()
     document_store = ElasticsearchDocumentStore()
     document_store.delete_documents()
-    document_store.write_documents(got_dicts)
+    document_store.write_documents(got_docs)
 
     # Initialize Sparse retriever
     es_retriever = ElasticsearchRetriever(document_store=document_store)

@@ -21,7 +21,7 @@
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes import PreProcessor, TransformersDocumentClassifier, FARMReader, ElasticsearchRetriever
 from haystack.schema import Document
-from haystack.utils import convert_files_to_dicts, fetch_archive_from_http, print_answers, launch_es
+from haystack.utils import convert_files_to_docs, fetch_archive_from_http, print_answers, launch_es
 
 
 def tutorial16_document_classifier_at_index_time():
@@ -34,7 +34,7 @@ def tutorial16_document_classifier_at_index_time():
     # ## Read and preprocess documents
 
     # note that you can also use the document classifier before applying the PreProcessor, e.g. before splitting your documents
-    all_docs = convert_files_to_dicts(dir_path=doc_dir)
+    all_docs = convert_files_to_docs(dir_path=doc_dir)
     preprocessor_sliding_window = PreProcessor(split_overlap=3, split_length=10, split_respect_sentence_boundary=False)
     docs_sliding_window = preprocessor_sliding_window.process(all_docs)
 
@@ -68,11 +68,8 @@ def tutorial16_document_classifier_at_index_time():
     #    batch_size=16,
     #    classification_field="description")
 
-    # convert to Document using a fieldmap for custom content fields the classification should run on
-    docs_to_classify = [Document.from_dict(d) for d in docs_sliding_window]
-
     # classify using gpu, batch_size makes sure we do not run out of memory
-    classified_docs = doc_classifier.predict(docs_to_classify)
+    classified_docs = doc_classifier.predict(docs_sliding_window)
 
     # let's see how it looks: there should be a classification result in the meta entry containing labels and scores.
     print(classified_docs[0].to_dict())
