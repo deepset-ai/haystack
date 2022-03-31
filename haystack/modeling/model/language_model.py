@@ -470,6 +470,7 @@ class Bert(LanguageModel):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
@@ -508,8 +509,7 @@ class Bert(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
         Perform the forward pass of the BERT model.
@@ -563,6 +563,7 @@ class Albert(LanguageModel):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
@@ -604,8 +605,7 @@ class Albert(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
         Perform the forward pass of the Albert model.
@@ -660,6 +660,7 @@ class Roberta(LanguageModel):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
@@ -701,8 +702,7 @@ class Roberta(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
         Perform the forward pass of the Roberta model.
@@ -757,6 +757,7 @@ class XLMRoberta(LanguageModel):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
@@ -798,8 +799,7 @@ class XLMRoberta(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
         Perform the forward pass of the XLMRoberta model.
@@ -861,6 +861,7 @@ class DistilBert(LanguageModel):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
@@ -909,8 +910,7 @@ class DistilBert(LanguageModel):
         input_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
         Perform the forward pass of the DistilBERT model.
@@ -964,6 +964,7 @@ class XLNet(LanguageModel):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
@@ -1013,8 +1014,7 @@ class XLNet(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
         Perform the forward pass of the XLNet model.
@@ -1083,6 +1083,7 @@ class Electra(LanguageModel):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
@@ -1134,8 +1135,7 @@ class Electra(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
         Perform the forward pass of the ELECTRA model.
@@ -1185,6 +1185,7 @@ class Camembert(Roberta):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
@@ -1570,6 +1571,7 @@ class BigBird(LanguageModel):
         cls,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
+        use_auth_token: Union[bool, str] = None,
         haystack_lm_name: Optional[str] = None,
         transformers_args: Optional[Dict[str, Any]] = None,
     ):
