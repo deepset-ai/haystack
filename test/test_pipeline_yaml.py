@@ -865,7 +865,7 @@ def test_save_yaml_with_custom_node_with_params(caplog, tmp_path):
     pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
 
     loaded_pipeline = Pipeline.load_from_yaml(tmp_path / "saved_pipeline.yml")
-    
+
     original_node = pipeline.get_config()["components"][0]
     loaded_node = loaded_pipeline.get_config()["components"][0]
 
@@ -881,13 +881,15 @@ def test_save_yaml_with_custom_node_with_positional_params(caplog, tmp_path):
     pipeline = Pipeline()
     with caplog.at_level(logging.WARNING):
         pipeline.add_node(CustomNode(10), name="custom_node", inputs=["Query"])
-        assert "Unnamed __init__ parameters will not be saved to YAML " \
-               "if Pipeline.save_to_yaml() is called" in caplog.text
+        assert (
+            "Unnamed __init__ parameters will not be saved to YAML "
+            "if Pipeline.save_to_yaml() is called" in caplog.text
+        )
 
     pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
 
     loaded_pipeline = Pipeline.load_from_yaml(tmp_path / "saved_pipeline.yml")
-    
+
     original_node = pipeline.get_config()["components"][0]
     loaded_node = loaded_pipeline.get_config()["components"][0]
 
