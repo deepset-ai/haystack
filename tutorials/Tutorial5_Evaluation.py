@@ -242,7 +242,7 @@ def tutorial5_evaluation():
     # Reader Top-1-F1-Score is the average overlap between the first predicted answers and the correct answers including no_answers
     print("Reader Top-1-F1-Score:", reader_eval_results["f1"])
     # Reader Top-N-Accuracy is the proportion of predicted answers that match with their corresponding correct answer excluding no_answers
-    print(f"Reader Top-{top_n}-Accuracy (without no_answers):", reader_eval_results["top_n_accuracy_answer"])  
+    print(f"Reader Top-{top_n}-Accuracy (without no_answers):", reader_eval_results["top_n_accuracy_text_answer"])  
     # Reader Top-N-Exact Match is the proportion of questions where the predicted answer within the first n results is exactly the same as the correct answer excluding no_answers (no_answers are always present within top n).
     print(f"Reader Top-{top_n}-Exact Match (without no_answers):", reader_eval_results["top_n_EM_text_answer"])
     # Reader Top-N-F1-Score is the average overlap between the top n predicted answers and the correct answers excluding no_answers (no_answers are always present within top n).
