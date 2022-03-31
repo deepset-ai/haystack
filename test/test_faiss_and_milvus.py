@@ -485,7 +485,6 @@ def test_faiss_passing_index_from_outside(tmp_path):
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus", "weaviate"], indirect=True)
 def test_cosine_similarity(document_store):
     # below we will write documents to the store and then query it to see if vectors were normalized
-
     ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store)
     document_store.write_documents(documents=DOCUMENTS)
 
@@ -506,7 +505,9 @@ def test_cosine_similarity(document_store):
         original_emb = indexed_docs[doc.content].astype("float32")
 
         # check if the stored embedding was normalized
-        assert np.allclose(original_emb, result_emb, rtol=0.2)  # high tolerance necessary for Milvus 2
+        np.testing.assert_allclose(
+            original_emb, result_emb, rtol=0.2, atol=5e-07
+        )  # high tolerance necessary for Milvus 2
 
         # check if the score is plausible for cosine similarity
         assert 0 <= doc.score <= 1.0
