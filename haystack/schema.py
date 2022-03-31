@@ -700,7 +700,7 @@ class EvaluationResult:
         self,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_match",
+        doc_relevance_col: str = "gold_id_or_answer_match",
         eval_mode: str = "integrated",
     ) -> Dict[str, Dict[str, float]]:
         """
@@ -729,7 +729,8 @@ class EvaluationResult:
         :param simulated_top_k_retriever: simulates top_k param of retriever.
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
         :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
-            values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+            Values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'.
+            Default value is 'gold_id_or_answer_match'.
         :param eval_mode: the input on which the node was evaluated on.
             Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
