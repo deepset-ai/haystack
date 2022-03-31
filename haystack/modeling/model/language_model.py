@@ -509,7 +509,7 @@ class Bert(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the BERT model.
@@ -605,7 +605,7 @@ class Albert(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the Albert model.
@@ -702,7 +702,7 @@ class Roberta(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the Roberta model.
@@ -799,7 +799,7 @@ class XLMRoberta(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the XLMRoberta model.
@@ -910,7 +910,7 @@ class DistilBert(LanguageModel):
         input_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the DistilBERT model.
@@ -1014,7 +1014,7 @@ class XLNet(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the XLNet model.
@@ -1135,7 +1135,7 @@ class Electra(LanguageModel):
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the ELECTRA model.

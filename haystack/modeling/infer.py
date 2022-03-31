@@ -481,7 +481,7 @@ class Inferencer:
                     logits=logits,
                     samples=batch_samples,
                     padding_mask=batch.get("padding_mask", None),
-                    input_ids=batch.get("input_ids", None)
+                    input_ids=batch.get("input_ids", None),
                 )
                 preds_all += preds
         return preds_all
