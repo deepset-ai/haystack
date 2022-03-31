@@ -2068,6 +2068,10 @@
               "default": true,
               "type": "boolean"
             },
+            "confidence_threshold": {
+              "title": "Confidence Threshold",
+              "type": "number"
+            },
             "proxies": {
               "title": "Proxies",
               "type": "object",
