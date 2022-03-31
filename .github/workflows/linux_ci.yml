@@ -298,8 +298,6 @@ jobs:
         pip install ui/
 
     - name: Run tests
-      env:
-        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: pytest -s ${{ matrix.test-path }}
 
 

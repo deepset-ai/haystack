@@ -272,7 +272,7 @@ None
 #### run
 
 ```python
-def run(documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None)
+def run(documents: List[Union[dict, Document]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None)
 ```
 
 Run requests of document stores
@@ -305,7 +305,7 @@ Base class for implementing Document Stores that support keyword searches.
 
 ```python
 @abstractmethod
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -382,6 +382,10 @@ operation.
 - `custom_query`: Custom query to be executed.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to False.
 
 <a id="base.get_batches_from_generator"></a>
 
@@ -762,7 +766,7 @@ Return all labels in the document store
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -903,6 +907,10 @@ You will find the highlighted output in the returned Document's meta field by ke
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to false.
 
 <a id="elasticsearch.ElasticsearchDocumentStore.query_by_embedding"></a>
 
@@ -3962,7 +3970,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False)
+def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -3988,6 +3996,7 @@ exists.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
@@ -4167,7 +4176,7 @@ operation.
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -4244,6 +4253,10 @@ operation.
 - `custom_query`: Custom query to be executed.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to requests
+- `all_terms_must_match`: Whether all terms of the query must match the document.
+If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+Defaults to False.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.write_documents"></a>
 
@@ -4276,6 +4289,61 @@ exists.
 **Returns**:
 
 None
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_evaluation_sets"></a>
+
+#### get\_evaluation\_sets
+
+```python
+def get_evaluation_sets() -> List[dict]
+```
+
+Returns a list of uploaded evaluation sets to deepset cloud.
+
+**Returns**:
+
+list of evaluation sets as dicts
+These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_labels"></a>
+
+#### get\_all\_labels
+
+```python
+def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]
+```
+
+Returns a list of labels for the given index name.
+
+**Arguments**:
+
+- `index`: Optional name of evaluation set for which labels should be searched.
+If None, the DocumentStore's default label_index (self.label_index) will be used.
+- `headers`: Not supported.
+
+**Returns**:
+
+list of Labels.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_label_count"></a>
+
+#### get\_label\_count
+
+```python
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
+```
+
+Counts the number of labels for the given index and returns the value.
+
+**Arguments**:
+
+- `index`: Optional evaluation set name for which the labels should be counted.
+If None, the DocumentStore's default label_index (self.label_index) will be used.
+- `headers`: Not supported.
+
+**Returns**:
+
+number of labels for the given index
 
 <a id="pinecone"></a>
 
@@ -4689,7 +4757,7 @@ and filter_utils.py.
 #### open\_search\_index\_to\_document\_store
 
 ```python
-def open_search_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "admin", password: str = "admin", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "https", ca_certs: Optional[str] = None, verify_certs: bool = False, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
+def open_search_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, id_hash_keys: Optional[List[str]] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "admin", password: str = "admin", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "https", ca_certs: Optional[str] = None, verify_certs: bool = False, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
 ```
 
 This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
@@ -4720,6 +4788,10 @@ all the indexed Documents in the `DocumentStore` will be overwritten in the seco
 - `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
 - `preprocessor`: Optional PreProcessor that will be applied on the content field of the original OpenSearch
 record.
+- `id_hash_keys`: Generate the document id from a custom list of strings that refer to the document's
+attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
+not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
+In this case the id will be generated by using the content and the defined metadata.
 - `batch_size`: Number of records to process at once.
 - `host`: URL(s) of OpenSearch nodes.
 - `port`: Ports(s) of OpenSearch nodes.
@@ -4741,7 +4813,7 @@ You can use certifi package with `certifi.where()` to find where the CA certs fi
 #### elasticsearch\_index\_to\_document\_store
 
 ```python
-def elasticsearch_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
+def elasticsearch_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, id_hash_keys: Optional[List[str]] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
 ```
 
 This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
@@ -4772,6 +4844,10 @@ all the indexed Documents in the `DocumentStore` will be overwritten in the seco
 - `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
 - `preprocessor`: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
 record.
+- `id_hash_keys`: Generate the document id from a custom list of strings that refer to the document's
+attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
+not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
+In this case the id will be generated by using the content and the defined metadata.
 - `batch_size`: Number of records to process at once.
 - `host`: URL(s) of Elasticsearch nodes.
 - `port`: Ports(s) of Elasticsearch nodes.
