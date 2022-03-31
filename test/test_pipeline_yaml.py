@@ -863,7 +863,7 @@ def test_save_yaml_with_custom_node_with_params(tmp_path):
     pipeline.save_to_yaml(tmp_path / "saved_pipeline.yml")
 
     loaded_pipeline = Pipeline.load_from_yaml(tmp_path / "saved_pipeline.yml")
-    
+
     original_config = pipeline.get_config()
     loaded_config = loaded_pipeline.get_config()
 
