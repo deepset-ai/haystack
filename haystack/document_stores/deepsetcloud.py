@@ -24,6 +24,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         api_endpoint: Optional[str] = None,
         similarity: str = "dot_product",
         return_embedding: bool = False,
+        label_index: str = "default",
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -46,11 +47,13 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param label_index: index for the evaluation set interface
+
         :param return_embedding: To return document embedding.
 
         """
         self.index = index
-        self.label_index = index
+        self.label_index = label_index
         self.duplicate_documents = duplicate_documents
         self.similarity = similarity
         self.return_embedding = return_embedding
@@ -64,6 +67,10 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             logger.warning(
                 f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}"
             )
+
+        self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, evaluation_set=label_index
+        )
 
         super().__init__()
 
@@ -452,16 +459,44 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         raise NotImplementedError("DeepsetCloudDocumentStore currently does not support writing documents.")
 
+    def get_evaluation_sets(self) -> List[dict]:
+        """
+        Returns a list of uploaded evaluation sets to deepset cloud.
+
+        :return: list of evaluation sets as dicts
+                 These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
+        """
+        return self.evaluation_set_client.get_evaluation_sets()
+
     def get_all_labels(
         self,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        """
+        Returns a list of labels for the given index name.
+
+        :param index: Optional name of evaluation set for which labels should be searched.
+                      If None, the DocumentStore's default label_index (self.label_index) will be used.
+        :filters: Not supported.
+        :param headers: Not supported.
+
+        :return: list of Labels.
+        """
+        return self.evaluation_set_client.get_labels(evaluation_set=index)
 
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        """
+        Counts the number of labels for the given index and returns the value.
+
+        :param index: Optional evaluation set name for which the labels should be counted.
+                      If None, the DocumentStore's default label_index (self.label_index) will be used.
+        :param headers: Not supported.
+
+        :return: number of labels for the given index
+        """
+        return self.evaluation_set_client.get_labels_count(evaluation_set=index)
 
     def write_labels(
         self,
