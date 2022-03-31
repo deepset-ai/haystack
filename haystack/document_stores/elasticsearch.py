@@ -2056,4 +2056,3 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
             "We recommend using the OpenSearchDocumentStore instead."
         )
         super(OpenDistroElasticsearchDocumentStore, self).__init__(similarity=similarity, **kwargs)
-

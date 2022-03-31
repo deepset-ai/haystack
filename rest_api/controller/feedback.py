@@ -1,4 +1,4 @@
-from typing import Dict, List, Union, Optional
+from typing import Any, Dict, List, Union, Optional
 
 import json
 import logging
@@ -77,7 +77,7 @@ def get_feedback_metrics(filters: FilterRequest = None):
     else:
         filters_content = {"origin": ["user-feedback"]}
 
-    labels = document_store.get_all_labels(filters=filters_content)
+    labels = document_store.get_all_labels(filters=filters_content)  # type: ignore
 
     res: Dict[str, Optional[Union[float, int]]]
     if len(labels) > 0:
@@ -114,30 +114,36 @@ def export_feedback(
     export_data = []
 
     for label in labels:
+        offset_start_in_document = 0
+        if label.answer and label.answer.offsets_in_document:
+            offset_start_in_document = label.answer.offsets_in_document[0].start
+
         if full_document_context:
             context = label.document.content
 
-            answer_start = label.answer.offsets_in_document[0].start
+            answer_start = offset_start_in_document
         else:
             text = label.document.content
+            answer_text = label.answer.answer if label and label.answer else ""
             # the final length of context(including the answer string) is 'context_size'.
             # we try to add equal characters for context before and after the answer string.
             # if either beginning or end of text is reached, we correspondingly
             # append more context characters at the other end of answer string.
-            context_to_add = int((context_size - len(label.answer.answer)) / 2)
-            start_pos = max(label.answer.offsets_in_document[0].start - context_to_add, 0)
-            additional_context_at_end = max(context_to_add - label.answer.offsets_in_document[0].start, 0)
+            context_to_add = int((context_size - len(answer_text)) / 2)
+            start_pos = max(offset_start_in_document - context_to_add, 0)
+            additional_context_at_end = max(context_to_add - offset_start_in_document, 0)
             end_pos = min(
-                label.answer.offsets_in_document[0].start + len(label.answer.answer) + context_to_add, len(text) - 1
+                offset_start_in_document + len(answer_text) + context_to_add, len(text) - 1
             )
             additional_context_at_start = max(
-                label.answer.offsets_in_document[0].start + len(label.answer.answer) + context_to_add - len(text), 0
+                offset_start_in_document + len(answer_text) + context_to_add - len(text), 0
             )
             start_pos = max(0, start_pos - additional_context_at_start)
             end_pos = min(len(text) - 1, end_pos + additional_context_at_end)
             context = text[start_pos:end_pos]
-            answer_start = label.answer.offsets_in_document[0].start - start_pos
+            answer_start = offset_start_in_document - start_pos
 
+        squad_label: Dict[str, Any]
         if label.is_correct_answer is False and label.is_correct_document is False:  # No answer
             squad_label = {
                 "paragraphs": [
@@ -159,7 +165,7 @@ def export_feedback(
                                 "question": label.query,
                                 "id": label.id,
                                 "is_impossible": False,
-                                "answers": [{"text": label.answer.answer, "answer_start": answer_start}],
+                                "answers": [{"text": answer_text, "answer_start": answer_start}],
                             }
                         ],
                     }
