@@ -287,17 +287,17 @@ def squad(preds, labels):
     no_answer_results = squad_base(preds_no_answer, labels_no_answer)
 
     return {
-        "EM": overall_results["EM"], # this is top_1 only
-        "f1": overall_results["f1"], # this is top_1 only
+        "EM": overall_results["EM"],  # this is top_1 only
+        "f1": overall_results["f1"],  # this is top_1 only
         "top_n_accuracy": overall_results["top_n_accuracy"],
-        "EM_text_answer": answer_results["EM"], # this is top_1 only
-        "f1_text_answer": answer_results["f1"], # this is top_1 only
+        "EM_text_answer": answer_results["EM"],  # this is top_1 only
+        "f1_text_answer": answer_results["f1"],  # this is top_1 only
         "top_n_accuracy_text_answer": answer_results["top_n_accuracy"],
         "top_n_EM_text_answer": top_n_em_answer,
         "top_n_f1_text_answer": top_n_f1_answer,
         "Total_text_answer": len(preds_answer),
-        "EM_no_answer": no_answer_results["EM"], # this is top_1 only
-        "f1_no_answer": no_answer_results["f1"], # this is top_1 only
+        "EM_no_answer": no_answer_results["EM"],  # this is top_1 only
+        "f1_no_answer": no_answer_results["f1"],  # this is top_1 only
         "top_n_accuracy_no_answer": no_answer_results["top_n_accuracy"],
         "Total_no_answer": len(preds_no_answer),
     }

@@ -221,7 +221,7 @@ def tutorial5_evaluation():
 
     # Just as a sanity check, we can compare the recall from `retriever.eval()`
     # with the multi hit recall from `pipeline.eval(add_isolated_node_eval=True)`.
-    # These two recall metrics are only comparable since we chose to filter out no_answer samples when generating eval_labels and setting doc_relevance_col to `"gold_id_match"`. 
+    # These two recall metrics are only comparable since we chose to filter out no_answer samples when generating eval_labels and setting doc_relevance_col to `"gold_id_match"`.
     # Per default `calculate_metrics()` has doc_relevance_col set to `"gold_id_or_answer_match"` which interprets documents as relevant if they either match the gold_id or contain the answer.
     metrics = eval_result_with_upper_bounds.calculate_metrics(doc_relevance_col="gold_id_match")
     print(metrics["Retriever"]["recall_multi_hit"])
@@ -245,8 +245,8 @@ def tutorial5_evaluation():
     print(f"Reader Top-{top_n}-F1-Score:", reader_eval_results["top_n_f1_text_answer"])
 
     # Just as a sanity check, we can compare the top-n exact_match and f1 metrics from `reader.eval()` with the exact_match and f1 from `pipeline.eval(add_isolated_node_eval=True)`.
-    # These two approaches return the same values because pipeline.eval() calculates top-n metrics per default. 
-    # Small discrepancies might occur due to string normalization in pipeline.eval()'s answer-to-label comparison. 
+    # These two approaches return the same values because pipeline.eval() calculates top-n metrics per default.
+    # Small discrepancies might occur due to string normalization in pipeline.eval()'s answer-to-label comparison.
     # reader.eval() does not use string normalization.
     print(metrics["Reader"]["exact_match"])
     print(metrics["Reader"]["f1"])
