@@ -362,4 +362,3 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
             )
         with open(destination_path / index_name, "w") as json_file:
             json.dump(index, json_file, indent=2)
-

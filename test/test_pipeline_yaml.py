@@ -41,7 +41,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 
     # Generate mock schema in tmp_path
     filename = f"haystack-pipeline-master.schema.json"
-    test_schema = _json_schema.get_json_schema(filename=filename, compatible_versions=["master"])
+    test_schema = _json_schema.get_json_schema(filename=filename, version="master")
 
     with open(tmp_path / filename, "w") as schema_file:
         json.dump(test_schema, schema_file, indent=4)
@@ -168,7 +168,7 @@ def test_load_yaml_missing_version(tmp_path):
         assert "version" in str(e)
 
 
-def test_load_yaml_non_existing_version(tmp_path):
+def test_load_yaml_non_existing_version(tmp_path, caplog):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             """

@@ -171,6 +171,8 @@ def validate_config(pipeline_config: Dict, strict_version: bool = False) -> None
     with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-master.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 
+    pipeline_version = pipeline_config.get("version", None)
+    
     if not strict_version:
         schema["required"] = [attribute for attribute in schema["required"] if attribute != "version"]
         try:
@@ -187,17 +189,17 @@ def validate_config(pipeline_config: Dict, strict_version: bool = False) -> None
         try:
             Draft7Validator(schema).validate(instance=pipeline_config)
 
-            if pipeline_config["version"] != __version__:
+            if pipeline_version != __version__:
                 if strict_version:
                     raise PipelineConfigError(
-                        f"Cannot load pipeline configuration of version {pipeline_config['version']} "
+                        f"Cannot load pipeline configuration of version {pipeline_version} "
                         f"in Haystack version {__version__}\n"
                         "Please check out the release notes (https://github.com/deepset-ai/haystack/releases/latest), "
                         "the documentation (https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
                         "and fix your configuration accordingly."
                     )
                 logging.warning(
-                    f"This pipeline is version {pipeline_config['version']}, but you're using Haystack {__version__}\n"
+                    f"This pipeline is version {pipeline_version}, but you're using Haystack {__version__}\n"
                     "This might cause bugs and unexpected behaviors."
                     "Please check out the release notes (https://github.com/deepset-ai/haystack/releases/latest), "
                     "the documentation (https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
