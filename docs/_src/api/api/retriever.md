@@ -1433,6 +1433,45 @@ Create embeddings for a list of documents.
 
 Embeddings, one per input document
 
+<a id="dense.EmbeddingRetriever.train"></a>
+
+#### EmbeddingRetriever.train
+
+```python
+def train(training_data: List[Dict[str, Any]], learning_rate: float = 2e-5, n_epochs: int = 1, num_warmup_steps: int = None, batch_size: int = 16) -> None
+```
+
+Trains/adapts the underlying embedding model.
+
+Each training data example is a dictionary with the following keys:
+
+* question: the question string
+* pos_doc: the positive document string
+* neg_doc: the negative document string
+* score: the score margin
+
+**Arguments**:
+
+- `training_data` (`List[Dict[str, Any]]`): The training data
+- `learning_rate` (`float`): The learning rate
+- `n_epochs` (`int`): The number of epochs
+- `num_warmup_steps` (`int`): The number of warmup steps
+- `batch_size` (`int (optional)`): The batch size to use for the training, defaults to 16
+
+<a id="dense.EmbeddingRetriever.save"></a>
+
+#### EmbeddingRetriever.save
+
+```python
+def save(save_dir: Union[Path, str]) -> None
+```
+
+Save the model to the given directory
+
+**Arguments**:
+
+- `save_dir` (`Union[Path, str]`): The directory where the model will be saved
+
 <a id="text2sparql"></a>
 
 # Module text2sparql
