@@ -1,27 +1,27 @@
-import hashlib
+from typing import Any, Dict, Generator, List, Optional, Union
 import re
 import uuid
-from typing import Dict, Generator, List, Optional, Union
+import json
+import hashlib
+import logging
 from datetime import datetime
 
-import logging
-import json
 import numpy as np
 from tqdm import tqdm
+import weaviate
+
+try:
+    from weaviate import client, AuthClientPassword
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "weaviate", ie)
 
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
-
-try:
-    from weaviate import client, AuthClientPassword
-    from weaviate import ObjectsBatchRequest
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "weaviate", ie)
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     """
 
     Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
-    (See https://www.semi.technology/developers/weaviate/current/index.html#what-is-weaviate)
+    (See https://weaviate.io/developers/weaviate/current/index.html#what-is-weaviate)
 
     Some of the key differences in contrast to FAISS & Milvus:
     1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
@@ -45,7 +45,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
 
     Usage:
-    1. Start a Weaviate server (see https://www.semi.technology/developers/weaviate/current/getting-started/installation.html)
+    1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)
     2. Init a WeaviateDocumentStore in Haystack
 
     Limitations:
@@ -74,7 +74,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
-                             For more details, refer "https://www.semi.technology/developers/weaviate/current/getting-started/installation.html"
+                             For more details, refer "https://weaviate.io/developers/weaviate/current/getting-started/installation.html"
         :param port: port of Weaviate instance
         :param timeout_config: Weaviate Timeout config as a tuple of (retries, time out seconds).
         :param username: username (standard authentication via http_auth)
@@ -88,11 +88,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
-                           See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
+                           See: https://weaviate.io/developers/weaviate/current/more-resources/performance.html
         :param custom_schema: Allows to create custom schema in Weaviate, for more details
-                           See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
+                           See https://weaviate.io/developers/weaviate/current/data-schema/schema-configuration.html
         :param module_name: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
-                            For more details, See https://www.semi.technology/developers/weaviate/current/modules/
+                            For more details, See https://weaviate.io/developers/weaviate/current/modules/
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
@@ -265,8 +265,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
         document = None
 
         id = self._sanitize_id(id=id, index=index)
-
-        result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+        result = None
+        try:
+            result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+        except weaviate.exceptions.UnexpectedStatusCodeException as usce:
+            logging.debug(f"Weaviate could not get the document requested: {usce}")
         if result:
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
@@ -289,7 +292,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
         # TODO: better implementation with multiple where filters instead of chatty call below?
         for id in ids:
             id = self._sanitize_id(id=id, index=index)
-            result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+            result = None
+            try:
+                result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+            except weaviate.exceptions.UnexpectedStatusCodeException as usce:
+                logging.debug(f"Weaviate could not get the document requested: {usce}")
             if result:
                 document = self._convert_weaviate_result_to_document(result, return_embedding=True)
                 documents.append(document)
@@ -458,7 +465,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         batched_documents = get_batches_from_generator(document_objects, batch_size)
         with tqdm(total=len(document_objects), disable=not self.progress_bar) as progress_bar:
             for document_batch in batched_documents:
-                docs_batch = ObjectsBatchRequest()
                 for idx, doc in enumerate(document_batch):
                     _doc = {**doc.to_dict(field_map=self._create_document_field_map())}
                     _ = _doc.pop("score", None)
@@ -492,10 +498,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     for date_field in date_fields:
                         _doc[date_field] = convert_date_to_rfc3339(_doc[date_field])
 
-                    docs_batch.add(_doc, class_name=index, uuid=doc_id, vector=vector)
-
+                    self.weaviate_client.batch.add_data_object(
+                        data_object=_doc, class_name=index, uuid=doc_id, vector=vector
+                    )
                 # Ingest a batch of documents
-                results = self.weaviate_client.batch.create(docs_batch)
+                results = self.weaviate_client.batch.create_objects()
                 # Weaviate returns errors for every failed document in the batch
                 if results is not None:
                     for result in results:
@@ -563,15 +570,14 @@ class WeaviateDocumentStore(BaseDocumentStore):
         doc_count = 0
         if filters:
             filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
-            result = (
-                self.weaviate_client.query.aggregate(index).with_fields("meta { count }").with_where(filter_dict).do()
-            )
+            result = self.weaviate_client.query.aggregate(index).with_meta_count().with_where(filter_dict).do()
         else:
-            result = self.weaviate_client.query.aggregate(index).with_fields("meta { count }").do()
+            result = self.weaviate_client.query.aggregate(index).with_meta_count().do()
 
         if "data" in result:
             if "Aggregate" in result.get("data"):
-                doc_count = result.get("data").get("Aggregate").get(index)[0]["meta"]["count"]
+                if result.get("data").get("Aggregate").get(index):
+                    doc_count = result.get("data").get("Aggregate").get(index)[0]["meta"]["count"]
 
         return doc_count
 
@@ -585,6 +591,22 @@ class WeaviateDocumentStore(BaseDocumentStore):
     ) -> List[Document]:
         """
         Get documents from the document store.
+
+        Note this limitation from the changelog of Weaviate 1.8.0:
+
+        .. quote::
+            Due to the increasing cost of each page outlined above, there is a limit to
+            how many objects can be retrieved using pagination. By default setting the sum
+            of offset and limit to higher than 10,000 objects, will lead to an error.
+            If you must retrieve more than 10,000 objects, you can increase this limit by
+            setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`.
+
+            Warning: Setting this to arbitrarily high values can make the memory consumption
+            of a single query explode and single queries can slow down the entire cluster.
+            We recommend setting this value to the lowest possible value that does not
+            interfere with your users' expectations.
+
+        (https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
@@ -651,10 +673,30 @@ class WeaviateDocumentStore(BaseDocumentStore):
         else:
             result = self.weaviate_client.query.get(class_name=index, properties=properties).do()
 
-        all_docs = {}
-        if result and "data" in result and "Get" in result.get("data"):
-            if result.get("data").get("Get").get(index):
-                all_docs = result.get("data").get("Get").get(index)
+        # Inherent Weaviate limitation to 100 elements forces us to loop here:
+        #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.data.html?highlight=100#weaviate.data.DataObject.get
+        base_query = self.weaviate_client.query.get(class_name=index, properties=properties)
+        all_docs: List[Any] = []
+        num_of_documents = self.get_document_count(index=index, filters=filters)
+
+        while len(all_docs) < num_of_documents:
+            query = base_query
+            if filters:
+                filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                query = query.with_where(filter_dict)
+
+            if all_docs:
+                # .with_limit() must be used with .with_offset, of the latter won't work properly
+                #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.gql.html?highlight=offset#weaviate.gql.get.GetBuilder.with_offset
+                query = query.with_limit(100).with_offset(offset=len(all_docs))
+
+            result = query.do()
+
+            if result and "data" in result and "Get" in result.get("data"):
+                if result.get("data").get("Get").get(index):
+                    all_docs += result.get("data").get("Get").get(index)
+            else:
+                raise ValueError(f"Weaviate returned ad exception: {result}")
 
         yield from all_docs
 
@@ -670,6 +712,22 @@ class WeaviateDocumentStore(BaseDocumentStore):
         Get documents from the document store. Under-the-hood, documents are fetched in batches from the
         document store and yielded as individual documents. This method can be used to iteratively process
         a large number of documents without having to load all documents in memory.
+
+        Note this limitation from the changelog of Weaviate 1.8.0:
+
+        .. quote::
+            Due to the increasing cost of each page outlined above, there is a limit to
+            how many objects can be retrieved using pagination. By default setting the sum
+            of offset and limit to higher than 10,000 objects, will lead to an error.
+            If you must retrieve more than 10,000 objects, you can increase this limit by
+            setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`.
+
+            Warning: Setting this to arbitrarily high values can make the memory consumption
+            of a single query explode and single queries can slow down the entire cluster.
+            We recommend setting this value to the lowest possible value that does not
+            interfere with your users' expectations.
+
+        (https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
@@ -793,7 +851,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             ```
         :param top_k: How many documents to return per query.
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
-                            https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
+                            https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         index = self._sanitize_index_name(index) or self.index
