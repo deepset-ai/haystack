@@ -15,6 +15,8 @@ from haystack.schema import Answer, Document, Label
 
 BaseConfig.arbitrary_types_allowed = True
 
+PrimitiveType = Union[str, int, float, bool]
+
 
 class QueryRequest(BaseModel):
     query: str
@@ -27,7 +29,7 @@ class QueryRequest(BaseModel):
 
 
 class FilterRequest(BaseModel):
-    filters: Optional[Dict[str, Optional[Union[str, List[str]]]]] = None
+    filters: Optional[Dict[str, Union[PrimitiveType, List[PrimitiveType], Dict[str, PrimitiveType]]]] = None
 
 
 class AnswerSerialized(Answer):

@@ -77,7 +77,7 @@ def get_feedback_metrics(filters: FilterRequest = None):
     else:
         filters_content = {"origin": ["user-feedback"]}
 
-    labels = document_store.get_all_labels(filters=filters_content)  # type: ignore
+    labels = document_store.get_all_labels(filters=filters_content)
 
     res: Dict[str, Optional[Union[float, int]]]
     if len(labels) > 0:
