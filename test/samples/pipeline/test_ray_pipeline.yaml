@@ -1,4 +1,4 @@
-version: 'unstable'
+version: 'master'
 
 components:
   - name: Reader

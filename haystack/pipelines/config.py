@@ -168,7 +168,7 @@ def validate_config(pipeline_config: Dict, strict_version: bool False) -> None:
     """
     validate_config_strings(pipeline_config)
 
-    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-unstable.schema.json", "r") as schema_file:
+    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-master.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 
     if not strict_version:

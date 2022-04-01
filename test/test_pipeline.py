@@ -352,7 +352,7 @@ def test_get_config_component_with_superclass_arguments():
 
 def test_generate_code_simple_pipeline():
     config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {
                 "name": "retri",
@@ -380,7 +380,7 @@ def test_generate_code_simple_pipeline():
 
 def test_generate_code_imports():
     pipeline_config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
@@ -412,7 +412,7 @@ def test_generate_code_imports():
 
 def test_generate_code_imports_no_pipeline_cls():
     pipeline_config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
@@ -440,7 +440,7 @@ def test_generate_code_imports_no_pipeline_cls():
 
 def test_generate_code_comment():
     pipeline_config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
@@ -467,7 +467,7 @@ def test_generate_code_comment():
 
 def test_generate_code_is_component_order_invariant():
     pipeline_config = {
-        "version": "unstable",
+        "version": "master",
         "pipelines": [
             {
                 "name": "Query",
@@ -522,7 +522,7 @@ def test_generate_code_is_component_order_invariant():
 
 def test_generate_code_can_handle_weak_cyclic_pipelines():
     config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {"name": "parent", "type": "ParentComponent", "params": {"dependent": "child"}},
             {"name": "child", "type": "ChildComponent", "params": {}},
