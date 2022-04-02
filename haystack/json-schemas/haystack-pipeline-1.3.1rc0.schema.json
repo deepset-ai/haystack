@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://haystack.deepset.ai/haystack/json-schemas/haystack-pipeline-unstable.schema.json",
+  "$id": "https://haystack.deepset.ai/haystack/json-schemas/haystack-pipeline-1.3.1rc0.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -10,9 +10,6 @@
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
       "oneOf": [
-        {
-          "const": "unstable"
-        },
         {
           "const": "1.3.1rc0"
         }

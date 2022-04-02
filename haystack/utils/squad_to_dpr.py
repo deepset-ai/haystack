@@ -115,9 +115,7 @@ class HaystackDocumentStore:
 class HaystackRetriever:
     def __init__(self, document_store: BaseDocumentStore, retriever_type: str, **kwargs):
         if retriever_type not in ["BM25Retriever", "DensePassageRetriever", "EmbeddingRetriever"]:
-            raise Exception(
-                "Use one of these types: BM25Retriever", "DensePassageRetriever", "EmbeddingRetriever"
-            )
+            raise Exception("Use one of these types: BM25Retriever", "DensePassageRetriever", "EmbeddingRetriever")
         self._retriever_type = retriever_type
         self._document_store = document_store
         self._kwargs = kwargs

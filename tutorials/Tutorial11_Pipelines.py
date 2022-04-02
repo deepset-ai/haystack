@@ -9,14 +9,7 @@ from haystack.utils import (
 from pprint import pprint
 from haystack import Pipeline
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes import (
-    BM25Retriever,
-    EmbeddingRetriever,
-    FARMReader,
-    RAGenerator,
-    BaseComponent,
-    JoinDocuments,
-)
+from haystack.nodes import BM25Retriever, EmbeddingRetriever, FARMReader, RAGenerator, BaseComponent, JoinDocuments
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, GenerativeQAPipeline
 
 

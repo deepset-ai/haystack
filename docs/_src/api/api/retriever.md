@@ -94,15 +94,15 @@ contains the keys "predictions" and "metrics".
 
 # Module sparse
 
-<a id="sparse.ElasticsearchRetriever"></a>
+<a id="sparse.BM25Retriever"></a>
 
-## ElasticsearchRetriever
+## BM25Retriever
 
 ```python
-class ElasticsearchRetriever(BaseRetriever)
+class BM25Retriever(BaseRetriever)
 ```
 
-<a id="sparse.ElasticsearchRetriever.__init__"></a>
+<a id="sparse.BM25Retriever.__init__"></a>
 
 #### \_\_init\_\_
 
@@ -179,7 +179,7 @@ def __init__(document_store: KeywordDocumentStore, top_k: int = 10, custom_query
     ```
 - `top_k`: How many documents to return per query.
 
-<a id="sparse.ElasticsearchRetriever.retrieve"></a>
+<a id="sparse.BM25Retriever.retrieve"></a>
 
 #### retrieve
 
@@ -205,7 +205,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 ## ElasticsearchFilterOnlyRetriever
 
 ```python
-class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
+class ElasticsearchFilterOnlyRetriever(BM25Retriever)
 ```
 
 Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
