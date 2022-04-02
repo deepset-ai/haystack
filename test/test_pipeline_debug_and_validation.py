@@ -4,7 +4,7 @@ import json
 import pytest
 
 from haystack.pipelines import Pipeline, RootNode
-from haystack.nodes import FARMReader, ElasticsearchRetriever
+from haystack.nodes import FARMReader, BM25Retriever
 
 from .conftest import SAMPLES_PATH, MockRetriever as BaseMockRetriever, MockReader
 
@@ -26,7 +26,7 @@ class MockRetriever(BaseMockRetriever):
 def test_node_names_validation(document_store_with_docs, tmp_path):
     pipeline = Pipeline()
     pipeline.add_node(
-        component=ElasticsearchRetriever(document_store=document_store_with_docs), name="Retriever", inputs=["Query"]
+        component=BM25Retriever(document_store=document_store_with_docs), name="Retriever", inputs=["Query"]
     )
     pipeline.add_node(
         component=FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0),
@@ -56,7 +56,7 @@ def test_node_names_validation(document_store_with_docs, tmp_path):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_debug_attributes_global(document_store_with_docs, tmp_path):
 
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()
@@ -86,7 +86,7 @@ def test_debug_attributes_global(document_store_with_docs, tmp_path):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()
@@ -112,7 +112,7 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_global_debug_attributes_override_node_ones(document_store_with_docs, tmp_path):
 
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     reader = FARMReader(model_name_or_path="deepset/minilm-uncased-squad2", num_processes=0)
 
     pipeline = Pipeline()

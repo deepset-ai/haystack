@@ -162,7 +162,7 @@ class BasePipeline(ABC):
             |           },
             |           {
             |               "name": "MyESRetriever",
-            |               "type": "ElasticsearchRetriever",
+            |               "type": "BM25Retriever",
             |               "params": {
             |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
             |                   "custom_query": None,
@@ -211,7 +211,7 @@ class BasePipeline(ABC):
             |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
+            |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
             |        custom_query: null
@@ -486,8 +486,8 @@ class Pipeline(BasePipeline):
                           method to process incoming data from predecessor node.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+                       of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["BM25Retriever"].
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
@@ -1089,7 +1089,7 @@ class Pipeline(BasePipeline):
             |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
+            |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
             |        custom_query: null
@@ -1147,7 +1147,7 @@ class Pipeline(BasePipeline):
             |           },
             |           {
             |               "name": "MyESRetriever",
-            |               "type": "ElasticsearchRetriever",
+            |               "type": "BM25Retriever",
             |               "params": {
             |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
             |                   "custom_query": None,
@@ -1460,7 +1460,7 @@ class RayPipeline(Pipeline):
             |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
+            |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
             |        custom_query: null
@@ -1578,8 +1578,8 @@ class RayPipeline(Pipeline):
                        from Python: https://docs.ray.io/en/master/serve/package-ref.html#servehandle-api.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+                       of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["BM25Retriever"].
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".

@@ -15,7 +15,7 @@ from haystack.document_stores import BaseDocumentStore
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchRetriever(BaseRetriever):
+class BM25Retriever(BaseRetriever):
     def __init__(self, document_store: KeywordDocumentStore, top_k: int = 10, custom_query: Optional[str] = None):
         """
         :param document_store: an instance of an ElasticsearchDocumentStore to retrieve documents from.
@@ -120,7 +120,7 @@ class ElasticsearchRetriever(BaseRetriever):
         return documents
 
 
-class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
+class ElasticsearchFilterOnlyRetriever(BM25Retriever):
     """
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.

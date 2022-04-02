@@ -68,7 +68,7 @@ from elasticsearch import Elasticsearch
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
 from haystack.document_stores.faiss import FAISSDocumentStore  # keep it here !
-from haystack.nodes.retriever import ElasticsearchRetriever, DensePassageRetriever  # keep it here !
+from haystack.nodes.retriever import BM25Retriever, DensePassageRetriever  # keep it here !
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
 
@@ -114,9 +114,9 @@ class HaystackDocumentStore:
 
 class HaystackRetriever:
     def __init__(self, document_store: BaseDocumentStore, retriever_type: str, **kwargs):
-        if retriever_type not in ["ElasticsearchRetriever", "DensePassageRetriever", "EmbeddingRetriever"]:
+        if retriever_type not in ["BM25Retriever", "DensePassageRetriever", "EmbeddingRetriever"]:
             raise Exception(
-                "Use one of these types: ElasticsearchRetriever", "DensePassageRetriever", "EmbeddingRetriever"
+                "Use one of these types: BM25Retriever", "DensePassageRetriever", "EmbeddingRetriever"
             )
         self._retriever_type = retriever_type
         self._document_store = document_store
@@ -249,7 +249,7 @@ def main(
     dpr_output_filename: Path,
     preprocessor,
     document_store_type_config: Tuple[str, Dict] = ("ElasticsearchDocumentStore", {}),
-    retriever_type_config: Tuple[str, Dict] = ("ElasticsearchRetriever", {}),
+    retriever_type_config: Tuple[str, Dict] = ("BM25Retriever", {}),
     num_hard_negative_ctxs: int = 30,
     split_dataset: bool = False,
 ):
@@ -345,7 +345,7 @@ if __name__ == "__main__":
         preprocessor=preprocessor,
         document_store_type_config=("ElasticsearchDocumentStore", store_dpr_config),
         # retriever_type_config=("DensePassageRetriever", retriever_dpr_config),  # dpr
-        retriever_type_config=("ElasticsearchRetriever", retriever_bm25_config),  # bm25
+        retriever_type_config=("BM25Retriever", retriever_bm25_config),  # bm25
         num_hard_negative_ctxs=num_hard_negative_ctxs,
         split_dataset=split_dataset,
     )

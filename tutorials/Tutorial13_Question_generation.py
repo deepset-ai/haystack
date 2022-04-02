@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from haystack.nodes import QuestionGenerator, ElasticsearchRetriever, FARMReader, TransformersTranslator
+from haystack.nodes import QuestionGenerator, BM25Retriever, FARMReader, TransformersTranslator
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.pipelines import (
     QuestionGenerationPipeline,
@@ -56,7 +56,7 @@ def tutorial13_question_generation():
     print("\RetrieverQuestionGenerationPipeline")
     print("==================================")
 
-    retriever = ElasticsearchRetriever(document_store=document_store)
+    retriever = BM25Retriever(document_store=document_store)
     rqg_pipeline = RetrieverQuestionGenerationPipeline(retriever, question_generator)
 
     print(f"\n * Generating questions for documents matching the query 'Arya Stark'\n")
