@@ -1150,6 +1150,7 @@ class EmbeddingRetriever(BaseRetriever):
         query: str,
         filters: dict = None,
         top_k: Optional[int] = None,
+        min_score: Optional[float] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
@@ -1160,6 +1161,7 @@ class EmbeddingRetriever(BaseRetriever):
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
+        :param min_score: Only return documents with a score higher than min_score - recommended to set top_k=10000
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         if top_k is None:
@@ -1168,7 +1170,7 @@ class EmbeddingRetriever(BaseRetriever):
             index = self.document_store.index
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers
+            query_emb=query_emb[0], filters=filters, top_k=top_k, min_score=min_score, index=index, headers=headers
         )
         return documents
 
