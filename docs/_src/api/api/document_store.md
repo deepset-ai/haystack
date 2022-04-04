@@ -3144,7 +3144,7 @@ class WeaviateDocumentStore(BaseDocumentStore)
 ```
 
 Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
-(See https://www.semi.technology/developers/weaviate/current/index.html#what-is-weaviate)
+(See https://weaviate.io/developers/weaviate/current/index.html#what-is-weaviate)
 
 Some of the key differences in contrast to FAISS & Milvus:
 1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
@@ -3157,7 +3157,7 @@ Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
 
 Usage:
-1. Start a Weaviate server (see https://www.semi.technology/developers/weaviate/current/getting-started/installation.html)
+1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)
 2. Init a WeaviateDocumentStore in Haystack
 
 Limitations:
@@ -3174,7 +3174,7 @@ def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, 
 **Arguments**:
 
 - `host`: Weaviate server connection URL for storing and processing documents and vectors.
-For more details, refer "https://www.semi.technology/developers/weaviate/current/getting-started/installation.html"
+For more details, refer "https://weaviate.io/developers/weaviate/current/getting-started/installation.html"
 - `port`: port of Weaviate instance
 - `timeout_config`: Weaviate Timeout config as a tuple of (retries, time out seconds).
 - `username`: username (standard authentication via http_auth)
@@ -3188,11 +3188,11 @@ If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will
 'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
 Currently, HSNW is only supported.
-See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
+See: https://weaviate.io/developers/weaviate/current/more-resources/performance.html
 - `custom_schema`: Allows to create custom schema in Weaviate, for more details
-See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
+See https://weaviate.io/developers/weaviate/current/data-schema/schema-configuration.html
 - `module_name`: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
-For more details, See https://www.semi.technology/developers/weaviate/current/modules/
+For more details, See https://weaviate.io/developers/weaviate/current/modules/
 - `return_embedding`: To return document embedding.
 - `embedding_field`: Name of field containing an embedding vector.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
@@ -3295,6 +3295,22 @@ def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, U
 
 Get documents from the document store.
 
+Note this limitation from the changelog of Weaviate 1.8.0:
+
+.. quote::
+    Due to the increasing cost of each page outlined above, there is a limit to
+    how many objects can be retrieved using pagination. By default setting the sum
+    of offset and limit to higher than 10,000 objects, will lead to an error.
+    If you must retrieve more than 10,000 objects, you can increase this limit by
+    setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`.
+
+    Warning: Setting this to arbitrarily high values can make the memory consumption
+    of a single query explode and single queries can slow down the entire cluster.
+    We recommend setting this value to the lowest possible value that does not
+    interfere with your users' expectations.
+
+(https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
+
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
@@ -3340,6 +3356,22 @@ Get documents from the document store. Under-the-hood, documents are fetched in 
 
 document store and yielded as individual documents. This method can be used to iteratively process
 a large number of documents without having to load all documents in memory.
+
+Note this limitation from the changelog of Weaviate 1.8.0:
+
+.. quote::
+    Due to the increasing cost of each page outlined above, there is a limit to
+    how many objects can be retrieved using pagination. By default setting the sum
+    of offset and limit to higher than 10,000 objects, will lead to an error.
+    If you must retrieve more than 10,000 objects, you can increase this limit by
+    setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`.
+
+    Warning: Setting this to arbitrarily high values can make the memory consumption
+    of a single query explode and single queries can slow down the entire cluster.
+    We recommend setting this value to the lowest possible value that does not
+    interfere with your users' expectations.
+
+(https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
 
 **Arguments**:
 
@@ -3454,7 +3486,7 @@ operation.
     ```
 - `top_k`: How many documents to return per query.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
-https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
+https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a id="weaviate.WeaviateDocumentStore.query_by_embedding"></a>
@@ -3938,7 +3970,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False)
+def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -3964,6 +3996,7 @@ exists.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
@@ -4256,6 +4289,61 @@ exists.
 **Returns**:
 
 None
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_evaluation_sets"></a>
+
+#### get\_evaluation\_sets
+
+```python
+def get_evaluation_sets() -> List[dict]
+```
+
+Returns a list of uploaded evaluation sets to deepset cloud.
+
+**Returns**:
+
+list of evaluation sets as dicts
+These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_labels"></a>
+
+#### get\_all\_labels
+
+```python
+def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]
+```
+
+Returns a list of labels for the given index name.
+
+**Arguments**:
+
+- `index`: Optional name of evaluation set for which labels should be searched.
+If None, the DocumentStore's default label_index (self.label_index) will be used.
+- `headers`: Not supported.
+
+**Returns**:
+
+list of Labels.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_label_count"></a>
+
+#### get\_label\_count
+
+```python
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
+```
+
+Counts the number of labels for the given index and returns the value.
+
+**Arguments**:
+
+- `index`: Optional evaluation set name for which the labels should be counted.
+If None, the DocumentStore's default label_index (self.label_index) will be used.
+- `headers`: Not supported.
+
+**Returns**:
+
+number of labels for the given index
 
 <a id="pinecone"></a>
 
