@@ -296,6 +296,11 @@
               "title": "Return Embedding",
               "default": false,
               "type": "boolean"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "default",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -2062,6 +2067,10 @@
               "title": "Use Confidence Scores",
               "default": true,
               "type": "boolean"
+            },
+            "confidence_threshold": {
+              "title": "Confidence Threshold",
+              "type": "number"
             },
             "proxies": {
               "title": "Proxies",
