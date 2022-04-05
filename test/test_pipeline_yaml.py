@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import logging
 import pytest
 import json
 import inspect
@@ -184,12 +185,13 @@ def test_load_yaml_non_existing_version(tmp_path, caplog):
                 - Query
         """
         )
-    with pytest.raises(PipelineConfigError) as e:
+    with caplog.at_level(logging.WARNING):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert "version" in str(e) and "random" in str(e)
+        assert "version 1.1.0" in caplog.text
+        assert f"Haystack {haystack.__version__}" in caplog.text
 
 
-def test_load_yaml_incompatible_version(tmp_path):
+def test_load_yaml_incompatible_version(tmp_path, caplog):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             """
@@ -205,9 +207,10 @@ def test_load_yaml_incompatible_version(tmp_path):
                 - Query
         """
         )
-    with pytest.raises(PipelineConfigError) as e:
+    with caplog.at_level(logging.WARNING):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert "version" in str(e) and "1.1.0" in str(e)
+        assert "version random" in caplog.text
+        assert f"Haystack {haystack.__version__}" in caplog.text
 
 
 def test_load_yaml_no_components(tmp_path):
