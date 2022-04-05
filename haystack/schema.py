@@ -990,8 +990,8 @@ class EvaluationResult:
             ]
 
             avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 0.0
-            recall_single_hit = min(num_retrieved_relevants, 1)
+            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 1.0
+            recall_single_hit = min(num_retrieved_relevants, 1) if num_relevants > 0 else 1.0
             precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
             rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
             dcg = (
