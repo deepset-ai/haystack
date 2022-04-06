@@ -187,7 +187,7 @@ def test_load_yaml_non_existing_version(tmp_path, caplog):
         )
     with caplog.at_level(logging.WARNING):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert "version 1.1.0" in caplog.text
+        assert "version random" in caplog.text
         assert f"Haystack {haystack.__version__}" in caplog.text
 
 
@@ -209,7 +209,7 @@ def test_load_yaml_incompatible_version(tmp_path, caplog):
         )
     with caplog.at_level(logging.WARNING):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert "version random" in caplog.text
+        assert "version 1.1.0" in caplog.text
         assert f"Haystack {haystack.__version__}" in caplog.text
 
 
