@@ -1,6 +1,6 @@
 import mimetypes
 from multiprocessing.sharedctypes import Value
-from typing import List, Union, Optional
+from typing import List, Union
 from pathlib import Path
 import magic
 from haystack.nodes.base import BaseComponent
@@ -40,14 +40,14 @@ class FileTypeClassifier(BaseComponent):
 
         self.supported_types = supported_types
 
-    def _estimate_extension(self, file_path: Path) -> Optional[str]:
+    def _estimate_extension(self, file_path: Path) -> str:
         """
         Return the extension found based on the contents of the given file
 
         :param file_path: the path to extract the extension from
         """
         extension = magic.from_file(str(file_path), mime=True)
-        return mimetypes.guess_extension(extension)
+        return mimetypes.guess_extension(extension) or ""
 
 
     def _get_extension(self, file_paths: List[Path]) -> str:
