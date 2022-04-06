@@ -3,7 +3,7 @@
     Telemetry
     Haystack reports anonymous usage statistics to support continuous software improvements for all its users.
     An example report can be inspected via calling print_telemetry_report(). Check out the documentation for more details: https://haystack.deepset.ai/guides/telemetry
-    You can opt-out of sharing usage statistics by setting the environment variable HAYSTACK_TELEMETRY_ENABLED to "False" or calling disable_telemetry().
+    You can opt-out of sharing usage statistics by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page.
     You can log all events to the local file specified in LOG_PATH for inspection by setting the environment variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to "True".
 """
 import sys
@@ -202,7 +202,7 @@ def send_tutorial_event(url: str):
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt12.zip": "12",
         # Tutorial 13: no dataset available yet
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt14.zip": "14",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/ottqa_sample.zip": "15",
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/table_text_dataset.zip": "15",
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
     }
@@ -297,7 +297,7 @@ def _write_telemetry_config():
         # show a log message if telemetry config is written for the first time
         if not CONFIG_PATH.is_file():
             logger.info(
-                f'Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt out at anytime by setting {HAYSTACK_TELEMETRY_ENABLED}="False" as an environment variable or by calling disable_telemetry(). More information at https://haystack.deepset.ai/guides/telemetry'
+                f"Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt-out at anytime by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page. More information at https://haystack.deepset.ai/guides/telemetry"
             )
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
         user_id = _get_or_create_user_id()

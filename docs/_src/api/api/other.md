@@ -110,7 +110,7 @@ def __init__(split_by: str = "content_type", metadata_values: Optional[List[str]
 - `split_by`: Field to split the documents by, either `"content_type"` or a metadata field name.
 If this parameter is set to `"content_type"`, the list of `Document`s will be split into a list containing
 only `Document`s of type `"text"` (will be routed to `"output_1"`) and a list containing only `Document`s of
-type `"text"` (will be routed to `"output_2"`).
+type `"table"` (will be routed to `"output_2"`).
 If this parameter is set to a metadata field name, you need to specify the parameter `metadata_values` as
 well.
 - `metadata_values`: If the parameter `split_by` is set to a metadata field name, you need to provide a list
