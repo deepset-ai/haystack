@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 
 import os
@@ -516,6 +517,7 @@ def test_generate_code_is_component_order_invariant():
 
     for components in component_orders:
         pipeline_config["components"] = components
+    
         code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=False)
         assert code == expected_code
 

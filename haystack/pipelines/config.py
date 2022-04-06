@@ -4,6 +4,7 @@ import re
 import os
 import copy
 import logging
+from copy import deepcopy
 from pathlib import Path
 from networkx import DiGraph
 import yaml
@@ -166,17 +167,19 @@ def validate_config(pipeline_config: Dict, strict_version: bool = False) -> None
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    validate_config_strings(pipeline_config)
+    config_to_validate = deepcopy(pipeline_config)  # version might be deleted. We copy to avoid this change from propagating.
+
+    validate_config_strings(config_to_validate)
 
     with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-master.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 
-    pipeline_version = pipeline_config.get("version", None)
+    pipeline_version = config_to_validate.get("version", None)
     
     if not strict_version:
         schema["required"] = [attribute for attribute in schema["required"] if attribute != "version"]
         try:
-            del pipeline_config["version"]
+            del config_to_validate["version"]
         except KeyError:
             raise PipelineConfigError(
                 "Your pipeline configuration doesn't have a version. "
@@ -187,7 +190,7 @@ def validate_config(pipeline_config: Dict, strict_version: bool = False) -> None
     loaded_custom_nodes = []
     while True:
         try:
-            Draft7Validator(schema).validate(instance=pipeline_config)
+            Draft7Validator(schema).validate(instance=config_to_validate)
 
             if pipeline_version != __version__:
                 if strict_version:
