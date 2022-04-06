@@ -40,7 +40,7 @@ class FileTypeClassifier(BaseComponent):
 
         self.supported_types = supported_types
 
-    def _estimate_extension(self, file_path: Path) -> str:
+    def _estimate_extension(self, file_path: Path) -> Optional[str]:
         """
         Return the extension found based on the contents of the given file
 
@@ -63,6 +63,7 @@ class FileTypeClassifier(BaseComponent):
         if extension == '':
             extension = self._estimate_extension(file_paths[0])
 
+        extension = None
         for path in file_paths:
             path_suffix = path.suffix.lower()
             if path_suffix == '':
