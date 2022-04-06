@@ -167,7 +167,9 @@ def validate_config(pipeline_config: Dict, strict_version: bool = False) -> None
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    config_to_validate = deepcopy(pipeline_config)  # version might be deleted. We copy to avoid this change from propagating.
+    config_to_validate = deepcopy(
+        pipeline_config
+    )  # version might be deleted. We copy to avoid this change from propagating.
 
     validate_config_strings(config_to_validate)
 
@@ -175,7 +177,7 @@ def validate_config(pipeline_config: Dict, strict_version: bool = False) -> None
         schema = json.load(schema_file)
 
     pipeline_version = config_to_validate.get("version", None)
-    
+
     if not strict_version:
         schema["required"] = [attribute for attribute in schema["required"] if attribute != "version"]
         try:
