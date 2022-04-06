@@ -1,6 +1,6 @@
 import mimetypes
 from multiprocessing.sharedctypes import Value
-from typing import List, Union
+from typing import List, Union, Optional
 from pathlib import Path
 import magic
 from haystack.nodes.base import BaseComponent
@@ -63,7 +63,6 @@ class FileTypeClassifier(BaseComponent):
         if extension == '':
             extension = self._estimate_extension(file_paths[0])
 
-        extension = None
         for path in file_paths:
             path_suffix = path.suffix.lower()
             if path_suffix == '':
