@@ -47,7 +47,7 @@ class FileTypeClassifier(BaseComponent):
         :param file_path: the path to extract the extension from
         """
         extension = magic.from_file(str(file_path), mime=True)
-        return mimetypes.guess_extension(extension)
+        return mimetypes.guess_extension(extension) or ""
 
 
     def _get_extension(self, file_paths: List[Path]) -> str:
