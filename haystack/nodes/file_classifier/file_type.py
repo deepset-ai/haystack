@@ -6,7 +6,7 @@ import magic
 from haystack.nodes.base import BaseComponent
 
 
-DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html", "odt"]
+DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]
 
 
 class FileTypeClassifier(BaseComponent):
