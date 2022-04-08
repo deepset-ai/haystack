@@ -32,7 +32,7 @@ class FileTypeClassifier(BaseComponent):
         if len(set(supported_types)) != len(supported_types):
             duplicates = supported_types
             for item in set(supported_types):
-                duplicates.remove(item) 
+                duplicates.remove(item)
             raise ValueError(f"supported_types can't contain duplicate values ({duplicates}).")
 
         super().__init__()

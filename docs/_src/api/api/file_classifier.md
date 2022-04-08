@@ -2,12 +2,6 @@
 
 # Module file\_type
 
-<a id="file_type.DEFAULT_TYPES"></a>
-
-#### DEFAULT\_TYPES
-
-FOLDER_NAMES contains the names of the folders in the samples folder
-
 <a id="file_type.FileTypeClassifier"></a>
 
 ## FileTypeClassifier
