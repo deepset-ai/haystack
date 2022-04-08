@@ -61,7 +61,7 @@ def test_filetype_classifier_duplicate_custom_extensions():
 
 
 def test_filetype_classifier_text_files_without_extension():
-    tested_types = ["docx", "html", "odt", "pdf", "txt", "pptx", "txt"]
+    tested_types = ["docx", "html", "odt", "pdf", "pptx", "txt"]
     node = FileTypeClassifier(supported_types=tested_types)
     test_files = [SAMPLES_PATH / "extensionless_files" / f"{type_name}_file" for type_name in tested_types]    
 

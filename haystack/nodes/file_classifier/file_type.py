@@ -30,7 +30,10 @@ class FileTypeClassifier(BaseComponent):
         if len(supported_types) > 10:
             raise ValueError("supported_types can't have more than 10 values.")
         if len(set(supported_types)) != len(supported_types):
-            raise ValueError("supported_types can't contain duplicate values.")
+            duplicates = supported_types
+            for item in set(supported_types):
+                duplicates.remove(item) 
+            raise ValueError(f"supported_types can't contain duplicate values ({duplicates}).")
 
         super().__init__()
 
@@ -84,7 +87,7 @@ class FileTypeClassifier(BaseComponent):
             index = self.supported_types.index(extension) + 1
         except ValueError:
             raise ValueError(
-                f"Files of type '{extension}' are not supported. "
+                f"Files of type '{extension}' ({paths[0]}) are not supported. "
                 f"The supported types are: {self.supported_types}. "
                 "Consider using the 'supported_types' parameter to "
                 "change the types accepted by this node."
