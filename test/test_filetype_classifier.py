@@ -4,7 +4,6 @@ from haystack.nodes.file_classifier.file_type import FileTypeClassifier, DEFAULT
 from .conftest import SAMPLES_PATH
 
 
-
 def test_filetype_classifier_single_file(tmp_path):
     node = FileTypeClassifier()
     test_files = [tmp_path / f"test.{extension}" for extension in DEFAULT_TYPES]
@@ -69,8 +68,7 @@ def test_filetype_classifier_whithout_extension():
         if "markdown" in str(test_file):
             continue
         output, edge = node.run(test_file)
-        print(edge, edge_index+1)
+        print(edge, edge_index + 1)
         print(output, test_file)
         assert edge == f"output_{edge_index+1}"
         assert output == {"file_paths": [test_file]}
-
