@@ -6,11 +6,7 @@ import magic
 from haystack.nodes.base import BaseComponent
 
 
-DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html", "pptx", "odt", "mp3", "png", "zip"]
-"""
-FOLDER_NAMES contains the names of the folders in the samples folder
-"""
-FOLDER_NAMES = ["docs", "pdf", "markdown", "docx", "html", "pptx", "odt", "mp3", "png", "zip"]
+DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html", "odt"]
 
 
 class FileTypeClassifier(BaseComponent):
