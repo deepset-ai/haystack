@@ -56,6 +56,7 @@ class FARMReader(BaseReader):
         progress_bar: bool = True,
         duplicate_filtering: int = 0,
         use_confidence_scores: bool = True,
+        confidence_threshold: Optional[float] = None,
         proxies: Optional[Dict[str, str]] = None,
         local_files_only=False,
         force_download=False,
@@ -106,6 +107,7 @@ class FARMReader(BaseReader):
                                       (see https://haystack.deepset.ai/components/reader#confidence-scores) .
                                       `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
                                       from the model for the predicted span.
+        :param confidence_threshold: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
         :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
@@ -153,6 +155,7 @@ class FARMReader(BaseReader):
         self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
+        self.confidence_threshold = confidence_threshold
         self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
 
     def _training_procedure(
@@ -1015,6 +1018,10 @@ class FARMReader(BaseReader):
         # sort answers by score (descending) and select top-k
         answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
+
+        # apply confidence based filtering if enabled
+        if self.confidence_threshold is not None:
+            answers = [ans for ans in answers if ans.score is not None and ans.score >= self.confidence_threshold]
 
         return answers, max_no_ans_gap
 

@@ -117,7 +117,7 @@ def test_init_elastic_doc_store_with_index_recreation():
     assert len(labels) == 0
 
 
-def test_write_with_duplicate_doc_ids(document_store):
+def test_write_with_duplicate_doc_ids(document_store: BaseDocumentStore):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -131,7 +131,7 @@ def test_write_with_duplicate_doc_ids(document_store):
 @pytest.mark.parametrize(
     "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate", "pinecone"], indirect=True
 )
-def test_write_with_duplicate_doc_ids_custom_index(document_store):
+def test_write_with_duplicate_doc_ids_custom_index(document_store: BaseDocumentStore):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -164,7 +164,20 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3", "test4", "test5"}
 
 
-def test_get_all_document_filter_duplicate_text_value(document_store):
+def test_get_all_documents_large_quantities(document_store: BaseDocumentStore):
+    # Test to exclude situations like Weaviate not returning more than 100 docs by default
+    #   https://github.com/deepset-ai/haystack/issues/1893
+    docs_to_write = [
+        {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+        for i in range(1000)
+    ]
+    document_store.write_documents(docs_to_write)
+    documents = document_store.get_all_documents()
+    assert all(isinstance(d, Document) for d in documents)
+    assert len(documents) == len(docs_to_write)
+
+
+def test_get_all_document_filter_duplicate_text_value(document_store: BaseDocumentStore):
     documents = [
         Document(content="Doc1", meta={"f1": "0"}, id_hash_keys=["meta"]),
         Document(content="Doc1", meta={"f1": "1", "meta_id": "0"}, id_hash_keys=["meta"]),
@@ -355,7 +368,7 @@ def test_get_document_by_id(document_store_with_docs):
     assert doc.content == documents[0].content
 
 
-def test_get_documents_by_id(document_store):
+def test_get_documents_by_id(document_store: BaseDocumentStore):
     # generate more documents than the elasticsearch default query size limit of 10
     docs_to_generate = 15
     documents = [{"content": "doc-" + str(i)} for i in range(docs_to_generate)]
@@ -372,7 +385,7 @@ def test_get_documents_by_id(document_store):
     assert set(retrieved_ids) == set(all_ids)
 
 
-def test_get_document_count(document_store):
+def test_get_document_count(document_store: BaseDocumentStore):
     documents = [
         {"content": "text1", "id": "1", "meta_field_for_count": "a"},
         {"content": "text2", "id": "2", "meta_field_for_count": "b"},
@@ -385,7 +398,7 @@ def test_get_document_count(document_store):
     assert document_store.get_document_count(filters={"meta_field_for_count": ["b"]}) == 3
 
 
-def test_get_all_documents_generator(document_store):
+def test_get_all_documents_generator(document_store: BaseDocumentStore):
     documents = [
         {"content": "text1", "id": "1", "meta_field_for_count": "a"},
         {"content": "text2", "id": "2", "meta_field_for_count": "b"},
@@ -421,7 +434,7 @@ def test_update_existing_documents(document_store, update_existing_documents):
         assert stored_docs[0].content == original_docs[0]["content"]
 
 
-def test_write_document_meta(document_store):
+def test_write_document_meta(document_store: BaseDocumentStore):
     documents = [
         {"content": "dict_without_meta", "id": "1"},
         {"content": "dict_with_meta", "meta_field": "test2", "name": "filename2", "id": "2"},
@@ -438,7 +451,7 @@ def test_write_document_meta(document_store):
     assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
 
 
-def test_write_document_index(document_store):
+def test_write_document_index(document_store: BaseDocumentStore):
     documents = [{"content": "text1", "id": "1"}, {"content": "text2", "id": "2"}]
     document_store.write_documents([documents[0]], index="haystack_test_one")
     assert len(document_store.get_all_documents(index="haystack_test_one")) == 1
@@ -453,7 +466,7 @@ def test_write_document_index(document_store):
 @pytest.mark.parametrize(
     "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
 )
-def test_document_with_embeddings(document_store):
+def test_document_with_embeddings(document_store: BaseDocumentStore):
     documents = [
         {"content": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
         {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
@@ -720,7 +733,7 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
 
 # exclude weaviate because it does not support storing labels
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
-def test_labels(document_store):
+def test_labels(document_store: BaseDocumentStore):
     label = Label(
         query="question1",
         answer=Answer(
@@ -808,7 +821,7 @@ def test_labels(document_store):
 
 # exclude weaviate because it does not support storing labels
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
-def test_multilabel(document_store):
+def test_multilabel(document_store: BaseDocumentStore):
     labels = [
         Label(
             id="standard",
@@ -924,7 +937,7 @@ def test_multilabel(document_store):
 
 # exclude weaviate because it does not support storing labels
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
-def test_multilabel_no_answer(document_store):
+def test_multilabel_no_answer(document_store: BaseDocumentStore):
     labels = [
         Label(
             query="question",
@@ -993,7 +1006,7 @@ def test_multilabel_no_answer(document_store):
 # exclude weaviate because it does not support storing labels
 # exclude faiss and milvus as label metadata is not implemented
 @pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
-def test_multilabel_filter_aggregations(document_store):
+def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
     labels = [
         Label(
             id="standard",
@@ -1089,7 +1102,7 @@ def test_multilabel_filter_aggregations(document_store):
 # exclude weaviate because it does not support storing labels
 # exclude faiss and milvus as label metadata is not implemented
 @pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
-def test_multilabel_meta_aggregations(document_store):
+def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
     labels = [
         Label(
             id="standard",
@@ -1180,7 +1193,7 @@ def test_multilabel_meta_aggregations(document_store):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate", "pinecone"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
-def test_update_meta(document_store):
+def test_update_meta(document_store: BaseDocumentStore):
     documents = [
         Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "1"}),
         Document(content="Doc2", meta={"meta_key_1": "2", "meta_key_2": "2"}),
@@ -1209,7 +1222,7 @@ def test_custom_embedding_field(document_store_type, tmp_path):
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_get_meta_values_by_key(document_store):
+def test_get_meta_values_by_key(document_store: BaseDocumentStore):
     documents = [
         Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "11"}),
         Document(content="Doc2", meta={"meta_key_1": "2", "meta_key_2": "22"}),
@@ -1271,7 +1284,7 @@ def test_elasticsearch_delete_index():
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store):
+def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store: BaseDocumentStore):
     document_store.write_documents(DOCUMENTS)
     document_without_embedding = Document(
         content="Doc without embedding", meta={"name": "name_7", "year": "2021", "month": "04"}
