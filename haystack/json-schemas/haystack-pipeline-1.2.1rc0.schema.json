@@ -2134,7 +2134,12 @@
                 "pdf",
                 "md",
                 "docx",
-                "html"
+                "html",
+                "pptx",
+                "odt",
+                "mp3",
+                "png",
+                "zip"
               ],
               "type": "array",
               "items": {
