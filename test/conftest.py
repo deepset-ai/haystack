@@ -302,7 +302,7 @@ def weaviate_fixture():
         print("Starting Weaviate servers ...")
         status = subprocess.run(["docker rm haystack_test_weaviate"], shell=True)
         status = subprocess.run(
-            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.7.2"], shell=True
+            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.11.0"], shell=True
         )
         if status.returncode:
             raise Exception("Failed to launch Weaviate. Please check docker container logs.")
