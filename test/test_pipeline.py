@@ -359,7 +359,7 @@ def test_get_config_custom_node_with_params():
 
     pipeline = Pipeline()
     pipeline.add_node(CustomNode(param=10), name="custom_node", inputs=["Query"])
-    
+
     assert len(pipeline.get_config()["components"]) == 1
     assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
