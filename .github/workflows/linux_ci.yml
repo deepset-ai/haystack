@@ -261,7 +261,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.2
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
 
     - name: Run GraphDB
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
@@ -346,3 +346,48 @@ jobs:
       run: |
         export MILVUS1_ENABLED=1
         pytest -s test/test_document_store.py test/test_eval.py test/test_faiss_and_milvus.py test/test_pipeline.py test/test_retriever.py test/test_standard_pipelines.py --document_store_type="milvus1"
+
+  test-pinecone:
+    needs: build-cache
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Cache Python
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install pdftotext
+        run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
+
+      # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
+      # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
+      - name: Reinstall Haystack
+        run: |
+          pip install .[test]
+
+      - name: Files related to Pinecone
+        id: pinecone-files
+        uses: tj-actions/changed-files@v18.4
+        with:
+          files: |
+            **/document_stores/pinecone.py
+            **/document_stores/sql.py
+            **/document_stores/base.py
+            **/document_stores/filter_utils.py
+
+      - name: Run tests
+        env:
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        if: steps.pinecone-files.outputs.any_changed == 'true'
+        run: |
+          pytest -s test/test_document_store.py test/test_pipeline.py test/test_standard_pipelines.py test/test_pipeline_extractive_qa.py --document_store_type="pinecone"
