@@ -370,7 +370,13 @@ class Trainer:
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
-        logits = self.model.forward(**batch)
+        logits = self.model.forward(
+            input_ids=batch["input_ids"], 
+            padding_mask=batch["padding_mask"], 
+            segment_ids=batch["segment_ids"], 
+            output_hidden_states=batch.get("output_hidden_states", False), 
+            output_attentions=batch.get("output_attentions", False)
+        )
         per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         return self.backward_propagate(per_sample_loss, step)
 
@@ -765,7 +771,13 @@ class DistillationTrainer(Trainer):
         keys = list(batch.keys())
         keys = [key for key in keys if key.startswith("teacher_output")]
         teacher_logits = [batch.pop(key) for key in keys]
-        logits = self.model.forward(**batch)
+        logits = self.model.forward(
+            input_ids=batch["input_ids"], 
+            padding_mask=batch["padding_mask"], 
+            segment_ids=batch["segment_ids"], 
+            output_hidden_states=batch.get("output_hidden_states", False), 
+            output_attentions=batch.get("output_attentions", False)
+        )
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         distillation_loss = self.distillation_loss_fn(
             student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
@@ -946,10 +958,19 @@ class DistillationLoss(Module):
     def forward(self, batch):
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
-                **batch, output_attentions=True, output_hidden_states=True
+                input_ids=batch["input_ids"], 
+                padding_mask=batch["padding_mask"], 
+                segment_ids=batch["segment_ids"], 
+                output_attentions=True, 
+                output_hidden_states=True
             )
-
-        _, hidden_states, attentions = self.model.forward(**batch, output_attentions=True, output_hidden_states=True)
+        _, hidden_states, attentions = self.model.forward(
+            input_ids=batch["input_ids"], 
+            padding_mask=batch["padding_mask"], 
+            segment_ids=batch["segment_ids"], 
+            output_attentions=True, 
+            output_hidden_states=True
+        )
         loss = torch.tensor(0.0, device=batch["input_ids"].device)
 
         # calculating attention loss

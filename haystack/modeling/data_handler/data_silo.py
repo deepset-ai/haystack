@@ -814,7 +814,7 @@ class DistillationDataSilo(DataSilo):
         """
         Run the teacher model on the given batch.
         """
-        return self.teacher.inferencer.model(**batch)
+        return self.teacher.inferencer.model(input_ids=batch["input_ids"], padding_mask=batch["padding_mask"], segment_ids=batch["segment_ids"])
 
     def _pass_batches(
         self,

@@ -23,9 +23,9 @@ TEST_DOCS=[
         meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
     ),
 ]
-UNANSWERABLE_QUERY = "What's the meaning of life?"
-ANSWERABLE_QUERY = "Who lives in Berlin?"
-ANSWER = "Carla"
+UNANSWERABLE_QUERY = "Why?"
+ANSWERABLE_QUERY = "Who lives in Madrid?"
+ANSWER = "Camila"
 NO_ANSWER = ""
 
 
@@ -56,7 +56,7 @@ def test_output(reader):
     assert prediction["query"] == ANSWERABLE_QUERY
     assert prediction["answers"][0].answer == ANSWER
     assert prediction["answers"][0].offsets_in_context[0].start == 11
-    assert prediction["answers"][0].offsets_in_context[0].end == 16
+    assert prediction["answers"][0].offsets_in_context[0].end == 17
     assert prediction["answers"][0].score <= 1
     assert prediction["answers"][0].score >= 0
     assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"
@@ -101,15 +101,16 @@ def test_farmreader_no_answer_output():
         model_name_or_path="distilbert-base-uncased-distilled-squad",
         use_gpu=False,
         top_k_per_sample=5,
-        no_ans_boost=0,
         return_no_answer=True,
         num_processes=0,
     )
     prediction = reader.predict(query=UNANSWERABLE_QUERY, documents=TEST_DOCS, top_k=5)
 
+    print(prediction)
+
     assert prediction is not None
     assert prediction["query"] == UNANSWERABLE_QUERY
-    assert prediction["answers"][0].answer == ""
+    assert prediction["answers"][0].answer == NO_ANSWER
     assert prediction["answers"][0].offsets_in_context[0].start == 0
     assert prediction["answers"][0].offsets_in_context[0].end == 0
     assert prediction["answers"][0].score <= 1
