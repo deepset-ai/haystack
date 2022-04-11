@@ -1,6 +1,8 @@
+import mimetypes
 from multiprocessing.sharedctypes import Value
 from typing import List, Union
 from pathlib import Path
+import magic
 from haystack.nodes.base import BaseComponent
 
 
@@ -28,11 +30,23 @@ class FileTypeClassifier(BaseComponent):
         if len(supported_types) > 10:
             raise ValueError("supported_types can't have more than 10 values.")
         if len(set(supported_types)) != len(supported_types):
-            raise ValueError("supported_types can't contain duplicate values.")
+            duplicates = supported_types
+            for item in set(supported_types):
+                duplicates.remove(item)
+            raise ValueError(f"supported_types can't contain duplicate values ({duplicates}).")
 
         super().__init__()
 
         self.supported_types = supported_types
+
+    def _estimate_extension(self, file_path: Path) -> str:
+        """
+        Return the extension found based on the contents of the given file
+
+        :param file_path: the path to extract the extension from
+        """
+        extension = magic.from_file(str(file_path), mime=True)
+        return mimetypes.guess_extension(extension) or ""
 
     def _get_extension(self, file_paths: List[Path]) -> str:
         """
@@ -41,12 +55,17 @@ class FileTypeClassifier(BaseComponent):
         If this is not true, it throws an exception.
 
         :param file_paths: the paths to extract the extension from
-        :return: a set of strings with all the extensions (without duplicates)
+        :return: a set of strings with all the extensions (without duplicates), the extension will be guessed if the file has none
         """
-        extension = file_paths[0].suffix
+        extension = file_paths[0].suffix.lower()
+        if extension == "":
+            extension = self._estimate_extension(file_paths[0])
 
         for path in file_paths:
-            if path.suffix != extension:
+            path_suffix = path.suffix.lower()
+            if path_suffix == "":
+                path_suffix = self._estimate_extension(path)
+            if path_suffix != extension:
                 raise ValueError(f"Multiple file types are not allowed at once.")
 
         return extension.lstrip(".")
@@ -68,7 +87,7 @@ class FileTypeClassifier(BaseComponent):
             index = self.supported_types.index(extension) + 1
         except ValueError:
             raise ValueError(
-                f"Files of type '{extension}' are not supported. "
+                f"Files of type '{extension}' ({paths[0]}) are not supported. "
                 f"The supported types are: {self.supported_types}. "
                 "Consider using the 'supported_types' parameter to "
                 "change the types accepted by this node."
