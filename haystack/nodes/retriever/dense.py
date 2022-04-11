@@ -283,7 +283,7 @@ class DensePassageRetriever(BaseRetriever):
                     query_embeddings, passage_embeddings = self.model.forward(
                         input_ids=batch["passage_input_ids"],
                         padding_mask=batch["passage_padding_mask"],
-                        segment_ids=batch["passage_segment_ids"]
+                        segment_ids=batch["passage_segment_ids"],
                     )[0]
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())
