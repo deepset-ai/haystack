@@ -370,7 +370,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         """
         # Run forward pass of language model
         output_tuple = self.language_model.forward(
-            **kwargs, output_hidden_states=output_hidden_states, output_attentions=output_attentions
+            **kwargs, transformers_args = {"output_hidden_states": output_hidden_states, "output_attentions": output_attentions}
         )
         if output_hidden_states:
             if output_attentions:

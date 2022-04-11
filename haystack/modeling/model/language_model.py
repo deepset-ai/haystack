@@ -213,12 +213,12 @@ class LanguageModel(nn.Module):
 
     @staticmethod
     def get_language_model_class(
-        model_name_or_path, use_auth_token: Union[str, bool] = None, transformers_args: Optional[dict] = None
+        model_name_or_path, use_auth_token: Union[str, bool] = None, haystack_lm_config: Optional[Path] = None, transformers_args: Optional[dict] = None
     ):
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
 
-        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, **transformers_args)
+        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, haystack_lm_config=haystack_lm_config, **transformers_args)
         model_type = config.model_type
         if model_type == "xlm-roberta":
             language_model_class = "XLMRoberta"
@@ -484,6 +484,7 @@ class Bert(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         bert = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             bert.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -580,6 +581,7 @@ class Albert(LanguageModel):
         :return: Language Model
         """
         albert = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             albert.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -677,6 +679,7 @@ class Roberta(LanguageModel):
         :return: Language Model
         """
         roberta = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             roberta.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -774,6 +777,7 @@ class XLMRoberta(LanguageModel):
         :return: Language Model
         """
         xlm_roberta = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             xlm_roberta.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -875,6 +879,7 @@ class DistilBert(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         distilbert = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             distilbert.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -981,6 +986,7 @@ class XLNet(LanguageModel):
         :return: Language Model
         """
         xlnet = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             xlnet.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -1097,6 +1103,7 @@ class Electra(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         electra = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             electra.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -1202,6 +1209,7 @@ class Camembert(Roberta):
         :return: Language Model
         """
         camembert = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             camembert.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -1254,6 +1262,7 @@ class DPRQuestionEncoder(LanguageModel):
         transformers_args = transformers_args or {}
 
         dpr_question_encoder = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             dpr_question_encoder.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -1411,6 +1420,7 @@ class DPRContextEncoder(LanguageModel):
         """
         transformers_args = transformers_args or {}
         dpr_context_encoder = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             dpr_context_encoder.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
@@ -1585,6 +1595,7 @@ class BigBird(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         big_bird = cls()
+        transformers_args = transformers_args or {}
         if haystack_lm_name:
             big_bird.name = haystack_lm_name
             transformers_args["haystack_lm_name"] = haystack_lm_name
