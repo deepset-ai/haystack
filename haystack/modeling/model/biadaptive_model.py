@@ -1,3 +1,4 @@
+from tkinter import _Padding
 from typing import List, Optional, Callable, Union, Dict
 
 import os
@@ -303,7 +304,15 @@ class BiAdaptiveModel(nn.Module):
 
         return all_logits
 
-    def forward_lm(self, **kwargs):
+    def forward_lm(
+        self, 
+        query_input_ids: Optional[torch.Tensor] = None, 
+        query_segment_ids: Optional[torch.Tensor] = None, 
+        query_padding_mask: Optional[torch.Tensor] = None, 
+        passage_input_ids: Optional[torch.Tensor] = None, 
+        passage_segment_ids: Optional[torch.Tensor] = None, 
+        passage_padding_mask: Optional[torch.Tensor] = None
+    ):
         """
         Forward pass for the BiAdaptive model.
 
@@ -311,11 +320,19 @@ class BiAdaptiveModel(nn.Module):
         :return: 2 tensors of pooled_output from the 2 language models.
         """
         pooled_output = [None, None]
-        if "query_input_ids" in kwargs.keys():
-            pooled_output1, hidden_states1 = self.language_model1(**kwargs)
+        if query_input_ids:
+            pooled_output1, hidden_states1 = self.language_model1(
+                input_ids=query_input_ids,
+                segment_ids=query_segment_ids,
+                padding_mask=query_padding_mask
+            )
             pooled_output[0] = pooled_output1
-        if "passage_input_ids" in kwargs.keys():
-            pooled_output2, hidden_states2 = self.language_model2(**kwargs)
+        if passage_input_ids:
+            pooled_output2, hidden_states2 = self.language_model2(
+                input_ids=passage_input_ids,
+                segment_ids=passage_segment_ids,
+                padding_mask=passage_padding_mask
+            )
             pooled_output[1] = pooled_output2
 
         return tuple(pooled_output)
