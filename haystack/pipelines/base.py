@@ -41,7 +41,7 @@ except:
     serve = None  # type: ignore
 
 from haystack import __version__
-from haystack.schema import Corpus, EvaluationDataset, EvaluationResult, MultiLabel, Document
+from haystack.schema import FileCorpus, EvaluationDataset, EvaluationResult, MultiLabel, Document
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
@@ -798,7 +798,7 @@ class Pipeline(BasePipeline):
         cls,
         pipeline_bundle: PipelineBundle,
         dataset: EvaluationDataset,
-        corpus: Corpus,
+        corpus: FileCorpus,
         experiment_name: str,
         experiment_run_name: str,
         experiment_tracking_uri: str,
