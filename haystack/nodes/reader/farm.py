@@ -120,8 +120,6 @@ class FARMReader(BaseReader):
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-
         self.devices, self.n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
         self.return_no_answers = return_no_answer
         self.top_k = top_k
@@ -167,7 +165,7 @@ class FARMReader(BaseReader):
         train_filename: str,
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
-        use_gpu: Optional[bool] = None,
+        use_gpu: bool = True,
         devices: List[torch.device] = [],
         batch_size: int = 10,
         n_epochs: int = 2,
@@ -204,8 +202,6 @@ class FARMReader(BaseReader):
         # These can also be manually set when train() is called if you want a different value at train vs inference
         if devices is None:
             devices = self.devices
-        if use_gpu is None:
-            use_gpu = self.use_gpu
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
 
