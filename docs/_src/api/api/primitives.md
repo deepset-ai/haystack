@@ -449,3 +449,21 @@ def __init__(name: str, labels: List[MultiLabel], meta: Dict[str, Any] = {}) -> 
 
 Set of labels belonging together and forming a well-specified and referenceable evaluation dataset.
 
+<a id="schema.FileCorpus"></a>
+
+## FileCorpus
+
+```python
+class FileCorpus()
+```
+
+<a id="schema.FileCorpus.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(name: str, file_paths: List[str], file_metas: List[Dict[str, Any]] = None, meta: Dict[str, Any] = {}) -> None
+```
+
+Set of files belonging together and forming a well-specified and referenceable file corpus.
+

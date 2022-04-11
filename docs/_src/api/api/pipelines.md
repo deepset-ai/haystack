@@ -469,7 +469,7 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 
 ```python
 @classmethod
-def run_eval_experiment(cls, pipeline_bundle: PipelineBundle, dataset: EvaluationDataset, corpus: Corpus, experiment_name: str, experiment_run_name: str, experiment_tracking_uri: str, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
+def run_eval_experiment(cls, pipeline_bundle: PipelineBundle, dataset: EvaluationDataset, corpus: FileCorpus, experiment_name: str, experiment_run_name: str, experiment_tracking_uri: str, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
 ```
 
 Starts an experiment run that evaluates the pipeline bundle using pipeline.eval() by indexing the corpus and running the query pipeline once per query in debug mode
