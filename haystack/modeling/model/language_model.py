@@ -1451,7 +1451,9 @@ class DPRContextEncoder(LanguageModel):
                     config=transformers.DPRConfig(**original_config_dict)
                 )
                 language_model_class = cls.get_language_model_class(
-                    haystack_lm_config=haystack_lm_config, transformers_args=transformers_args
+                    pretrained_model_name_or_path,
+                    haystack_lm_config=haystack_lm_config, 
+                    transformers_args=transformers_args
                 )
                 dpr_context_encoder.model.base_model.bert_model = (
                     cls.subclasses[language_model_class]
