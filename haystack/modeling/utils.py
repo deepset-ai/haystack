@@ -49,7 +49,10 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
 
 
 def initialize_device_settings(
-    use_cuda: Optional[bool] = None, local_rank: int = -1, multi_gpu: bool = True, devices: Optional[List[torch.device]] = None
+    use_cuda: Optional[bool] = None,
+    local_rank: int = -1,
+    multi_gpu: bool = True,
+    devices: Optional[List[torch.device]] = None,
 ) -> Tuple[List[torch.device], int]:
     """
     Returns a list of available devices.
