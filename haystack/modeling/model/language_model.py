@@ -213,12 +213,20 @@ class LanguageModel(nn.Module):
 
     @staticmethod
     def get_language_model_class(
-        model_name_or_path, use_auth_token: Union[str, bool] = None, haystack_lm_config: Optional[Path] = None, transformers_args: Optional[dict] = None
+        model_name_or_path,
+        use_auth_token: Union[str, bool] = None,
+        haystack_lm_config: Optional[Path] = None,
+        transformers_args: Optional[dict] = None,
     ):
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
 
-        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, haystack_lm_config=haystack_lm_config, **transformers_args)
+        config = AutoConfig.from_pretrained(
+            model_name_or_path,
+            use_auth_token=use_auth_token,
+            haystack_lm_config=haystack_lm_config,
+            **transformers_args,
+        )
         model_type = config.model_type
         if model_type == "xlm-roberta":
             language_model_class = "XLMRoberta"
@@ -1356,12 +1364,7 @@ class DPRQuestionEncoder(LanguageModel):
 
         super(DPRQuestionEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(  # type: ignore
-        self, 
-        input_ids: torch.Tensor, 
-        segment_ids: torch.Tensor, 
-        attention_mask: torch.Tensor
-    ):
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, attention_mask: torch.Tensor):  # type: ignore
         """
         Perform the forward pass of the DPRQuestionEncoder model.
 
@@ -1374,10 +1377,7 @@ class DPRQuestionEncoder(LanguageModel):
         :return: Embeddings for each token in the input sequence.
         """
         output_tuple = self.model(
-            input_ids=input_ids,
-            token_type_ids=query_segment_ids,
-            attention_mask=query_attention_mask,
-            return_dict=True,
+            input_ids=input_ids, token_type_ids=query_segment_ids, attention_mask=query_attention_mask, return_dict=True
         )
         if self.model.question_encoder.config.output_hidden_states == True:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
@@ -1456,8 +1456,8 @@ class DPRContextEncoder(LanguageModel):
                 )
                 language_model_class = cls.get_language_model_class(
                     pretrained_model_name_or_path,
-                    haystack_lm_config=haystack_lm_config, 
-                    transformers_args=transformers_args
+                    haystack_lm_config=haystack_lm_config,
+                    transformers_args=transformers_args,
                 )
                 dpr_context_encoder.model.base_model.bert_model = (
                     cls.subclasses[language_model_class]
@@ -1522,9 +1522,7 @@ class DPRContextEncoder(LanguageModel):
 
         super(DPRContextEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(  # type: ignore
-        self, input_ids: torch.Tensor, segment_ids: torch.Tensor, attention_mask: torch.Tensor
-    ):
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, attention_mask: torch.Tensor):  # type: ignore
         """
         Perform the forward pass of the DPRContextEncoder model.
 
@@ -1541,10 +1539,7 @@ class DPRContextEncoder(LanguageModel):
         segment_ids = segment_ids.view(-1, max_seq_len)
         attention_mask = attention_mask.view(-1, max_seq_len)
         output_tuple = self.model(
-            input_ids=input_ids,
-            token_type_ids=segment_ids,
-            attention_mask=attention_mask,
-            return_dict=True,
+            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
         )
         if self.model.ctx_encoder.config.output_hidden_states == True:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states

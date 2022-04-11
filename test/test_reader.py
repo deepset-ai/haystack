@@ -5,7 +5,7 @@ from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 
 
-TEST_DOCS=[
+TEST_DOCS = [
     Document(
         content="My name is Carla and I live in Berlin",
         meta={"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
@@ -29,7 +29,6 @@ ANSWER = "Camila"
 NO_ANSWER = ""
 
 
-
 @pytest.fixture(params=["farm", "transformers"], scope="session")
 def reader(request):
     if request.param == "farm":
@@ -45,7 +44,6 @@ def reader(request):
             tokenizer="distilbert-base-uncased",
             use_gpu=-1,
         )
-
 
 
 @pytest.mark.integration
@@ -74,7 +72,7 @@ def test_prediction_attributes(reader):
 
 
 def test_model_download_options():
-    """ Download is disabled and the model is not cached locally """
+    """Download is disabled and the model is not cached locally"""
     with pytest.raises(OSError):
         FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
 
@@ -83,7 +81,7 @@ def test_model_download_options():
 def test_answer_attributes(reader):
     # TODO Transformers answer also has meta key
     prediction = reader.predict(query=UNANSWERABLE_QUERY, documents=TEST_DOCS, top_k=5)
-    
+
     answer = prediction["answers"][0]
     assert type(answer) == Answer
     attributes_gold = ["answer", "score", "context", "offsets_in_context", "offsets_in_document", "type"]
@@ -94,6 +92,7 @@ def test_answer_attributes(reader):
 #
 # FARMReader specific
 #
+
 
 @pytest.mark.integration
 def test_farmreader_no_answer_output():
@@ -130,13 +129,10 @@ def test_farmreader_no_answer_output():
 @pytest.mark.parametrize("window_size", [10, 15, 20])
 def test_farmreader_context_window_size(reader, window_size):
     reader = FARMReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
-            use_gpu=False,
-            top_k_per_sample=5,
-            num_processes=0,
-        )
+        model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False, top_k_per_sample=5, num_processes=0
+    )
     prediction = reader.predict(query=UNANSWERABLE_QUERY, documents=TEST_DOCS, top_k=5)
-    
+
     old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
     reader.inferencer.model.prediction_heads[0].context_window_size = window_size
 
@@ -163,11 +159,8 @@ def test_farmreader_context_window_size(reader, window_size):
 @pytest.mark.parametrize("top_k", [2, 5, 10])
 def test_farmreader_top_k(reader, top_k):
     reader = FARMReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
-            use_gpu=False,
-            top_k_per_sample=5,
-            num_processes=0,
-        )
+        model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False, top_k_per_sample=5, num_processes=0
+    )
 
     old_top_k_per_candidate = reader.top_k_per_candidate
     reader.top_k_per_candidate = 4
@@ -186,10 +179,7 @@ def test_farmreader_top_k(reader, top_k):
 @pytest.mark.integration
 def test_farm_reader_update_params():
     reader = FARMReader(
-        model_name_or_path="distilbert-base-uncased-distilled-squad", 
-        use_gpu=False, 
-        no_ans_boost=0, 
-        num_processes=0
+        model_name_or_path="distilbert-base-uncased-distilled-squad", use_gpu=False, no_ans_boost=0, num_processes=0
     )
 
     # original reader
