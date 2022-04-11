@@ -44,7 +44,9 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 
     # Generate mock schema in tmp_path
     filename = f"haystack-pipeline-unstable.schema.json"
-    test_schema = _json_schema.get_json_schema(filename=filename, compatible_versions=["unstable", haystack.__version__])
+    test_schema = _json_schema.get_json_schema(
+        filename=filename, compatible_versions=["unstable", haystack.__version__]
+    )
 
     with open(tmp_path / filename, "w") as schema_file:
         json.dump(test_schema, schema_file, indent=4)
