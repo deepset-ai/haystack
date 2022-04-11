@@ -4,7 +4,7 @@ import logging
 import multiprocessing
 import os
 from pathlib import Path
-from typing import Iterable, Dict, Union, List, Optional, Callable
+from typing import Any, Iterable, Dict, Union, List, Optional, Callable
 
 import numpy
 import torch
@@ -357,20 +357,29 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self, output_hidden_states: bool = False, output_attentions: bool = False, **kwargs):
+    def forward(
+        self, 
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
+        output_hidden_states: bool = False, 
+        output_attentions: bool = False
+    ):
         """
         Push data through the whole model and returns logits. The data will
         propagate through the language model and each of the attached prediction heads.
 
-        :param kwargs: Holds all arguments that need to be passed to the language model
-                       and prediction head(s).
         :param output_hidden_states: Whether to output hidden states
         :param output_attentions: Whether to output attentions
         :return: All logits as torch.tensor or multiple tensors.
         """
         # Run forward pass of language model
         output_tuple = self.language_model.forward(
-            **kwargs, transformers_args = {"output_hidden_states": output_hidden_states, "output_attentions": output_attentions}
+            input_ids=input_ids,
+            segment_ids=segment_ids,
+            padding_mask=padding_mask,
+            output_hidden_states=output_hidden_states, 
+            output_attentions=output_attentions
         )
         if output_hidden_states:
             if output_attentions:

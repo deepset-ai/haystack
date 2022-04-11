@@ -913,6 +913,7 @@ class DistilBert(LanguageModel):
     def forward(  # type: ignore
         self,
         input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
@@ -1356,21 +1357,24 @@ class DPRQuestionEncoder(LanguageModel):
         super(DPRQuestionEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
     def forward(  # type: ignore
-        self, query_input_ids: torch.Tensor, query_segment_ids: torch.Tensor, query_attention_mask: torch.Tensor
+        self, 
+        input_ids: torch.Tensor, 
+        segment_ids: torch.Tensor, 
+        attention_mask: torch.Tensor
     ):
         """
         Perform the forward pass of the DPRQuestionEncoder model.
 
-        :param query_input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :param query_segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
+        :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
+        :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, max_seq_len]
-        :param query_attention_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
+        :param attention_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
         output_tuple = self.model(
-            input_ids=query_input_ids,
+            input_ids=input_ids,
             token_type_ids=query_segment_ids,
             attention_mask=query_attention_mask,
             return_dict=True,
@@ -1519,27 +1523,27 @@ class DPRContextEncoder(LanguageModel):
         super(DPRContextEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
     def forward(  # type: ignore
-        self, passage_input_ids: torch.Tensor, passage_segment_ids: torch.Tensor, passage_attention_mask: torch.Tensor
+        self, input_ids: torch.Tensor, segment_ids: torch.Tensor, attention_mask: torch.Tensor
     ):
         """
         Perform the forward pass of the DPRContextEncoder model.
 
-        :param passage_input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, number_of_hard_negative_passages, max_seq_len]
-        :param passage_segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
+        :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, number_of_hard_negative_passages, max_seq_len]
+        :param segment_ids: The id of the segment. For example, in next sentence prediction, the tokens in the
            first sentence are marked with 0 and those in the second are marked with 1.
            It is a tensor of shape [batch_size, number_of_hard_negative_passages, max_seq_len]
-        :param passage_attention_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
+        :param attention_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size,  number_of_hard_negative_passages, max_seq_len]
         :return: Embeddings for each token in the input sequence.
         """
-        max_seq_len = passage_input_ids.shape[-1]
-        passage_input_ids = passage_input_ids.view(-1, max_seq_len)
-        passage_segment_ids = passage_segment_ids.view(-1, max_seq_len)
-        passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)
+        max_seq_len = input_ids.shape[-1]
+        input_ids = input_ids.view(-1, max_seq_len)
+        segment_ids = segment_ids.view(-1, max_seq_len)
+        attention_mask = attention_mask.view(-1, max_seq_len)
         output_tuple = self.model(
-            input_ids=passage_input_ids,
-            token_type_ids=passage_segment_ids,
-            attention_mask=passage_attention_mask,
+            input_ids=input_ids,
+            token_type_ids=segment_ids,
+            attention_mask=attention_mask,
             return_dict=True,
         )
         if self.model.ctx_encoder.config.output_hidden_states == True:

@@ -1,21 +1,60 @@
-import math
-
 import pytest
 
 from haystack.schema import Document, Answer
-from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.reader.farm import FARMReader
+from haystack.nodes.reader.transformers import TransformersReader
 
 
-def test_reader_basic(reader):
-    assert reader is not None
-    assert isinstance(reader, BaseReader)
+TEST_DOCS=[
+    Document(
+        content="My name is Carla and I live in Berlin",
+        meta={"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
+    ),
+    Document(
+        content="My name is Matteo and I live in Rome",
+        meta={"meta_field": "test2", "name": "filename2", "date_field": "2019-01-01", "numeric_field": 0.0},
+    ),
+    Document(
+        content="My name is Christelle and I live in Paris",
+        meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
+    ),
+    Document(
+        content="My name is Camila and I live in Madrid",
+        meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
+    ),
+]
+UNANSWERABLE_QUERY = "What's the meaning of life?"
+ANSWERABLE_QUERY = "Who lives in Berlin?"
+ANSWER = "Carla"
+NO_ANSWER = ""
 
 
-def test_output(prediction):
+
+@pytest.fixture(params=["farm", "transformers"], scope="session")
+def reader(request):
+    if request.param == "farm":
+        return FARMReader(
+            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            use_gpu=False,
+            top_k_per_sample=5,
+            num_processes=0,
+        )
+    if request.param == "transformers":
+        return TransformersReader(
+            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            tokenizer="distilbert-base-uncased",
+            use_gpu=-1,
+        )
+
+
+
+@pytest.mark.integration
+def test_output(reader):
+    prediction = reader.predict(query=ANSWERABLE_QUERY, documents=TEST_DOCS, top_k=5)
+
     assert prediction is not None
-    assert prediction["query"] == "Who lives in Berlin?"
-    assert prediction["answers"][0].answer == "Carla"
+    assert prediction["query"] == ANSWERABLE_QUERY
+    assert prediction["answers"][0].answer == ANSWER
     assert prediction["answers"][0].offsets_in_context[0].start == 11
     assert prediction["answers"][0].offsets_in_context[0].end == 16
     assert prediction["answers"][0].score <= 1
@@ -24,44 +63,27 @@ def test_output(prediction):
     assert len(prediction["answers"]) == 5
 
 
-@pytest.mark.slow
-def test_no_answer_output(no_answer_prediction):
-    assert no_answer_prediction is not None
-    assert no_answer_prediction["query"] == "What is the meaning of life?"
-    assert math.isclose(no_answer_prediction["no_ans_gap"], -11.847594738006592, rel_tol=0.0001)
-    assert no_answer_prediction["answers"][0].answer == ""
-    assert no_answer_prediction["answers"][0].offsets_in_context[0].start == 0
-    assert no_answer_prediction["answers"][0].offsets_in_context[0].end == 0
-    assert no_answer_prediction["answers"][0].score <= 1
-    assert no_answer_prediction["answers"][0].score >= 0
-    assert no_answer_prediction["answers"][0].context == None
-    assert no_answer_prediction["answers"][0].document_id == None
-    answers = [x.answer for x in no_answer_prediction["answers"]]
-    assert answers.count("") == 1
-    assert len(no_answer_prediction["answers"]) == 5
-
-
-# TODO Directly compare farm and transformers reader outputs
-# TODO checks to see that model is responsive to input arguments e.g. context_window_size - topk
-
-
-@pytest.mark.slow
-def test_prediction_attributes(prediction):
+@pytest.mark.integration
+def test_prediction_attributes(reader):
     # TODO FARM's prediction also has no_ans_gap
+    prediction = reader.predict(query=UNANSWERABLE_QUERY, documents=TEST_DOCS, top_k=5)
+
     attributes_gold = ["query", "answers"]
     for ag in attributes_gold:
         assert ag in prediction
 
 
-@pytest.mark.slow
 def test_model_download_options():
-    # download disabled and model is not cached locally
+    """ Download is disabled and the model is not cached locally """
     with pytest.raises(OSError):
-        impossible_reader = FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
+        FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
 
 
-def test_answer_attributes(prediction):
+@pytest.mark.integration
+def test_answer_attributes(reader):
     # TODO Transformers answer also has meta key
+    prediction = reader.predict(query=UNANSWERABLE_QUERY, documents=TEST_DOCS, top_k=5)
+    
     answer = prediction["answers"][0]
     assert type(answer) == Answer
     attributes_gold = ["answer", "score", "context", "offsets_in_context", "offsets_in_document", "type"]
@@ -69,18 +91,55 @@ def test_answer_attributes(prediction):
         assert getattr(answer, ag, None) is not None
 
 
-@pytest.mark.slow
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+#
+# FARMReader specific
+#
+
+@pytest.mark.integration
+def test_farmreader_no_answer_output():
+    reader = FARMReader(
+        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        use_gpu=False,
+        top_k_per_sample=5,
+        no_ans_boost=0,
+        return_no_answer=True,
+        num_processes=0,
+    )
+    prediction = reader.predict(query=UNANSWERABLE_QUERY, documents=TEST_DOCS, top_k=5)
+
+    assert prediction is not None
+    assert prediction["query"] == UNANSWERABLE_QUERY
+    assert prediction["answers"][0].answer == ""
+    assert prediction["answers"][0].offsets_in_context[0].start == 0
+    assert prediction["answers"][0].offsets_in_context[0].end == 0
+    assert prediction["answers"][0].score <= 1
+    assert prediction["answers"][0].score >= 0
+    assert prediction["answers"][0].context == None
+    assert prediction["answers"][0].document_id == None
+    answers = [x.answer for x in prediction["answers"]]
+    assert answers.count("") == 1
+    assert len(prediction["answers"]) == 5
+
+
+# TODO Directly compare farm and transformers reader outputs
+# TODO checks to see that model is responsive to input arguments e.g. context_window_size - topk
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize("window_size", [10, 15, 20])
-def test_context_window_size(reader, test_docs_xs, window_size):
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-
-    assert isinstance(reader, FARMReader)
-
+def test_farmreader_context_window_size(reader, window_size):
+    reader = FARMReader(
+            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            use_gpu=False,
+            top_k_per_sample=5,
+            num_processes=0,
+        )
+    prediction = reader.predict(query=UNANSWERABLE_QUERY, documents=TEST_DOCS, top_k=5)
+    
     old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
     reader.inferencer.model.prediction_heads[0].context_window_size = window_size
 
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=TEST_DOCS, top_k=5)
     for answer in prediction["answers"]:
         # If the extracted answer is larger than the context window, the context window is expanded.
         # If the extracted answer is odd in length, the resulting context window is one less than context_window_size
@@ -99,73 +158,72 @@ def test_context_window_size(reader, test_docs_xs, window_size):
     # TODO Currently the behaviour of context_window_size in FARMReader and TransformerReader is different
 
 
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+@pytest.mark.integration
 @pytest.mark.parametrize("top_k", [2, 5, 10])
-def test_top_k(reader, test_docs_xs, top_k):
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-
-    assert isinstance(reader, FARMReader)
+def test_farmreader_top_k(reader, top_k):
+    reader = FARMReader(
+            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            use_gpu=False,
+            top_k_per_sample=5,
+            num_processes=0,
+        )
 
     old_top_k_per_candidate = reader.top_k_per_candidate
     reader.top_k_per_candidate = 4
     reader.inferencer.model.prediction_heads[0].n_best = reader.top_k_per_candidate + 1
-    try:
-        old_top_k_per_sample = reader.inferencer.model.prediction_heads[0].n_best_per_sample
-        reader.inferencer.model.prediction_heads[0].n_best_per_sample = 4
-    except:
-        print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
+    old_top_k_per_sample = reader.inferencer.model.prediction_heads[0].n_best_per_sample
+    reader.inferencer.model.prediction_heads[0].n_best_per_sample = 4
 
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=top_k)
+    prediction = reader.predict(query=ANSWERABLE_QUERY, documents=TEST_DOCS, top_k=top_k)
     assert len(prediction["answers"]) == top_k
 
     reader.top_k_per_candidate = old_top_k_per_candidate
     reader.inferencer.model.prediction_heads[0].n_best = reader.top_k_per_candidate + 1
-    try:
-        reader.inferencer.model.prediction_heads[0].n_best_per_sample = old_top_k_per_sample
-    except:
-        print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
+    reader.inferencer.model.prediction_heads[0].n_best_per_sample = old_top_k_per_sample
 
 
-def test_farm_reader_update_params(test_docs_xs):
+@pytest.mark.integration
+def test_farm_reader_update_params():
     reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
+        model_name_or_path="distilbert-base-uncased-distilled-squad", 
+        use_gpu=False, 
+        no_ans_boost=0, 
+        num_processes=0
     )
 
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-
     # original reader
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    prediction = reader.predict(query=ANSWERABLE_QUERY, documents=TEST_DOCS, top_k=3)
     assert len(prediction["answers"]) == 3
-    assert prediction["answers"][0].answer == "Carla"
+    assert prediction["answers"][0].answer == ANSWER
 
     # update no_ans_boost
     reader.update_parameters(
         context_window_size=100, no_ans_boost=100, return_no_answer=True, max_seq_len=384, doc_stride=128
     )
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    prediction = reader.predict(query=ANSWERABLE_QUERY, documents=TEST_DOCS, top_k=3)
     assert len(prediction["answers"]) == 3
-    assert prediction["answers"][0].answer == ""
+    assert prediction["answers"][0].answer == NO_ANSWER
 
     # update no_ans_boost
     reader.update_parameters(
         context_window_size=100, no_ans_boost=0, return_no_answer=False, max_seq_len=384, doc_stride=128
     )
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    prediction = reader.predict(query=ANSWERABLE_QUERY, documents=TEST_DOCS, top_k=3)
     assert len(prediction["answers"]) == 3
     assert None not in [ans.answer for ans in prediction["answers"]]
 
     # update context_window_size
     reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=384, doc_stride=128)
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    prediction = reader.predict(query=ANSWERABLE_QUERY, documents=TEST_DOCS, top_k=3)
     assert len(prediction["answers"]) == 3
     assert len(prediction["answers"][0].context) == 6
 
     # update doc_stride with invalid value
     with pytest.raises(Exception):
         reader.update_parameters(context_window_size=100, no_ans_boost=-10, max_seq_len=384, doc_stride=999)
-        reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+        reader.predict(query=ANSWERABLE_QUERY, documents=TEST_DOCS, top_k=3)
 
     # update max_seq_len with invalid value
     with pytest.raises(Exception):
         reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=99, doc_stride=128)
-        reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+        reader.predict(query=ANSWERABLE_QUERY, documents=TEST_DOCS, top_k=3)
