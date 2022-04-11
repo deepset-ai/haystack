@@ -99,7 +99,9 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
             _optional_component_not_installed(__name__, "sentence", ie)
 
-        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=str(retriever.devices[0]))
+        self.embedding_model = SentenceTransformer(
+            retriever.embedding_model, device=str(retriever.devices[0]), use_auth_token=retriever.use_auth_token
+        )
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len
         self.show_progress_bar = retriever.progress_bar
