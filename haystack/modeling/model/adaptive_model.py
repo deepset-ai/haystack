@@ -377,9 +377,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         output_tuple = self.language_model.forward(
             input_ids=input_ids,
             segment_ids=segment_ids,
-            padding_mask=padding_mask,
-            output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions,
+            padding_mask=padding_mask
         )
         if output_hidden_states:
             if output_attentions:

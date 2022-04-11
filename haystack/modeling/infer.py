@@ -476,7 +476,11 @@ class Inferencer:
 
             # get logits
             with torch.no_grad():
-                logits = self.model.forward(**batch)
+                logits = self.model.forward(
+                    input_ids=batch["input_ids"],
+                    segment_ids=batch["segment_ids"],
+                    padding_mask=batch["padding_mask"]
+                )
                 preds = self.model.formatted_preds(
                     logits=logits,
                     samples=batch_samples,

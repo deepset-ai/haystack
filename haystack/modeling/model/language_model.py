@@ -1377,7 +1377,7 @@ class DPRQuestionEncoder(LanguageModel):
         :return: Embeddings for each token in the input sequence.
         """
         output_tuple = self.model(
-            input_ids=input_ids, token_type_ids=query_segment_ids, attention_mask=query_attention_mask, return_dict=True
+            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
         )
         if self.model.question_encoder.config.output_hidden_states == True:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states

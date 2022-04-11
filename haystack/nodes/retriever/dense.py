@@ -280,7 +280,11 @@ class DensePassageRetriever(BaseRetriever):
 
                 # get logits
                 with torch.no_grad():
-                    query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
+                    query_embeddings, passage_embeddings = self.model.forward(
+                        input_ids=batch["passage_input_ids"],
+                        padding_mask=batch["passage_padding_mask"],
+                        segment_ids=batch["passage_segment_ids"]
+                    )[0]
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
@@ -781,7 +785,14 @@ class TableTextRetriever(BaseRetriever):
 
                 # get logits
                 with torch.no_grad():
-                    query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
+                    query_embeddings, passage_embeddings = self.model.forward(
+                        query_input_ids=batch.get("query_input_ids", None),
+                        query_segment_ids=batch.get("query_segment_ids", None),
+                        query_padding_mask=batch.get("query_padding_mask", None),
+                        passage_input_ids=batch.get("passage_input_ids", None),
+                        passage_segment_ids=batch.get("passage_segment_ids", None),
+                        passage_padding_mask=batch.get("passage_padding_mask", None),
+                    )[0]
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:

@@ -257,7 +257,14 @@ class BiAdaptiveModel(nn.Module):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self, **kwargs):
+    def forward(self,
+        query_input_ids: Optional[torch.Tensor] = None, 
+        query_segment_ids: Optional[torch.Tensor] = None, 
+        query_padding_mask: Optional[torch.Tensor] = None, 
+        passage_input_ids: Optional[torch.Tensor] = None, 
+        passage_segment_ids: Optional[torch.Tensor] = None, 
+        passage_padding_mask: Optional[torch.Tensor] = None
+    ):
         """
         Push data through the whole model and returns logits. The data will propagate through
         the first language model and second language model based on the tensor names and both the
@@ -268,7 +275,14 @@ class BiAdaptiveModel(nn.Module):
         """
 
         # Run forward pass of both language models
-        pooled_output = self.forward_lm(**kwargs)
+        pooled_output = self.forward_lm(
+            query_input_ids=query_input_ids,
+            query_segment_ids=query_segment_ids,
+            query_padding_mask=query_padding_mask,
+            passage_input_ids=passage_input_ids,
+            passage_segment_ids=passage_segment_ids,
+            passage_padding_mask=passage_padding_mask
+        )
 
         # Run forward pass of (multiple) prediction heads using the output from above
         all_logits = []
