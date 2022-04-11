@@ -358,12 +358,12 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         return all_labels
 
     def forward(
-        self, 
+        self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
-        output_hidden_states: bool = False, 
-        output_attentions: bool = False
+        output_hidden_states: bool = False,
+        output_attentions: bool = False,
     ):
         """
         Push data through the whole model and returns logits. The data will
@@ -378,8 +378,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             input_ids=input_ids,
             segment_ids=segment_ids,
             padding_mask=padding_mask,
-            output_hidden_states=output_hidden_states, 
-            output_attentions=output_attentions
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
         )
         if output_hidden_states:
             if output_attentions:
