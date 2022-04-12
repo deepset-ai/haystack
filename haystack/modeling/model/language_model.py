@@ -102,7 +102,14 @@ class LanguageModel(nn.Module):
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
 
-    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor):
+    def forward(
+        self, 
+        input_ids: torch.Tensor, 
+        segment_ids: torch.Tensor, 
+        padding_mask: torch.Tensor, 
+        output_hidden_states: Optional[bool] = None, 
+        output_attentions: Optional[bool] = None
+    ):
         raise NotImplementedError
 
     @classmethod
@@ -854,7 +861,7 @@ class DistilBert(LanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
 
     NOTE:
-    - DistilBert doesn’t have token_type_ids, you don’t need to indicate which
+    - DistilBert doesn't have token_type_ids, you don't need to indicate which
     token belongs to which segment. Just separate your segments with the separation
     token tokenizer.sep_token (or [SEP])
     - Unlike the other BERT variants, DistilBert does not output the
@@ -936,10 +943,11 @@ class DistilBert(LanguageModel):
         :param output_attentions: Whether to output attentions in addition to the embeddings
         :return: Embeddings for each token in the input sequence.
         """
+        encoder = self.model.get("encoder", None) or self.model.get("transformer", None)
         if output_hidden_states is None:
-            output_hidden_states = self.model.encoder.config.output_hidden_states
+            output_hidden_states = encoder.config.output_hidden_states
         if output_attentions is None:
-            output_attentions = self.model.encoder.config.output_attentions
+            output_attentions = encoder.config.output_attentions
 
         output_tuple = self.model(
             input_ids,
@@ -1364,7 +1372,14 @@ class DPRQuestionEncoder(LanguageModel):
 
         super(DPRQuestionEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, attention_mask: torch.Tensor):  # type: ignore
+    def forward(
+        self, 
+        input_ids: torch.Tensor, 
+        segment_ids: torch.Tensor, 
+        attention_mask: torch.Tensor, 
+        output_hidden_states: Optional[bool] = None, 
+        output_attentions: Optional[bool] = None
+    ):
         """
         Perform the forward pass of the DPRQuestionEncoder model.
 
@@ -1374,6 +1389,8 @@ class DPRQuestionEncoder(LanguageModel):
            It is a tensor of shape [batch_size, max_seq_len]
         :param attention_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]
+        :param output_hidden_states: unused
+        :param output_attentions: unused
         :return: Embeddings for each token in the input sequence.
         """
         output_tuple = self.model(
@@ -1522,7 +1539,14 @@ class DPRContextEncoder(LanguageModel):
 
         super(DPRContextEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, attention_mask: torch.Tensor):  # type: ignore
+    def forward(
+        self, 
+        input_ids: torch.Tensor, 
+        segment_ids: torch.Tensor, 
+        attention_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None, 
+        output_attentions: Optional[bool] = None
+    ):
         """
         Perform the forward pass of the DPRContextEncoder model.
 
@@ -1532,6 +1556,8 @@ class DPRContextEncoder(LanguageModel):
            It is a tensor of shape [batch_size, number_of_hard_negative_passages, max_seq_len]
         :param attention_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size,  number_of_hard_negative_passages, max_seq_len]
+        :param output_hidden_states: unused
+        :param output_attentions: unused
         :return: Embeddings for each token in the input sequence.
         """
         max_seq_len = input_ids.shape[-1]
