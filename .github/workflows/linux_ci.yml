@@ -29,6 +29,7 @@ jobs:
 
   build-cache:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
@@ -59,6 +60,7 @@ jobs:
 
   type-check:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -95,6 +97,7 @@ jobs:
 
   linter:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
 
       - uses: actions/checkout@v2
@@ -132,6 +135,7 @@ jobs:
   code-and-docs-check:
     needs: build-cache
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: ${{ github.event_name }} != "push"
 
     steps:
@@ -217,6 +221,7 @@ jobs:
   prepare-matrix:
     needs: build-cache
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
@@ -230,6 +235,7 @@ jobs:
   tests:
     needs: prepare-matrix
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
@@ -304,6 +310,7 @@ jobs:
   test-milvus1:
     needs: build-cache
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@v2
@@ -350,6 +357,7 @@ jobs:
   test-pinecone:
     needs: build-cache
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2
