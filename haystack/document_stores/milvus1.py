@@ -60,7 +60,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
-        isolation_level: str = None
+        isolation_level: str = None,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -142,7 +142,6 @@ class Milvus1DocumentStore(SQLDocumentStore):
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
-
 
     def __del__(self):
         return self.milvus_server.close()

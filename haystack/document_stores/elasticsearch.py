@@ -1594,10 +1594,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     def __init__(
-        self,  
-        scheme: str = "https",      # Mind this different default param
-        username: str = "admin",      # Mind this different default param
-        password: str = "admin",     # Mind this different default param
+        self,
+        scheme: str = "https",  # Mind this different default param
+        username: str = "admin",  # Mind this different default param
+        password: str = "admin",  # Mind this different default param
         host: Union[str, List[str]] = "localhost",
         port: Union[int, List[int]] = 9200,
         api_key_id: Optional[str] = None,
@@ -1614,7 +1614,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         excluded_meta_data: Optional[list] = None,
         analyzer: str = "standard",
         ca_certs: Optional[str] = None,
-        verify_certs: bool = False,     # Mind this different default param
+        verify_certs: bool = False,  # Mind this different default param
         recreate_index: bool = False,
         create_index: bool = True,
         refresh_type: str = "wait_for",
@@ -1627,7 +1627,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
-        use_system_proxy: bool = False
+        use_system_proxy: bool = False,
     ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -1731,7 +1731,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
-            use_system_proxy=use_system_proxy
+            use_system_proxy=use_system_proxy,
         )
         self.embeddings_field_supports_similarity = False
         self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
@@ -2116,9 +2116,9 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
     """
 
     def __init__(
-        self,  
-        scheme: str = "https", 
-        username: str = "admin", 
+        self,
+        scheme: str = "https",
+        username: str = "admin",
         password: str = "admin",
         host: Union[str, List[str]] = "localhost",
         port: Union[int, List[int]] = 9200,
@@ -2149,7 +2149,7 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
-        use_system_proxy: bool = False
+        use_system_proxy: bool = False,
     ):
         logger.warning(
             "Open Distro for Elasticsearch has been replaced by OpenSearch! "
@@ -2189,5 +2189,5 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
-            use_system_proxy=use_system_proxy
+            use_system_proxy=use_system_proxy,
         )
