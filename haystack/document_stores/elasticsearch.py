@@ -1593,7 +1593,42 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
-    def __init__(self, verify_certs=False, scheme="https", username="admin", password="admin", port=9200, **kwargs):
+    def __init__(
+        self,  
+        scheme: str = "https",      # Mind this different default param
+        username: str = "admin",      # Mind this different default param
+        password: str = "admin",     # Mind this different default param
+        host: Union[str, List[str]] = "localhost",
+        port: Union[int, List[int]] = 9200,
+        api_key_id: Optional[str] = None,
+        api_key: Optional[str] = None,
+        aws4auth=None,
+        index: str = "document",
+        label_index: str = "label",
+        search_fields: Union[str, list] = "content",
+        content_field: str = "content",
+        name_field: str = "name",
+        embedding_field: str = "embedding",
+        embedding_dim: int = 768,
+        custom_mapping: Optional[dict] = None,
+        excluded_meta_data: Optional[list] = None,
+        analyzer: str = "standard",
+        ca_certs: Optional[str] = None,
+        verify_certs: bool = False,     # Mind this different default param
+        recreate_index: bool = False,
+        create_index: bool = True,
+        refresh_type: str = "wait_for",
+        similarity="dot_product",
+        timeout=30,
+        return_embedding: bool = False,
+        duplicate_documents: str = "overwrite",
+        index_type: str = "flat",
+        scroll: str = "1d",
+        skip_missing_embeddings: bool = True,
+        synonyms: Optional[List] = None,
+        synonym_type: str = "synonym",
+        use_system_proxy: bool = False
+    ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
 
@@ -1663,14 +1698,44 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
         """
+        super().__init__(
+            scheme=scheme,
+            username=username,
+            password=password,
+            host=host,
+            port=port,
+            api_key_id=api_key_id,
+            api_key=api_key,
+            aws4auth=aws4auth,
+            index=index,
+            label_index=label_index,
+            search_fields=search_fields,
+            content_field=content_field,
+            name_field=name_field,
+            embedding_field=embedding_field,
+            embedding_dim=embedding_dim,
+            custom_mapping=custom_mapping,
+            excluded_meta_data=excluded_meta_data,
+            analyzer=analyzer,
+            ca_certs=ca_certs,
+            verify_certs=verify_certs,
+            recreate_index=recreate_index,
+            create_index=create_index,
+            refresh_type=refresh_type,
+            similarity=similarity,
+            timeout=timeout,
+            return_embedding=return_embedding,
+            duplicate_documents=duplicate_documents,
+            index_type=index_type,
+            scroll=scroll,
+            skip_missing_embeddings=skip_missing_embeddings,
+            synonyms=synonyms,
+            synonym_type=synonym_type,
+            use_system_proxy=use_system_proxy
+        )
         self.embeddings_field_supports_similarity = False
         self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
         self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
-        # Overwrite default kwarg values of parent class so that in default cases we can initialize
-        # an OpenSearchDocumentStore without provding any arguments
-        super(OpenSearchDocumentStore, self).__init__(
-            verify_certs=verify_certs, scheme=scheme, username=username, password=password, port=port, **kwargs
-        )
 
     def query_by_embedding(
         self,
@@ -2050,10 +2115,79 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
     A DocumentStore which has an Open Distro for Elasticsearch service behind it.
     """
 
-    def __init__(self, similarity="cosine", **kwargs):
+    def __init__(
+        self,  
+        scheme: str = "https", 
+        username: str = "admin", 
+        password: str = "admin",
+        host: Union[str, List[str]] = "localhost",
+        port: Union[int, List[int]] = 9200,
+        api_key_id: Optional[str] = None,
+        api_key: Optional[str] = None,
+        aws4auth=None,
+        index: str = "document",
+        label_index: str = "label",
+        search_fields: Union[str, list] = "content",
+        content_field: str = "content",
+        name_field: str = "name",
+        embedding_field: str = "embedding",
+        embedding_dim: int = 768,
+        custom_mapping: Optional[dict] = None,
+        excluded_meta_data: Optional[list] = None,
+        analyzer: str = "standard",
+        ca_certs: Optional[str] = None,
+        verify_certs: bool = False,
+        recreate_index: bool = False,
+        create_index: bool = True,
+        refresh_type: str = "wait_for",
+        similarity="cosine",   # Mind this different default param
+        timeout=30,
+        return_embedding: bool = False,
+        duplicate_documents: str = "overwrite",
+        index_type: str = "flat",
+        scroll: str = "1d",
+        skip_missing_embeddings: bool = True,
+        synonyms: Optional[List] = None,
+        synonym_type: str = "synonym",
+        use_system_proxy: bool = False
+    ):
         logger.warning(
             "Open Distro for Elasticsearch has been replaced by OpenSearch! "
             "See https://opensearch.org/faq/ for details. "
             "We recommend using the OpenSearchDocumentStore instead."
         )
-        super(OpenDistroElasticsearchDocumentStore, self).__init__(similarity=similarity, **kwargs)
+        super().__init__(
+            scheme=scheme,
+            username=username,
+            password=password,
+            host=host,
+            port=port,
+            api_key_id=api_key_id,
+            api_key=api_key,
+            aws4auth=aws4auth,
+            index=index,
+            label_index=label_index,
+            search_fields=search_fields,
+            content_field=content_field,
+            name_field=name_field,
+            embedding_field=embedding_field,
+            embedding_dim=embedding_dim,
+            custom_mapping=custom_mapping,
+            excluded_meta_data=excluded_meta_data,
+            analyzer=analyzer,
+            ca_certs=ca_certs,
+            verify_certs=verify_certs,
+            recreate_index=recreate_index,
+            create_index=create_index,
+            refresh_type=refresh_type,
+            similarity=similarity,
+            timeout=timeout,
+            return_embedding=return_embedding,
+            duplicate_documents=duplicate_documents,
+            index_type=index_type,
+            scroll=scroll,
+            skip_missing_embeddings=skip_missing_embeddings,
+            synonyms=synonyms,
+            synonym_type=synonym_type,
+            use_system_proxy=use_system_proxy
+        )
