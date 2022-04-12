@@ -281,6 +281,10 @@ class BaseDocumentStore(BaseComponent):
 
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
 
+        # drop no_answers in order to not create empty MultiLabels
+        if drop_no_answers:
+            all_labels = [label for label in all_labels if label.no_answer == False]
+
         grouped_labels: dict = {}
         for l in all_labels:
             # This group_keys determines the key by which we aggregate labels. Its contents depend on
