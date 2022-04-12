@@ -55,8 +55,8 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         recreate_index: bool = False,
         create_index: bool = True,
         refresh_type: str = "wait_for",
-        similarity="dot_product",
-        timeout=30,
+        similarity: str = "dot_product",
+        timeout: int = 30,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
         index_type: str = "flat",
@@ -1618,8 +1618,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         recreate_index: bool = False,
         create_index: bool = True,
         refresh_type: str = "wait_for",
-        similarity="dot_product",
-        timeout=30,
+        similarity: str = "dot_product",
+        timeout: int = 30,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
         index_type: str = "flat",
@@ -1980,7 +1980,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             if not self.client.indices.exists(index=index_name, headers=headers):
                 raise e
 
-    def _get_embedding_field_mapping(self, similarity: Optional[str]):
+    def _get_embedding_field_mapping(self, similarity: str):
         space_type = self.similarity_to_space_type[similarity]
         method: dict = {"space_type": space_type, "name": "hnsw", "engine": "nmslib"}
 
@@ -2140,8 +2140,8 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
         recreate_index: bool = False,
         create_index: bool = True,
         refresh_type: str = "wait_for",
-        similarity="cosine",   # Mind this different default param
-        timeout=30,
+        similarity: str = "cosine",   # Mind this different default param
+        timeout: int = 30,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
         index_type: str = "flat",

@@ -82,6 +82,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 - `"overwrite"`: Update any existing documents with the same ID when adding documents.
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
         """
+        super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
 
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
@@ -128,9 +129,6 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         self.progress_bar = progress_bar
 
-        super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
-
-        # self._validate_index_sync()
 
     def _sanitize_index_name(self, index: str) -> str:
         return index.replace("_", "-").lower()
