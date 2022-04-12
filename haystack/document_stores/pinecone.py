@@ -129,7 +129,6 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         self.progress_bar = progress_bar
 
-
     def _sanitize_index_name(self, index: str) -> str:
         return index.replace("_", "-").lower()
 
