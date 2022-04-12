@@ -159,6 +159,7 @@ def print_eval_report(
     graph: DiGraph,
     n_wrong_examples: int = 3,
     metrics_filter: Optional[Dict[str, List[str]]] = None,
+    doc_relevance_col: str = "gold_id_or_answer_match",
 ):
     """
     Prints a report for a given EvaluationResult visualizing metrics per node specified by the pipeline graph.
@@ -168,17 +169,18 @@ def print_eval_report(
     :param n_wrong_examples: The number of examples to show in order to inspect wrong predictions.
                              Defaults to 3.
     :param metrics_filter: Specifies which metrics of eval_result to show in the report.
+    :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
+            Values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'.
+            Default value is 'gold_id_or_answer_match'.
     """
     if any(degree > 1 for node, degree in graph.out_degree):
         logger.warning("Pipelines with junctions are currently not supported.")
         return
 
     calculated_metrics = {
-        "": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match"),
-        "_top_1": eval_result.calculate_metrics(doc_relevance_col="gold_id_or_answer_match", simulated_top_k_reader=1),
-        " upper bound": eval_result.calculate_metrics(
-            doc_relevance_col="gold_id_or_answer_match", eval_mode="isolated"
-        ),
+        "": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col),
+        "_top_1": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, simulated_top_k_reader=1),
+        " upper bound": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, eval_mode="isolated"),
     }
 
     if metrics_filter is not None:

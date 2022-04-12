@@ -138,7 +138,7 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
 
 def squad_EM(preds, labels):
     """
-    Count how often the pair of predicted start and end index exactly matches one of the labels
+    Count how often the pair of first predicted start and end index exactly matches one of the labels
     """
     n_docs = len(preds)
     n_correct = 0
@@ -149,6 +149,24 @@ def squad_EM(preds, labels):
         curr_labels = label
         if (pred_start, pred_end) in curr_labels:
             n_correct += 1
+    return n_correct / n_docs if n_docs else 0
+
+
+def top_n_EM(preds, labels):
+    """
+    Count how often the pair of predicted start and end index exactly matches one of the labels
+    """
+    n_docs = len(preds)
+    n_correct = 0
+    for (pred, label) in zip(preds, labels):
+        qa_candidates = pred[0]
+        for qa_candidate in qa_candidates:
+            pred_start = qa_candidate.offset_answer_start
+            pred_end = qa_candidate.offset_answer_end
+            curr_labels = label
+            if (pred_start, pred_end) in curr_labels:
+                n_correct += 1
+                break
     return n_correct / n_docs if n_docs else 0
 
 
@@ -169,11 +187,25 @@ def squad_EM_start(preds, labels):
 
 
 def squad_f1(preds, labels):
+    """Calculates the f1 score (token overlap) of the first prediction"""
     f1_scores = []
     n_docs = len(preds)
     for i in range(n_docs):
         best_pred = preds[i][0]
         best_f1 = max([squad_f1_single(best_pred, label) for label in labels[i]])
+        f1_scores.append(best_f1)
+    return np.mean(f1_scores)
+
+
+def top_n_f1(preds, labels):
+    f1_scores = []
+    for pred, label in zip(preds, labels):
+        pred_candidates = pred[0]
+        best_f1 = max(
+            squad_f1_single([pred_candidate], label_candidate)
+            for label_candidate in label
+            for pred_candidate in pred_candidates
+        )
         f1_scores.append(best_f1)
     return np.mean(f1_scores)
 
@@ -244,21 +276,25 @@ def squad(preds, labels):
     preds_answer = [pred for (pred, label) in zip(preds, labels) if (-1, -1) not in label]
     labels_answer = [label for label in labels if (-1, -1) not in label]
     answer_results = squad_base(preds_answer, labels_answer)
+    top_n_em_answer = top_n_EM(preds_answer, labels_answer)
+    top_n_f1_answer = top_n_f1(preds_answer, labels_answer)
 
     preds_no_answer = [pred for (pred, label) in zip(preds, labels) if (-1, -1) in label]
     labels_no_answer = [label for label in labels if (-1, -1) in label]
     no_answer_results = squad_base(preds_no_answer, labels_no_answer)
 
     return {
-        "EM": overall_results["EM"],
-        "f1": overall_results["f1"],
+        "EM": overall_results["EM"],  # this is top_1 only
+        "f1": overall_results["f1"],  # this is top_1 only
         "top_n_accuracy": overall_results["top_n_accuracy"],
-        "EM_text_answer": answer_results["EM"],
-        "f1_text_answer": answer_results["f1"],
+        "EM_text_answer": answer_results["EM"],  # this is top_1 only
+        "f1_text_answer": answer_results["f1"],  # this is top_1 only
         "top_n_accuracy_text_answer": answer_results["top_n_accuracy"],
+        "top_n_EM_text_answer": top_n_em_answer,
+        "top_n_f1_text_answer": top_n_f1_answer,
         "Total_text_answer": len(preds_answer),
-        "EM_no_answer": no_answer_results["EM"],
-        "f1_no_answer": no_answer_results["f1"],
+        "EM_no_answer": no_answer_results["EM"],  # this is top_1 only
+        "f1_no_answer": no_answer_results["f1"],  # this is top_1 only
         "top_n_accuracy_no_answer": no_answer_results["top_n_accuracy"],
         "Total_no_answer": len(preds_no_answer),
     }
