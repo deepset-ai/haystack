@@ -180,7 +180,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self.scroll = scroll
         self.skip_missing_embeddings: bool = skip_missing_embeddings
         if similarity in ["cosine", "dot_product", "l2"]:
-            self.similarity = similarity
+            self.similarity: str = similarity
         else:
             raise Exception(
                 f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'"
