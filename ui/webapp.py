@@ -1,9 +1,10 @@
 import os
 import sys
 import logging
-import pandas as pd
-from json import JSONDecodeError
 from pathlib import Path
+from json import JSONDecodeError
+
+import pandas as pd
 import streamlit as st
 from annotated_text import annotation
 from markdown import markdown

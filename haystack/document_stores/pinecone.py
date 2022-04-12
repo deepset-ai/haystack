@@ -1,20 +1,19 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from typing import TYPE_CHECKING, Union, List, Optional, Dict, Generator
 
 import logging
-from typing import Union, List, Optional, Dict, Generator
-from tqdm.auto import tqdm
 
 import pinecone
 import numpy as np
+from tqdm.auto import tqdm
 
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
 
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 import mimetypes
-from multiprocessing.sharedctypes import Value
 from typing import List, Union
+
 from pathlib import Path
 import magic
 from haystack.nodes.base import BaseComponent

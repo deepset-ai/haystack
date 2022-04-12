@@ -1,19 +1,20 @@
-from __future__ import annotations
-from enum import Enum
-import logging
-import os
-import time
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
-
-from haystack.schema import Label, Document, Answer
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-import requests
+import os
+import time
+import logging
+from enum import Enum
+
 import yaml
+import requests
+
+from haystack.schema import Label, Document, Answer
+
 
 DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1"  # TODO
 
@@ -29,7 +30,7 @@ class PipelineStatus(Enum):
     UKNOWN: str = "UNKNOWN"
 
     @classmethod
-    def from_str(cls, status_string: str) -> PipelineStatus:
+    def from_str(cls, status_string: str) -> "PipelineStatus":
         return cls.__dict__.get(status_string, PipelineStatus.UKNOWN)
 
 

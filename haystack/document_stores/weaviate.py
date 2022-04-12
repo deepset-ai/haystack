@@ -1,16 +1,16 @@
 from typing import Any, Dict, Generator, List, Optional, Union
+
 import re
 import uuid
 import json
 import hashlib
 import logging
-from datetime import datetime
 
 import numpy as np
 from tqdm import tqdm
-import weaviate
 
 try:
+    import weaviate
     from weaviate import client, AuthClientPassword
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed

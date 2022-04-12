@@ -3,8 +3,9 @@ from typing import Dict, Any, List, Optional
 import json
 import pprint
 import logging
-import pandas as pd
 from collections import defaultdict
+
+import pandas as pd
 
 from haystack.schema import Document, Answer
 from haystack.document_stores.sql import DocumentORM

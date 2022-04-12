@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import Any, Optional, Dict, List, Tuple, Optional
+from typing import Any, Optional, Dict, List, Tuple
 
-import sys
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from functools import wraps
@@ -11,7 +10,6 @@ import logging
 from haystack.schema import Document, MultiLabel
 from haystack.errors import PipelineSchemaError
 from haystack.telemetry import send_custom_event
-from haystack.errors import HaystackError
 
 
 logger = logging.getLogger(__name__)

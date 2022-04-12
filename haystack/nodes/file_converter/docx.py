@@ -1,10 +1,10 @@
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, List
 
 import logging
 from pathlib import Path
 import docx
 
-from haystack.nodes.file_converter import BaseConverter
+from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
 
 

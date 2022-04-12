@@ -1,11 +1,13 @@
 from typing import Callable, Dict, List
 
 import logging
-import numpy as np
 from functools import reduce
+
+import numpy as np
 from scipy.stats import pearsonr, spearmanr
 from seqeval.metrics import classification_report as token_classification_report
 from sklearn.metrics import matthews_corrcoef, f1_score, mean_squared_error, r2_score, classification_report
+
 from haystack.modeling.model.prediction_head import PredictionHead
 from haystack.modeling.utils import flatten_list
 

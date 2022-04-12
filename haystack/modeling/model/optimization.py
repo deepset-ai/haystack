@@ -9,6 +9,9 @@ import torch
 from torch.nn import DataParallel
 from torch.nn.parallel import DistributedDataParallel
 
+from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.logger import MLFlowLogger as MlLogger
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -33,10 +36,6 @@ except ImportError:
     AMP_AVAILABLE = False
     APEX_PARALLEL_AVAILABLE = False
     logger.info("apex not found, won't use it. " "See https://nvidia.github.io/apex/")
-
-
-from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.logger import MLFlowLogger as MlLogger
 
 
 class WrappedDataParallel(DataParallel):

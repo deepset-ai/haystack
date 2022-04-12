@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from collections import defaultdict
 import json
 import copy
@@ -9,9 +9,10 @@ from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
 from azure.core.credentials import AzureKeyCredential
 import pandas as pd
 
+from haystack.nodes.file_converter.base import BaseConverter
 from haystack.errors import HaystackError
-from haystack.nodes.file_converter import BaseConverter
 from haystack.schema import Document
+
 
 logger = logging.getLogger(__name__)
 

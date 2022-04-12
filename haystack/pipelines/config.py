@@ -3,18 +3,19 @@ from typing import Any, Dict, List, Optional
 import re
 import os
 import copy
+import json
 import logging
 from pathlib import Path
-from networkx import DiGraph
+
 import yaml
-import json
+from networkx import DiGraph
 from jsonschema.validators import Draft7Validator
 from jsonschema.exceptions import ValidationError
 
 from haystack import __version__
 from haystack.nodes.base import BaseComponent
 from haystack.nodes._json_schema import inject_definition_in_schema, JSON_SCHEMAS_PATH
-from haystack.errors import PipelineConfigError, PipelineSchemaError, HaystackError
+from haystack.errors import PipelineConfigError, PipelineSchemaError
 
 
 logger = logging.getLogger(__name__)
