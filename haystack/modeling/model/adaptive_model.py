@@ -379,7 +379,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             segment_ids=segment_ids,
             padding_mask=padding_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions
+            output_attentions=output_attentions,
         )
         if output_hidden_states:
             if output_attentions:

@@ -285,7 +285,7 @@ class DensePassageRetriever(BaseRetriever):
                         padding_mask=batch.get("passage_padding_mask", None),
                         segment_ids=batch.get("passage_segment_ids", None),
                         output_hidden_states=batch.get("output_hidden_states", None),
-                        output_attentions=batch.get("output_attentions", None)
+                        output_attentions=batch.get("output_attentions", None),
                     )[0]
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())

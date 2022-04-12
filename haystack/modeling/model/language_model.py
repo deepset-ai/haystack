@@ -103,12 +103,12 @@ class LanguageModel(nn.Module):
         cls.subclasses[cls.__name__] = cls
 
     def forward(
-        self, 
-        input_ids: torch.Tensor, 
-        segment_ids: torch.Tensor, 
-        padding_mask: torch.Tensor, 
-        output_hidden_states: Optional[bool] = None, 
-        output_attentions: Optional[bool] = None
+        self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
     ):
         raise NotImplementedError
 
@@ -1373,12 +1373,12 @@ class DPRQuestionEncoder(LanguageModel):
         super(DPRQuestionEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
     def forward(
-        self, 
-        input_ids: torch.Tensor, 
-        segment_ids: torch.Tensor, 
-        attention_mask: torch.Tensor, 
-        output_hidden_states: Optional[bool] = None, 
-        output_attentions: Optional[bool] = None
+        self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the DPRQuestionEncoder model.
@@ -1540,12 +1540,12 @@ class DPRContextEncoder(LanguageModel):
         super(DPRContextEncoder, self).save(save_dir=save_dir, state_dict=state_dict)
 
     def forward(
-        self, 
-        input_ids: torch.Tensor, 
-        segment_ids: torch.Tensor, 
+        self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
         attention_mask: torch.Tensor,
-        output_hidden_states: Optional[bool] = None, 
-        output_attentions: Optional[bool] = None
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the DPRContextEncoder model.
