@@ -55,7 +55,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### \_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, confidence_threshold: Optional[float] = None, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None, **kwargs, ,)
+def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, devices: List[torch.device] = [], no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, confidence_threshold: Optional[float] = None, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None, **kwargs, ,)
 ```
 
 **Arguments**:
@@ -69,7 +69,9 @@ displaying the context around the answer.
 - `batch_size`: Number of samples the model receives in one batch for inference.
 Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
 to a value so only a single batch is used.
-- `use_gpu`: Whether to use GPU (if available)
+- `use_gpu`: Whether to use GPUs or the CPU. Falls back on CPU if no GPU is available.
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+Unused if `use_gpu` is False.
 - `no_ans_boost`: How much the no_answer logit is boosted/increased.
 If set to 0 (default), the no_answer logit is not changed.
 If a negative number, there is a lower chance of "no_answer" being predicted.
@@ -115,7 +117,7 @@ Additional information can be found here https://huggingface.co/transformers/mai
 #### train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"))
+def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"))
 ```
 
 Fine-tune a model on a QA dataset. Options:
@@ -135,6 +137,8 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+Unused if `use_gpu` is False.
 - `batch_size`: Number of samples the model receives in one batch for training
 - `n_epochs`: Number of iterations on the whole training data set
 - `learning_rate`: Learning rate of the optimizer
@@ -172,7 +176,7 @@ None
 #### distil\_prediction\_layer\_from
 
 ```python
-def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 3e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0)
+def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 3e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0)
 ```
 
 Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -203,6 +207,8 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+Unused if `use_gpu` is False.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
 - `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
@@ -248,7 +254,7 @@ None
 #### distil\_intermediate\_layers\_from
 
 ```python
-def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None)
+def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None)
 ```
 
 The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -275,6 +281,8 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
+- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+Unused if `use_gpu` is False.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
 - `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set

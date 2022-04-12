@@ -2011,6 +2011,14 @@
               "default": true,
               "type": "boolean"
             },
+            "devices": {
+              "title": "Devices",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "no_ans_boost": {
               "title": "No Ans Boost",
               "default": 0.0,
