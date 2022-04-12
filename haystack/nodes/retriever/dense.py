@@ -281,11 +281,12 @@ class DensePassageRetriever(BaseRetriever):
                 # get logits
                 with torch.no_grad():
                     query_embeddings, passage_embeddings = self.model.forward(
-                        input_ids=batch.get("passage_input_ids", None),
-                        padding_mask=batch.get("passage_padding_mask", None),
-                        segment_ids=batch.get("passage_segment_ids", None),
-                        output_hidden_states=batch.get("output_hidden_states", None),
-                        output_attentions=batch.get("output_attentions", None),
+                        query_input_ids=batch.get("query_input_ids", None),
+                        query_segment_ids=batch.get("query_segment_ids", None),
+                        query_padding_mask=batch.get("query_padding_mask", None),
+                        passage_input_ids=batch.get("passage_input_ids", None),
+                        passage_segment_ids=batch.get("passage_segment_ids", None),
+                        passage_padding_mask=batch.get("passage_padding_mask", None)
                     )[0]
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())
