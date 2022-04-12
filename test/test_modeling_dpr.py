@@ -805,7 +805,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
                 query_padding_mask=batch.get("query_padding_mask", None),
                 passage_input_ids=batch.get("passage_input_ids", None),
                 passage_segment_ids=batch.get("passage_segment_ids", None),
-                passage_padding_mask=batch.get("passage_padding_mask", None)
+                passage_padding_mask=batch.get("passage_padding_mask", None),
             )[0]
             if query_embeddings is not None:
                 all_embeddings["query"].append(query_embeddings.cpu().numpy())

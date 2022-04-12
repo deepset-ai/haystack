@@ -257,13 +257,14 @@ class BiAdaptiveModel(nn.Module):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self,
-        query_input_ids: Optional[torch.Tensor] = None, 
-        query_segment_ids: Optional[torch.Tensor] = None, 
-        query_padding_mask: Optional[torch.Tensor] = None, 
-        passage_input_ids: Optional[torch.Tensor] = None, 
-        passage_segment_ids: Optional[torch.Tensor] = None, 
-        passage_padding_mask: Optional[torch.Tensor] = None
+    def forward(
+        self,
+        query_input_ids: Optional[torch.Tensor] = None,
+        query_segment_ids: Optional[torch.Tensor] = None,
+        query_padding_mask: Optional[torch.Tensor] = None,
+        passage_input_ids: Optional[torch.Tensor] = None,
+        passage_segment_ids: Optional[torch.Tensor] = None,
+        passage_padding_mask: Optional[torch.Tensor] = None,
     ):
         """
         Push data through the whole model and returns logits. The data will propagate through
@@ -281,7 +282,7 @@ class BiAdaptiveModel(nn.Module):
             query_padding_mask=query_padding_mask,
             passage_input_ids=passage_input_ids,
             passage_segment_ids=passage_segment_ids,
-            passage_padding_mask=passage_padding_mask
+            passage_padding_mask=passage_padding_mask,
         )
 
         # Run forward pass of (multiple) prediction heads using the output from above
