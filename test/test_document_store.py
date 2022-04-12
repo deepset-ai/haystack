@@ -1,3 +1,6 @@
+from typing import List
+from uuid import uuid4
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -114,7 +117,7 @@ def test_init_elastic_doc_store_with_index_recreation():
     assert len(labels) == 0
 
 
-def test_write_with_duplicate_doc_ids(document_store):
+def test_write_with_duplicate_doc_ids(document_store: BaseDocumentStore):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -125,8 +128,10 @@ def test_write_with_duplicate_doc_ids(document_store):
         document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate"], indirect=True)
-def test_write_with_duplicate_doc_ids_custom_index(document_store):
+@pytest.mark.parametrize(
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate", "pinecone"], indirect=True
+)
+def test_write_with_duplicate_doc_ids_custom_index(document_store: BaseDocumentStore):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -159,7 +164,20 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3", "test4", "test5"}
 
 
-def test_get_all_document_filter_duplicate_text_value(document_store):
+def test_get_all_documents_large_quantities(document_store: BaseDocumentStore):
+    # Test to exclude situations like Weaviate not returning more than 100 docs by default
+    #   https://github.com/deepset-ai/haystack/issues/1893
+    docs_to_write = [
+        {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+        for i in range(1000)
+    ]
+    document_store.write_documents(docs_to_write)
+    documents = document_store.get_all_documents()
+    assert all(isinstance(d, Document) for d in documents)
+    assert len(documents) == len(docs_to_write)
+
+
+def test_get_all_document_filter_duplicate_text_value(document_store: BaseDocumentStore):
     documents = [
         Document(content="Doc1", meta={"f1": "0"}, id_hash_keys=["meta"]),
         Document(content="Doc1", meta={"f1": "1", "meta_id": "0"}, id_hash_keys=["meta"]),
@@ -218,7 +236,9 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory", "pinecone"], indirect=True
+)
 def test_extended_filter(document_store_with_docs):
     # Test comparison operators individually
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})
@@ -348,7 +368,7 @@ def test_get_document_by_id(document_store_with_docs):
     assert doc.content == documents[0].content
 
 
-def test_get_documents_by_id(document_store):
+def test_get_documents_by_id(document_store: BaseDocumentStore):
     # generate more documents than the elasticsearch default query size limit of 10
     docs_to_generate = 15
     documents = [{"content": "doc-" + str(i)} for i in range(docs_to_generate)]
@@ -365,7 +385,7 @@ def test_get_documents_by_id(document_store):
     assert set(retrieved_ids) == set(all_ids)
 
 
-def test_get_document_count(document_store):
+def test_get_document_count(document_store: BaseDocumentStore):
     documents = [
         {"content": "text1", "id": "1", "meta_field_for_count": "a"},
         {"content": "text2", "id": "2", "meta_field_for_count": "b"},
@@ -378,7 +398,7 @@ def test_get_document_count(document_store):
     assert document_store.get_document_count(filters={"meta_field_for_count": ["b"]}) == 3
 
 
-def test_get_all_documents_generator(document_store):
+def test_get_all_documents_generator(document_store: BaseDocumentStore):
     documents = [
         {"content": "text1", "id": "1", "meta_field_for_count": "a"},
         {"content": "text2", "id": "2", "meta_field_for_count": "b"},
@@ -414,7 +434,7 @@ def test_update_existing_documents(document_store, update_existing_documents):
         assert stored_docs[0].content == original_docs[0]["content"]
 
 
-def test_write_document_meta(document_store):
+def test_write_document_meta(document_store: BaseDocumentStore):
     documents = [
         {"content": "dict_without_meta", "id": "1"},
         {"content": "dict_with_meta", "meta_field": "test2", "name": "filename2", "id": "2"},
@@ -431,7 +451,7 @@ def test_write_document_meta(document_store):
     assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
 
 
-def test_write_document_index(document_store):
+def test_write_document_index(document_store: BaseDocumentStore):
     documents = [{"content": "text1", "id": "1"}, {"content": "text2", "id": "2"}]
     document_store.write_documents([documents[0]], index="haystack_test_one")
     assert len(document_store.get_all_documents(index="haystack_test_one")) == 1
@@ -446,7 +466,7 @@ def test_write_document_index(document_store):
 @pytest.mark.parametrize(
     "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
 )
-def test_document_with_embeddings(document_store):
+def test_document_with_embeddings(document_store: BaseDocumentStore):
     documents = [
         {"content": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
         {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
@@ -712,8 +732,8 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
-def test_labels(document_store):
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
+def test_labels(document_store: BaseDocumentStore):
     label = Label(
         query="question1",
         answer=Answer(
@@ -800,8 +820,8 @@ def test_labels(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
-def test_multilabel(document_store):
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
+def test_multilabel(document_store: BaseDocumentStore):
     labels = [
         Label(
             id="standard",
@@ -916,8 +936,8 @@ def test_multilabel(document_store):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
-def test_multilabel_no_answer(document_store):
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
+def test_multilabel_no_answer(document_store: BaseDocumentStore):
     labels = [
         Label(
             query="question",
@@ -986,7 +1006,7 @@ def test_multilabel_no_answer(document_store):
 # exclude weaviate because it does not support storing labels
 # exclude faiss and milvus as label metadata is not implemented
 @pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
-def test_multilabel_filter_aggregations(document_store):
+def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
     labels = [
         Label(
             id="standard",
@@ -1082,7 +1102,7 @@ def test_multilabel_filter_aggregations(document_store):
 # exclude weaviate because it does not support storing labels
 # exclude faiss and milvus as label metadata is not implemented
 @pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
-def test_multilabel_meta_aggregations(document_store):
+def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
     labels = [
         Label(
             id="standard",
@@ -1171,9 +1191,9 @@ def test_multilabel_meta_aggregations(document_store):
             assert multi_label.filters == l.filters
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "milvus1", "weaviate", "pinecone"], indirect=True)
 # Currently update_document_meta() is not implemented for Memory doc store
-def test_update_meta(document_store):
+def test_update_meta(document_store: BaseDocumentStore):
     documents = [
         Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "1"}),
         Document(content="Doc2", meta={"meta_key_1": "2", "meta_key_2": "2"}),
@@ -1202,7 +1222,7 @@ def test_custom_embedding_field(document_store_type, tmp_path):
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_get_meta_values_by_key(document_store):
+def test_get_meta_values_by_key(document_store: BaseDocumentStore):
     documents = [
         Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "11"}),
         Document(content="Doc2", meta={"meta_key_1": "2", "meta_key_2": "22"}),
@@ -1264,7 +1284,7 @@ def test_elasticsearch_delete_index():
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store):
+def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store: BaseDocumentStore):
     document_store.write_documents(DOCUMENTS)
     document_without_embedding = Document(
         content="Doc without embedding", meta={"name": "name_7", "year": "2021", "month": "04"}
@@ -1594,7 +1614,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
         responses.add(
             method=responses.POST,
             url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-            match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50})],
+            match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50, "all_terms_must_match": False})],
             status=200,
             body=query_winterfell_response,
         )
@@ -1608,6 +1628,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
                         "query": "winterfell",
                         "top_k": 50,
                         "filters": {"file_id": [query_winterfell_docs[0]["meta"]["file_id"]]},
+                        "all_terms_must_match": False,
                     }
                 )
             ],
@@ -1627,6 +1648,189 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
     )
     assert len(filtered_docs) > 0
     assert len(filtered_docs) < len(docs)
+
+
+@pytest.mark.parametrize(
+    "body, expected_count",
+    [
+        (
+            {
+                "data": [
+                    {
+                        "evaluation_set_id": str(uuid4()),
+                        "name": DC_TEST_INDEX,
+                        "created_at": "2022-03-22T13:40:27.535Z",
+                        "matched_labels": 2,
+                        "total_labels": 10,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+            10,
+        ),
+        (
+            {
+                "data": [
+                    {
+                        "evaluation_set_id": str(uuid4()),
+                        "name": DC_TEST_INDEX,
+                        "created_at": "2022-03-22T13:40:27.535Z",
+                        "matched_labels": 0,
+                        "total_labels": 0,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+            0,
+        ),
+    ],
+)
+@responses.activate
+def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set(
+    deepset_cloud_document_store, body: dict, expected_count: int
+):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=json.dumps(body),
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    count = deepset_cloud_document_store.get_label_count(index=DC_TEST_INDEX)
+    assert count == expected_count
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_count_of_labels_for_evaluation_set_raises_DC_error_when_nothing_found(
+    deepset_cloud_document_store,
+):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=json.dumps({"data": [], "has_more": False, "total": 0}),
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    with pytest.raises(DeepsetCloudError, match=f"No evaluation set found with the name {DC_TEST_INDEX}"):
+        deepset_cloud_document_store.get_label_count(index=DC_TEST_INDEX)
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_lists_evaluation_sets(deepset_cloud_document_store):
+    response_evaluation_set = {
+        "evaluation_set_id": str(uuid4()),
+        "name": DC_TEST_INDEX,
+        "created_at": "2022-03-22T13:40:27.535Z",
+        "matched_labels": 2,
+        "total_labels": 10,
+    }
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=json.dumps({"data": [response_evaluation_set], "has_more": False, "total": 1}),
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    evaluation_sets = deepset_cloud_document_store.get_evaluation_sets()
+    assert evaluation_sets == [response_evaluation_set]
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_cloud_document_store):
+    if MOCK_DC:
+        eval_set_id = uuid4()
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets?name={DC_TEST_INDEX}&page_number=1",
+            status=200,
+            body=json.dumps(
+                {
+                    "data": [
+                        {
+                            "evaluation_set_id": str(eval_set_id),
+                            "name": DC_TEST_INDEX,
+                            "created_at": "2022-03-22T13:40:27.535Z",
+                            "matched_labels": 1,
+                            "total_labels": 1,
+                        }
+                    ],
+                    "has_more": False,
+                    "total": 1,
+                }
+            ),
+        )
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{eval_set_id}",
+            status=200,
+            body=json.dumps(
+                [
+                    {
+                        "label_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "query": "What is berlin?",
+                        "answer": "biggest city in germany",
+                        "answer_start": 0,
+                        "answer_end": 0,
+                        "meta": {},
+                        "context": "Berlin is the biggest city in germany.",
+                        "external_file_name": "string",
+                        "file_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "state": "Label matching status",
+                        "candidates": "Candidates that were found in the label <-> file matching",
+                    }
+                ]
+            ),
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    labels = deepset_cloud_document_store.get_all_labels(index=DC_TEST_INDEX)
+    assert labels == [
+        Label(
+            query="What is berlin?",
+            document=Document(content="Berlin is the biggest city in germany."),
+            is_correct_answer=True,
+            is_correct_document=True,
+            origin="user-feedback",
+            answer=Answer("biggest city in germany"),
+            id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            no_answer=False,
+            pipeline_id=None,
+            created_at=None,
+            updated_at=None,
+            meta={},
+            filters={},
+        )
+    ]
+
+
+@responses.activate
+def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
+    deepset_cloud_document_store,
+):
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
+            status=200,
+            body=json.dumps({"data": [], "has_more": False, "total": 0}),
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
+
+    with pytest.raises(DeepsetCloudError, match=f"No evaluation set found with the name {DC_TEST_INDEX}"):
+        deepset_cloud_document_store.get_all_labels(index=DC_TEST_INDEX)
 
 
 @responses.activate

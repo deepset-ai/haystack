@@ -3,7 +3,7 @@ from haystack.utils import (
     print_answers,
     print_documents,
     fetch_archive_from_http,
-    convert_files_to_dicts,
+    convert_files_to_docs,
     launch_es,
 )
 from pprint import pprint
@@ -22,18 +22,18 @@ from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, Gen
 
 def tutorial11_pipelines():
     # Download and prepare data - 517 Wikipedia articles for Game of Thrones
-    doc_dir = "data/article_txt_got"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
+    doc_dir = "data/tutorial11"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt11.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # convert files to dicts containing documents that can be indexed to our datastore
-    got_dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+    got_docs = convert_files_to_docs(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
 
     # Initialize DocumentStore and index documents
     launch_es()
     document_store = ElasticsearchDocumentStore()
     document_store.delete_documents()
-    document_store.write_documents(got_dicts)
+    document_store.write_documents(got_docs)
 
     # Initialize Sparse retriever
     es_retriever = ElasticsearchRetriever(document_store=document_store)

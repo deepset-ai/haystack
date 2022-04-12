@@ -44,7 +44,6 @@ class Document:
     meta: Dict[str, Any]
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: Optional[List[str]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -219,7 +218,6 @@ class Document:
             and getattr(other, "score", None) == self.score
             and getattr(other, "meta", None) == self.meta
             and np.array_equal(getattr(other, "embedding", None), self.embedding)
-            and getattr(other, "id_hash_keys", None) == self.id_hash_keys
         )
 
     def __repr__(self):
@@ -227,7 +225,7 @@ class Document:
 
     def __str__(self):
         # In some cases, self.content is None (therefore not subscriptable)
-        if not self.content:
+        if self.content is None:
             return f"<Document: id={self.id}, content=None>"
         return f"<Document: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}'>"
 
@@ -702,7 +700,7 @@ class EvaluationResult:
         self,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_match",
+        doc_relevance_col: str = "gold_id_or_answer_match",
         eval_mode: str = "integrated",
     ) -> Dict[str, Dict[str, float]]:
         """
@@ -731,7 +729,8 @@ class EvaluationResult:
         :param simulated_top_k_retriever: simulates top_k param of retriever.
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
         :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
-            values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+            Values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'.
+            Default value is 'gold_id_or_answer_match'.
         :param eval_mode: the input on which the node was evaluated on.
             Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
@@ -991,8 +990,8 @@ class EvaluationResult:
             ]
 
             avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 0.0
-            recall_single_hit = min(num_retrieved_relevants, 1)
+            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 1.0
+            recall_single_hit = min(num_retrieved_relevants, 1) if num_relevants > 0 else 1.0
             precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
             rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
             dcg = (

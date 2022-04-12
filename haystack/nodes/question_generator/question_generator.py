@@ -81,7 +81,7 @@ class QuestionGenerator(BaseComponent):
             split_overlap=self.split_overlap,
             split_length=self.split_length,
         )
-        split_texts = [x["content"] for x in split_texts_dict]
+        split_texts = [x.content for x in split_texts_dict]
         ret = []
         for split_text in split_texts:
             if self.prompt not in split_text:

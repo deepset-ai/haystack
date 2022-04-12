@@ -10,6 +10,7 @@ on:
 jobs:
   type-check:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -23,6 +24,7 @@ jobs:
   build-cache:
     needs: type-check
     runs-on: windows-latest
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2
@@ -55,6 +57,7 @@ jobs:
     needs: build-cache
     # With Windows it gives error, also this step only listing test files only
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
@@ -66,6 +69,7 @@ jobs:
   build:
     needs: prepare-build
     runs-on: windows-latest
+    timeout-minutes: 45
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-build.outputs.matrix)}}

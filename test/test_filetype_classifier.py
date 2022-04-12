@@ -1,6 +1,8 @@
 import pytest
-from pathlib import Path
+
 from haystack.nodes.file_classifier.file_type import FileTypeClassifier, DEFAULT_TYPES
+
+from .conftest import SAMPLES_PATH
 
 
 def test_filetype_classifier_single_file(tmp_path):
@@ -55,3 +57,25 @@ def test_filetype_classifier_too_many_custom_extensions():
 def test_filetype_classifier_duplicate_custom_extensions():
     with pytest.raises(ValueError):
         FileTypeClassifier(supported_types=[f"my_extension", "my_extension"])
+
+
+def test_filetype_classifier_text_files_without_extension():
+    tested_types = ["docx", "html", "odt", "pdf", "pptx", "txt"]
+    node = FileTypeClassifier(supported_types=tested_types)
+    test_files = [SAMPLES_PATH / "extensionless_files" / f"{type_name}_file" for type_name in tested_types]
+
+    for edge_index, test_file in enumerate(test_files):
+        output, edge = node.run(test_file)
+        assert edge == f"output_{edge_index+1}"
+        assert output == {"file_paths": [test_file]}
+
+
+def test_filetype_classifier_other_files_without_extension():
+    tested_types = ["gif", "jpg", "mp3", "png", "wav", "zip"]
+    node = FileTypeClassifier(supported_types=tested_types)
+    test_files = [SAMPLES_PATH / "extensionless_files" / f"{type_name}_file" for type_name in tested_types]
+
+    for edge_index, test_file in enumerate(test_files):
+        output, edge = node.run(test_file)
+        assert edge == f"output_{edge_index+1}"
+        assert output == {"file_paths": [test_file]}
