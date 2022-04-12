@@ -1,6 +1,7 @@
-from setuptools import setup, find_packages
 import logging
 from pathlib import Path
+
+from setuptools import setup, find_packages
 
 
 VERSION = "0.0.0"

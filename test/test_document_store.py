@@ -22,7 +22,7 @@ from .conftest import (
 )
 from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.utils import elasticsearch_index_to_document_store
+from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore

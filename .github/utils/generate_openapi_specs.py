@@ -4,6 +4,10 @@ import os
 import sys
 import shutil
 
+sys.path.append(".")
+from rest_api.utils import get_openapi_specs, get_app, get_pipelines  # pylint: disable=wrong-import-position
+from haystack import __version__  # pylint: disable=wrong-import-position
+
 REST_PATH = Path("./rest_api").absolute()
 PIPELINE_PATH = str(REST_PATH / "pipeline" / "pipeline_empty.haystack-pipeline.yml")
 APP_PATH = str(REST_PATH / "application.py")
@@ -13,8 +17,9 @@ os.environ["PIPELINE_YAML_PATH"] = PIPELINE_PATH
 
 print(f"Loading OpenAPI specs from {APP_PATH} with pipeline at {PIPELINE_PATH}")
 
-sys.path.append(".")
-from rest_api.application import get_openapi_specs, haystack_version
+# To initialize the app and the pipelines
+get_app()
+get_pipelines()
 
 # Generate the openapi specs
 specs = get_openapi_specs()
@@ -29,4 +34,4 @@ for specs_file in os.listdir():
         os.remove(specs_file)
 
 # Add versioned copy
-shutil.copy(DOCS_PATH / "openapi.json", DOCS_PATH / f"openapi-{haystack_version}.json")
+shutil.copy(DOCS_PATH / "openapi.json", DOCS_PATH / f"openapi-{__version__}.json")

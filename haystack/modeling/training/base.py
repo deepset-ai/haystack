@@ -1,16 +1,15 @@
 from typing import Optional, Union, Tuple, List, Callable
 
-from torch.optim.lr_scheduler import _LRScheduler
-
 import sys
 import shutil
 import logging
-import dill
-import numpy
-import torch
-from tqdm import tqdm
 from pathlib import Path
 
+import dill
+import numpy
+from tqdm import tqdm
+import torch
+from torch.optim.lr_scheduler import _LRScheduler
 from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel
 import torch.nn.functional as F
 from torch.optim import Optimizer
@@ -661,7 +660,7 @@ class DistillationTrainer(Trainer):
         epochs: int,
         n_gpu: int,
         device: torch.device,
-        lr_schedule: Optional["_LRScheduler"] = None,
+        lr_schedule: Optional[_LRScheduler] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
         use_amp: Optional[str] = None,
@@ -806,7 +805,7 @@ class TinyBERTDistillationTrainer(Trainer):
         epochs: int,
         n_gpu: int,
         device: torch.device,
-        lr_schedule: Optional["_LRScheduler"] = None,
+        lr_schedule: Optional[_LRScheduler] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
         use_amp: Optional[str] = None,

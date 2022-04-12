@@ -1,17 +1,19 @@
-import inspect
-import logging
+from typing import Any, Dict, List, Optional
+
 import re
 import sys
+import inspect
+import logging
+
 import networkx as nx
-from typing import Any, Dict, List, Optional
 from networkx import DiGraph
+
 from haystack.pipelines.config import (
     build_component_dependency_graph,
     get_component_definitions,
     get_pipeline_definition,
     validate_config,
 )
-
 from haystack.schema import EvaluationResult
 
 

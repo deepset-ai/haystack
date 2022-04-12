@@ -1,9 +1,9 @@
 import time
 import logging
 import subprocess
-import requests
-
 from pathlib import Path
+
+import requests
 
 
 logger = logging.getLogger(__name__)

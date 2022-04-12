@@ -1,42 +1,23 @@
 from __future__ import annotations
-from os import pipe
-import tempfile
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 import copy
 import json
 import inspect
 import logging
+import tempfile
 import traceback
+from pathlib import Path
+from abc import ABC, abstractmethod
+
+import yaml
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import networkx as nx
-from abc import ABC, abstractmethod
-from jsonschema import Draft7Validator
-from jsonschema.exceptions import ValidationError
-from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
 from tqdm import tqdm
-from transformers import pipelines
-import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-from haystack.nodes.evaluator.evaluator import (
-    calculate_em_str_multi,
-    calculate_f1_str_multi,
-    semantic_answer_similarity,
-)
-from haystack.pipelines.config import (
-    JSON_SCHEMAS_PATH,
-    get_component_definitions,
-    get_pipeline_definition,
-    read_pipeline_config_from_yaml,
-    validate_config_strings,
-    validate_config,
-)
-from haystack.pipelines.utils import generate_code, print_eval_report
-from haystack.utils import DeepsetCloud
 
 try:
     from ray import serve
@@ -46,6 +27,19 @@ except:
     serve = None  # type: ignore
 
 from haystack import __version__
+from haystack.nodes.evaluator.evaluator import (
+    calculate_em_str_multi,
+    calculate_f1_str_multi,
+    semantic_answer_similarity,
+)
+from haystack.pipelines.config import (
+    get_component_definitions,
+    get_pipeline_definition,
+    read_pipeline_config_from_yaml,
+    validate_config,
+)
+from haystack.pipelines.utils import generate_code, print_eval_report
+from haystack.utils import DeepsetCloud
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
@@ -514,6 +508,7 @@ class Pipeline(BasePipeline):
                     f"The '{name}' node can only input from {self.root_node}. "
                     f"Set the 'inputs' parameter to ['{self.root_node}']"
                 )
+            # edges_count = self.graph.graph.
             self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
@@ -1058,7 +1053,7 @@ class Pipeline(BasePipeline):
         :param path: the path to save the image.
         """
         try:
-            import pygraphviz
+            import pygraphviz  # pylint: disable=unused-import
         except ImportError:
             raise ImportError(
                 f"Could not import `pygraphviz`. Please install via: \n"

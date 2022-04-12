@@ -1,12 +1,13 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 
 import logging
-import requests
 from pathlib import Path
 from html.parser import HTMLParser
+
+import requests
 from tika import parser as tikaparser
 
-from haystack.nodes.file_converter import BaseConverter
+from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
 
 
