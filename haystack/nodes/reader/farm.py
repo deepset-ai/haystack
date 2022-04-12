@@ -966,6 +966,16 @@ class FARMReader(BaseReader):
             "top_n": self.inferencer.model.prediction_heads[0].n_best,
             "reader_time": reader_time,
             "seconds_per_query": reader_time / n_queries,
+            "EM_text_answer": eval_results[0]["EM_text_answer"] * 100,
+            "f1_text_answer": eval_results[0]["f1_text_answer"] * 100,
+            "top_n_accuracy_text_answer": eval_results[0]["top_n_accuracy_text_answer"] * 100,
+            "top_n_EM_text_answer": eval_results[0]["top_n_EM_text_answer"] * 100,
+            "top_n_f1_text_answer": eval_results[0]["top_n_f1_text_answer"] * 100,
+            "Total_text_answer": eval_results[0]["Total_text_answer"] * 100,
+            "EM_no_answer": eval_results[0]["EM_no_answer"] * 100,
+            "f1_no_answer": eval_results[0]["f1_no_answer"] * 100,
+            "top_n_accuracy_no_answer": eval_results[0]["top_n_accuracy_no_answer"] * 100,
+            "Total_no_answer": eval_results[0]["Total_no_answer"],
         }
         return results
 
