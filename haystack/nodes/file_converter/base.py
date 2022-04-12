@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Dict, Union
 
 from abc import abstractmethod
 from pathlib import Path

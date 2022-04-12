@@ -1,15 +1,15 @@
 from typing import Dict, List, Optional
 
 import logging
-import pandas as pd
 from collections import OrderedDict, namedtuple
+
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
-from haystack.document_stores import BaseDocumentStore, KeywordDocumentStore
+from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.elasticsearch import KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
-
-from haystack.document_stores import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)

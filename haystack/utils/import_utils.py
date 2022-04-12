@@ -1,13 +1,15 @@
 from typing import Optional
 
 import io
+import gzip
 import tarfile
 import zipfile
-import gzip
-import requests
 import logging
 import importlib
 from pathlib import Path
+
+import requests
+
 from haystack.telemetry import send_tutorial_event
 
 logger = logging.getLogger(__name__)

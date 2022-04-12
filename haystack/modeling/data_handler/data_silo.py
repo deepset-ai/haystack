@@ -1,10 +1,9 @@
-from typing import Optional, List, Tuple, Dict, Union
+from typing import TYPE_CHECKING, Optional, List, Tuple, Dict, Union
 
 import hashlib
 import json
 import logging
 import random
-import math
 from contextlib import ExitStack
 from functools import partial
 from itertools import groupby
@@ -17,16 +16,14 @@ from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.logger import MLFlowLogger as MlLogger
 from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
 
+if TYPE_CHECKING:
+    from haystack.nodes import FARMReader
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,7 @@
-import logging
-import warnings
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever.base import BaseRetriever
-
+import logging
+import warnings
 import numpy as np
 
 from scipy.special import expit
@@ -22,6 +19,9 @@ except (ImportError, ModuleNotFoundError) as ie:
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever.base import BaseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -635,9 +635,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             ids = [doc.meta["vector_id"] for doc in docs if "vector_id" in doc.meta]
 
         expr = f"{self.id_field} in [{','.join(ids)}]"
-        import logging
 
-        # logging.info(expr)
         self.collection.delete(expr)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:

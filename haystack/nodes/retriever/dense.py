@@ -1,10 +1,10 @@
 from typing import List, Dict, Union, Optional
 
 import logging
-import numpy as np
 from pathlib import Path
-from tqdm.auto import tqdm
 
+import numpy as np
+from tqdm.auto import tqdm
 import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler

@@ -1,8 +1,5 @@
 from typing import TYPE_CHECKING, Callable, List, Union, Dict
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import EmbeddingRetriever
-
 import logging
 from abc import abstractmethod
 import numpy as np
@@ -15,6 +12,9 @@ from haystack.schema import Document
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import EmbeddingRetriever
 
 
 logger = logging.getLogger(__name__)

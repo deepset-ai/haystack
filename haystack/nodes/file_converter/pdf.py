@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 
 import os
 import logging
@@ -13,7 +13,8 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "ocr", ie)
 
-from haystack.nodes.file_converter import BaseConverter, ImageToTextConverter
+from haystack.nodes.file_converter.base import BaseConverter
+from haystack.nodes.file_converter.image import ImageToTextConverter
 from haystack.schema import Document
 
 
