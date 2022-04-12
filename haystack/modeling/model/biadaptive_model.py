@@ -334,12 +334,12 @@ class BiAdaptiveModel(nn.Module):
         :return: 2 tensors of pooled_output from the 2 language models.
         """
         pooled_output = [None, None]
-        if query_input_ids:
+        if query_input_ids is not None:
             pooled_output1, hidden_states1 = self.language_model1(
                 input_ids=query_input_ids, segment_ids=query_segment_ids, padding_mask=query_padding_mask
             )
             pooled_output[0] = pooled_output1
-        if passage_input_ids:
+        if passage_input_ids is not None:
             pooled_output2, hidden_states2 = self.language_model2(
                 input_ids=passage_input_ids, segment_ids=passage_segment_ids, padding_mask=passage_padding_mask
             )
