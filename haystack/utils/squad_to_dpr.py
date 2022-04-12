@@ -54,21 +54,24 @@ DPR format
 ]
 """
 
-import argparse
-import json
-import logging
-import subprocess
-from tqdm import tqdm
-from itertools import islice
-from pathlib import Path
-from time import sleep
 from typing import Dict, Iterator, Tuple, List, Union
 
+import json
+import logging
+import argparse
+import subprocess
+from time import sleep
+from pathlib import Path
+from itertools import islice
+
+from tqdm import tqdm
 from elasticsearch import Elasticsearch
+
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
 from haystack.document_stores.faiss import FAISSDocumentStore  # keep it here !
-from haystack.nodes.retriever import ElasticsearchRetriever, DensePassageRetriever  # keep it here !
+from haystack.nodes.retriever.sparse import ElasticsearchRetriever  # keep it here !  # pylint: disable=unused-import
+from haystack.nodes.retriever.dense import DensePassageRetriever  # keep it here !  # pylint: disable=unused-import
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
 

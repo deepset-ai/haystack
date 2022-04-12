@@ -7,9 +7,6 @@ import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
-from haystack.nodes.base import BaseComponent
-from haystack.schema import Document
-
 try:
     from webdriver_manager.chrome import ChromeDriverManager
     from selenium import webdriver
@@ -17,6 +14,9 @@ except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "crawler", ie)
+
+from haystack.nodes.base import BaseComponent
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)

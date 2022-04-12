@@ -2,15 +2,11 @@ from typing import Generator, Optional, Dict, List, Set, Union
 
 import logging
 import collections
-import numpy as np
+from pathlib import Path
 from itertools import islice
 from abc import abstractmethod
-from pathlib import Path
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+import numpy as np
 
 from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent

@@ -25,19 +25,21 @@ Arguments:
 
 from typing import Tuple, List, Union
 
+import json
+import random
+import argparse
+import logging
+from pathlib import Path
+from zipfile import ZipFile
+from copy import copy, deepcopy
+
 import torch
 from torch.nn import functional as F
 from transformers import AutoModelForMaskedLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
-from copy import copy, deepcopy
-from pathlib import Path
 import requests
-from zipfile import ZipFile
 import numpy as np
-import random
-import argparse
-import json
-import logging
 from tqdm import tqdm
+
 
 logger = logging.getLogger(__name__)
 

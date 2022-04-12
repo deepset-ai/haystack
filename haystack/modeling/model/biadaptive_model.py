@@ -2,9 +2,10 @@ from typing import List, Optional, Callable, Union, Dict
 
 import os
 import logging
+from pathlib import Path
+
 import torch
 from torch import nn
-from pathlib import Path
 
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel

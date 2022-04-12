@@ -1,37 +1,38 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Optional, Dict, List, Union, Optional
-from dataclasses import asdict
+from typing import Any, Optional, Dict, List, Union
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-# We are using Pydantic dataclasses instead of vanilla Python's
-# See #1598 for the reasons behind this choice & performance considerations
-from pydantic.dataclasses import dataclass
-
-if typing.TYPE_CHECKING:
-    from dataclasses import dataclass  # type: ignore
-
-from pydantic.json import pydantic_encoder
 from pathlib import Path
 from uuid import uuid4
-import mmh3
-import numpy as np
 import logging
 import time
 import json
-import pandas as pd
 import ast
+from dataclasses import asdict
+
+import mmh3
+import numpy as np
+import pandas as pd
+
+from pydantic import BaseConfig
+from pydantic.json import pydantic_encoder
+
+if not typing.TYPE_CHECKING:
+    # We are using Pydantic dataclasses instead of vanilla Python's
+    # See #1598 for the reasons behind this choice & performance considerations
+    from pydantic.dataclasses import dataclass
+else:
+    from dataclasses import dataclass  # type: ignore  # pylint: disable=ungrouped-imports
 
 
 logger = logging.getLogger(__name__)
 
-
-from pydantic import BaseConfig
 
 BaseConfig.arbitrary_types_allowed = True
 

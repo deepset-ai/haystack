@@ -12,7 +12,7 @@ services:
       - 8000:8000
     restart: on-failure
     environment:
-      # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
+      # See rest_api/pipeline/pipelines.haystack-pipeline.yml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
       - PIPELINE_YAML_PATH=/home/user/rest_api/pipeline/pipelines.haystack-pipeline.yml
       - CONCURRENT_REQUEST_PER_WORKER

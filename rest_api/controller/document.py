@@ -2,9 +2,10 @@ from typing import List
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import FastAPI, APIRouter
+from haystack.document_stores import BaseDocumentStore
 
-from rest_api.controller.search import DOCUMENT_STORE
+from rest_api.utils import get_app, get_pipelines
 from rest_api.config import LOG_LEVEL
 from rest_api.schema import FilterRequest, DocumentSerialized
 
@@ -14,6 +15,8 @@ logger = logging.getLogger("haystack")
 
 
 router = APIRouter()
+app: FastAPI = get_app()
+document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
 
 
 @router.post("/documents/get_by_filters", response_model=List[DocumentSerialized], response_model_exclude_none=True)
@@ -29,7 +32,7 @@ def get_documents(filters: FilterRequest):
     To get all documents you should provide an empty dict, like:
     `'{"filters": {}}'`
     """
-    docs = [doc.to_dict() for doc in DOCUMENT_STORE.get_all_documents(filters=filters.filters)]
+    docs = [doc.to_dict() for doc in document_store.get_all_documents(filters=filters.filters)]
     for doc in docs:
         doc["embedding"] = None
     return docs
@@ -48,5 +51,5 @@ def delete_documents(filters: FilterRequest):
     To get all documents you should provide an empty dict, like:
     `'{"filters": {}}'`
     """
-    DOCUMENT_STORE.delete_documents(filters=filters.filters)
+    document_store.delete_documents(filters=filters.filters)
     return True
