@@ -28,7 +28,7 @@ You can **draw the DAG** to better inspect what you are building:
 ```python
 p.draw(path="custom_pipe.png")
 ```
-![image](https://user-images.githubusercontent.com/1563902/102451716-54813700-4039-11eb-881e-f3c01b47ca15.png)
+![image](https://github.com/deepset-ai/haystack/blob/master/docs/img/retriever-reader-pipeline.png)
 
 ### Arguments
 
@@ -102,7 +102,7 @@ p.add_node(component=JoinDocuments(join_mode="concatenate"), name="JoinResults",
 p.add_node(component=reader, name="QAReader", inputs=["JoinResults"])
 res = p.run(query="What did Einstein work on?", params={"ESRetriever": {"top_k": 1}, "DPRRetriever": {"top_k": 3}})
 ```
-![image](https://user-images.githubusercontent.com/1563902/102451782-7bd80400-4039-11eb-9046-01b002a783f8.png)
+![image](https://github.com/deepset-ai/haystack/blob/master/docs/img/joint-pipeline.png)
 
 ### Custom nodes
 It is easy to build custom nodes. Just respect the following requirements: 
@@ -115,7 +115,7 @@ It is easy to build custom nodes. Just respect the following requirements:
 
 ### Decision nodes
 Or you can add decision nodes where only one "branch" is executed afterwards. This allows, for example, to classify an incoming query and depending on the result routing it to different modules: 
-![image](https://user-images.githubusercontent.com/1563902/102452199-41229b80-403a-11eb-9365-7038697e7c3e.png)
+![image](https://github.com/deepset-ai/haystack/blob/master/docs/img/query-classifier-pipeline.png)
 ```python
     from haystack import BaseComponent, Pipeline
 
