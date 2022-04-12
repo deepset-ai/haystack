@@ -56,9 +56,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         faiss_index_path: Union[str, Path] = None,
         faiss_config_path: Union[str, Path] = None,
         isolation_level: str = None,
-        n_links: int = 64, 
-        ef_search: int = 20, 
-        ef_construction: int = 80
+        n_links: int = 64,
+        ef_search: int = 20,
+        ef_construction: int = 80,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
@@ -146,8 +146,8 @@ class FAISSDocumentStore(SQLDocumentStore):
                 index_factory=faiss_index_factory_str,
                 metric_type=self.metric_type,
                 n_links=n_links,
-                ef_search=ef_search, 
-                ef_construction=ef_construction
+                ef_search=ef_search,
+                ef_construction=ef_construction,
             )
 
         self.return_embedding = return_embedding
@@ -186,13 +186,13 @@ class FAISSDocumentStore(SQLDocumentStore):
             )
 
     def _create_new_index(
-        self, 
-        embedding_dim: int, 
-        metric_type, 
-        index_factory: str = "Flat", 
-        n_links: int = 64, 
-        ef_search: int = 20, 
-        ef_construction: int = 80
+        self,
+        embedding_dim: int,
+        metric_type,
+        index_factory: str = "Flat",
+        n_links: int = 64,
+        ef_search: int = 20,
+        ef_construction: int = 80,
     ):
         if index_factory == "HNSW":
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.

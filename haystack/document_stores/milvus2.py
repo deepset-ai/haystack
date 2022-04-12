@@ -173,7 +173,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
 
-
     def _create_collection_and_index_if_not_exist(
         self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None
     ):
