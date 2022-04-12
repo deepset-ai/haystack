@@ -556,8 +556,7 @@ def test_embeddings_encoder_of_embedding_retriever():
     document_store = InMemoryDocumentStore()
 
     retriever = EmbeddingRetriever(
-        document_store=document_store,
-        embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        document_store=document_store, embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     )
 
     assert retriever.model_format == "sentence_transformers"
