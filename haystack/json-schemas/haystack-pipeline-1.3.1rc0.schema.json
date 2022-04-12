@@ -461,11 +461,13 @@
             },
             "similarity": {
               "title": "Similarity",
-              "default": "dot_product"
+              "default": "dot_product",
+              "type": "string"
             },
             "timeout": {
               "title": "Timeout",
-              "default": 30
+              "default": 30,
+              "type": "integer"
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -1063,11 +1065,13 @@
             },
             "similarity": {
               "title": "Similarity",
-              "default": "cosine"
+              "default": "cosine",
+              "type": "string"
             },
             "timeout": {
               "title": "Timeout",
-              "default": 30
+              "default": 30,
+              "type": "integer"
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -1277,11 +1281,13 @@
             },
             "similarity": {
               "title": "Similarity",
-              "default": "dot_product"
+              "default": "dot_product",
+              "type": "string"
             },
             "timeout": {
               "title": "Timeout",
-              "default": 30
+              "default": 30,
+              "type": "integer"
             },
             "return_embedding": {
               "title": "Return Embedding",

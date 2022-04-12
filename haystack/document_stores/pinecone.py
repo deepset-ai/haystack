@@ -129,7 +129,6 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
 
-
     def _sanitize_index_name(self, index: str) -> str:
         return index.replace("_", "-").lower()
 

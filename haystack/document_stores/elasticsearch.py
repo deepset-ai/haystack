@@ -2140,7 +2140,7 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
         recreate_index: bool = False,
         create_index: bool = True,
         refresh_type: str = "wait_for",
-        similarity: str = "cosine",   # Mind this different default param
+        similarity: str = "cosine",  # Mind this different default param
         timeout: int = 30,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
