@@ -136,7 +136,11 @@ class BasePipeline(ABC):
     @classmethod
     @abstractmethod
     def load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -1068,11 +1072,11 @@ class Pipeline(BasePipeline):
 
     @classmethod
     def load_from_yaml(
-        cls, 
-        path: Path, 
-        pipeline_name: Optional[str] = None, 
-        overwrite_with_env_variables: bool = True, 
-        strict_version_check: bool = False
+        cls,
+        path: Path,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -1126,16 +1130,16 @@ class Pipeline(BasePipeline):
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
-            strict_version_check=strict_version_check
+            strict_version_check=strict_version_check,
         )
 
     @classmethod
     def load_from_config(
-        cls, 
-        pipeline_config: Dict, 
-        pipeline_name: Optional[str] = None, 
-        overwrite_with_env_variables: bool = True, 
-        strict_version_check: bool = False
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
