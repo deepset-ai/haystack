@@ -72,7 +72,7 @@ class PDFToTextConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
-        encoding: Optional[str] = "Latin1",
+        encoding: Optional[str] = "UTF-8",
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -91,11 +91,10 @@ class PDFToTextConverter(BaseConverter):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param encoding: Encoding that will be passed as -enc parameter to pdftotext. "Latin 1" is the default encoding
-                         of pdftotext. While this works well on many PDFs, it might be needed to switch to "UTF-8" or
-                         others if your doc contains special characters (e.g. German Umlauts, Cyrillic characters ...).
+        :param encoding: Encoding that will be passed as -enc parameter to pdftotext. Defaults to "UTF-8" in order to support 
+                         special characters (e.g. German Umlauts, Cyrillic characters ...).
                          Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
-                         "xef\xac\x81c" (see test cases). That's why we keep "Latin 1" as default here.
+                         "xef\xac\x81c" (see test cases). If you observe such cases, try switching to "Latin 1".
                          (See list of available encodings by running `pdftotext -listenc` in the terminal)
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
