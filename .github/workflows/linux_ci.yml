@@ -29,6 +29,7 @@ jobs:
 
   build-cache:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
@@ -59,6 +60,7 @@ jobs:
 
   type-check:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -95,6 +97,7 @@ jobs:
 
   linter:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
 
       - uses: actions/checkout@v2
@@ -132,6 +135,7 @@ jobs:
   code-and-docs-check:
     needs: build-cache
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: ${{ github.event_name }} != "push"
 
     steps:
@@ -217,6 +221,7 @@ jobs:
   prepare-matrix:
     needs: build-cache
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
@@ -230,6 +235,7 @@ jobs:
   tests:
     needs: prepare-matrix
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
@@ -261,7 +267,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.7.2
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
 
     - name: Run GraphDB
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
@@ -298,14 +304,13 @@ jobs:
         pip install ui/
 
     - name: Run tests
-      env:
-        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: pytest -s ${{ matrix.test-path }}
 
 
   test-milvus1:
     needs: build-cache
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@v2
@@ -352,6 +357,7 @@ jobs:
   test-pinecone:
     needs: build-cache
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v2

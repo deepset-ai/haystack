@@ -1,24 +1,34 @@
 from typing import Dict, List, Optional
 
 import logging
-import pandas as pd
 from collections import OrderedDict, namedtuple
+
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
-from haystack.document_stores import BaseDocumentStore, KeywordDocumentStore
+from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.elasticsearch import KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
-
-from haystack.document_stores import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)
 
 
 class ElasticsearchRetriever(BaseRetriever):
-    def __init__(self, document_store: KeywordDocumentStore, top_k: int = 10, custom_query: Optional[str] = None):
+    def __init__(
+        self,
+        document_store: KeywordDocumentStore,
+        top_k: int = 10,
+        all_terms_must_match: bool = False,
+        custom_query: Optional[str] = None,
+    ):
         """
         :param document_store: an instance of an ElasticsearchDocumentStore to retrieve documents from.
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to False.
         :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
 
                              Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
@@ -91,6 +101,7 @@ class ElasticsearchRetriever(BaseRetriever):
         self.document_store: KeywordDocumentStore = document_store
         self.top_k = top_k
         self.custom_query = custom_query
+        self.all_terms_must_match = all_terms_must_match
 
     def retrieve(
         self,
@@ -116,7 +127,15 @@ class ElasticsearchRetriever(BaseRetriever):
         if index is None:
             index = self.document_store.index
 
-        documents = self.document_store.query(query, filters, top_k, self.custom_query, index, headers=headers)
+        documents = self.document_store.query(
+            query=query,
+            filters=filters,
+            top_k=top_k,
+            all_terms_must_match=self.all_terms_must_match,
+            custom_query=self.custom_query,
+            index=index,
+            headers=headers,
+        )
         return documents
 
 
