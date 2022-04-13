@@ -24,6 +24,7 @@ from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.errors import DocumentStoreError
 
 
 logger = logging.getLogger(__name__)
@@ -182,7 +183,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity: str = similarity
         else:
-            raise Exception(
+            raise DocumentStoreError(
                 f"Invalid value {similarity} for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'"
             )
         if index_type in ["flat", "hnsw"]:
