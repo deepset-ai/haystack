@@ -9,7 +9,7 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "const": "master"
+      "const": "ignore"
     },
     "components": {
       "title": "Components",

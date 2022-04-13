@@ -114,7 +114,7 @@ def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: retriever
               type: MockRetriever
@@ -257,7 +257,7 @@ def test_load_yaml_no_components(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             pipelines:
             - name: my_pipeline
@@ -273,7 +273,7 @@ def test_load_yaml_wrong_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: docstore
               type: ImaginaryDocumentStore
@@ -299,7 +299,7 @@ def test_load_yaml_custom_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -331,7 +331,7 @@ def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -355,7 +355,7 @@ def test_load_yaml_custom_component_name_can_include_base(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: BaseCustomNode
@@ -379,7 +379,7 @@ def test_load_yaml_custom_component_must_subclass_basecomponent(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: SomeCustomNode
@@ -411,7 +411,7 @@ def test_load_yaml_custom_component_referencing_other_node_in_init(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: other_node
               type: OtherNode
@@ -455,7 +455,7 @@ def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -492,7 +492,7 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -531,7 +531,7 @@ def test_load_yaml_custom_component_with_enum_in_init(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -568,7 +568,7 @@ def test_load_yaml_custom_component_with_enum_in_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -602,7 +602,7 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -634,7 +634,7 @@ def test_load_yaml_custom_component_with_superclass(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -655,7 +655,7 @@ def test_load_yaml_no_pipelines(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: docstore
               type: MockDocumentStore
@@ -671,7 +671,7 @@ def test_load_yaml_invalid_pipeline_name(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: docstore
               type: MockDocumentStore
@@ -692,7 +692,7 @@ def test_load_yaml_pipeline_with_wrong_nodes(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: docstore
               type: MockDocumentStore
@@ -713,7 +713,7 @@ def test_load_yaml_pipeline_not_acyclic_graph(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: retriever
               type: MockRetriever
@@ -740,7 +740,7 @@ def test_load_yaml_wrong_root(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: retriever
               type: MockRetriever
@@ -762,7 +762,7 @@ def test_load_yaml_two_roots(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: retriever
               type: MockRetriever
@@ -788,7 +788,7 @@ def test_load_yaml_disconnected_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: master
+            version: ignore
             components:
             - name: docstore
               type: MockDocumentStore

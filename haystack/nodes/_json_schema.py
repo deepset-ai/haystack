@@ -319,13 +319,13 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
 
 def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     """
-    If the version contains "rc", only update the master's schema.
+    If the version contains "rc", only update master's schema.
     Otherwise, create (or update) a new schema.
     """
-    # Update master's schema
+    # Update masters's schema
     filename = f"haystack-pipeline-master.schema.json"
     with open(destination_path / filename, "w") as json_file:
-        json.dump(get_json_schema(filename=filename, version="master"), json_file, indent=2)
+        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
     # If it's not an rc version:
     if "rc" not in haystack_version:

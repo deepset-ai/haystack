@@ -10,7 +10,7 @@
         {
           "properties": {
             "version": {
-              "const": "master"
+              "const": "ignore"
             }
           }
         },

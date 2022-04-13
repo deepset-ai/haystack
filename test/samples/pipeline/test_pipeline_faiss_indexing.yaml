@@ -1,4 +1,4 @@
-version: 'master'
+version: ignore
 
 components:
   - name: DPRRetriever
