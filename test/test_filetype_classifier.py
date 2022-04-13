@@ -95,4 +95,3 @@ def test_filetype_classifier_text_files_without_extension_no_magic(monkeypatch, 
     with caplog.at_level(logging.ERROR):
         node.run(SAMPLES_PATH / "extensionless_files" / f"pdf_file")
         assert "'magic' could not be imported" in caplog.text
-
