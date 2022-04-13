@@ -136,7 +136,7 @@ class BasePipeline(ABC):
     @classmethod
     @abstractmethod
     def load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -182,6 +182,7 @@ class BasePipeline(ABC):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
