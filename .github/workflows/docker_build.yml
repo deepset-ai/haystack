@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
 
     strategy:
       fail-fast: false

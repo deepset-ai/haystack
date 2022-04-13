@@ -1,14 +1,9 @@
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
 
-import logging
-from isort import file
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 import sys
 import json
 import inspect
+import logging
 from pathlib import Path
 
 import pydantic.schema
@@ -26,6 +21,10 @@ from pydantic.schema import (
 from haystack import __version__ as haystack_version
 from haystack.errors import PipelineSchemaError
 from haystack.nodes.base import BaseComponent
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"

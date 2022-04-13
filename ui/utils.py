@@ -2,9 +2,9 @@ from typing import List, Dict, Any, Tuple, Optional
 
 import os
 import logging
-import requests
 from time import sleep
-from uuid import uuid4
+
+import requests
 import streamlit as st
 
 

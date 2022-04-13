@@ -1,15 +1,12 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
-
 import time
 import logging
-import numpy as np
-import torch
 from copy import deepcopy
 from collections import defaultdict
-from scipy.spatial.distance import cosine
+
+import numpy as np
+import torch
 from tqdm import tqdm
 
 from haystack.schema import Document, Label
@@ -17,8 +14,10 @@ from haystack.errors import DuplicateDocumentError
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
-
 from haystack.document_stores.filter_utils import LogicalFilterClause
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
 
 logger = logging.getLogger(__name__)
 

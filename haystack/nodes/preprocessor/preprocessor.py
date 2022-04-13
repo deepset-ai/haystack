@@ -10,8 +10,8 @@ import nltk
 from more_itertools import windowed
 from tqdm import tqdm
 
+from haystack.nodes.preprocessor.base import BasePreProcessor
 from haystack.errors import HaystackError
-from haystack.nodes.preprocessor import BasePreProcessor
 from haystack.schema import Document
 
 

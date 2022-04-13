@@ -2,8 +2,9 @@ from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
 import itertools
-import numpy as np
 from uuid import uuid4
+
+import numpy as np
 
 try:
     from sqlalchemy import (
@@ -13,7 +14,6 @@ try:
         Column,
         String,
         DateTime,
-        ForeignKey,
         Boolean,
         Text,
         text,
@@ -30,7 +30,6 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore
-
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 
@@ -573,8 +572,8 @@ class SQLDocumentStore(BaseDocumentStore):
             id=row.id,
             no_answer=row.no_answer,
             pipeline_id=row.pipeline_id,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
+            created_at=str(row.created_at),
+            updated_at=str(row.updated_at),
             meta=row.meta,
         )
         return label

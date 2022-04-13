@@ -4,8 +4,9 @@ import logging
 from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
-from tqdm import tqdm
 from copy import deepcopy
+
+from tqdm import tqdm
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError

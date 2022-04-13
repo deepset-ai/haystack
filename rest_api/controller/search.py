@@ -3,36 +3,30 @@ from typing import Dict, Any
 import logging
 import time
 import json
-from pathlib import Path
 from numpy import ndarray
 
-from fastapi import APIRouter
-
+from pydantic import BaseConfig
+from fastapi import FastAPI, APIRouter
 import haystack
-from haystack.pipelines.base import Pipeline
+from haystack import Pipeline
 from haystack.telemetry import send_event_if_public_demo
-from rest_api.config import PIPELINE_YAML_PATH, QUERY_PIPELINE_NAME
-from rest_api.config import LOG_LEVEL, CONCURRENT_REQUEST_PER_WORKER
+
+from rest_api.utils import get_app, get_pipelines
+from rest_api.config import LOG_LEVEL
 from rest_api.schema import QueryRequest, QueryResponse
-from rest_api.controller.utils import RequestLimiter
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
 logger = logging.getLogger("haystack")
 
-from pydantic import BaseConfig
 
 BaseConfig.arbitrary_types_allowed = True
 
+
 router = APIRouter()
-
-
-PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=QUERY_PIPELINE_NAME)
-DOCUMENT_STORE = PIPELINE.get_document_store()
-logging.info(f"Loaded pipeline nodes: {PIPELINE.graph.nodes.keys()}")
-
-concurrency_limiter = RequestLimiter(CONCURRENT_REQUEST_PER_WORKER)
-logging.info("Concurrent requests per worker: {CONCURRENT_REQUEST_PER_WORKER}")
+app: FastAPI = get_app()
+query_pipeline: Pipeline = get_pipelines().get("query_pipeline", None)
+concurrency_limiter = get_pipelines().get("concurrency_limiter", None)
 
 
 @router.get("/initialized")
@@ -62,7 +56,7 @@ def query(request: QueryRequest):
     additional parameters that will be passed on to the Haystack pipeline.
     """
     with concurrency_limiter.run():
-        result = _process_request(PIPELINE, request)
+        result = _process_request(query_pipeline, request)
         return result
 
 

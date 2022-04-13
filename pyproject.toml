@@ -22,8 +22,7 @@ disable = [
   "c-extension-no-member",
 
 
-
-
+  # To review:
   "missing-docstring",
   "unused-argument",
   "no-member",
@@ -31,15 +30,12 @@ disable = [
   "protected-access",
   "too-few-public-methods",
   "raise-missing-from",
-
   "invalid-name",
   "logging-fstring-interpolation",
-  "wrong-import-position",
   "too-many-locals",
   "duplicate-code",
   "too-many-arguments",
   "arguments-differ",
-  "wrong-import-order",
   "consider-using-f-string",
   "no-else-return",
   "unused-variable",
@@ -58,18 +54,14 @@ disable = [
   "unidiomatic-typecheck",
   "no-name-in-module",
   "dangerous-default-value",
-  "unused-import",
   "consider-using-with",
   "redefined-outer-name",
-  "cyclic-import",
   "arguments-renamed",
   "unnecessary-pass",
-  "ungrouped-imports",
   "broad-except",
   "unnecessary-comprehension",
   "subprocess-run-check",
   "singleton-comparison",
-  "import-outside-toplevel",
   "consider-iterating-dictionary",
   "too-many-nested-blocks",
   "undefined-loop-variable",
@@ -80,7 +72,13 @@ disable = [
   "unexpected-keyword-arg",
   "simplifiable-if-expression",
   "use-list-literal",
-  "reimported",
+
+
+  
+
+  # To review later
+  "cyclic-import",
+  "import-outside-toplevel",
   "deprecated-method",
 ]
 [tool.pylint.'DESIGN']

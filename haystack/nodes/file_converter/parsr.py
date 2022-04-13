@@ -1,21 +1,22 @@
 from typing import Optional, Dict, List, Any
 
-from haystack.errors import HaystackError
-
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-import requests
 import json
-from pathlib import Path
 import copy
 import logging
+from pathlib import Path
+
+import requests
 import pandas as pd
 
-from haystack.nodes.file_converter import BaseConverter
+from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
+from haystack.errors import HaystackError
+
 
 logger = logging.getLogger(__name__)
 

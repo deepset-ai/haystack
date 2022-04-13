@@ -1,16 +1,14 @@
 from typing import TYPE_CHECKING, Any, Union, List, Optional, Dict, Generator
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
-
 import json
 import logging
 import warnings
-import numpy as np
-from copy import deepcopy
 from pathlib import Path
-from tqdm.auto import tqdm
+from copy import deepcopy
 from inspect import Signature, signature
+
+import numpy as np
+from tqdm.auto import tqdm
 
 try:
     import faiss
@@ -24,6 +22,9 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
 
 
 logger = logging.getLogger(__name__)

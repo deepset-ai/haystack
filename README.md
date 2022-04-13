@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/haystack_logo_colored.png" alt="Haystack"></a>
+  <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/haystack_logo_colored.png" alt="Haystack"></a>
 </p>
 
 <p>
@@ -30,7 +30,7 @@ Haystack is an end-to-end framework that enables you to build powerful and produ
 Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
 Haystack is built in a modular fashion so that you can combine the best technology from other open-source projects like Huggingface's Transformers, Elasticsearch, or Milvus.
 
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/main_example.gif"></p>
 
 ## What to build with Haystack
 
@@ -132,7 +132,7 @@ You can find out more about our PyPi package on our [PyPi page](https://pypi.org
 
 ## :mortar_board: Tutorials
 
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/concepts_haystack_handdrawn.png)
+![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/concepts_haystack_handdrawn.png)
 
 Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system) 
 to setup a question answering system using Python and start performing queries! 
@@ -277,7 +277,7 @@ haystack-api_1   | [2021-01-01 10:21:58 +0000] [17] [INFO] Application startup c
 
 You should see the following:
 
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/streamlit_ui_screenshot.png)
+![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/streamlit_ui_screenshot.png)
 
 You can then try different queries against a pre-defined set of indexed articles related to Game of Thrones.
 

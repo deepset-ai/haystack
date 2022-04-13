@@ -2,15 +2,11 @@ from typing import Generator, Optional, Dict, List, Set, Union
 
 import logging
 import collections
-import numpy as np
+from pathlib import Path
 from itertools import islice
 from abc import abstractmethod
-from pathlib import Path
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+import numpy as np
 
 from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
@@ -280,6 +276,10 @@ class BaseDocumentStore(BaseComponent):
             aggregate_by_meta = []
 
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
+
+        # drop no_answers in order to not create empty MultiLabels
+        if drop_no_answers:
+            all_labels = [label for label in all_labels if label.no_answer == False]
 
         grouped_labels: dict = {}
         for l in all_labels:
