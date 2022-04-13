@@ -54,7 +54,8 @@ def _optional_component_not_installed(component: str, dep_group: str, source_err
         f"Failed to import '{component}', "
         "which is an optional component in Haystack.\n"
         f"Run 'pip install 'farm-haystack[{dep_group}]'' "
-        "to install the required dependencies and make this component available."
+        "to install the required dependencies and make this component available.\n"
+        f"(Original error: {str(source_error)})"
     ) from source_error
 
 
