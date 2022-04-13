@@ -282,7 +282,9 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
 
     - name: Install tesseract
-      run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
+      run: |
+        sudo apt update
+        sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Install Dependencies (on cache miss only)
       # The cache might miss during the execution of an action: there should always be a fallback step to
