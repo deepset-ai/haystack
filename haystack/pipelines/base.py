@@ -997,7 +997,7 @@ class Pipeline(BasePipeline):
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
-        return pd.concat(partial_dfs, ignore_index=True)
+        return pd.concat(partial_dfs, ignore_index=True).reset_index()
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
