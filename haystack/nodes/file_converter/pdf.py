@@ -91,7 +91,7 @@ class PDFToTextConverter(BaseConverter):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param encoding: Encoding that will be passed as -enc parameter to pdftotext. Defaults to "UTF-8" in order to support 
+        :param encoding: Encoding that will be passed as -enc parameter to pdftotext. Defaults to "UTF-8" in order to support
                          special characters (e.g. German Umlauts, Cyrillic characters ...).
                          Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
                          "xef\xac\x81c" (see test cases). If you observe such cases, try switching to "Latin 1".
