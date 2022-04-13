@@ -61,8 +61,7 @@ class FARMReader(BaseReader):
         proxies: Optional[Dict[str, str]] = None,
         local_files_only=False,
         force_download=False,
-        use_auth_token: Optional[Union[str, bool]] = None,
-        **kwargs,
+        use_auth_token: Optional[Union[str, bool]] = None
     ):
 
         """
@@ -139,8 +138,7 @@ class FARMReader(BaseReader):
             local_files_only=local_files_only,
             force_download=force_download,
             devices=self.devices,
-            use_auth_token=use_auth_token,
-            **kwargs,
+            use_auth_token=use_auth_token
         )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
