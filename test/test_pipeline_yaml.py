@@ -164,7 +164,7 @@ def test_load_yaml_missing_version(tmp_path):
                 - Query
         """
         )
-    with pytest.raises(PipelineConfigError) as e:
+    with pytest.raises(PipelineConfigError, match="Validation failed") as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "version" in str(e)
 
@@ -191,6 +191,26 @@ def test_load_yaml_non_existing_version(tmp_path, caplog):
         assert f"Haystack {haystack.__version__}" in caplog.text
 
 
+def test_load_yaml_non_existing_version_strict(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            """
+            version: random
+            components:
+            - name: docstore
+              type: MockDocumentStore
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineConfigError, match="Cannot load pipeline configuration of version random"):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", strict_version_check=True)
+
+
 def test_load_yaml_incompatible_version(tmp_path, caplog):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
@@ -211,6 +231,26 @@ def test_load_yaml_incompatible_version(tmp_path, caplog):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
         assert "version 1.1.0" in caplog.text
         assert f"Haystack {haystack.__version__}" in caplog.text
+
+
+def test_load_yaml_incompatible_version_strict(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            """
+            version: 1.1.0
+            components:
+            - name: docstore
+              type: MockDocumentStore
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: docstore
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineConfigError, match="Cannot load pipeline configuration of version 1.1.0"):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", strict_version_check=True)
 
 
 def test_load_yaml_no_components(tmp_path):
