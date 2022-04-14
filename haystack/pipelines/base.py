@@ -1457,7 +1457,7 @@ class RayPipeline(Pipeline):
         address: Optional[str] = None,
         strict_version_check: bool = False,
         **kwargs,
-    ):
+    ): # type: ignore
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
