@@ -57,7 +57,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         faiss_index_path: Union[str, Path] = None,
         faiss_config_path: Union[str, Path] = None,
         isolation_level: str = None,
-        **kwargs,
+        n_links: int = 64,
+        ef_search: int = 20,
+        ef_construction: int = 80,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
@@ -102,12 +104,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param faiss_config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+        :param n_links: used only if index_factory == "HNSW"
+        :param ef_search: used only if index_factory == "HNSW"
+        :param ef_construction: used only if index_factory == "HNSW"
         """
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again
         if faiss_index_path is not None:
             sig = signature(self.__class__.__init__)
-            self._validate_params_load_from_disk(sig, locals(), kwargs)
+            self._validate_params_load_from_disk(sig, locals())
             init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
             self.__class__.__init__(self, **init_params)  # pylint: disable=non-parent-init-called
             return
@@ -141,7 +146,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                 embedding_dim=self.embedding_dim,
                 index_factory=faiss_index_factory_str,
                 metric_type=self.metric_type,
-                **kwargs,
+                n_links=n_links,
+                ef_search=ef_search,
+                ef_construction=ef_construction,
             )
 
         self.return_embedding = return_embedding
@@ -155,8 +162,8 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         self._validate_index_sync()
 
-    def _validate_params_load_from_disk(self, sig: Signature, locals: dict, kwargs: dict):
-        allowed_params = ["faiss_index_path", "faiss_config_path", "self", "kwargs"]
+    def _validate_params_load_from_disk(self, sig: Signature, locals: dict):
+        allowed_params = ["faiss_index_path", "faiss_config_path", "self"]
         invalid_param_set = False
 
         for param in sig.parameters.values():
@@ -164,7 +171,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 invalid_param_set = True
                 break
 
-        if invalid_param_set or len(kwargs) > 0:
+        if invalid_param_set:
             raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
 
     def _validate_index_sync(self):
@@ -179,14 +186,21 @@ class FAISSDocumentStore(SQLDocumentStore):
                 "was used when creating the original index."
             )
 
-    def _create_new_index(self, embedding_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
+    def _create_new_index(
+        self,
+        embedding_dim: int,
+        metric_type,
+        index_factory: str = "Flat",
+        n_links: int = 64,
+        ef_search: int = 20,
+        ef_construction: int = 80,
+    ):
         if index_factory == "HNSW":
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
-            n_links = kwargs.get("n_links", 64)
             index = faiss.IndexHNSWFlat(embedding_dim, n_links, metric_type)
-            index.hnsw.efSearch = kwargs.get("efSearch", 20)  # 20
-            index.hnsw.efConstruction = kwargs.get("efConstruction", 80)  # 80
+            index.hnsw.efSearch = ef_search
+            index.hnsw.efConstruction = ef_construction
             if "ivf" in index_factory.lower():  # enable reconstruction of vectors for inverted index
                 self.faiss_indexes[index].set_direct_map_type(faiss.DirectMap.Hashtable)
 

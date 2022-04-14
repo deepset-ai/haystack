@@ -192,9 +192,7 @@ def test_retribert_embedding(document_store, retriever, docs):
     if isinstance(document_store, WeaviateDocumentStore):
         # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
         # We need 128 here and therefore initialize a new WeaviateDocumentStore.
-        document_store = WeaviateDocumentStore(
-            weaviate_url="http://localhost:8080", index="haystack_test", embedding_dim=128
-        )
+        document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=128)
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()
     document_store.return_embedding = True

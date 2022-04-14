@@ -60,7 +60,6 @@ class Milvus1DocumentStore(SQLDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         isolation_level: str = None,
-        **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -106,7 +105,9 @@ class Milvus1DocumentStore(SQLDocumentStore):
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
-        super().__init__()
+        super().__init__(
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
+        )
 
         self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)
 
@@ -140,10 +141,6 @@ class Milvus1DocumentStore(SQLDocumentStore):
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
-
-        super().__init__(
-            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
-        )
 
     def __del__(self):
         return self.milvus_server.close()
