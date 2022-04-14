@@ -1414,6 +1414,7 @@ class RayPipeline(Pipeline):
         pipeline_config: Dict,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
         address: Optional[str] = None,
         **kwargs,
     ):
@@ -1454,6 +1455,7 @@ class RayPipeline(Pipeline):
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
         address: Optional[str] = None,
+        strict_version_check: bool = False,
         **kwargs,
     ):
         """
