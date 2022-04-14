@@ -1,11 +1,12 @@
-from collections import namedtuple
-import multiprocessing
 from typing import Generator, Iterable, Optional, Tuple, List, Union
+
 import re
-from rapidfuzz import fuzz
-from multiprocessing import Pool
-from tqdm import tqdm
 from itertools import groupby
+from multiprocessing.pool import Pool
+from collections import namedtuple
+
+from rapidfuzz import fuzz
+from tqdm import tqdm
 
 
 _CandidateScore = namedtuple("_CandidateScore", ["context_id", "candidate_id", "score"])
@@ -121,7 +122,7 @@ def match_context(
                                  we cut the context on the same side, recalculate the score and take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
     """
-    pool: Optional[multiprocessing.pool.Pool] = None
+    pool: Optional[Pool] = None
     try:
         score_candidate_args = ((context, candidate, min_length, boost_split_overlaps) for candidate in candidates)
         if num_processes is None or num_processes > 1:
@@ -178,7 +179,7 @@ def match_contexts(
                                  we cut the context on the same side, recalculate the score and take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
     """
-    pool: Optional[multiprocessing.pool.Pool] = None
+    pool: Optional[Pool] = None
     try:
         score_candidate_args = (
             (context, candidate, min_length, boost_split_overlaps)

@@ -7,7 +7,7 @@ from torch.nn import DataParallel
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from haystack.schema import Document
-from haystack.nodes.ranker import BaseRanker
+from haystack.nodes.ranker.base import BaseRanker
 from haystack.modeling.utils import initialize_device_settings
 
 logger = logging.getLogger(__name__)

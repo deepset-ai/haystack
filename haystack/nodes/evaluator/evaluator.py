@@ -253,14 +253,14 @@ class EvalAnswers(BaseComponent):
                         {
                             "predictions": predictions,
                             "gold_labels": multi_labels,
-                            "top_1_no_answer": int(predictions[0] == ""),
+                            "top_1_no_answer": int(predictions[0].answer is None),
                         }
                     )
                 self.update_no_answer_metrics()
             # If there are answer span annotations in the labels
             else:
                 self.has_answer_count += 1
-                predictions_str: List[str] = [p.answer for p in predictions if p.answer]
+                predictions_str: List[str] = [p.answer if p.answer else "" for p in predictions]
                 top_1_em, top_1_f1, top_k_em, top_k_f1 = self.evaluate_extraction(multi_labels.answers, predictions_str)
 
                 # Compute Semantic Answer Similarity if model is supplied

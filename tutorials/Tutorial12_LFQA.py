@@ -1,4 +1,4 @@
-from haystack.utils import convert_files_to_dicts, fetch_archive_from_http, clean_wiki_text
+from haystack.utils import convert_files_to_docs, fetch_archive_from_http, clean_wiki_text
 from haystack.nodes import Seq2SeqGenerator
 
 
@@ -30,10 +30,10 @@ def tutorial12_lfqa():
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Convert files to dicts
-    dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+    docs = convert_files_to_docs(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
 
     # Now, let's write the dicts containing documents to our DB.
-    document_store.write_documents(dicts)
+    document_store.write_documents(docs)
 
     """
     Initalize Retriever and Reader/Generator:

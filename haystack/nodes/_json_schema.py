@@ -2,11 +2,6 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
 
 import logging
 
-from sqlalchemy import schema
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 import os
 import re
 import sys
@@ -31,6 +26,10 @@ from pydantic.schema import (
 from haystack import __version__ as haystack_version
 from haystack.errors import PipelineSchemaError
 from haystack.nodes.base import BaseComponent
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"

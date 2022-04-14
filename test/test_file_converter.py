@@ -25,7 +25,7 @@ from .conftest import SAMPLES_PATH
 def test_convert(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]
-    pages = document["content"].split("\f")
+    pages = document.content.split("\f")
     assert len(pages) == 4  # the sample PDF file has four pages.
     assert pages[0] != ""  # the page 1 of PDF contains text.
     assert pages[2] == ""  # the page 3 of PDF file is empty.
@@ -40,7 +40,7 @@ def test_convert(Converter):
 def test_table_removal(Converter):
     converter = Converter(remove_numeric_tables=True)
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]
-    pages = document["content"].split("\f")
+    pages = document.content.split("\f")
     # assert numeric rows are removed from the table.
     assert "324" not in pages[0]
     assert "54x growth" not in pages[0]
@@ -61,13 +61,13 @@ def test_language_validation(Converter, caplog):
 def test_docx_converter():
     converter = DocxToTextConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "docx" / "sample_docx.docx")[0]
-    assert document["content"].startswith("Sample Docx File")
+    assert document.content.startswith("Sample Docx File")
 
 
 def test_markdown_converter():
     converter = MarkdownConverter()
     document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
-    assert document["content"].startswith("What to build with Haystack")
+    assert document.content.startswith("What to build with Haystack")
 
 
 def test_azure_converter():
@@ -81,21 +81,21 @@ def test_azure_converter():
 
         docs = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
         assert len(docs) == 2
-        assert docs[0]["content_type"] == "table"
-        assert len(docs[0]["content"]) == 5  # number of rows
-        assert len(docs[0]["content"][0]) == 5  # number of columns, Form Recognizer assumes there are 5 columns
-        assert docs[0]["content"][0] == ["", "Column 1", "", "Column 2", "Column 3"]
-        assert docs[0]["content"][4] == ["D", "$54.35", "", "$6345.", ""]
+        assert docs[0].content_type == "table"
+        assert docs[0].content.shape[0] == 4  # number of rows
+        assert docs[0].content.shape[1] == 5  # number of columns, Form Recognizer assumes there are 5 columns
+        assert list(docs[0].content.columns) == ["", "Column 1", "", "Column 2", "Column 3"]
+        assert list(docs[0].content.iloc[3]) == ["D", "$54.35", "", "$6345.", ""]
         assert (
-            docs[0]["meta"]["preceding_context"] == "specification. These proprietary technologies are not "
+            docs[0].meta["preceding_context"] == "specification. These proprietary technologies are not "
             "standardized and their\nspecification is published only on "
             "Adobe's website. Many of them are also not\nsupported by "
             "popular third-party implementations of PDF."
         )
-        assert docs[0]["meta"]["following_context"] == ""
+        assert docs[0].meta["following_context"] == ""
 
-        assert docs[1]["content_type"] == "text"
-        assert docs[1]["content"].startswith("A sample PDF file")
+        assert docs[1].content_type == "text"
+        assert docs[1].content.startswith("A sample PDF file")
 
 
 def test_parsr_converter():
@@ -103,19 +103,19 @@ def test_parsr_converter():
 
     docs = converter.convert(file_path=str((SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf").absolute()))
     assert len(docs) == 2
-    assert docs[0]["content_type"] == "table"
-    assert len(docs[0]["content"]) == 5  # number of rows
-    assert len(docs[0]["content"][0]) == 4  # number of columns
-    assert docs[0]["content"][0] == ["", "Column 1", "Column 2", "Column 3"]
-    assert docs[0]["content"][4] == ["D", "$54.35", "$6345.", ""]
+    assert docs[0].content_type == "table"
+    assert docs[0].content.shape[0] == 4  # number of rows
+    assert docs[0].content.shape[1] == 4
+    assert list(docs[0].content.columns) == ["", "Column 1", "Column 2", "Column 3"]
+    assert list(docs[0].content.iloc[3]) == ["D", "$54.35", "$6345.", ""]
     assert (
-        docs[0]["meta"]["preceding_context"] == "speciﬁcation. These proprietary technologies are not "
+        docs[0].meta["preceding_context"] == "speciﬁcation. These proprietary technologies are not "
         "standardized and their\nspeciﬁcation is published only on "
         "Adobe's website. Many of them are also not\nsupported by popular "
         "third-party implementations of PDF."
     )
-    assert docs[0]["meta"]["following_context"] == ""
+    assert docs[0].meta["following_context"] == ""
 
-    assert docs[1]["content_type"] == "text"
-    assert docs[1]["content"].startswith("A sample PDF ﬁle")
-    assert docs[1]["content"].endswith("Page 4 of Sample PDF\n… the page 3 is empty.")
+    assert docs[1].content_type == "text"
+    assert docs[1].content.startswith("A sample PDF ﬁle")
+    assert docs[1].content.endswith("Page 4 of Sample PDF\n… the page 3 is empty.")

@@ -137,10 +137,15 @@ class TableReader(BaseReader):
         no_answer_score = 1.0
         for document in documents:
             if document.content_type != "table":
-                logger.warning(f"Skipping document with id {document.id} in TableReader, as it is not of type table.")
+                logger.warning(f"Skipping document with id '{document.id}' in TableReader as it is not of type table.")
                 continue
 
             table: pd.DataFrame = document.content
+            if table.shape[0] == 0:
+                logger.warning(
+                    f"Skipping document with id '{document.id}' in TableReader as it does not contain any rows."
+                )
+                continue
             # Tokenize query and current table
             inputs = self.tokenizer(
                 table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
@@ -370,7 +375,7 @@ class TableReader(BaseReader):
                 else:
                     raise KeyError("unknown aggregator")
 
-            return f"{answer_value}{' ' + unit if unit else ''}"
+                return f"{answer_value}{' ' + unit if unit else ''}"
 
         except KeyError as e:
             if "unknown aggregator" in str(e):
@@ -525,10 +530,15 @@ class RCIReader(BaseReader):
         answers = []
         for document in documents:
             if document.content_type != "table":
-                logger.warning(f"Skipping document with id {document.id} in RCIReader, as it is not of type table.")
+                logger.warning(f"Skipping document with id '{document.id}' in RCIReader as it is not of type table.")
                 continue
 
             table: pd.DataFrame = document.content
+            if table.shape[0] == 0:
+                logger.warning(
+                    f"Skipping document with id '{document.id}' in RCIReader as it does not contain any rows."
+                )
+                continue
             table = table.astype(str)
             # Create row and column representations
             row_reps, column_reps = self._create_row_column_representations(table)
