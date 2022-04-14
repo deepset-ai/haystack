@@ -49,7 +49,7 @@ def reduce_windows_recursion_limit():
     """
     Prevents Windows CI from crashing with Stackoverflow in situations we want to provoke a RecursionError
     """
-    is_windows = True# platform.system() == "Windows"
+    is_windows = True  # platform.system() == "Windows"
     default_recursion_limit = sys.getrecursionlimit()
     if is_windows:
         reduced_recursion_limit = default_recursion_limit // 2
