@@ -335,7 +335,7 @@ def test_load_yaml_custom_component_neednt_call_super(tmp_path):
     assert isinstance(pipeline.get_node("custom_node"), CustomNode)
     assert pipeline.get_node("custom_node").param == 1
 
-
+    
 def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
     class CustomNode(MockNode):
         @abstractmethod
