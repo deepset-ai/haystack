@@ -8,7 +8,6 @@ import logging
 import tempfile
 import traceback
 from pathlib import Path
-from abc import ABC, abstractmethod
 
 import yaml
 import numpy as np
@@ -18,13 +17,6 @@ from pandas.core.frame import DataFrame
 from tqdm import tqdm
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-
-try:
-    from ray import serve
-    import ray
-except:
-    ray = None  # type: ignore
-    serve = None  # type: ignore
 
 from haystack import __version__
 from haystack.nodes.evaluator.evaluator import (
@@ -36,7 +28,7 @@ from haystack.pipelines.config import (
     get_component_definitions,
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
-    validate_config,
+    validate_nodes_config,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
@@ -53,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
 CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
-
+VALID_ROOT_NODES = ["Query", "File"]
 
 class RootNode(BaseComponent):
     """
@@ -349,7 +341,7 @@ class Pipeline:
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         client.undeploy(pipeline_config_name=pipeline_config_name, timeout=timeout)
 
-    def add_node(self, component: BaseComponent, name: str, inputs: List[str]):
+    def add_node(self, component: BaseComponent, name: str, inputs: List[str], _skip_graph_update: bool = False):
         """
         Add a new node to the pipeline.
 
@@ -364,68 +356,15 @@ class Pipeline:
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
         """
-        valid_root_nodes = ["Query", "File"]
-        if self.root_node is None:
-            root_node = inputs[0]
-            if root_node in valid_root_nodes:
-                self.root_node = root_node
-                self.graph.add_node(root_node, component=RootNode())
-            else:
-                raise PipelineConfigError(
-                    f"Root node '{root_node}' is invalid. Available options are {valid_root_nodes}."
-                )
+        if not _skip_graph_update:
+            self._update_graph(node={"name": name, "type": type(component), "inputs": inputs})
+
         component.name = name
         component_names = self._get_all_component_names()
         component_names.add(name)
         self._set_sub_component_names(component, component_names=component_names)
-        self.graph.add_node(name, component=component, inputs=inputs)
-
-        if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            if not len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node:
-                raise PipelineConfigError(
-                    f"The '{name}' node can only input from {self.root_node}. "
-                    f"Set the 'inputs' parameter to ['{self.root_node}']"
-                )
-            # edges_count = self.graph.graph.
-            self.graph.add_edge(self.root_node, name, label="output_1")
-            return
-
-        for input_node in inputs:
-            if "." in input_node:
-                [input_node_name, input_edge_name] = input_node.split(".")
-                if not "output_" in input_edge_name:
-                    raise PipelineConfigError(f"'{input_edge_name}' is not a valid edge name.")
-
-                outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
-                if not int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node:
-                    raise PipelineConfigError(
-                        f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
-                        f"{outgoing_edges_input_node} outgoing edge(s)."
-                    )
-            else:
-                try:
-                    outgoing_edges_input_node = self.graph.nodes[input_node]["component"].outgoing_edges
-                    if not outgoing_edges_input_node == 1:
-                        raise PipelineConfigError(
-                            f"Adding an edge from {input_node} to {name} is ambiguous as {input_node} has {outgoing_edges_input_node} edges. "
-                            f"Please specify the output explicitly."
-                        )
-
-                except KeyError as e:
-                    raise PipelineConfigError(
-                        f"Cannot find node '{input_node}'. Make sure you're not using more "
-                        f"than one root node ({valid_root_nodes}) in the same pipeline and that a node "
-                        f"called '{input_node}' is defined."
-                    ) from e
-
-                input_node_name = input_node
-                input_edge_name = "output_1"
-            self.graph.add_edge(input_node_name, name, label=input_edge_name)
-
-        if not nx.is_directed_acyclic_graph(self.graph):
-            self.graph.remove_node(name)
-            raise PipelineConfigError(f"Cannot add '{name}': it will create a loop in the pipeline.")
-
+        self.graph.nodes[name]["component"] = component
+        
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
         Get a node from the Pipeline.
@@ -1047,22 +986,129 @@ class Pipeline:
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         """
-        validate_config(pipeline_config)
+        pipeline = cls()
+
+        # Validate against JSON schema
+        validate_nodes_config(pipeline_config)
 
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
         )
 
-        pipeline = cls()
-
-        components: dict = {}  # instances of component objects.
+        # Create the graph fist, without loading any node (for validation)
+        #component_types = {component["name"]: component["type"] for name, component in component_definitions}
         for node in pipeline_definition["nodes"]:
-            name = node["name"]
-            component = cls._load_or_get_component(name=name, definitions=component_definitions, components=components)
-            pipeline.add_node(component=component, name=name, inputs=node.get("inputs", []))
+            pipeline._update_graph(node=node, component_types=component_definitions)
+
+        # Now load all the nodes
+        components: dict = {}  # instances of component objects.
+        for node_name, node_attr in pipeline.graph.nodes.items():
+            if node_name not in VALID_ROOT_NODES:
+                component = cls._load_or_get_component(name=node_name, definitions=component_definitions, components=components)
+                pipeline.add_node(component=component, name=node_name, inputs=node_attr["inputs"], _skip_graph_update=True)
 
         return pipeline
+
+    
+    def _get_class_for_valid_node(self, node_name: str, component_types: Dict[str, Dict[str, str]]):
+        try:
+            node_type = component_types[node_name]["type"]
+        except KeyError as e:
+            raise PipelineConfigError(
+                f"Cannot find node '{node_name}'. Make sure that a node "
+                f"called '{node_name}' is defined under components."
+            ) from e 
+
+        try:
+            node_class = BaseComponent.get_subclass(node_type)
+        except KeyError as e:
+            raise PipelineConfigError(
+                f"Node of type '{node_class}' not recognized. Check for typos in the node type."
+            ) from e 
+
+        return node_class
+
+    def _update_graph(self, node: Dict[str, str], component_types: Dict[str, str] = None):
+        """
+        :param node: {"name": node_name. "type": node_class, "inputs": [node_inputs]}
+        :param component_types: same structure as Pipeline.components
+        """
+        # The components might be read from the pipeline graph when the pipeline is already fully initialized 
+        # (i.e. pipeline.add_node() is called) or might be given as a dict when the pipeline is still being loaded
+        # (i.e. Pipeline.load_from_config() is called)
+        if not component_types:
+            component_types = self.components
+            component_types.update(node)
+
+        # Validate node definition
+        self._get_class_for_valid_node(node_name=node["name"], component_types=component_types)
+
+        # If the graph is empty, let's first add a root node
+        if len(self.graph) == 0:
+            if not len(node["inputs"]) == 1:
+                raise PipelineConfigError(
+                    f"The '{node['name']}' node is the first of the pipeline, so it can only take "
+                    f"one root node as input ([{'] or ['.join(VALID_ROOT_NODES)}], not {node['inputs']})."
+                )
+            root_node = node["inputs"][0]
+            if root_node in VALID_ROOT_NODES:
+                self.graph.add_node(root_node, inputs=[], component=None)
+            else:
+                raise PipelineConfigError(
+                    f"Root node '{root_node}' is invalid. Available options are {VALID_ROOT_NODES}."
+                )
+
+        self.graph.add_node(node["name"], inputs=node["inputs"], component=None)
+
+        for input_node in node["inputs"]:
+
+            # Separate node and edge name, if specified
+            input_node_name, input_edge_name = input_node, None
+            if "." in input_node:
+                input_node_name, input_edge_name = input_node.split(".")
+
+            if input_node in VALID_ROOT_NODES:
+                input_edge_name = "output_1"
+
+            else:
+                # Validate node definition and edge name
+                input_node_type = self._get_class_for_valid_node(node_name=input_node_name, component_types=component_types)
+                input_node_edges_count = input_node_type.outgoing_edges
+
+                if not input_edge_name:
+                    if input_node_edges_count != 1:    # Edge was not specified, but input node has many outputs
+                        raise PipelineConfigError(
+                            f"Can't connect {input_node_name} to {node['name']}: "
+                            f"{input_node_name} has {input_node_edges_count} outgoing edges. "
+                            "Please specify the output edge explicitly (like 'filetype_classifier.output_2')."
+                        )
+                    input_edge_name = "output_1"
+
+                if not input_edge_name.startswith("output_"):
+                    raise PipelineConfigError(f"'{input_edge_name}' is not a valid edge name. It must start with 'output_' and must contain no dots.")
+                
+                requested_edge = input_edge_name.split("_")[1]
+
+                try:
+                    requested_edge = int(requested_edge)
+                except ValueError:
+                    raise PipelineConfigError(f"You must specified a numbered edge, like filetype_classifier.output_2, not {input_node}")
+
+                if not requested_edge <= input_node_edges_count:
+                    raise PipelineConfigError(
+                        f"Cannot connect '{node['name']}' to '{input_node}', as {input_node_name} has only "
+                        f"{input_node_edges_count} outgoing edge(s)."
+                    )
+
+            self.graph.add_edge(input_node, node['name'], label=input_edge_name)
+
+            # Check if adding this edge created a loop in the pipeline graph
+            if not nx.is_directed_acyclic_graph(self.graph):
+                self.graph.remove_node(node['name'])
+                raise PipelineConfigError(f"Cannot add '{node['name']}': it will create a loop in the pipeline.")
+
+
 
     @classmethod
     def _load_or_get_component(cls, name: str, definitions: dict, components: dict):
@@ -1181,7 +1227,7 @@ class Pipeline:
         if components_to_search is None:
             components_to_search = list(self.components.values())
         for component in components_to_search:
-            if component.name is not None:
+            if component and component.name is not None:
                 component_names.add(component.name)
                 sub_component_names = self._get_all_component_names(component.utilized_components)
                 component_names.update(sub_component_names)

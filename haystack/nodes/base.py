@@ -109,7 +109,7 @@ class BaseComponent(ABC):
         return params
 
     @classmethod
-    def get_subclass(cls, component_type: str):
+    def get_subclass(cls, component_type: str) -> BaseComponent:
         if component_type not in cls._subclasses.keys():
             raise PipelineSchemaError(f"Haystack component with the name '{component_type}' not found.")
         subclass = cls._subclasses[component_type]
