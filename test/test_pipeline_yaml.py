@@ -667,6 +667,72 @@ def test_load_yaml_custom_component_with_superclass(tmp_path):
     Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
+def test_load_yaml_custom_component_with_variadic_args(tmp_path):
+    class BaseCustomNode(MockNode):
+        def __init__(self, base_parameter: int):
+            super().__init__()
+            self.base_parameter = base_parameter
+
+    class CustomNode(BaseCustomNode):
+        def __init__(self, some_parameter: str, *args):
+            super().__init__(*args)
+            self.some_parameter = some_parameter
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomNode
+              params:
+                base_parameter: 1
+                some_parameter: value
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineSchemaError, match="variadic"):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_custom_component_with_variadic_kwargs(tmp_path):
+    class BaseCustomNode(MockNode):
+        def __init__(self, base_parameter: int):
+            super().__init__()
+            self.base_parameter = base_parameter
+
+    class CustomNode(BaseCustomNode):
+        def __init__(self, some_parameter: str, **kwargs):
+            super().__init__(**kwargs)
+            self.some_parameter = some_parameter
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomNode
+              params:
+                base_parameter: 1
+                some_parameter: value
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineSchemaError, match="variadic"):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
 def test_load_yaml_no_pipelines(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(

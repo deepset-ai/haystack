@@ -126,7 +126,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
-        super().__init__()
+        super().__init__(
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
+        )
 
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
@@ -170,10 +172,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
-
-        super().__init__(
-            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
-        )
 
     def _create_collection_and_index_if_not_exist(
         self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None
