@@ -306,10 +306,11 @@ The rows containing strings are thus retained in this option.
 This option can be used to add test for encoding errors. If the extracted text is
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
-- `encoding`: Encoding that will be passed as -enc parameter to pdftotext. Defaults to "UTF-8" in order to support
-special characters (e.g. German Umlauts, Cyrillic characters ...).
-Note: With "UTF-8" we experienced cases, where a simple "fi" gets wrongly parsed as
-"xef\xac\x81c" (see test cases). If you observe such cases, try switching to "Latin 1".
+- `encoding`: Encoding that will be passed as `-enc` parameter to `pdftotext`.
+Defaults to "UTF-8" in order to support special characters (e.g. German Umlauts, Cyrillic ...).
+Note: with "UTF-8" we experienced cases where the "fi" ligature gets parsed as "xef\xac\x81"
+(see test cases and https://utf8-chartable.de/unicode-utf8-table.pl?start=64256&utf8=string-literal).
+If you observe such cases, switch to "Latin 1" to exclude ligature characters from your text.
 (See list of available encodings by running `pdftotext -listenc` in the terminal)
 - `id_hash_keys`: Generate the document id from a custom list of strings that refer to the document's
 attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are

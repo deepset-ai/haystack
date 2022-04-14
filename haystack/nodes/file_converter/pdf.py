@@ -91,10 +91,10 @@ class PDFToTextConverter(BaseConverter):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param encoding: Encoding that will be passed as `-enc` parameter to `pdftotext`. 
+        :param encoding: Encoding that will be passed as `-enc` parameter to `pdftotext`.
                          Defaults to "UTF-8" in order to support special characters (e.g. German Umlauts, Cyrillic ...).
-                         Note: with "UTF-8" we experienced cases where the "fi" ligature gets parsed as "xef\xac\x81" 
-                         (see test cases and https://utf8-chartable.de/unicode-utf8-table.pl?start=64256&utf8=string-literal). 
+                         Note: with "UTF-8" we experienced cases where the "fi" ligature gets parsed as "xef\xac\x81"
+                         (see test cases and https://utf8-chartable.de/unicode-utf8-table.pl?start=64256&utf8=string-literal).
                          If you observe such cases, switch to "Latin 1" to exclude ligature characters from your text.
                          (See list of available encodings by running `pdftotext -listenc` in the terminal)
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
