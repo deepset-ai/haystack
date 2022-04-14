@@ -2062,7 +2062,6 @@
               "default": 10,
               "type": "integer"
             },
-
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
