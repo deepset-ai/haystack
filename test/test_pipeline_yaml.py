@@ -1,6 +1,8 @@
 from abc import abstractmethod
+from numpy import mat
 import pytest
 import json
+import logging
 import inspect
 import networkx as nx
 from enum import Enum
@@ -11,6 +13,7 @@ from haystack import Pipeline
 from haystack.nodes import _json_schema
 from haystack.nodes import FileTypeClassifier
 from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError
+from haystack.nodes.base import BaseComponent
 
 from .conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
 from . import conftest
@@ -41,7 +44,9 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 
     # Generate mock schema in tmp_path
     filename = f"haystack-pipeline-unstable.schema.json"
-    test_schema = _json_schema.get_json_schema(filename=filename, compatible_versions=["unstable"])
+    test_schema = _json_schema.get_json_schema(
+        filename=filename, compatible_versions=["unstable", haystack.__version__]
+    )
 
     with open(tmp_path / filename, "w") as schema_file:
         json.dump(test_schema, schema_file, indent=4)
@@ -274,11 +279,65 @@ def test_load_yaml_custom_component(tmp_path):
     assert pipeline.get_node("custom_node").param == 1
 
 
+def test_load_yaml_custom_component_with_no_init(tmp_path):
+    class CustomNode(MockNode):
+        pass
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomNode
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert isinstance(pipeline.get_node("custom_node"), CustomNode)
+
+
+def test_load_yaml_custom_component_neednt_call_super(tmp_path):
+    """This is a side-effect. Here for behavior documentation only"""
+
+    class CustomNode(BaseComponent):
+        outgoing_edges = 1
+
+        def __init__(self, param: int):
+            self.param = param
+
+        def run(self, *a, **k):
+            pass
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: unstable
+            components:
+            - name: custom_node
+              type: CustomNode
+              params:
+                param: 1
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert isinstance(pipeline.get_node("custom_node"), CustomNode)
+    assert pipeline.get_node("custom_node").param == 1
+
+
 def test_load_yaml_custom_component_cant_be_abstract(tmp_path):
     class CustomNode(MockNode):
-        def __init__(self):
-            super().__init__()
-
         @abstractmethod
         def abstract_method(self):
             pass
@@ -575,7 +634,7 @@ def test_load_yaml_custom_component_with_external_constant(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     node = pipeline.get_node("custom_node")
-    node.some_exotic_parameter == "AnotherClass.CLASS_CONSTANT"
+    assert node.some_exotic_parameter == "AnotherClass.CLASS_CONSTANT"
 
 
 def test_load_yaml_custom_component_with_superclass(tmp_path):

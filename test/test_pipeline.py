@@ -35,6 +35,7 @@ from .conftest import (
     SAMPLES_PATH,
     MockDocumentStore,
     MockRetriever,
+    MockNode,
     deepset_cloud_fixture,
 )
 
@@ -348,6 +349,36 @@ def test_get_config_component_with_superclass_arguments():
     pipeline.get_config()
     assert pipeline.get_document_store().sub_parameter == 10
     assert pipeline.get_document_store().base_parameter == "something"
+
+
+def test_get_config_custom_node_with_params():
+    class CustomNode(MockNode):
+        def __init__(self, param: int):
+            super().__init__()
+            self.param = param
+
+    pipeline = Pipeline()
+    pipeline.add_node(CustomNode(param=10), name="custom_node", inputs=["Query"])
+
+    assert len(pipeline.get_config()["components"]) == 1
+    assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
+
+
+def test_get_config_custom_node_with_positional_params(caplog):
+    class CustomNode(MockNode):
+        def __init__(self, param: int = 1):
+            super().__init__()
+            self.param = param
+
+    pipeline = Pipeline()
+    with caplog.at_level(logging.WARNING):
+        pipeline.add_node(CustomNode(10), name="custom_node", inputs=["Query"])
+        assert (
+            "Unnamed __init__ parameters will not be saved to YAML "
+            "if Pipeline.save_to_yaml() is called" in caplog.text
+        )
+    assert len(pipeline.get_config()["components"]) == 1
+    assert pipeline.get_config()["components"][0]["params"] == {}
 
 
 def test_generate_code_simple_pipeline():
