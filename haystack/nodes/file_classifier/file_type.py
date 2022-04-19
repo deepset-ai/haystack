@@ -62,7 +62,9 @@ class FileTypeClassifier(BaseComponent):
             extension = magic.from_file(str(file_path), mime=True)
             return mimetypes.guess_extension(extension) or ""
         except NameError as ne:
-            logger.error(f"The type of '{file_path}' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error.")
+            logger.error(
+                f"The type of '{file_path}' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
+            )
             return ""
 
     def _get_extension(self, file_paths: List[Path]) -> str:
