@@ -35,6 +35,35 @@ def test_convert(Converter):
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
+@pytest.mark.parametrize("Converter", [PDFToTextConverter, PDFToTextOCRConverter])
+def test_pdf_encoding(Converter):
+    converter = Converter()
+    
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]
+    assert "ɪ" in document.content
+
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", encoding="Latin1")[0]
+    assert "ɪ" not in document.content
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter, PDFToTextOCRConverter])
+def test_pdf_ligatures(Converter):
+    converter = Converter()
+    
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]
+    assert "ﬀ" not in document.content
+    assert "ɪ" in document.content
+
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", ligatures_to_split={})[0]
+    assert "ﬀ" in document.content
+    assert "ɪ" in document.content
+
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", ligatures_to_split={"ɪ": "i"})[0]
+    assert "ﬀ" in document.content
+    assert "ɪ" not in document.content
+
+
+
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
