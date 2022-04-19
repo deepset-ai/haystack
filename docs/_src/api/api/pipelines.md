@@ -83,7 +83,7 @@ Default value is True.
 ```python
 @classmethod
 @abstractmethod
-def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False)
 ```
 
 Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -132,6 +132,7 @@ Here's a sample configuration:
 to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
+- `strict_version_check`: whether to fail in case of a version mismatch (throws a warning otherwise)
 
 <a id="base.BasePipeline.load_from_yaml"></a>
 
@@ -561,7 +562,7 @@ Create a Graphviz visualization of the pipeline.
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -610,6 +611,7 @@ If the pipeline loads correctly regardless, save again the pipeline using `Pipel
 to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
+- `strict_version_check`: whether to fail in case of a version mismatch (throws a warning otherwise)
 
 <a id="base.Pipeline.load_from_config"></a>
 
@@ -617,7 +619,7 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 
 ```python
 @classmethod
-def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False)
 ```
 
 Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -666,6 +668,7 @@ Here's a sample configuration:
 to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
+- `strict_version_check`: whether to fail in case of a version mismatch (throws a warning otherwise).
 
 <a id="base.Pipeline.save_to_yaml"></a>
 
@@ -769,7 +772,7 @@ def __init__(address: str = None, **kwargs)
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, **kwargs, ,)
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, **kwargs, ,)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
