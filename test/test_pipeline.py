@@ -3,6 +3,8 @@ from pathlib import Path
 
 import os
 import json
+import platform
+import sys
 from typing import Tuple
 from unittest.mock import Mock
 
@@ -39,6 +41,25 @@ from .conftest import (
     MockNode,
     deepset_cloud_fixture,
 )
+
+logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(scope="function")
+def reduce_windows_recursion_limit():
+    """
+    Prevents Windows CI from crashing with Stackoverflow in situations we want to provoke a RecursionError
+    """
+    is_windows = platform.system() == "Windows"
+    default_recursion_limit = sys.getrecursionlimit()
+    if is_windows:
+        reduced_recursion_limit = default_recursion_limit // 2
+        logger.warning(f"Reducing recursion limit to {reduced_recursion_limit}")
+        sys.setrecursionlimit(reduced_recursion_limit)
+    yield
+    if is_windows:
+        logger.warning(f"Resetting recursion limit to {default_recursion_limit}")
+        sys.setrecursionlimit(default_recursion_limit)
 
 
 class ParentComponent(BaseComponent):
@@ -636,7 +657,7 @@ def test_validate_pipeline_config_invalid_pipeline_node_inputs():
         )
 
 
-def test_validate_pipeline_config_recursive_config():
+def test_validate_pipeline_config_recursive_config(reduce_windows_recursion_limit):
     pipeline_config = {}
     node = {"config": pipeline_config}
     pipeline_config["node"] = node
