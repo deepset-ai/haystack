@@ -1,15 +1,10 @@
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
 
-import logging
-
-import os
-import re
 import sys
 import json
 import inspect
+import logging
 from pathlib import Path
-from copy import deepcopy
-from difflib import SequenceMatcher
 
 import pydantic.schema
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
@@ -225,9 +220,7 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     return component_schema, {"$ref": f"#/definitions/{component_name}"}
 
 
-def get_json_schema(
-    filename: str, compatible_versions: List[str], modules: List[str] = ["haystack.document_stores", "haystack.nodes"]
-):
+def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack.document_stores", "haystack.nodes"]):
     """
     Generate JSON schema for Haystack pipelines.
     """
@@ -254,7 +247,7 @@ def get_json_schema(
                 "title": "Version",
                 "description": "Version of the Haystack Pipeline file.",
                 "type": "string",
-                "oneOf": [{"const": version} for version in compatible_versions],
+                "const": version,
             },
             "components": {
                 "title": "Components",
@@ -331,171 +324,38 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     return schema
 
 
-def natural_sort(list_to_sort: List[str]) -> List[str]:
-    """Sorts a list keeping numbers in the correct numerical order"""
-    convert = lambda text: int(text) if text.isdigit() else text.lower()
-    alphanumeric_key = lambda key: [convert(c) for c in re.split("([0-9]+)", key)]
-    return sorted(list_to_sort, key=alphanumeric_key)
-
-
-def load(path: Path) -> Dict[str, Any]:
-    """Shorthand for loading a JSON"""
-    with open(path, "r") as json_file:
-        return json.load(json_file)
-
-
-def dump(data: Dict[str, Any], path: Path) -> None:
-    """Shorthand for dumping to JSON"""
-    with open(path, "w") as json_file:
-        json.dump(data, json_file, indent=2)
-
-
-def new_version_entry(version):
+def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     """
-    Returns a new entry for the version index JSON schema.
+    If the version contains "rc", only update master's schema.
+    Otherwise, create (or update) a new schema.
     """
-    return {
-        "allOf": [
-            {"properties": {"version": {"oneOf": [{"const": version}]}}},
-            {
-                "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/json-schemas/"
-                f"haystack-pipeline-{version}.schema.json"
-            },
-        ]
-    }
+    # Update masters's schema
+    filename = f"haystack-pipeline-master.schema.json"
+    with open(destination_path / filename, "w") as json_file:
+        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
+    # If it's not an rc version:
+    if "rc" not in haystack_version:
 
-def update_json_schema(
-    update_index: bool, destination_path: Path = JSON_SCHEMAS_PATH, index_name: str = "haystack-pipeline.schema.json"
-):
-    # Locate the latest schema's path
-    latest_schema_path = destination_path / Path(
-        natural_sort(os.listdir(destination_path))[-3]
-    )  # -1 is index, -2 is unstable
-    logger.info(f"Latest schema: {latest_schema_path}")
-    latest_schema = load(latest_schema_path)
-
-    # List the versions supported by the last schema
-    supported_versions_block = deepcopy(latest_schema["properties"]["version"]["oneOf"])
-    supported_versions = [entry["const"].replace('"', "") for entry in supported_versions_block]
-    logger.info(f"Versions supported by this schema: {supported_versions}")
-
-    # Create new schema with the same filename and versions embedded, to be identical to the latest one.
-    new_schema = get_json_schema(latest_schema_path.name, supported_versions)
-
-    # Check for backwards compatibility with difflib's SequenceMatcher
-    # (https://docs.python.org/3/library/difflib.html#difflib.SequenceMatcher)
-    # If the opcodes contain only "insert" and "equal", that means the new schema
-    # only added lines and did not remove anything from the previous schema.
-    # We decided that additions only imply backwards compatibility.
-    # Any other opcode ("replace", "delete") imply that something has been removed
-    # in the new schema, which breaks backwards compatibility and means we should
-    # store a new, separate schema.
-    # People wishing to upgrade from the older schema version will have to change
-    # version in their YAML to avoid failing validation.
-    latest_schema_string = json.dumps(latest_schema)
-    new_schema_string = json.dumps(new_schema)
-    matcher = SequenceMatcher(None, latest_schema_string, new_schema_string)
-    schema_diff = matcher.get_opcodes()
-    is_backwards_incompatible = any(opcode[0] not in ["insert", "equal"] for opcode in schema_diff)
-
-    unstable_versions_block = []
-
-    # If the two schemas are incompatible, we need a new file.
-    # Update the schema's filename and supported versions, then save it.
-    if is_backwards_incompatible:
-
-        # Print a quick diff to explain the differences
-        logger.info(f"The schemas are NOT backwards compatible. This is the list of INCOMPATIBLE changes only:")
-        for tag, i1, i2, j1, j2 in schema_diff:
-            if tag not in ["equal", "insert"]:
-                logger.info("{!r:>8} --> {!r}".format(latest_schema_string[i1:i2], new_schema_string[j1:j2]))
-
+        # Create/update the specific version file too
         filename = f"haystack-pipeline-{haystack_version}.schema.json"
-        logger.info(f"Adding {filename} to the schema folder.")
+        with open(destination_path / filename, "w") as json_file:
+            json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
 
-        # Let's check if the schema changed without a version change
-        if haystack_version in supported_versions and len(supported_versions) > 1:
-            logger.info(
-                f"Version {haystack_version} was supported by the latest schema"
-                f"(supported versions: {supported_versions}). "
-                f"Removing support for version {haystack_version} from it."
+        # Update the index
+        index_name = "haystack-pipeline.schema.json"
+        with open(destination_path / index_name, "r") as json_file:
+            index = json.load(json_file)
+            index["oneOf"].append(
+                {
+                    "allOf": [
+                        {"properties": {"version": {"const": haystack_version}}},
+                        {
+                            "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/json-schemas/"
+                            f"haystack-pipeline-{haystack_version}.schema.json"
+                        },
+                    ]
+                }
             )
-
-            supported_versions_block = [
-                entry for entry in supported_versions_block if entry["const"].replace('"', "") != haystack_version
-            ]
-            latest_schema["properties"]["version"]["oneOf"] = supported_versions_block
-            dump(latest_schema, latest_schema_path)
-
-            # Update the JSON schema index too
-            if update_index:
-                index = load(destination_path / index_name)
-                index["oneOf"][-1]["allOf"][0]["properties"]["version"]["oneOf"] = supported_versions_block
-                dump(index, destination_path / index_name)
-
-        # Dump the new schema file
-        new_schema["$id"] = f"{SCHEMA_URL}{filename}"
-        unstable_versions_block = [{"const": haystack_version}]
-        new_schema["properties"]["version"]["oneOf"] = [{"const": haystack_version}]
-        dump(new_schema, destination_path / filename)
-        logger.info(f"Schema saved in {destination_path / filename}")
-
-        # Update schema index with a whole new entry
-        if update_index:
-            index = load(destination_path / index_name)
-            new_entry = new_version_entry(haystack_version)
-            if all(new_entry != entry for entry in index["oneOf"]):
-                index["oneOf"].append(new_version_entry(haystack_version))
-            dump(index, destination_path / index_name)
-
-    # If the two schemas are compatible, no need to write a new one:
-    # Just add the new version to the list of versions supported by
-    # the latest schema if it's not there yet
-    else:
-
-        # Print a quick diff to explain the differences
-        if not schema_diff or all(tag[0] == "equal" for tag in schema_diff):
-            logger.info("The schemas are identical, won't create a new file.")
-        else:
-            logger.info("The schemas are backwards compatible, overwriting the latest schema.")
-            logger.info("This is the list of changes:")
-            for tag, i1, i2, j1, j2 in schema_diff:
-                if tag not in "equal":
-                    logger.info("{!r:>8} --> {!r}".format(latest_schema_string[i1:i2], new_schema_string[j1:j2]))
-
-        # Overwrite the latest schema (safe to do for additions)
-        dump(new_schema, latest_schema_path)
-
-        if haystack_version in supported_versions:
-            unstable_versions_block = supported_versions_block
-            logger.info(
-                f"Version {haystack_version} was already supported " f"(supported versions: {supported_versions})"
-            )
-        else:
-            logger.info(
-                f"This version ({haystack_version}) was not listed "
-                f"(supported versions: {supported_versions}): "
-                "updating the supported versions list."
-            )
-
-            # Updating the latest schema's list of supported versions
-            supported_versions_block.append({"const": haystack_version})
-            unstable_versions_block = supported_versions_block
-            latest_schema["properties"]["version"]["oneOf"] = supported_versions_block
-            dump(latest_schema, latest_schema_path)
-            logger.info(f"Schema updated in {destination_path / latest_schema_path}")
-
-            # Update the JSON schema index too
-            if update_index:
-                index = load(destination_path / index_name)
-                index["oneOf"][-1]["allOf"][0]["properties"]["version"]["oneOf"] = supported_versions_block
-                dump(index, destination_path / index_name)
-
-    # Update the unstable schema (for tests and internal use).
-    unstable_filename = "haystack-pipeline-unstable.schema.json"
-    unstable_schema = deepcopy(new_schema)
-    unstable_schema["$id"] = f"{SCHEMA_URL}{unstable_filename}"
-    unstable_schema["properties"]["version"]["oneOf"] = [{"const": "unstable"}] + unstable_versions_block
-    dump(unstable_schema, destination_path / unstable_filename)
-    logger.info(f"Unstable schema saved in {destination_path / unstable_filename}")
+        with open(destination_path / index_name, "w") as json_file:
+            json.dump(index, json_file, indent=2)
