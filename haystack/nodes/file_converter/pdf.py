@@ -108,6 +108,13 @@ class PDFToTextConverter(BaseConverter):
         :param encoding: Encoding that will be passed as `-enc` parameter to `pdftotext`.
                          Defaults to "UTF-8" in order to support special characters (e.g. German Umlauts, Cyrillic ...).
                          (See list of available encodings by running `pdftotext -listenc` in the terminal)
+        :param ligatures_to_split: `pdftotext` tends to recognize clusters of letters as ligatures, such as "ﬀ" (double f).
+                                   Such ligatures however make text hard to compare with the content of other files, 
+                                   which are generally ligature free. Therefore we automatically find and replace the most 
+                                   common ligatures with their split counterparts. The default mapping is in 
+                                   `haystack.nodes.file_converter.pdf.KNOWN_LIGATURES`: it is rather biased towards Latin alphabeths
+                                   but exluces all ligatures that are known to be used in IPA.
+                                   You can use this parameter to provide your own set of ligatures to clean up from the documents.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
