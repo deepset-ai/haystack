@@ -21,7 +21,6 @@ from haystack.schema import Document
 logger = logging.getLogger(__name__)
 
 
-
 class PDFToTextConverter(BaseConverter):
     def __init__(
         self,
