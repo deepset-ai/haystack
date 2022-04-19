@@ -88,10 +88,10 @@ def test_filetype_classifier_other_files_without_extension():
 
 
 def test_filetype_classifier_text_files_without_extension_no_magic(monkeypatch, caplog):
-    monkeypatch.setattr(haystack.nodes.file_classifier.file_type, "MIMETYPE_RECOGNITION", False)
+    monkeypatch.delattr(haystack.nodes.file_classifier.file_type, "magic")
 
     node = FileTypeClassifier(supported_types=[""])
 
     with caplog.at_level(logging.ERROR):
         node.run(SAMPLES_PATH / "extensionless_files" / f"pdf_file")
-        assert "'magic' could not be imported" in caplog.text
+        assert "'python-magic' is not installed" in caplog.text
