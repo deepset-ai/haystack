@@ -1,10 +1,7 @@
-import logging
-import warnings
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever.base import BaseRetriever
-
+import logging
+import warnings
 import numpy as np
 
 from scipy.special import expit
@@ -22,6 +19,9 @@ except (ImportError, ModuleNotFoundError) as ie:
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever.base import BaseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
-        super().__init__()
+        super().__init__(
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
+        )
 
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
@@ -170,10 +172,6 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
-
-        super().__init__(
-            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
-        )
 
     def _create_collection_and_index_if_not_exist(
         self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None
@@ -635,9 +633,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             ids = [doc.meta["vector_id"] for doc in docs if "vector_id" in doc.meta]
 
         expr = f"{self.id_field} in [{','.join(ids)}]"
-        import logging
 
-        # logging.info(expr)
         self.collection.delete(expr)
 
     def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:

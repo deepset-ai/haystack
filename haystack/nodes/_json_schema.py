@@ -2,11 +2,6 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
 
 import logging
 
-from sqlalchemy import schema
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 import os
 import re
 import sys
@@ -31,6 +26,10 @@ from pydantic.schema import (
 from haystack import __version__ as haystack_version
 from haystack.errors import PipelineSchemaError
 from haystack.nodes.base import BaseComponent
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
@@ -155,6 +154,13 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
         raise PipelineSchemaError(f"Could not read the __init__ method of {node_name} to create its schema.")
 
     signature = get_typed_signature(init_method)
+
+    # Check for variadic parameters (*args or **kwargs) and raise an exception if found
+    if any(param.kind in {param.VAR_POSITIONAL, param.VAR_KEYWORD} for param in signature.parameters.values()):
+        raise PipelineSchemaError(
+            "Nodes cannot use variadic parameters like *args or **kwargs in their __init__ function."
+        )
+
     param_fields = [
         param for param in signature.parameters.values() if param.kind not in {param.VAR_POSITIONAL, param.VAR_KEYWORD}
     ]

@@ -76,7 +76,7 @@ Note how the node returns two objects: the query (e.g.'Arya Stark father') and t
 
 You can use a Query Classifier within a pipeline as a "decision node". Depending on the output of the classifier other parts of the pipeline will be executed. For example, we can route keyword queries to an ElasticsearchRetriever and semantic queries (questions/statements) to DPR.  
 
-![image](https://user-images.githubusercontent.com/6007894/127831511-f55bad86-4b4f-4b54-9889-7bba37e475c6.png)
+![image](https://github.com/deepset-ai/haystack/blob/master/docs/img/query-classifier-pipeline.png)
 
 Below, we define a pipeline with a `TransformersQueryClassifier` that routes questions/statements to the node's `output_1` and keyword queries to `output_2`. We leverage this structure in the pipeline by connecting the DPRRetriever to `QueryClassifier.output_1` and the ESRetriever to `QueryClassifier.output_2`. 
 

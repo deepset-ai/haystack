@@ -8,14 +8,13 @@ from typing import Iterable, Dict, Union, List, Optional, Callable
 
 import numpy
 import torch
-from torch import nn, set_warn_always
-from transformers import AutoConfig
+from torch import nn
+from transformers import AutoConfig, AutoModelForQuestionAnswering
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
-import haystack.modeling.conversion.transformers as conv
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
-from haystack.modeling.model.prediction_head import PredictionHead
+from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
 from haystack.modeling.logger import MLFlowLogger as MlLogger
 
 
@@ -305,6 +304,112 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         return model
 
+    @classmethod
+    def convert_from_transformers(
+        cls,
+        model_name_or_path,
+        device: Union[str, torch.device],
+        revision: str = None,
+        task_type: str = "question_answering",
+        processor: Processor = None,
+        use_auth_token: Union[bool, str] = None,
+        **kwargs,
+    ) -> "AdaptiveModel":
+        """
+        Load a (downstream) model from huggingface's transformers format. Use cases:
+         - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
+         - compare models without switching frameworks
+         - use model directly for inference
+
+        :param model_name_or_path: local path of a saved model or name of a public one.
+                                              Exemplary public names:
+                                              - distilbert-base-uncased-distilled-squad
+                                              - deepset/bert-large-uncased-whole-word-masking-squad2
+
+                                              See https://huggingface.co/models for full list
+        :param device: torch.device("cpu") or torch.device("cuda")
+        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+                         Right now accepts only 'question_answering'.
+        :param processor: populates prediction head with information coming from tasks.
+        :return: AdaptiveModel
+        """
+
+        lm = LanguageModel.load(model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs)
+        if task_type is None:
+            # Infer task type from config
+            architecture = lm.model.config.architectures[0]
+            if "QuestionAnswering" in architecture:
+                task_type = "question_answering"
+            else:
+                logger.error(
+                    "Could not infer task type from model config. Please provide task type manually. "
+                    "('question_answering' or 'embeddings')"
+                )
+
+        if task_type == "question_answering":
+            ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, **kwargs)
+            adaptive_model = cls(
+                language_model=lm,
+                prediction_heads=[ph],
+                embeds_dropout_prob=0.1,
+                lm_output_types="per_token",
+                device=device,
+            )
+        elif task_type == "embeddings":
+            adaptive_model = cls(
+                language_model=lm,
+                prediction_heads=[],
+                embeds_dropout_prob=0.1,
+                lm_output_types=["per_token", "per_sequence"],
+                device=device,
+            )
+
+        if processor:
+            adaptive_model.connect_heads_with_processor(processor.tasks)
+
+        return adaptive_model
+
+    def convert_to_transformers(self):
+        """
+        Convert an adaptive model to huggingface's transformers format. Returns a list containing one model for each
+        prediction head.
+
+        :return: List of huggingface transformers models.
+        """
+        converted_models = []
+
+        # convert model for each prediction head
+        for prediction_head in self.prediction_heads:
+            if len(prediction_head.layer_dims) != 2:
+                logger.error(
+                    f"Currently conversion only works for PredictionHeads that are a single layer Feed Forward NN with dimensions [LM_output_dim, number_classes].\n"
+                    f"            Your PredictionHead has {str(prediction_head.layer_dims)} dimensions."
+                )
+                continue
+            if prediction_head.model_type == "span_classification":
+                transformers_model = self._convert_to_transformers_qa(prediction_head)
+                converted_models.append(transformers_model)
+            else:
+                logger.error(
+                    f"Haystack -> Transformers conversion is not supported yet for"
+                    f" prediction heads of type {prediction_head.model_type}"
+                )
+
+        return converted_models
+
+    def _convert_to_transformers_qa(self, prediction_head):
+        # TODO add more infos to config
+
+        # remove pooling layer
+        self.language_model.model.pooler = None
+        # init model
+        transformers_model = AutoModelForQuestionAnswering.from_config(self.language_model.model.config)
+        # transfer weights for language model + prediction head
+        setattr(transformers_model, transformers_model.base_model_prefix, self.language_model.model)
+        transformers_model.qa_outputs.load_state_dict(prediction_head.feed_forward.feed_forward[0].state_dict())
+
+        return transformers_model
+
     def logits_to_loss_per_head(self, logits: torch.Tensor, **kwargs):
         """
         Collect losses from each prediction head.
@@ -476,54 +581,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
     def get_language(self):
         return self.language_model.language
-
-    def convert_to_transformers(self):
-        """
-        Convert an adaptive model to huggingface's transformers format. Returns a list containing one model for each
-        prediction head.
-
-        :return: List of huggingface transformers models.
-        """
-        return conv.Converter.convert_to_transformers(self)
-
-    @classmethod
-    def convert_from_transformers(
-        cls,
-        model_name_or_path: Union[str, Path],
-        device: torch.device,
-        revision: Optional[str] = None,
-        task_type: str = "question_answering",
-        processor: Optional[Processor] = None,
-        use_auth_token: Optional[Union[bool, str]] = None,
-        **kwargs,
-    ):
-        """
-        Load a (downstream) model from huggingface's transformers format. Use cases:
-         - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
-         - compare models without switching frameworks
-         - use model directly for inference
-
-        :param model_name_or_path: local path of a saved model or name of a public one.
-                                              Exemplary public names:
-                                              - distilbert-base-uncased-distilled-squad
-                                              - deepset/bert-large-uncased-whole-word-masking-squad2
-
-                                              See https://huggingface.co/models for full list
-        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param device: On which hardware the conversion should take place. Choose from torch.device("cpu") or torch.device("cuda")
-        :param task_type: 'question_answering'. More tasks coming soon ...
-        :param processor: Processor to populate prediction head with information coming from tasks.
-        :return: AdaptiveModel
-        """
-        return conv.Converter.convert_from_transformers(
-            model_name_or_path,
-            revision=revision,
-            device=device,
-            task_type=task_type,
-            processor=processor,
-            use_auth_token=use_auth_token,
-            **kwargs,
-        )
 
     @classmethod
     def convert_to_onnx(

@@ -1,7 +1,9 @@
+import logging
 import time
 
 import numpy as np
 import pandas as pd
+from haystack.document_stores.memory import InMemoryDocumentStore
 import pytest
 from pathlib import Path
 from elasticsearch import Elasticsearch
@@ -11,7 +13,7 @@ from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
-from haystack.nodes.retriever.dense import DensePassageRetriever, TableTextRetriever
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
@@ -123,7 +125,7 @@ def test_elasticsearch_custom_query():
         document_store=document_store,
         custom_query="""
             {
-                "size": 10, 
+                "size": 10,
                 "query": {
                     "bool": {
                         "should": [{
@@ -138,7 +140,7 @@ def test_elasticsearch_custom_query():
         document_store=document_store,
         custom_query="""
                 {
-                    "size": 10, 
+                    "size": 10,
                     "query": {
                         "bool": {
                             "should": [{
@@ -190,9 +192,7 @@ def test_retribert_embedding(document_store, retriever, docs):
     if isinstance(document_store, WeaviateDocumentStore):
         # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
         # We need 128 here and therefore initialize a new WeaviateDocumentStore.
-        document_store = WeaviateDocumentStore(
-            weaviate_url="http://localhost:8080", index="haystack_test", embedding_dim=128
-        )
+        document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=128)
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()
     document_store.return_embedding = True
@@ -514,3 +514,52 @@ def test_elasticsearch_filter_must_not_increase_results():
     results_w_filter = doc_store.query(query="drink", filters={"content_type": "text"})
     assert len(results_w_filter) == 1
     doc_store.delete_index(index)
+
+
+def test_elasticsearch_all_terms_must_match():
+    index = "all_terms_must_match"
+    client = Elasticsearch()
+    client.indices.delete(index=index, ignore=[404])
+    documents = [
+        {
+            "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
+            "meta": {"content_type": "text"},
+            "id": "1",
+        },
+        {
+            "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
+            "meta": {"content_type": "text"},
+            "id": "2",
+        },
+        {
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+            "meta": {"content_type": "text"},
+            "id": "3",
+        },
+        {
+            "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
+            "meta": {"content_type": "text"},
+            "id": "4",
+        },
+    ]
+    doc_store = ElasticsearchDocumentStore(index=index)
+    doc_store.write_documents(documents)
+    results_wo_all_terms_must_match = doc_store.query(query="drink green tea")
+    assert len(results_wo_all_terms_must_match) == 4
+    results_w_all_terms_must_match = doc_store.query(query="drink green tea", all_terms_must_match=True)
+    assert len(results_w_all_terms_must_match) == 1
+    doc_store.delete_index(index)
+
+
+def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_format(caplog):
+    document_store = InMemoryDocumentStore()
+
+    with caplog.at_level(logging.WARNING):
+        EmbeddingRetriever(
+            document_store=document_store, embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        )
+
+        assert (
+            "You may need to set 'model_format='sentence_transformers' to ensure correct loading of model."
+            in caplog.text
+        )

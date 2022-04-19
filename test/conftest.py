@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import List, Optional, Tuple, Dict
 
 import subprocess
@@ -11,6 +12,7 @@ from pathlib import Path
 import os
 
 import pinecone
+import requests_cache
 import responses
 from sqlalchemy import create_engine, text
 import posthog
@@ -80,6 +82,10 @@ MOCK_DC = True
 
 # Disable telemetry reports when running tests
 posthog.disabled = True
+
+# Cache requests (e.g. huggingface model) to circumvent load protection
+# See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
+requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
 def _sql_session_rollback(self, attr):
@@ -296,7 +302,7 @@ def weaviate_fixture():
         print("Starting Weaviate servers ...")
         status = subprocess.run(["docker rm haystack_test_weaviate"], shell=True)
         status = subprocess.run(
-            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.7.2"], shell=True
+            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.11.0"], shell=True
         )
         if status.returncode:
             raise Exception("Failed to launch Weaviate. Please check docker container logs.")
@@ -836,9 +842,7 @@ def get_document_store(
         )
 
     elif document_store_type == "weaviate":
-        document_store = WeaviateDocumentStore(
-            weaviate_url="http://localhost:8080", index=index, similarity=similarity, embedding_dim=embedding_dim
-        )
+        document_store = WeaviateDocumentStore(index=index, similarity=similarity, embedding_dim=embedding_dim)
         document_store.weaviate_client.schema.delete_all()
         document_store._create_schema_and_index_if_not_exist()
 
