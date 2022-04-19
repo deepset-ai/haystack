@@ -136,7 +136,11 @@ class BasePipeline(ABC):
     @classmethod
     @abstractmethod
     def load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -182,6 +186,7 @@ class BasePipeline(ABC):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
@@ -1066,7 +1071,13 @@ class Pipeline(BasePipeline):
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+    def load_from_yaml(
+        cls,
+        path: Path,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
+    ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -1111,6 +1122,7 @@ class Pipeline(BasePipeline):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
 
         pipeline_config = read_pipeline_config_from_yaml(path)
@@ -1118,11 +1130,16 @@ class Pipeline(BasePipeline):
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
+            strict_version_check=strict_version_check,
         )
 
     @classmethod
     def load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -1168,8 +1185,9 @@ class Pipeline(BasePipeline):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise).
         """
-        validate_config(pipeline_config)
+        validate_config(pipeline_config, strict_version_check=strict_version_check)
 
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
@@ -1396,6 +1414,7 @@ class RayPipeline(Pipeline):
         pipeline_config: Dict,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
         address: Optional[str] = None,
         **kwargs,
     ):
@@ -1430,12 +1449,13 @@ class RayPipeline(Pipeline):
         return pipeline
 
     @classmethod
-    def load_from_yaml(
+    def load_from_yaml(  # type: ignore
         cls,
         path: Path,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
         address: Optional[str] = None,
+        strict_version_check: bool = False,
         **kwargs,
     ):
         """

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://haystack.deepset.ai/haystack/json-schemas/haystack-pipeline-1.3.1rc0.schema.json",
+  "$id": "https://haystack.deepset.ai/haystack/json-schemas/haystack-pipeline-1.2.1rc0.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -9,11 +9,7 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "oneOf": [
-        {
-          "const": "1.3.1rc0"
-        }
-      ]
+      "const": "1.3.0"
     },
     "components": {
       "title": "Components",
@@ -461,13 +457,11 @@
             },
             "similarity": {
               "title": "Similarity",
-              "default": "dot_product",
-              "type": "string"
+              "default": "dot_product"
             },
             "timeout": {
               "title": "Timeout",
-              "default": 30,
-              "type": "integer"
+              "default": 30
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -619,21 +613,6 @@
             "isolation_level": {
               "title": "Isolation Level",
               "type": "string"
-            },
-            "n_links": {
-              "title": "N Links",
-              "default": 64,
-              "type": "integer"
-            },
-            "ef_search": {
-              "title": "Ef Search",
-              "default": 20,
-              "type": "integer"
-            },
-            "ef_construction": {
-              "title": "Ef Construction",
-              "default": 80,
-              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -926,192 +905,9 @@
           "title": "Parameters",
           "type": "object",
           "properties": {
-            "scheme": {
-              "title": "Scheme",
-              "default": "https",
-              "type": "string"
-            },
-            "username": {
-              "title": "Username",
-              "default": "admin",
-              "type": "string"
-            },
-            "password": {
-              "title": "Password",
-              "default": "admin",
-              "type": "string"
-            },
-            "host": {
-              "title": "Host",
-              "default": "localhost",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
-            },
-            "port": {
-              "title": "Port",
-              "default": 9200,
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  }
-                }
-              ]
-            },
-            "api_key_id": {
-              "title": "Api Key Id",
-              "type": "string"
-            },
-            "api_key": {
-              "title": "Api Key",
-              "type": "string"
-            },
-            "aws4auth": {
-              "title": "Aws4Auth"
-            },
-            "index": {
-              "title": "Index",
-              "default": "document",
-              "type": "string"
-            },
-            "label_index": {
-              "title": "Label Index",
-              "default": "label",
-              "type": "string"
-            },
-            "search_fields": {
-              "title": "Search Fields",
-              "default": "content",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {}
-                }
-              ]
-            },
-            "content_field": {
-              "title": "Content Field",
-              "default": "content",
-              "type": "string"
-            },
-            "name_field": {
-              "title": "Name Field",
-              "default": "name",
-              "type": "string"
-            },
-            "embedding_field": {
-              "title": "Embedding Field",
-              "default": "embedding",
-              "type": "string"
-            },
-            "embedding_dim": {
-              "title": "Embedding Dim",
-              "default": 768,
-              "type": "integer"
-            },
-            "custom_mapping": {
-              "title": "Custom Mapping",
-              "type": "object"
-            },
-            "excluded_meta_data": {
-              "title": "Excluded Meta Data",
-              "type": "array",
-              "items": {}
-            },
-            "analyzer": {
-              "title": "Analyzer",
-              "default": "standard",
-              "type": "string"
-            },
-            "ca_certs": {
-              "title": "Ca Certs",
-              "type": "string"
-            },
-            "verify_certs": {
-              "title": "Verify Certs",
-              "default": false,
-              "type": "boolean"
-            },
-            "recreate_index": {
-              "title": "Recreate Index",
-              "default": false,
-              "type": "boolean"
-            },
-            "create_index": {
-              "title": "Create Index",
-              "default": true,
-              "type": "boolean"
-            },
-            "refresh_type": {
-              "title": "Refresh Type",
-              "default": "wait_for",
-              "type": "string"
-            },
             "similarity": {
               "title": "Similarity",
-              "default": "cosine",
-              "type": "string"
-            },
-            "timeout": {
-              "title": "Timeout",
-              "default": 30,
-              "type": "integer"
-            },
-            "return_embedding": {
-              "title": "Return Embedding",
-              "default": false,
-              "type": "boolean"
-            },
-            "duplicate_documents": {
-              "title": "Duplicate Documents",
-              "default": "overwrite",
-              "type": "string"
-            },
-            "index_type": {
-              "title": "Index Type",
-              "default": "flat",
-              "type": "string"
-            },
-            "scroll": {
-              "title": "Scroll",
-              "default": "1d",
-              "type": "string"
-            },
-            "skip_missing_embeddings": {
-              "title": "Skip Missing Embeddings",
-              "default": true,
-              "type": "boolean"
-            },
-            "synonyms": {
-              "title": "Synonyms",
-              "type": "array",
-              "items": {}
-            },
-            "synonym_type": {
-              "title": "Synonym Type",
-              "default": "synonym",
-              "type": "string"
-            },
-            "use_system_proxy": {
-              "title": "Use System Proxy",
-              "default": false,
-              "type": "boolean"
+              "default": "cosine"
             }
           },
           "additionalProperties": false,
@@ -1142,192 +938,25 @@
           "title": "Parameters",
           "type": "object",
           "properties": {
+            "verify_certs": {
+              "title": "Verify Certs",
+              "default": false
+            },
             "scheme": {
               "title": "Scheme",
-              "default": "https",
-              "type": "string"
+              "default": "https"
             },
             "username": {
               "title": "Username",
-              "default": "admin",
-              "type": "string"
+              "default": "admin"
             },
             "password": {
               "title": "Password",
-              "default": "admin",
-              "type": "string"
-            },
-            "host": {
-              "title": "Host",
-              "default": "localhost",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
+              "default": "admin"
             },
             "port": {
               "title": "Port",
-              "default": 9200,
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  }
-                }
-              ]
-            },
-            "api_key_id": {
-              "title": "Api Key Id",
-              "type": "string"
-            },
-            "api_key": {
-              "title": "Api Key",
-              "type": "string"
-            },
-            "aws4auth": {
-              "title": "Aws4Auth"
-            },
-            "index": {
-              "title": "Index",
-              "default": "document",
-              "type": "string"
-            },
-            "label_index": {
-              "title": "Label Index",
-              "default": "label",
-              "type": "string"
-            },
-            "search_fields": {
-              "title": "Search Fields",
-              "default": "content",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {}
-                }
-              ]
-            },
-            "content_field": {
-              "title": "Content Field",
-              "default": "content",
-              "type": "string"
-            },
-            "name_field": {
-              "title": "Name Field",
-              "default": "name",
-              "type": "string"
-            },
-            "embedding_field": {
-              "title": "Embedding Field",
-              "default": "embedding",
-              "type": "string"
-            },
-            "embedding_dim": {
-              "title": "Embedding Dim",
-              "default": 768,
-              "type": "integer"
-            },
-            "custom_mapping": {
-              "title": "Custom Mapping",
-              "type": "object"
-            },
-            "excluded_meta_data": {
-              "title": "Excluded Meta Data",
-              "type": "array",
-              "items": {}
-            },
-            "analyzer": {
-              "title": "Analyzer",
-              "default": "standard",
-              "type": "string"
-            },
-            "ca_certs": {
-              "title": "Ca Certs",
-              "type": "string"
-            },
-            "verify_certs": {
-              "title": "Verify Certs",
-              "default": false,
-              "type": "boolean"
-            },
-            "recreate_index": {
-              "title": "Recreate Index",
-              "default": false,
-              "type": "boolean"
-            },
-            "create_index": {
-              "title": "Create Index",
-              "default": true,
-              "type": "boolean"
-            },
-            "refresh_type": {
-              "title": "Refresh Type",
-              "default": "wait_for",
-              "type": "string"
-            },
-            "similarity": {
-              "title": "Similarity",
-              "default": "dot_product",
-              "type": "string"
-            },
-            "timeout": {
-              "title": "Timeout",
-              "default": 30,
-              "type": "integer"
-            },
-            "return_embedding": {
-              "title": "Return Embedding",
-              "default": false,
-              "type": "boolean"
-            },
-            "duplicate_documents": {
-              "title": "Duplicate Documents",
-              "default": "overwrite",
-              "type": "string"
-            },
-            "index_type": {
-              "title": "Index Type",
-              "default": "flat",
-              "type": "string"
-            },
-            "scroll": {
-              "title": "Scroll",
-              "default": "1d",
-              "type": "string"
-            },
-            "skip_missing_embeddings": {
-              "title": "Skip Missing Embeddings",
-              "default": true,
-              "type": "boolean"
-            },
-            "synonyms": {
-              "title": "Synonyms",
-              "type": "array",
-              "items": {}
-            },
-            "synonym_type": {
-              "title": "Synonym Type",
-              "default": "synonym",
-              "type": "string"
-            },
-            "use_system_proxy": {
-              "title": "Use System Proxy",
-              "default": false,
-              "type": "boolean"
+              "default": 9200
             }
           },
           "additionalProperties": false,
