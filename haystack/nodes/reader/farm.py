@@ -145,14 +145,9 @@ class FARMReader(BaseReader):
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1  # including possible no_answer
-        try:
-            self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
-        except:
-            logger.warning("Could not set `top_k_per_sample` in FARM. Please update FARM version.")
-        try:
-            self.inferencer.model.prediction_heads[0].duplicate_filtering = duplicate_filtering
-        except:
-            logger.warning("Could not set `duplicate_filtering` in FARM. Please update FARM version.")
+        self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
+        self.inferencer.model.prediction_heads[0].duplicate_filtering = duplicate_filtering
+        self.inferencer.model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores
         self.max_seq_len = max_seq_len
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
