@@ -21,6 +21,19 @@ from haystack.schema import Document
 logger = logging.getLogger(__name__)
 
 
+# https://en.wikipedia.org/wiki/Ligature_(writing)
+KNOWN_LIGATURES = {
+    # Latin
+    "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "ft", "ﬆ": "st", 
+    "Ǳ": "DZ", "ǲ": "Dz", "ǳ": "dz", "Ǆ": "DŽ", "ǅ": "Dž", "ǆ": "dž", 
+    "Ꜩ": "Tz", "ꜩ": "tz", "🙰": "et", "℔": "lb", "ᵫ": "ue",
+    "Ĳ": "IJ", "ĳ": "ij", # They are both capitalized together, so the "Ij" ligature doesn't exist
+    "ꝏ": "oo", # Not the infinite sign but a double-o ligature: https://en.wikipedia.org/wiki/Ligature_(writing)#Massachusett_%EA%9D%8F
+    # Armenian
+    "ﬓ": "մն", "ﬔ": "մե", "ﬕ": "մի", "ﬖ": "վն", "ﬗ":"մխ", 
+}
+
+
 class PDFToTextConverter(BaseConverter):
     def __init__(
         self,
@@ -73,6 +86,7 @@ class PDFToTextConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
+        ligatures_to_split: Dict[str, str] = KNOWN_LIGATURES,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -93,9 +107,6 @@ class PDFToTextConverter(BaseConverter):
                                 in garbled text.
         :param encoding: Encoding that will be passed as `-enc` parameter to `pdftotext`.
                          Defaults to "UTF-8" in order to support special characters (e.g. German Umlauts, Cyrillic ...).
-                         Note: with "UTF-8" we experienced cases where the "fi" ligature gets parsed as "xef\xac\x81"
-                         (see test cases and https://utf8-chartable.de/unicode-utf8-table.pl?start=64256&utf8=string-literal).
-                         If you observe such cases, switch to "Latin 1" to exclude ligature characters from your text.
                          (See list of available encodings by running `pdftotext -listenc` in the terminal)
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
@@ -148,6 +159,10 @@ class PDFToTextConverter(BaseConverter):
                 )
 
         text = "\f".join(cleaned_pages)
+
+        for ligature, letters in ligatures_to_split.items():
+            text = text.replace(ligature, letters)
+
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]
 
