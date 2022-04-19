@@ -41,6 +41,7 @@ class EvalDocuments(BaseComponent):
             "EvalDocuments node is deprecated and will be removed in a future version. "
             "Please use pipeline.eval() instead."
         )
+        super().__init__()
         self.init_counts()
         self.no_answer_warning = False
         self.debug = debug
@@ -129,9 +130,6 @@ class EvalDocuments(BaseComponent):
             )
         return {"correct_retrieval": correct_retrieval}, "output_1"
 
-    def is_correctly_retrieved(self, retriever_labels, predictions):
-        return self.reciprocal_rank_retrieved(retriever_labels, predictions) > 0
-
     def reciprocal_rank_retrieved(self, retriever_labels, predictions, top_k_eval_documents):
         if self.open_domain:
             for answer in retriever_labels.answers:
@@ -208,6 +206,7 @@ class EvalAnswers(BaseComponent):
             "EvalAnswers node is deprecated and will be removed in a future version. "
             "Please use pipeline.eval() instead."
         )
+        super().__init__()
         self.log: List = []
         self.debug = debug
         self.skip_incorrect_retrieval = skip_incorrect_retrieval
@@ -254,14 +253,14 @@ class EvalAnswers(BaseComponent):
                         {
                             "predictions": predictions,
                             "gold_labels": multi_labels,
-                            "top_1_no_answer": int(predictions[0] == ""),
+                            "top_1_no_answer": int(predictions[0].answer is None),
                         }
                     )
                 self.update_no_answer_metrics()
             # If there are answer span annotations in the labels
             else:
                 self.has_answer_count += 1
-                predictions_str: List[str] = [p.answer for p in predictions if p.answer]
+                predictions_str: List[str] = [p.answer if p.answer else "" for p in predictions]
                 top_1_em, top_1_f1, top_k_em, top_k_f1 = self.evaluate_extraction(multi_labels.answers, predictions_str)
 
                 # Compute Semantic Answer Similarity if model is supplied
@@ -394,6 +393,8 @@ def semantic_answer_similarity(
     predictions: List[List[str]],
     gold_labels: List[List[str]],
     sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+    batch_size: int = 32,
+    use_gpu: bool = True,
 ) -> Tuple[List[float], List[float]]:
     """
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
@@ -404,6 +405,9 @@ def semantic_answer_similarity(
     :param gold_labels: Labels as list of multiple possible answers per question
     :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model, should be path or string
                                      pointing to downloadable models.
+    :param batch_size: Number of prediction label pairs to encode at once.
+    :param use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+                    Falls back to CPU if no GPU is available.
     :return: top_1_sas, top_k_sas
     """
     assert len(predictions) == len(gold_labels)
@@ -411,7 +415,9 @@ def semantic_answer_similarity(
     config = AutoConfig.from_pretrained(sas_model_name_or_path)
     cross_encoder_used = False
     if config.architectures is not None:
-        cross_encoder_used = any([arch.endswith("ForSequenceClassification") for arch in config.architectures])
+        cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)
+
+    device = None if use_gpu else "cpu"
 
     # Compute similarities
     top_1_sas = []
@@ -421,14 +427,14 @@ def semantic_answer_similarity(
     # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
     # Similarity computation changes for both approaches
     if cross_encoder_used:
-        model = CrossEncoder(sas_model_name_or_path)
+        model = CrossEncoder(sas_model_name_or_path, device=device)
         grid = []
         for preds, labels in zip(predictions, gold_labels):
             for p in preds:
                 for l in labels:
                     grid.append((p, l))
             lengths.append((len(preds), len(labels)))
-        scores = model.predict(grid)
+        scores = model.predict(grid, batch_size=batch_size)
 
         current_position = 0
         for len_p, len_l in lengths:
@@ -440,7 +446,7 @@ def semantic_answer_similarity(
             current_position += len_p * len_l
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
-        model = SentenceTransformer(sas_model_name_or_path)
+        model = SentenceTransformer(sas_model_name_or_path, device=device)
         all_texts: List[str] = []
         for p, l in zip(predictions, gold_labels):  # type: ignore
             # TODO potentially exclude (near) exact matches from computations
@@ -448,7 +454,7 @@ def semantic_answer_similarity(
             all_texts.extend(l)
             lengths.append((len(p), len(l)))
         # then compute embeddings
-        embeddings = model.encode(all_texts)
+        embeddings = model.encode(all_texts, batch_size=batch_size)
 
         # then select which embeddings will be used for similarity computations
         current_position = 0

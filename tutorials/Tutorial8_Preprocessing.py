@@ -18,15 +18,17 @@ This tutorial will show you all the tools that Haystack provides to help you cas
 """
 
 # Here are the imports we need
+from pathlib import Path
+
 from haystack.nodes import TextConverter, PDFToTextConverter, DocxToTextConverter, PreProcessor
-from haystack.utils import convert_files_to_dicts, fetch_archive_from_http
+from haystack.utils import convert_files_to_docs, fetch_archive_from_http
 
 
 def tutorial8_preprocessing():
     # This fetches some sample files to work with
 
-    doc_dir = "data/preprocessing_tutorial"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial.zip"
+    doc_dir = "data/tutorial8"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial8.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     """
@@ -42,17 +44,17 @@ def tutorial8_preprocessing():
     # Here are some examples of how you would use file converters
 
     converter = TextConverter(remove_numeric_tables=True, valid_languages=["en"])
-    doc_txt = converter.convert(file_path="data/preprocessing_tutorial/classics.txt", meta=None)[0]
+    doc_txt = converter.convert(file_path=Path(f"{doc_dir}/classics.txt"), meta=None)[0]
 
     converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
-    doc_pdf = converter.convert(file_path="data/preprocessing_tutorial/bert.pdf", meta=None)[0]
+    doc_pdf = converter.convert(file_path=Path(f"{doc_dir}/bert.pdf"), meta=None)[0]
 
     converter = DocxToTextConverter(remove_numeric_tables=False, valid_languages=["en"])
-    doc_docx = converter.convert(file_path="data/preprocessing_tutorial/heavy_metal.docx", meta=None)[0]
+    doc_docx = converter.convert(file_path=Path(f"{doc_dir}/heavy_metal.docx"), meta=None)[0]
 
     # Haystack also has a convenience function that will automatically apply the right converter to each file in a directory.
 
-    all_docs = convert_files_to_dicts(dir_path="data/preprocessing_tutorial")
+    all_docs = convert_files_to_docs(dir_path=doc_dir)
 
     """
     
@@ -78,7 +80,7 @@ def tutorial8_preprocessing():
         split_length=1000,
         split_respect_sentence_boundary=True,
     )
-    docs_default = preprocessor.process(doc_txt)
+    docs_default = preprocessor.process([doc_txt])
     print(f"\nn_docs_input: 1\nn_docs_output: {len(docs_default)}")
 
     """
@@ -98,14 +100,14 @@ def tutorial8_preprocessing():
     # Not respecting sentence boundary vs respecting sentence boundary
 
     preprocessor_nrsb = PreProcessor(split_respect_sentence_boundary=False)
-    docs_nrsb = preprocessor_nrsb.process(doc_txt)
+    docs_nrsb = preprocessor_nrsb.process([doc_txt])
 
     print("\nRESPECTING SENTENCE BOUNDARY:")
-    end_text = docs_default[0]["content"][-50:]
+    end_text = docs_default[0].content[-50:]
     print('End of document: "...' + end_text + '"')
 
     print("\nNOT RESPECTING SENTENCE BOUNDARY:")
-    end_text_nrsb = docs_nrsb[0]["content"][-50:]
+    end_text_nrsb = docs_nrsb[0].content[-50:]
     print('End of document: "...' + end_text_nrsb + '"')
     print()
 
@@ -124,11 +126,11 @@ def tutorial8_preprocessing():
     # Sliding window approach
 
     preprocessor_sliding_window = PreProcessor(split_overlap=3, split_length=10, split_respect_sentence_boundary=False)
-    docs_sliding_window = preprocessor_sliding_window.process(doc_txt)
+    docs_sliding_window = preprocessor_sliding_window.process([doc_txt])
 
-    doc1 = docs_sliding_window[0]["content"][:200]
-    doc2 = docs_sliding_window[1]["content"][:100]
-    doc3 = docs_sliding_window[2]["content"][:100]
+    doc1 = docs_sliding_window[0].content[:200]
+    doc2 = docs_sliding_window[1].content[:100]
+    doc3 = docs_sliding_window[2].content[:100]
 
     print('Document 1: "' + doc1 + '..."')
     print('Document 2: "' + doc2 + '..."')

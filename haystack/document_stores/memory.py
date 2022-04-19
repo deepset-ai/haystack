@@ -1,15 +1,12 @@
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, Generator
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
 
 import time
 import logging
-import numpy as np
-import torch
 from copy import deepcopy
 from collections import defaultdict
-from scipy.spatial.distance import cosine
+
+import numpy as np
+import torch
 from tqdm import tqdm
 
 from haystack.schema import Document, Label
@@ -17,7 +14,10 @@ from haystack.errors import DuplicateDocumentError
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
+from haystack.document_stores.filter_utils import LogicalFilterClause
 
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -65,17 +65,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
                                    when running on CPU.
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            index=index,
-            label_index=label_index,
-            embedding_field=embedding_field,
-            embedding_dim=embedding_dim,
-            return_embedding=return_embedding,
-            similarity=similarity,
-            progress_bar=progress_bar,
-            duplicate_documents=duplicate_documents,
-        )
+        super().__init__()
 
         self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index
@@ -141,7 +131,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                     raise DuplicateDocumentError(
                         f"Document with id '{document.id} already " f"exists in index '{index}'"
                     )
-                elif duplicate_documents == "skip":
+                if duplicate_documents == "skip":
                     logger.warning(
                         f"Duplicate Documents: Document with id '{document.id} already exists in index " f"'{index}'"
                     )
@@ -149,9 +139,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][document.id] = document
 
     def _create_document_field_map(self):
-        return {
-            self.embedding_field: "embedding",
-        }
+        return {self.embedding_field: "embedding"}
 
     def write_labels(
         self,
@@ -291,7 +279,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -301,8 +289,66 @@ class InMemoryDocumentStore(BaseDocumentStore):
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+                        Example:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+                        To use the same logical operator multiple times on the same level, logical operators take
+                        optionally a list of dictionaries as value.
+                        Example:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
@@ -337,7 +383,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self,
         retriever: "BaseRetriever",
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
     ):
@@ -351,8 +397,30 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                            only documents without embeddings are processed. This mode can be used for
                                            incremental updating of embeddings, wherein, only newly indexed documents
                                            get processed.
-        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Narrow down the scope to documents that match the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+                        Example:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :return: None
         """
@@ -390,7 +458,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -427,15 +495,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def _query(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         return_embedding: Optional[bool] = None,
         only_documents_without_embedding: bool = False,
     ):
         index = index or self.index
         documents = deepcopy(list(self.indexes[index].values()))
         documents = [d for d in documents if isinstance(d, Document)]
-
-        filtered_documents = []
 
         if return_embedding is None:
             return_embedding = self.return_embedding
@@ -446,16 +512,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if only_documents_without_embedding:
             documents = [doc for doc in documents if doc.embedding is None]
         if filters:
-            for doc in documents:
-                is_hit = True
-                for key, values in filters.items():
-                    if doc.meta.get(key):
-                        if doc.meta[key] not in values:
-                            is_hit = False
-                    else:
-                        is_hit = False
-                if is_hit:
-                    filtered_documents.append(doc)
+            parsed_filter = LogicalFilterClause.parse(filters)
+            filtered_documents = list(filter(lambda doc: parsed_filter.evaluate(doc.meta), documents))
         else:
             filtered_documents = documents
 
@@ -464,7 +522,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -474,8 +532,30 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Narrow down the scope to documents that match the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+                        Example:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
@@ -490,7 +570,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -501,8 +581,30 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Narrow down the scope to documents that match the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+                        Example:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
@@ -514,7 +616,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def get_all_labels(
         self,
         index: str = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """
@@ -544,14 +646,37 @@ class InMemoryDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
 
         :param index: Index name to delete the document from.
-        :param filters: Optional filters to narrow down the documents to be deleted.
+        :param filters: Narrow down the scope to documents that match the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+                        Example:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :return: None
         """
         if headers:
@@ -569,7 +694,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -578,12 +703,30 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param index: Index name to delete the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
-        :param filters: Optional filters to narrow down the documents to be deleted.
-            Example filters: {"name": ["some", "more"], "category": ["only_one"]}.
-            If filters are provided along with a list of IDs, this method deletes the
-            intersection of the two query results (documents that match the filters and
-            have their ID in the list).
-
+        :param filters: Narrow down the scope to documents that match the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+                        Example:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :return: None
         """
         if headers:
@@ -599,11 +742,25 @@ class InMemoryDocumentStore(BaseDocumentStore):
         for doc in docs_to_delete:
             del self.indexes[index][doc.id]
 
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        if index == self.index:
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
+        del self.indexes[index]
+
     def delete_labels(
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -612,8 +769,30 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param index: Index name to delete the labels from. If None, the
                       DocumentStore's default label index (self.label_index) will be used.
         :param ids: Optional list of IDs to narrow down the labels to be deleted.
-        :param filters: Optional filters to narrow down the labels to be deleted.
-                        Example filters: {"id": ["9a196e41-f7b5-45b4-bd19-5feb7501c159", "9a196e41-f7b5-45b4-bd19-5feb7501c159"]} or {"query": ["question2"]}
+        :param filters: Narrow down the scope to documents that match the given filters.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+                        Example:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :return: None
         """
         if headers:

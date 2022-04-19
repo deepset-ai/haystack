@@ -1,9 +1,10 @@
-from setuptools import setup, find_packages
 import logging
 from pathlib import Path
 
+from setuptools import setup, find_packages
 
-VERSION = None
+
+VERSION = "0.0.0"
 try:
     # After git clone, VERSION.txt is in the root folder
     VERSION = open(Path(__file__).parent.parent / "VERSION.txt", "r").read()
@@ -12,7 +13,7 @@ except Exception:
         # In Docker, VERSION.txt is in the same folder
         VERSION = open(Path(__file__).parent / "VERSION.txt", "r").read()
     except Exception as e:
-        logging.exception("No VERSION.txt found!", e)
+        logging.exception("No VERSION.txt found!")
 
 setup(
     name="farm-haystack-ui",

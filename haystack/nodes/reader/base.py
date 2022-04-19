@@ -1,11 +1,12 @@
 from typing import List, Optional, Sequence, Dict, Tuple
 
-import numpy as np
-from scipy.special import expit
 from abc import abstractmethod
 from copy import deepcopy
 from functools import wraps
 from time import perf_counter
+
+import numpy as np
+from scipy.special import expit
 
 from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
@@ -78,8 +79,8 @@ class BaseReader(BaseComponent):
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
         self.query_count += 1
+        predict = self.timing(self.predict, "query_time")
         if documents:
-            predict = self.timing(self.predict, "query_time")
             results = predict(query=query, documents=documents, top_k=top_k)
         else:
             results = {"answers": []}
@@ -91,7 +92,7 @@ class BaseReader(BaseComponent):
 
         # run evaluation with labels as node inputs
         if add_isolated_node_eval and labels is not None:
-            relevant_documents = [label.document for label in labels.labels]
+            relevant_documents = {label.document.id: label.document for label in labels.labels}.values()
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
 
             # Add corresponding document_name and more meta data, if an answer contains the document_id

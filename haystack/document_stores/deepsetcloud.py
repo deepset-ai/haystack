@@ -24,6 +24,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         api_endpoint: Optional[str] = None,
         similarity: str = "dot_product",
         return_embedding: bool = False,
+        label_index: str = "default",
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -46,11 +47,13 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param label_index: index for the evaluation set interface
+
         :param return_embedding: To return document embedding.
 
         """
         self.index = index
-        self.label_index = index
+        self.label_index = label_index
         self.duplicate_documents = duplicate_documents
         self.similarity = similarity
         self.return_embedding = return_embedding
@@ -65,19 +68,16 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                 f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}"
             )
 
-        self.set_config(
-            workspace=workspace,
-            index=index,
-            duplicate_documents=duplicate_documents,
-            api_endpoint=api_endpoint,
-            similarity=similarity,
-            return_embedding=return_embedding,
+        self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, evaluation_set=label_index
         )
+
+        super().__init__()
 
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -87,8 +87,32 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: Number of documents that are passed to bulk function at a time.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
@@ -106,7 +130,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -118,8 +142,32 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param filters: Optional filters to narrow down the documents to return.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
@@ -168,7 +216,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -184,7 +232,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Optional[Dict[str, List[str]]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -194,8 +242,69 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
 
         :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Optional filters to narrow down the search space.
-                        Example: {"name": ["some", "more"], "category": ["only_one"]}
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
@@ -220,25 +329,98 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query as defined by the BM25 algorithm.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return per query.
         :param custom_query: Custom query to be executed.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to requests
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to False.
         """
         doc_dicts = self.client.query(
-            query=query, filters=filters, top_k=top_k, custom_query=custom_query, index=index, headers=headers
+            query=query,
+            filters=filters,
+            top_k=top_k,
+            custom_query=custom_query,
+            index=index,
+            all_terms_must_match=all_terms_must_match,
+            headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
         return docs
@@ -277,16 +459,44 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         raise NotImplementedError("DeepsetCloudDocumentStore currently does not support writing documents.")
 
+    def get_evaluation_sets(self) -> List[dict]:
+        """
+        Returns a list of uploaded evaluation sets to deepset cloud.
+
+        :return: list of evaluation sets as dicts
+                 These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
+        """
+        return self.evaluation_set_client.get_evaluation_sets()
+
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        """
+        Returns a list of labels for the given index name.
+
+        :param index: Optional name of evaluation set for which labels should be searched.
+                      If None, the DocumentStore's default label_index (self.label_index) will be used.
+        :filters: Not supported.
+        :param headers: Not supported.
+
+        :return: list of Labels.
+        """
+        return self.evaluation_set_client.get_labels(evaluation_set=index)
 
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        """
+        Counts the number of labels for the given index and returns the value.
+
+        :param index: Optional evaluation set name for which the labels should be counted.
+                      If None, the DocumentStore's default label_index (self.label_index) will be used.
+        :param headers: Not supported.
+
+        :return: number of labels for the given index
+        """
+        return self.evaluation_set_client.get_labels_count(evaluation_set=index)
 
     def write_labels(
         self,
@@ -299,7 +509,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting documents.")
@@ -308,7 +518,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting documents.")
@@ -317,7 +527,10 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+
+    def delete_index(self, index: str):
+        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting indexes.")

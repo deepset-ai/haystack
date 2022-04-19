@@ -199,8 +199,7 @@ class Tokenizer:
                 )
         if ret is None:
             raise Exception("Unable to load tokenizer")
-        else:
-            return ret
+        return ret
 
     @staticmethod
     def _infer_tokenizer_class(pretrained_model_name_or_path, use_auth_token: Union[bool, str] = None):
@@ -271,8 +270,7 @@ class Tokenizer:
         elif "codebert" in pretrained_model_name_or_path.lower():
             if "mlm" in pretrained_model_name_or_path.lower():
                 raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
-            else:
-                tokenizer_class = "RobertaTokenizer"
+            tokenizer_class = "RobertaTokenizer"
         elif "camembert" in pretrained_model_name_or_path.lower() or "umberto" in pretrained_model_name_or_path.lower():
             tokenizer_class = "CamembertTokenizer"
         elif "distilbert" in pretrained_model_name_or_path.lower():
@@ -518,7 +516,7 @@ def _words_to_tokens(words, word_offsets, tokenizer):
         # For the first word of a text: we just call the regular tokenize function.
         # For later words: we need to call it with add_prefix_space=True to get the same results with roberta / gpt2 tokenizer
         # see discussion here. https://github.com/huggingface/transformers/issues/1196
-        elif len(tokens) == 0:
+        if len(tokens) == 0:
             tokens_word = tokenizer.tokenize(w)
         else:
             if type(tokenizer) == RobertaTokenizer:

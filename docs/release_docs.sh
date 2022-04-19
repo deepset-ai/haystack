@@ -6,4 +6,4 @@
 # Create folder for new docs veresion
 mkdir "$1"
 
-cp -ar make.bat Makefile _src static templates "$1"
+cp -a make.bat Makefile _src "$1"

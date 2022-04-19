@@ -1,13 +1,16 @@
 from typing import Optional
 
 import io
+import gzip
 import tarfile
 import zipfile
-import requests
 import logging
 import importlib
 from pathlib import Path
 
+import requests
+
+from haystack.telemetry import send_tutorial_event
 
 logger = logging.getLogger(__name__)
 
@@ -50,14 +53,15 @@ def _optional_component_not_installed(component: str, dep_group: str, source_err
     raise ImportError(
         f"Failed to import '{component}', "
         "which is an optional component in Haystack.\n"
-        f"Run 'pip install farm-haystack[{dep_group}]' "
-        "to install the required dependencies and make this component available."
+        f"Run 'pip install 'farm-haystack[{dep_group}]'' "
+        "to install the required dependencies and make this component available.\n"
+        f"(Original error: {str(source_error)})"
     ) from source_error
 
 
 def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] = None) -> bool:
     """
-    Fetch an archive (zip or tar.gz) from a url via http and extract content to an output directory.
+    Fetch an archive (zip, gz or tar.gz) from a url via http and extract content to an output directory.
 
     :param url: http address
     :param output_dir: local path
@@ -68,6 +72,9 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
     path = Path(output_dir)
     if not path.exists():
         path.mkdir(parents=True)
+
+    if "deepset.ai-farm-qa/datasets" in url or "dl.fbaipublicfiles.com" in url or "fandom-qa.s3" in url:
+        send_tutorial_event(url=url)
 
     is_not_empty = len(list(Path(path).rglob("*"))) > 0
     if is_not_empty:
@@ -82,6 +89,12 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
         if archive_extension == "zip":
             zip_archive = zipfile.ZipFile(io.BytesIO(request_data.content))
             zip_archive.extractall(output_dir)
+        elif archive_extension == "gz" and not "tar.gz" in url:
+            gzip_archive = gzip.GzipFile(fileobj=io.BytesIO(request_data.content))
+            file_content = gzip_archive.read()
+            file_name = url.split("/")[-1][: -(len(archive_extension) + 1)]
+            with open(f"{output_dir}/{file_name}", "wb") as file:
+                file.write(file_content)
         elif archive_extension in ["gz", "bz2", "xz"]:
             tar_archive = tarfile.open(fileobj=io.BytesIO(request_data.content), mode="r|*")
             tar_archive.extractall(output_dir)

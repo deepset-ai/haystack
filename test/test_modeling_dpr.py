@@ -511,14 +511,8 @@ def test_dpr_problematic():
 
 def test_dpr_query_only():
     erroneous_dicts = [
-        {
-            "query": "where is castle on the hill based on",
-            "answers": ["Framlingham Castle"],
-        },
-        {
-            "query": "where is castle on the hill 2 based on",
-            "answers": ["Framlingham Castle 2"],
-        },
+        {"query": "where is castle on the hill based on", "answers": ["Framlingham Castle"]},
+        {"query": "where is castle on the hill 2 based on", "answers": ["Framlingham Castle 2"]},
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
@@ -609,7 +603,7 @@ def test_dpr_context_only():
     assert tensor_names == ["passage_input_ids", "passage_segment_ids", "passage_attention_mask", "label_ids"]
 
 
-def test_dpr_processor_save_load():
+def test_dpr_processor_save_load(tmp_path):
     d = {
         "query": "big little lies season 2 how many episodes ?",
         "passages": [
@@ -652,9 +646,9 @@ def test_dpr_processor_save_load():
         metric="text_similarity_metric",
         shuffle_negatives=False,
     )
-    processor.save(save_dir="testsave/dpr_processor")
+    processor.save(save_dir=f"{tmp_path}/testsave/dpr_processor")
     dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir="testsave/dpr_processor")
+    loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=f"{tmp_path}/testsave/dpr_processor")
     dataset2, tensor_names, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
@@ -673,7 +667,7 @@ def test_dpr_processor_save_load():
         {"query": "facebook/dpr-question_encoder-single-nq-base", "passage": "facebook/dpr-ctx_encoder-single-nq-base"},
     ],
 )
-def test_dpr_processor_save_load_non_bert_tokenizer(query_and_passage_model):
+def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_model):
     """
     This test compares 1) a model that was loaded from model hub with
     2) a model from model hub that was saved to disk and then loaded from disk and
@@ -688,7 +682,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(query_and_passage_model):
                 "text": "Etalab est une administration publique française qui fait notamment office de Chief Data Officer de l'État et coordonne la conception et la mise en œuvre de sa stratégie dans le domaine de la donnée (ouverture et partage des données publiques ou open data, exploitation des données et intelligence artificielle...). Ainsi, Etalab développe et maintient le portail des données ouvertes du gouvernement français data.gouv.fr. Etalab promeut également une plus grande ouverture l'administration sur la société (gouvernement ouvert) : transparence de l'action publique, innovation ouverte, participation citoyenne... elle promeut l’innovation, l’expérimentation, les méthodes de travail ouvertes, agiles et itératives, ainsi que les synergies avec la société civile pour décloisonner l’administration et favoriser l’adoption des meilleures pratiques professionnelles dans le domaine du numérique. À ce titre elle étudie notamment l’opportunité de recourir à des technologies en voie de maturation issues du monde de la recherche. Cette entité chargée de l'innovation au sein de l'administration doit contribuer à l'amélioration du service public grâce au numérique. Elle est rattachée à la Direction interministérielle du numérique, dont les missions et l’organisation ont été fixées par le décret du 30 octobre 2019.  Dirigé par Laure Lucchesi depuis 2016, elle rassemble une équipe pluridisciplinaire d'une trentaine de personnes.",
                 "label": "positive",
                 "external_id": "1",
-            },
+            }
         ],
     }
 
@@ -735,7 +729,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(query_and_passage_model):
     model.connect_heads_with_processor(processor.tasks, require_labels=False)
 
     # save model that was loaded from model hub to disk
-    save_dir = "testsave/dpr_model"
+    save_dir = f"{tmp_path}/testsave/dpr_model"
     query_encoder_dir = "query_encoder"
     passage_encoder_dir = "passage_encoder"
     model.save(Path(save_dir), lm1_name=query_encoder_dir, lm2_name=passage_encoder_dir)
@@ -847,7 +841,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(query_and_passage_model):
     assert np.array_equal(all_embeddings["query"][0], all_embeddings2["query"][0])
 
     # save the model that was loaded from disk to disk
-    save_dir = "testsave/dpr_model"
+    save_dir = f"{tmp_path}/testsave/dpr_model"
     query_encoder_dir = "query_encoder"
     passage_encoder_dir = "passage_encoder"
     loaded_model.save(Path(save_dir), lm1_name=query_encoder_dir, lm2_name=passage_encoder_dir)

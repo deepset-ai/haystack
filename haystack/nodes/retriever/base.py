@@ -1,13 +1,15 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import logging
 from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
-from tqdm import tqdm
 from copy import deepcopy
 
+from tqdm import tqdm
+
 from haystack.schema import Document, MultiLabel
+from haystack.errors import HaystackError
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
 
@@ -124,7 +126,7 @@ class BaseRetriever(BaseComponent):
         """
 
         # Extract all questions for evaluation
-        filters = {"origin": [label_origin]}
+        filters: Dict = {"origin": [label_origin]}
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
@@ -151,7 +153,7 @@ class BaseRetriever(BaseComponent):
                     # here are no no_answer '' included if there are other actual answers
                     question_label_dict[id_question_tuple] = label.answers
                 else:
-                    deduplicated_doc_ids = list(set([str(x) for x in label.document_ids]))
+                    deduplicated_doc_ids = list({str(x) for x in label.document_ids})
                     question_label_dict[id_question_tuple] = deduplicated_doc_ids
 
         predictions = []
@@ -240,6 +242,10 @@ class BaseRetriever(BaseComponent):
         headers: Optional[Dict[str, str]] = None,
     ):
         if root_node == "Query":
+            if not query:
+                raise HaystackError(
+                    "Must provide a 'query' parameter for retrievers in pipelines where Query is the root node."
+                )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
             output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
@@ -266,13 +272,13 @@ class BaseRetriever(BaseComponent):
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[dict]):
+    def run_indexing(self, documents: List[Union[dict, Document]]):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             documents = deepcopy(documents)
-            document_objects = [Document.from_dict(doc) for doc in documents]
+            document_objects = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
             embeddings = self.embed_documents(document_objects)  # type: ignore
-            for doc, emb in zip(documents, embeddings):
-                doc["embedding"] = emb
+            for doc, emb in zip(document_objects, embeddings):
+                doc.embedding = emb
         output = {"documents": documents}
         return output, "output_1"
 
