@@ -38,7 +38,7 @@ def test_convert(Converter):
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, PDFToTextOCRConverter])
 def test_pdf_encoding(Converter):
     converter = Converter()
-    
+
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]
     assert "ɪ" in document.content
 
@@ -49,7 +49,7 @@ def test_pdf_encoding(Converter):
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, PDFToTextOCRConverter])
 def test_pdf_ligatures(Converter):
     converter = Converter()
-    
+
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]
     assert "ﬀ" not in document.content
     assert "ɪ" in document.content
@@ -61,7 +61,6 @@ def test_pdf_ligatures(Converter):
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={"ɪ": "i"})[0]
     assert "ﬀ" in document.content
     assert "ɪ" not in document.content
-
 
 
 @pytest.mark.tika

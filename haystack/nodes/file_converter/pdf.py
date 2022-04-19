@@ -24,13 +24,33 @@ logger = logging.getLogger(__name__)
 # https://en.wikipedia.org/wiki/Ligature_(writing)
 KNOWN_LIGATURES = {
     # Latin
-    "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "ft", "ﬆ": "st", 
-    "Ǳ": "DZ", "ǲ": "Dz", "ǳ": "dz", "Ǆ": "DŽ", "ǅ": "Dž", "ǆ": "dž", 
-    "Ꜩ": "Tz", "ꜩ": "tz", "🙰": "et", "℔": "lb", "ᵫ": "ue",
-    "Ĳ": "IJ", "ĳ": "ij", # They are both capitalized together, so the "Ij" ligature doesn't exist
-    "ꝏ": "oo", # Not the infinite sign but a double-o ligature: https://en.wikipedia.org/wiki/Ligature_(writing)#Massachusett_%EA%9D%8F
+    "ﬀ": "ff",
+    "ﬁ": "fi",
+    "ﬂ": "fl",
+    "ﬃ": "ffi",
+    "ﬄ": "ffl",
+    "ﬅ": "ft",
+    "ﬆ": "st",
+    "Ǳ": "DZ",
+    "ǲ": "Dz",
+    "ǳ": "dz",
+    "Ǆ": "DŽ",
+    "ǅ": "Dž",
+    "ǆ": "dž",
+    "Ꜩ": "Tz",
+    "ꜩ": "tz",
+    "🙰": "et",
+    "℔": "lb",
+    "ᵫ": "ue",
+    "Ĳ": "IJ",
+    "ĳ": "ij",  # They are both capitalized together, so the "Ij" ligature doesn't exist
+    "ꝏ": "oo",  # Not the infinite sign but a double-o ligature: https://en.wikipedia.org/wiki/Ligature_(writing)#Massachusett_%EA%9D%8F
     # Armenian
-    "ﬓ": "մն", "ﬔ": "մե", "ﬕ": "մի", "ﬖ": "վն", "ﬗ":"մխ", 
+    "ﬓ": "մն",
+    "ﬔ": "մե",
+    "ﬕ": "մի",
+    "ﬖ": "վն",
+    "ﬗ": "մխ",
 }
 
 
@@ -109,9 +129,9 @@ class PDFToTextConverter(BaseConverter):
                          Defaults to "UTF-8" in order to support special characters (e.g. German Umlauts, Cyrillic ...).
                          (See list of available encodings by running `pdftotext -listenc` in the terminal)
         :param known_ligatures: `pdftotext` tends to recognize clusters of letters as ligatures, such as "ﬀ" (double f).
-                                Such ligatures however make text hard to compare with the content of other files, 
-                                which are generally ligature free. Therefore we automatically find and replace the most 
-                                common ligatures with their split counterparts. The default mapping is in 
+                                Such ligatures however make text hard to compare with the content of other files,
+                                which are generally ligature free. Therefore we automatically find and replace the most
+                                common ligatures with their split counterparts. The default mapping is in
                                 `haystack.nodes.file_converter.pdf.KNOWN_LIGATURES`: it is rather biased towards Latin alphabeths
                                 but excludes all ligatures that are known to be used in IPA.
                                 You can use this parameter to provide your own set of ligatures to clean up from the documents.
@@ -254,9 +274,9 @@ class PDFToTextOCRConverter(BaseConverter):
                                 in garbled text.
         :param encoding: Select the file encoding (default is `utf-8`)
         :param known_ligatures: OCR tools might recognize clusters of letters as ligatures, such as "ﬀ" (double f).
-                                Such ligatures however make text hard to compare with the content of other files, 
-                                which are generally ligature free. Therefore we automatically find and replace the most 
-                                common ligatures with their split counterparts. The default mapping is in 
+                                Such ligatures however make text hard to compare with the content of other files,
+                                which are generally ligature free. Therefore we automatically find and replace the most
+                                common ligatures with their split counterparts. The default mapping is in
                                 `haystack.nodes.file_converter.pdf.KNOWN_LIGATURES`: it is rather biased towards Latin alphabeths
                                 but excludes all ligatures that are known to be used in IPA.
                                 You can use this parameter to provide your own set of ligatures to clean up from the documents.
