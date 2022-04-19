@@ -4,11 +4,9 @@ from typing import List, Union
 import logging
 from pathlib import Path
 
-MIMETYPE_RECOGNITION = True
 try:
     import magic
 except ImportError as ie:
-    MIMETYPE_RECOGNITION = False
     logging.error(
         "Failed to import 'magic' (from 'python-magic' and 'python-magic-bin' on Windows). "
         "FileTypeClassifier will not perform mimetype detection on extensionless files. "
@@ -60,11 +58,12 @@ class FileTypeClassifier(BaseComponent):
 
         :param file_path: the path to extract the extension from
         """
-        if not MIMETYPE_RECOGNITION:
-            logger.error(f"'magic' could not be imported, so the file type of '{file_path}' cannot be guessed.")
+        try:
+            extension = magic.from_file(str(file_path), mime=True)
+            return mimetypes.guess_extension(extension) or ""
+        except NameError as ne:
+            logger.error(f"The type of '{file_path}' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error.")
             return ""
-        extension = magic.from_file(str(file_path), mime=True)
-        return mimetypes.guess_extension(extension) or ""
 
     def _get_extension(self, file_paths: List[Path]) -> str:
         """
