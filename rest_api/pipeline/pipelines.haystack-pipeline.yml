@@ -1,6 +1,6 @@
 # To allow your IDE to autocomplete and validate your YAML pipelines, name them as <name of your choice>.haystack-pipeline.yml
 
-version: 'unstable'
+version: ignore
 
 components:    # define all the building-blocks for Pipeline
   - name: DocumentStore
