@@ -13,25 +13,13 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "ocr", ie)
 
-from haystack.nodes.file_converter.base import BaseConverter
+from haystack.nodes.file_converter.base import BaseConverter, KNOWN_LIGATURES
 from haystack.nodes.file_converter.image import ImageToTextConverter
 from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
 
-
-# https://en.wikipedia.org/wiki/Ligature_(writing)
-KNOWN_LIGATURES = {
-    # Latin
-    "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "ft", "ﬆ": "st", 
-    "Ǳ": "DZ", "ǲ": "Dz", "ǳ": "dz", "Ǆ": "DŽ", "ǅ": "Dž", "ǆ": "dž", 
-    "Ꜩ": "Tz", "ꜩ": "tz", "🙰": "et", "℔": "lb", "ᵫ": "ue",
-    "Ĳ": "IJ", "ĳ": "ij", # They are both capitalized together, so the "Ij" ligature doesn't exist
-    "ꝏ": "oo", # Not the infinite sign but a double-o ligature: https://en.wikipedia.org/wiki/Ligature_(writing)#Massachusett_%EA%9D%8F
-    # Armenian
-    "ﬓ": "մն", "ﬔ": "մե", "ﬕ": "մի", "ﬖ": "վն", "ﬗ":"մխ", 
-}
 
 
 class PDFToTextConverter(BaseConverter):
@@ -86,7 +74,6 @@ class PDFToTextConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
-        known_ligatures: Dict[str, str] = KNOWN_LIGATURES,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -108,13 +95,6 @@ class PDFToTextConverter(BaseConverter):
         :param encoding: Encoding that will be passed as `-enc` parameter to `pdftotext`.
                          Defaults to "UTF-8" in order to support special characters (e.g. German Umlauts, Cyrillic ...).
                          (See list of available encodings by running `pdftotext -listenc` in the terminal)
-        :param known_ligatures: `pdftotext` tends to recognize clusters of letters as ligatures, such as "ﬀ" (double f).
-                                Such ligatures however make text hard to compare with the content of other files, 
-                                which are generally ligature free. Therefore we automatically find and replace the most 
-                                common ligatures with their split counterparts. The default mapping is in 
-                                `haystack.nodes.file_converter.pdf.KNOWN_LIGATURES`: it is rather biased towards Latin alphabeths
-                                but excludes all ligatures that are known to be used in IPA.
-                                You can use this parameter to provide your own set of ligatures to clean up from the documents.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -166,10 +146,6 @@ class PDFToTextConverter(BaseConverter):
                 )
 
         text = "\f".join(cleaned_pages)
-
-        for ligature, letters in known_ligatures.items():
-            text = text.replace(ligature, letters)
-
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]
 
@@ -231,7 +207,6 @@ class PDFToTextOCRConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
-        known_ligatures: Dict[str, str] = KNOWN_LIGATURES,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -253,13 +228,6 @@ class PDFToTextOCRConverter(BaseConverter):
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
         :param encoding: Select the file encoding (default is `utf-8`)
-        :param known_ligatures: OCR tools might recognize clusters of letters as ligatures, such as "ﬀ" (double f).
-                                Such ligatures however make text hard to compare with the content of other files, 
-                                which are generally ligature free. Therefore we automatically find and replace the most 
-                                common ligatures with their split counterparts. The default mapping is in 
-                                `haystack.nodes.file_converter.pdf.KNOWN_LIGATURES`: it is rather biased towards Latin alphabeths
-                                but excludes all ligatures that are known to be used in IPA.
-                                You can use this parameter to provide your own set of ligatures to clean up from the documents.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -279,10 +247,5 @@ class PDFToTextOCRConverter(BaseConverter):
             logger.error(f"File {file_path} has an error \n {exception}")
 
         raw_text = "\f".join(pages)
-
-        for ligature, letters in known_ligatures.items():
-            raw_text = raw_text.replace(ligature, letters)
-
         document = Document(content=raw_text, meta=meta, id_hash_keys=id_hash_keys)
-
         return [document]
