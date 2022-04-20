@@ -797,7 +797,7 @@ def test_load_yaml_two_roots(tmp_path):
         )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert "File" in str(e) or "Query" in str(e)
+    assert "File" in str(e) or "Query" in str(e)
 
 
 def test_load_yaml_disconnected_component(tmp_path):
