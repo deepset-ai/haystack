@@ -10,7 +10,11 @@ class JoinAnswers(BaseComponent):
     """
 
     def __init__(
-        self, join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None
+        self,
+        join_mode: str = "concatenate",
+        weights: Optional[List[float]] = None,
+        top_k_join: Optional[int] = None,
+        sort: bool = True
     ):
         """
         :param join_mode: `"concatenate"` to combine documents from multiple `Reader`s. `"merge"` to aggregate scores
@@ -31,6 +35,7 @@ class JoinAnswers(BaseComponent):
         self.join_mode = join_mode
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
+        self.sort = sort
 
     def run(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
         reader_results = [inp["answers"] for inp in inputs]
@@ -40,12 +45,13 @@ class JoinAnswers(BaseComponent):
 
         if self.join_mode == "concatenate":
             concatenated_answers = [answer for cur_reader_result in reader_results for answer in cur_reader_result]
-            concatenated_answers = sorted(concatenated_answers, reverse=True)[:top_k_join]
+            if self.sort:
+                concatenated_answers = sorted(concatenated_answers, reverse=True)
+            concatenated_answers = concatenated_answers[:top_k_join]
             return {"answers": concatenated_answers, "labels": inputs[0].get("labels", None)}, "output_1"
 
         elif self.join_mode == "merge":
             merged_answers = self._merge_answers(reader_results)
-
             merged_answers = merged_answers[:top_k_join]
             return {"answers": merged_answers, "labels": inputs[0].get("labels", None)}, "output_1"
 
@@ -59,5 +65,8 @@ class JoinAnswers(BaseComponent):
             for answer in result:
                 if isinstance(answer.score, float):
                     answer.score *= weight
+        merged_answers = [answer for cur_reader_result in reader_results for answer in cur_reader_result]
+        if self.sort:
+            merged_answers = sorted(merged_answers, reverse=True)
 
         return sorted([answer for cur_reader_result in reader_results for answer in cur_reader_result], reverse=True)
