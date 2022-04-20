@@ -207,7 +207,7 @@ def validate_config(config: Dict[str, Any], strict_version_check: bool = False, 
 
 def validate_schema(config: Dict, strict_version_check: bool = False) -> None:
     """
-    Check that the YAML abides the JSON schema, so that every block 
+    Check that the YAML abides the JSON schema, so that every block
     of the pipeline configuration file contains all required information
     and that every node's type and parameter are correct.
 
@@ -303,11 +303,19 @@ def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_defin
     graph = nx.DiGraph()
     root_node_name = None
     for node in pipeline_definition["nodes"]:
-        graph, root_node_name = _add_node_to_pipeline_graph(graph=graph, root_node_name=root_node_name, node=node, components=component_definitions)
+        graph, root_node_name = _add_node_to_pipeline_graph(
+            graph=graph, root_node_name=root_node_name, node=node, components=component_definitions
+        )
     logging.debug(f"The graph for pipeline '{pipeline_definition['name']}' is valid.")
 
 
-def _add_node_to_pipeline_graph(graph: nx.DiGraph, root_node_name: Optional[str], components: Dict[str, Dict[str, str]], node: Dict[str, Union[str, List[str]]], instance: BaseComponent = None):
+def _add_node_to_pipeline_graph(
+    graph: nx.DiGraph,
+    root_node_name: Optional[str],
+    components: Dict[str, Dict[str, str]],
+    node: Dict[str, Union[str, List[str]]],
+    instance: BaseComponent = None,
+):
     """
     Adds a single node to the provided graph, performing all necessary validation steps.
 
@@ -340,15 +348,15 @@ def _add_node_to_pipeline_graph(graph: nx.DiGraph, root_node_name: Optional[str]
         graph.add_node(root_node_name, inputs=[], component=root_node)
 
     if root_node_name not in VALID_ROOT_NODES:
-        raise PipelineConfigError(
-            f"Root node '{root_node_name}' is invalid. Available options are {VALID_ROOT_NODES}."
-        )
+        raise PipelineConfigError(f"Root node '{root_node_name}' is invalid. Available options are {VALID_ROOT_NODES}.")
 
     if instance is not None and not isinstance(instance, BaseComponent):
-        raise PipelineError(f"The object provided for node {node['name']} is not a subclass of BaseComponent. "
-                            "Cannot add it to the pipeline.")
+        raise PipelineError(
+            f"The object provided for node {node['name']} is not a subclass of BaseComponent. "
+            "Cannot add it to the pipeline."
+        )
 
-    if node['name'] in VALID_ROOT_NODES:
+    if node["name"] in VALID_ROOT_NODES:
         raise PipelineConfigError(
             f"non root nodes cannot be named {' or '.join(VALID_ROOT_NODES)}. Choose another name."
         )
@@ -362,7 +370,7 @@ def _add_node_to_pipeline_graph(graph: nx.DiGraph, root_node_name: Optional[str]
         if "." in input_node:
             input_node_name, input_edge_name = input_node.split(".")
 
-        if input_node==root_node_name:
+        if input_node == root_node_name:
             input_edge_name = "output_1"
 
         elif input_node in VALID_ROOT_NODES:
@@ -377,7 +385,7 @@ def _add_node_to_pipeline_graph(graph: nx.DiGraph, root_node_name: Optional[str]
             input_node_edges_count = input_node_type.outgoing_edges
 
             if not input_edge_name:
-                if input_node_edges_count != 1:    # Edge was not specified, but input node has many outputs
+                if input_node_edges_count != 1:  # Edge was not specified, but input node has many outputs
                     raise PipelineConfigError(
                         f"Can't connect {input_node_name} to {node['name']}: "
                         f"{input_node_name} has {input_node_edges_count} outgoing edges. "
@@ -390,13 +398,15 @@ def _add_node_to_pipeline_graph(graph: nx.DiGraph, root_node_name: Optional[str]
                     f"'{input_edge_name}' is not a valid edge name. "
                     "It must start with 'output_' and must contain no dots."
                 )
-            
+
             requested_edge = input_edge_name.split("_")[1]
 
             try:
                 requested_edge = int(requested_edge)
             except ValueError:
-                raise PipelineConfigError(f"You must specified a numbered edge, like filetype_classifier.output_2, not {input_node}")
+                raise PipelineConfigError(
+                    f"You must specified a numbered edge, like filetype_classifier.output_2, not {input_node}"
+                )
 
             if not requested_edge <= input_node_edges_count:
                 raise PipelineConfigError(
@@ -404,16 +414,16 @@ def _add_node_to_pipeline_graph(graph: nx.DiGraph, root_node_name: Optional[str]
                     f"{input_node_edges_count} outgoing edge(s)."
                 )
 
-        graph.add_edge(input_node, node['name'], label=input_edge_name)
+        graph.add_edge(input_node, node["name"], label=input_edge_name)
 
         # Check if adding this edge created a loop in the pipeline graph
         if not nx.is_directed_acyclic_graph(graph):
-            graph.remove_node(node['name'])
+            graph.remove_node(node["name"])
             raise PipelineConfigError(f"Cannot add '{node['name']}': it will create a loop in the pipeline.")
 
     return graph, root_node_name
 
-    
+
 def _get_class_for_valid_node(node_name: str, components: Dict[str, Dict[str, str]]):
     try:
         node_type = components[node_name]["type"]
@@ -421,17 +431,17 @@ def _get_class_for_valid_node(node_name: str, components: Dict[str, Dict[str, st
         raise PipelineConfigError(
             f"Cannot find node '{node_name}'. Make sure that a node "
             f"called '{node_name}' is defined under components."
-        ) from e 
+        ) from e
 
     try:
         node_class = BaseComponent.get_subclass(node_type)
     except KeyError as e:
         raise PipelineConfigError(
             f"Node of type '{node_class}' not recognized. Check for typos in the node type."
-        ) from e 
+        ) from e
 
     return node_class
-    
+
 
 def _overwrite_with_env_variables(component_definition: Dict[str, Any]):
     """
