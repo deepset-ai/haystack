@@ -564,7 +564,6 @@ Prints evaluation report containing a metrics funnel and worst queries for furth
 - `n_wrong_examples`: The number of worst queries to show.
 - `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
 
-
 <a id="base._HaystackBeirRetrieverAdapter"></a>
 
 ## \_HaystackBeirRetrieverAdapter
@@ -592,6 +591,162 @@ See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
 - `query_pipeline`: The query pipeline to evaluate.
 - `index_params`: The params to use during indexing (see pipeline.run's params).
 - `query_params`: The params to use during querying (see pipeline.run's params).
+
+<a id="ray"></a>
+
+# Module ray
+
+<a id="ray.RayPipeline"></a>
+
+## RayPipeline
+
+```python
+class RayPipeline(Pipeline)
+```
+
+Ray (https://ray.io) is a framework for distributed computing.
+
+Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
+Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
+of the Reader and a single replica for the Retriever. It enables efficient resource utilization by horizontally
+scaling Components.
+
+To set the number of replicas, add  `replicas` in the YAML config for the node in a pipeline:
+
+        ```yaml
+        |    components:
+        |        ...
+        |
+        |    pipelines:
+        |        - name: ray_query_pipeline
+        |          type: RayPipeline
+        |          nodes:
+        |            - name: ESRetriever
+        |              replicas: 2  # number of replicas to create on the Ray cluster
+        |              inputs: [ Query ]
+        ```
+
+A RayPipeline can only be created with a YAML Pipeline config.
+>>> from haystack.pipeline import RayPipeline
+>>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
+>>> pipeline.run(query="What is the capital of Germany?")
+
+By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
+set the `address` parameter when creating the RayPipeline instance.
+
+<a id="ray.RayPipeline.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(address: str = None, **kwargs)
+```
+
+**Arguments**:
+
+- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+- `kwargs`: Optional parameters for initializing Ray.
+
+<a id="ray.RayPipeline.load_from_yaml"></a>
+
+#### load\_from\_yaml
+
+```python
+@classmethod
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, **kwargs, ,)
+```
+
+Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+
+a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+    ```yaml
+    |   version: '0.9'
+    |
+    |    components:    # define all the building-blocks for Pipeline
+    |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+    |      type: FARMReader    # Haystack Class name for the component
+    |      params:
+    |        no_ans_boost: -10
+    |        model_name_or_path: deepset/roberta-base-squad2
+    |    - name: MyESRetriever
+    |      type: ElasticsearchRetriever
+    |      params:
+    |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+    |        custom_query: null
+    |    - name: MyDocumentStore
+    |      type: ElasticsearchDocumentStore
+    |      params:
+    |        index: haystack_test
+    |
+    |    pipelines:    # multiple Pipelines can be defined using the components from above
+    |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+    |      type: RayPipeline
+    |      nodes:
+    |      - name: MyESRetriever
+    |        inputs: [Query]
+    |        replicas: 2    # number of replicas to create on the Ray cluster
+    |      - name: MyReader
+    |        inputs: [MyESRetriever]
+    ```
+
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
+
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
+- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+
+<a id="ray._RayDeploymentWrapper"></a>
+
+## \_RayDeploymentWrapper
+
+```python
+class _RayDeploymentWrapper()
+```
+
+Ray Serve supports calling of __init__ methods on the Classes to create "deployment" instances.
+
+In case of Haystack, some Components like Retrievers have complex init methods that needs objects
+like Document Stores.
+
+This wrapper class encapsulates the initialization of Components. Given a Component Class
+name, it creates an instance using the YAML Pipeline config.
+
+<a id="ray._RayDeploymentWrapper.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(pipeline_config: dict, component_name: str)
+```
+
+Create an instance of Component.
+
+**Arguments**:
+
+- `pipeline_config`: Pipeline YAML parsed as a dict.
+- `component_name`: Component Class name.
+
+<a id="ray._RayDeploymentWrapper.__call__"></a>
+
+#### \_\_call\_\_
+
+```python
+def __call__(*args, **kwargs)
+```
+
+Ray calls this method which is then re-directed to the corresponding component's run().
 
 <a id="standard_pipelines"></a>
 
