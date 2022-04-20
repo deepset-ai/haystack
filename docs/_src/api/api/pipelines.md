@@ -639,7 +639,7 @@ set the `address` parameter when creating the RayPipeline instance.
 #### \_\_init\_\_
 
 ```python
-def __init__(address: str = None, **kwargs)
+def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
 ```
 
 **Arguments**:
@@ -653,7 +653,7 @@ def __init__(address: str = None, **kwargs)
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, **kwargs, ,)
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
