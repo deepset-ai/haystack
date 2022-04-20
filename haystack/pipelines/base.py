@@ -750,7 +750,7 @@ class Pipeline(BasePipeline):
                         "Please set search_fields appropriately."
                     )
 
-        haystack_retriever = _HaystackBeirRetrieverAdapter(            
+        haystack_retriever = _HaystackBeirRetrieverAdapter(
             index_pipeline=index_pipeline,
             query_pipeline=query_pipeline,
             index_params=index_params,
@@ -777,11 +777,11 @@ class Pipeline(BasePipeline):
         index_pipeline: Pipeline,
         query_pipeline: Pipeline,
         evalset_labels: List[MultiLabel],
-        corpus_file_paths: List[str], 
+        corpus_file_paths: List[str],
         experiment_name: str,
         experiment_run_name: str,
         tracking_head: BaseTrackingHead,
-        corpus_file_metas: List[Dict[str, Any]] = None, 
+        corpus_file_metas: List[Dict[str, Any]] = None,
         corpus_meta: Dict[str, Any] = {},
         evalset_meta: Dict[str, Any] = {},
         pipeline_meta: Dict[str, Any] = {},
@@ -867,9 +867,7 @@ class Pipeline(BasePipeline):
                 raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
         else:
             logger.info(f"indexing {len(corpus_file_paths)} documents...")
-            index_pipeline.run(
-                file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params
-            )
+            index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
             logger.info(f"indexing finished.")
             document_count = document_store.get_document_count()
 
@@ -899,7 +897,9 @@ class Pipeline(BasePipeline):
             with open(Path(temp_dir) / "pipelines.yaml", "w") as outfile:
                 index_config = index_pipeline.get_config()
                 query_config = query_pipeline.get_config()
-                components = list({c["name"]: c for c in (index_config["components"] + query_config["components"])}.values())
+                components = list(
+                    {c["name"]: c for c in (index_config["components"] + query_config["components"])}.values()
+                )
                 pipelines = index_config["pipelines"] + query_config["pipelines"]
                 config = {"version": index_config["version"], "components": components, "pipelines": pipelines}
                 yaml.dump(config, outfile, default_flow_style=False)
@@ -1832,9 +1832,7 @@ class _HaystackBeirRetrieverAdapter:
                 metas.append({"id": id, "name": doc.get("title", None)})
 
             logger.info(f"indexing {len(corpus)} documents...")
-            self.index_pipeline.run(
-                file_paths=file_paths, meta=metas, params=self.index_params
-            )
+            self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
             logger.info(f"indexing finished.")
 
             # adjust query_params to ensure top_k is retrieved

@@ -441,7 +441,7 @@ then be found in the dict returned by this method under the key "_debug"
 
 ```python
 @classmethod
-def eval_beir(cls, pipeline_bundle: PipelineBundle, dataset: str = "scifact", dataset_dir: Path = Path("."), top_k_values: List[int] = [1, 3, 5, 10, 100, 1000], keep_index: bool = False) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]
+def eval_beir(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict = {}, query_params: dict = {}, dataset: str = "scifact", dataset_dir: Path = Path("."), top_k_values: List[int] = [1, 3, 5, 10, 100, 1000], keep_index: bool = False) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]
 ```
 
 Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
@@ -464,13 +464,13 @@ If True the index will be kept after beir evaluation. Otherwise it will be delet
 Returns a tuple containing the ncdg, map, recall and precision scores.
 Each metric is represented by a dictionary containing the scores for each top_k value.
 
-<a id="base.Pipeline.run_eval_experiment"></a>
+<a id="base.Pipeline.conduct_eval_run"></a>
 
-#### run\_eval\_experiment
+#### conduct\_eval\_run
 
 ```python
 @classmethod
-def run_eval_experiment(cls, pipeline_bundle: PipelineBundle, dataset: EvaluationDataset, corpus: FileCorpus, experiment_name: str, experiment_run_name: str, experiment_tracking_uri: str, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
+def conduct_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evalset_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, tracking_head: BaseTrackingHead, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evalset_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
 ```
 
 Starts an experiment run that evaluates the pipeline bundle using pipeline.eval() by indexing the corpus and running the query pipeline once per query in debug mode
@@ -934,7 +934,7 @@ class _HaystackBeirRetrieverAdapter()
 #### \_\_init\_\_
 
 ```python
-def __init__(pipeline_bundle: PipelineBundle)
+def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict)
 ```
 
 Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
