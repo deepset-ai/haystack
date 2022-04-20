@@ -125,7 +125,6 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
         assert kwargs["headers"] == auth_headers
 
 
-
 @pytest.mark.parametrize(
     "retriever,document_store",
     [("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],

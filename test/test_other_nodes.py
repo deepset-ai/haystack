@@ -9,6 +9,7 @@ from haystack.nodes.other.join_answers import JoinAnswers
 # RouteDocuments tests
 #
 
+
 def test_routedocuments_by_content_type():
     docs = [
         Document(content="text document", content_type="text"),
@@ -39,7 +40,8 @@ def test_routedocuments_by_metafield(test_docs_xs):
 
 #
 # JoinAnswers tests
-# 
+#
+
 
 @pytest.mark.parametrize("join_mode", ["concatenate", "merge"])
 def test_joinanswers(join_mode):

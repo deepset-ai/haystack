@@ -126,6 +126,7 @@ def test_to_code_creates_same_pipelines():
 # Unit tests
 #
 
+
 def test_get_config_creates_dependent_component():
     child = ChildComponent()
     parent = ParentComponent(dependent=child)
@@ -604,7 +605,16 @@ def test_validate_user_input_invalid(input):
 
 
 @pytest.mark.parametrize(
-    "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path", "C:\\Some\\Windows\\Path\\To\\file.txt"]
+    "input",
+    [
+        "test",
+        "testName",
+        "test_name",
+        "test-name",
+        "test-name1234",
+        "http://localhost:8000/my-path",
+        "C:\\Some\\Windows\\Path\\To\\file.txt",
+    ],
 )
 def test_validate_user_input_valid(input):
     validate_config_strings(input)
@@ -1591,4 +1601,3 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
 
     with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
         pipeline.get_document_store()
-
