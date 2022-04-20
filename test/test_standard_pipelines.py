@@ -1,5 +1,6 @@
 from pathlib import Path
 from collections import defaultdict
+from unittest.mock import Mock
 
 import os
 import math
@@ -9,6 +10,7 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.pipelines import Pipeline, FAQPipeline, DocumentSearchPipeline, RootNode, MostSimilarDocumentsPipeline
 from haystack.nodes import (
     DensePassageRetriever,
+    EmbeddingRetriever,
     ElasticsearchRetriever,
     SklearnQueryClassifier,
     TransformersQueryClassifier,
@@ -73,6 +75,55 @@ def test_document_search_pipeline(retriever, document_store):
     if isinstance(document_store, ElasticsearchDocumentStore):
         output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
         assert len(output["documents"]) == 1
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch", "dpr", "embedding"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_documentsearch_es_authentication(retriever_with_docs, document_store_with_docs: ElasticsearchDocumentStore):
+    if isinstance(retriever_with_docs, (DensePassageRetriever, EmbeddingRetriever)):
+        document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
+    mock_client = Mock(wraps=document_store_with_docs.client)
+    document_store_with_docs.client = mock_client
+    auth_headers = {"Authorization": "Basic YWRtaW46cm9vdA=="}
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    prediction = pipeline.run(
+        query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
+    )
+    assert prediction is not None
+    assert len(prediction["documents"]) == 5
+    mock_client.search.assert_called_once()
+    args, kwargs = mock_client.search.call_args
+    assert "headers" in kwargs
+    assert kwargs["headers"] == auth_headers
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+def test_documentsearch_document_store_authentication(retriever_with_docs, document_store_with_docs):
+    mock_client = None
+    if isinstance(document_store_with_docs, ElasticsearchDocumentStore):
+        es_document_store: ElasticsearchDocumentStore = document_store_with_docs
+        mock_client = Mock(wraps=es_document_store.client)
+        es_document_store.client = mock_client
+    auth_headers = {"Authorization": "Basic YWRtaW46cm9vdA=="}
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    if not mock_client:
+        with pytest.raises(Exception):
+            prediction = pipeline.run(
+                query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
+            )
+    else:
+        prediction = pipeline.run(
+            query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
+        )
+        assert prediction is not None
+        assert len(prediction["documents"]) == 5
+        mock_client.count.assert_called_once()
+        args, kwargs = mock_client.count.call_args
+        assert "headers" in kwargs
+        assert kwargs["headers"] == auth_headers
+
 
 
 @pytest.mark.parametrize(

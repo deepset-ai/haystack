@@ -1,33 +1,27 @@
-from copy import deepcopy
 from pathlib import Path
-
 import os
 import json
 import platform
 import sys
 from typing import Tuple
-from unittest.mock import Mock
 
-import pandas as pd
 import pytest
 from requests import PreparedRequest
 import responses
 import logging
 import yaml
 
-from haystack import __version__, Document, Answer, JoinAnswers
-from haystack.document_stores.base import BaseDocumentStore
+from haystack import __version__
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.sparse import ElasticsearchRetriever
-from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode
+from haystack.pipelines import Pipeline, RootNode
 from haystack.pipelines.config import validate_config_strings
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments, PreProcessor, TextConverter
+from haystack.nodes import PreProcessor, TextConverter
 from haystack.utils.deepsetcloud import DeepsetCloudError
 
 from .conftest import (
@@ -127,6 +121,10 @@ def test_to_code_creates_same_pipelines():
     assert query_pipeline.get_config() == locals()["query_pipeline_from_code"].get_config()
     assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
 
+
+#
+# Unit tests
+#
 
 def test_get_config_creates_dependent_component():
     child = ChildComponent()
@@ -405,7 +403,7 @@ def test_get_config_custom_node_with_positional_params(caplog):
 
 def test_generate_code_simple_pipeline():
     config = {
-        "version": "master",
+        "version": "ignore",
         "components": [
             {
                 "name": "retri",
@@ -433,7 +431,7 @@ def test_generate_code_simple_pipeline():
 
 def test_generate_code_imports():
     pipeline_config = {
-        "version": "master",
+        "version": "ignore",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
@@ -465,7 +463,7 @@ def test_generate_code_imports():
 
 def test_generate_code_imports_no_pipeline_cls():
     pipeline_config = {
-        "version": "master",
+        "version": "ignore",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
@@ -493,7 +491,7 @@ def test_generate_code_imports_no_pipeline_cls():
 
 def test_generate_code_comment():
     pipeline_config = {
-        "version": "master",
+        "version": "ignore",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
             {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
@@ -520,7 +518,7 @@ def test_generate_code_comment():
 
 def test_generate_code_is_component_order_invariant():
     pipeline_config = {
-        "version": "master",
+        "version": "ignore",
         "pipelines": [
             {
                 "name": "Query",
@@ -576,7 +574,7 @@ def test_generate_code_is_component_order_invariant():
 
 def test_generate_code_can_handle_weak_cyclic_pipelines():
     config = {
-        "version": "master",
+        "version": "ignore",
         "components": [
             {"name": "parent", "type": "ParentComponent", "params": {"dependent": "child"}},
             {"name": "child", "type": "ChildComponent", "params": {}},
@@ -606,7 +604,7 @@ def test_validate_user_input_invalid(input):
 
 
 @pytest.mark.parametrize(
-    "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path"]
+    "input", ["test", "testName", "test_name", "test-name", "test-name1234", "http://localhost:8000/my-path", "C:\\Some\\Windows\\Path\\To\\file.txt"]
 )
 def test_validate_user_input_valid(input):
     validate_config_strings(input)
@@ -1594,132 +1592,3 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
     with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
         pipeline.get_document_store()
 
-
-def test_existing_faiss_document_store():
-    clean_faiss_document_store()
-
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-
-    new_document_store = pipeline.get_document_store()
-    new_document_store.save("existing_faiss_document_store")
-
-    # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
-    )
-
-    retriever = pipeline.get_node("DPRRetriever")
-    existing_document_store = retriever.document_store
-    faiss_index = existing_document_store.faiss_indexes["document"]
-    assert faiss_index.ntotal == 2
-
-    prediction = pipeline.run(query="Who made the PDF specification?", params={"DPRRetriever": {"top_k": 10}})
-
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert len(prediction["documents"]) == 2
-    clean_faiss_document_store()
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch", "dpr", "embedding"], indirect=True)
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_documentsearch_es_authentication(retriever_with_docs, document_store_with_docs: ElasticsearchDocumentStore):
-    if isinstance(retriever_with_docs, (DensePassageRetriever, EmbeddingRetriever)):
-        document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
-    mock_client = Mock(wraps=document_store_with_docs.client)
-    document_store_with_docs.client = mock_client
-    auth_headers = {"Authorization": "Basic YWRtaW46cm9vdA=="}
-    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
-    prediction = pipeline.run(
-        query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
-    )
-    assert prediction is not None
-    assert len(prediction["documents"]) == 5
-    mock_client.search.assert_called_once()
-    args, kwargs = mock_client.search.call_args
-    assert "headers" in kwargs
-    assert kwargs["headers"] == auth_headers
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
-def test_documentsearch_document_store_authentication(retriever_with_docs, document_store_with_docs):
-    mock_client = None
-    if isinstance(document_store_with_docs, ElasticsearchDocumentStore):
-        es_document_store: ElasticsearchDocumentStore = document_store_with_docs
-        mock_client = Mock(wraps=es_document_store.client)
-        es_document_store.client = mock_client
-    auth_headers = {"Authorization": "Basic YWRtaW46cm9vdA=="}
-    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
-    if not mock_client:
-        with pytest.raises(Exception):
-            prediction = pipeline.run(
-                query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
-            )
-    else:
-        prediction = pipeline.run(
-            query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
-        )
-        assert prediction is not None
-        assert len(prediction["documents"]) == 5
-        mock_client.count.assert_called_once()
-        args, kwargs = mock_client.count.call_args
-        assert "headers" in kwargs
-        assert kwargs["headers"] == auth_headers
-
-
-def test_route_documents_by_content_type():
-    # Test routing by content_type
-    docs = [
-        Document(content="text document", content_type="text"),
-        Document(
-            content=pd.DataFrame(columns=["col 1", "col 2"], data=[["row 1", "row 1"], ["row 2", "row 2"]]),
-            content_type="table",
-        ),
-    ]
-
-    route_documents = RouteDocuments()
-    result, _ = route_documents.run(documents=docs)
-    assert len(result["output_1"]) == 1
-    assert len(result["output_2"]) == 1
-    assert result["output_1"][0].content_type == "text"
-    assert result["output_2"][0].content_type == "table"
-
-
-def test_route_documents_by_metafield(test_docs_xs):
-    # Test routing by metadata field
-    docs = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in test_docs_xs]
-    route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
-    result, _ = route_documents.run(docs)
-    assert len(result["output_1"]) == 1
-    assert len(result["output_2"]) == 1
-    assert len(result["output_3"]) == 1
-    assert result["output_1"][0].meta["meta_field"] == "test1"
-    assert result["output_2"][0].meta["meta_field"] == "test3"
-    assert result["output_3"][0].meta["meta_field"] == "test5"
-
-
-@pytest.mark.parametrize("join_mode", ["concatenate", "merge"])
-def test_join_answers(join_mode):
-    inputs = [{"answers": [Answer(answer="answer 1", score=0.7)]}, {"answers": [Answer(answer="answer 2", score=0.8)]}]
-
-    join_answers = JoinAnswers(join_mode=join_mode)
-    result, _ = join_answers.run(inputs)
-    assert len(result["answers"]) == 2
-    assert result["answers"] == sorted(result["answers"], reverse=True)
-
-    result, _ = join_answers.run(inputs, top_k_join=1)
-    assert len(result["answers"]) == 1
-    assert result["answers"][0].answer == "answer 2"
-
-
-def clean_faiss_document_store():
-    if Path("existing_faiss_document_store").exists():
-        os.remove("existing_faiss_document_store")
-    if Path("existing_faiss_document_store.json").exists():
-        os.remove("existing_faiss_document_store.json")
-    if Path("faiss_document_store.db").exists():
-        os.remove("faiss_document_store.db")

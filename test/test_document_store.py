@@ -1952,3 +1952,4 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert all("numeric_field" in doc.meta for doc in transferred_documents)
     # Check if number of transferred_documents is equal to number of unique words.
     assert len(transferred_documents) == len(set(" ".join(original_content).split()))
+

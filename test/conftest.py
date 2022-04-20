@@ -243,6 +243,46 @@ class MockReader(BaseReader):
         pass
 
 
+class MockDenseRetriever(MockRetriever):
+
+    def __init__(self, document_store: BaseDocumentStore):
+        self.document_store = document_store
+
+    def _get_predictions(self, dicts):
+        all_embeddings = {"query": [], "passages": []}
+        
+        for _ in range(len(dicts)):
+            query_embeddings = np.random.rand(768)
+            passage_embeddings = np.random.rand(768)
+            
+            all_embeddings["query"].append(query_embeddings)
+            all_embeddings["passages"].append(passage_embeddings)
+
+        return all_embeddings
+
+    def embed_queries(self, texts):
+        queries = [{"query": q} for q in texts]
+        result = self._get_predictions(queries)["query"]
+        return result
+
+    def embed_documents(self, docs):
+        passages = [
+            {
+                "passages": [
+                    {
+                        "title": d.meta["name"] if d.meta and "name" in d.meta else "",
+                        "text": d.content,
+                        "label": d.meta["label"] if d.meta and "label" in d.meta else "positive",
+                        "external_id": d.id,
+                    }
+                ]
+            }
+            for d in docs
+        ]
+        embeddings = self._get_predictions(passages)["passages"]
+        return embeddings
+
+
 @pytest.fixture(scope="function", autouse=True)
 def gc_cleanup(request):
     """
