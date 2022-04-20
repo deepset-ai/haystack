@@ -59,7 +59,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_load_and_save_from_yaml(tmp_path):
-    config_path = SAMPLES_PATH / "pipeline" / "test.haystack.pipeline.yml"
+    config_path = SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml"
 
     # Test the indexing pipeline:
     # Load it

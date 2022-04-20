@@ -363,11 +363,11 @@ def test_query_keyword_statement_classifier():
 def test_indexing_pipeline_with_classifier(document_store):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test.haystack.pipeline.yml", pipeline_name="indexing_pipeline_with_classifier"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline_with_classifier"
     )
     pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test.haystack.pipeline.yml", pipeline_name="query_pipeline")
+    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline")
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
@@ -382,12 +382,12 @@ def test_indexing_pipeline_with_classifier(document_store):
 def test_query_pipeline_with_document_classifier(document_store):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test.haystack.pipeline.yml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test.haystack.pipeline.yml", pipeline_name="query_pipeline_with_document_classifier"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline_with_document_classifier"
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
