@@ -414,7 +414,7 @@ def _add_node_to_pipeline_graph(
                     f"{input_node_edges_count} outgoing edge(s)."
                 )
 
-        graph.add_edge(input_node, node["name"], label=input_edge_name)
+        graph.add_edge(input_node_name, node["name"], label=input_edge_name)
 
         # Check if adding this edge created a loop in the pipeline graph
         if not nx.is_directed_acyclic_graph(graph):

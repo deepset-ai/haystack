@@ -170,7 +170,7 @@ class Pipeline:
 
         del pipeline_config["name"]  # Would fail validation otherwise
         pipeline = cls.load_from_config(
-            pipeline_config=pipeline_config,
+            config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
         )
@@ -348,6 +348,12 @@ class Pipeline:
         """
         component.name = name
         component_definitions = get_component_definitions(config=self.get_config())
+
+        # Name any nested component before adding them
+        component_names = self._get_all_component_names()
+        component_names.add(name)
+        self._set_sub_component_names(component, component_names=component_names)
+
         self.graph, self.root_node = _add_node_to_pipeline_graph(
             graph=self.graph,
             root_node_name=self.root_node,
@@ -1078,6 +1084,8 @@ class Pipeline:
         for node_name, node_attributes in self.graph.nodes.items():
             if node_name == self.root_node:
                 continue
+
+            print(node_name, node_attributes)
 
             component: BaseComponent = node_attributes["component"]
             if node_name != component.name:

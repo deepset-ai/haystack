@@ -1350,7 +1350,7 @@ def test_graph_creation_invalid_edge():
     pipeline = Pipeline()
     pipeline.add_node(name="DocStore", component=docstore, inputs=["Query"])
 
-    with pytest.raises(PipelineConfigError, match="'output_2' from 'DocStore'"):
+    with pytest.raises(PipelineConfigError, match="DocStore has only 1 outgoing edge(s)"):
         pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.output_2"])
 
 
