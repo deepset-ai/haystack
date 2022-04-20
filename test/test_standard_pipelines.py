@@ -387,12 +387,7 @@ def test_query_pipeline_with_document_classifier(document_store):
     pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-<<<<<<< HEAD
         SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline_with_document_classifier"
-=======
-        SAMPLES_PATH / "pipeline" / "test.haystack.pipeline.yml",
-        pipeline_name="query_pipeline_with_document_classifier",
->>>>>>> 2b0126ae650d318a6c28abbc0623747f07b2486e
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
