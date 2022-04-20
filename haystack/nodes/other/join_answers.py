@@ -14,7 +14,7 @@ class JoinAnswers(BaseComponent):
         join_mode: str = "concatenate",
         weights: Optional[List[float]] = None,
         top_k_join: Optional[int] = None,
-        sort_by_score: bool = True
+        sort_by_score: bool = True,
     ):
         """
         :param join_mode: `"concatenate"` to combine documents from multiple `Reader`s. `"merge"` to aggregate scores

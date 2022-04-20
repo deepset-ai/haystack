@@ -2602,8 +2602,8 @@
               "title": "Top K Join",
               "type": "integer"
             },
-            "sort": {
-              "title": "Sort",
+            "sort_by_score": {
+              "title": "Sort By Score",
               "default": true,
               "type": "boolean"
             }
