@@ -1,9 +1,22 @@
 import mimetypes
 from typing import List, Union
 
+import logging
 from pathlib import Path
-import magic
+
+try:
+    import magic
+except ImportError as ie:
+    logging.error(
+        "Failed to import 'magic' (from 'python-magic' and 'python-magic-bin' on Windows). "
+        "FileTypeClassifier will not perform mimetype detection on extensionless files. "
+        "Please make sure the necessary OS libraries are installed if you need this functionality."
+    )
+
 from haystack.nodes.base import BaseComponent
+
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_TYPES = ["txt", "pdf", "md", "docx", "html"]
@@ -45,8 +58,14 @@ class FileTypeClassifier(BaseComponent):
 
         :param file_path: the path to extract the extension from
         """
-        extension = magic.from_file(str(file_path), mime=True)
-        return mimetypes.guess_extension(extension) or ""
+        try:
+            extension = magic.from_file(str(file_path), mime=True)
+            return mimetypes.guess_extension(extension) or ""
+        except NameError as ne:
+            logger.error(
+                f"The type of '{file_path}' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
+            )
+            return ""
 
     def _get_extension(self, file_paths: List[Path]) -> str:
         """
