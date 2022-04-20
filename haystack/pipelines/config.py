@@ -175,7 +175,9 @@ def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with
     logging.debug(f"'{path}' contains valid Haystack pipelines.")
 
 
-def validate_config(config: Dict[str, Any], strict_version_check: bool = False, overwrite_with_env_variables: bool = True):
+def validate_config(
+    config: Dict[str, Any], strict_version_check: bool = False, overwrite_with_env_variables: bool = True
+):
     """
     Ensures that the given YAML file can be loaded without issues.
 
@@ -197,7 +199,7 @@ def validate_config(config: Dict[str, Any], strict_version_check: bool = False, 
     :raise: `PipelineConfigError` in case of issues.
     """
     validate_schema(config=config, strict_version_check=strict_version_check)
-    
+
     for pipeline_definition in config["pipelines"]:
         component_definitions = get_component_definitions(
             config=config, overwrite_with_env_variables=overwrite_with_env_variables
