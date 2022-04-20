@@ -396,39 +396,3 @@ def test_query_pipeline_with_document_classifier(document_store):
     assert prediction["answers"][0].answer == "Adobe Systems"
     assert prediction["answers"][0].meta["classification"]["label"] == "joy"
     assert "_debug" not in prediction.keys()
-
-
-def test_existing_faiss_document_store():
-    clean_faiss_document_store()
-
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-
-    new_document_store = pipeline.get_document_store()
-    new_document_store.save("existing_faiss_document_store")
-
-    # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
-    )
-
-    existing_document_store = pipeline.get_document_store()
-    faiss_index = existing_document_store.faiss_indexes["document"]
-    assert faiss_index.ntotal == 2
-
-    prediction = pipeline.run(query="Who made the PDF specification?", params={"DPRRetriever": {"top_k": 10}})
-
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert len(prediction["documents"]) == 2
-    clean_faiss_document_store()
-
-
-def clean_faiss_document_store():
-    if Path("existing_faiss_document_store").exists():
-        os.remove("existing_faiss_document_store")
-    if Path("existing_faiss_document_store.json").exists():
-        os.remove("existing_faiss_document_store.json")
-    if Path("faiss_document_store.db").exists():
-        os.remove("faiss_document_store.db")
