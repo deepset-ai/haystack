@@ -874,7 +874,13 @@ class Pipeline:
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+    def load_from_yaml(
+        cls,
+        path: Path,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
+    ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -919,6 +925,7 @@ class Pipeline:
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
 
         config = read_pipeline_config_from_yaml(path)
@@ -926,11 +933,16 @@ class Pipeline:
             config=config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
+            strict_version_check=strict_version_check,
         )
 
     @classmethod
     def load_from_config(
-        cls, config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+        cls,
+        config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -976,8 +988,9 @@ class Pipeline:
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise).
         """
-        validate_config(config)
+        validate_config(config, strict_version_check=strict_version_check)
         pipeline = cls()
 
         pipeline_definition = get_pipeline_definition(config=config, pipeline_name=pipeline_name)

@@ -149,7 +149,7 @@ def build_component_dependency_graph(
     return graph
 
 
-def validate_yaml(path: Path, overwrite_with_env_variables: bool = True):
+def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with_env_variables: bool = True):
     """
     Ensures that the given YAML file can be loaded without issues.
 
@@ -162,6 +162,7 @@ def validate_yaml(path: Path, overwrite_with_env_variables: bool = True):
       as this method does NOT load the nodes during the validation.
 
     :param path: path to the YAML file to validatethe configuration to validate
+    :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
     :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
                                          to change index name param for an ElasticsearchDocumentStore, an env
                                          variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
@@ -169,12 +170,12 @@ def validate_yaml(path: Path, overwrite_with_env_variables: bool = True):
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    config = read_pipeline_config_from_yaml(path)
-    validate_config(config, overwrite_with_env_variables=overwrite_with_env_variables)
+    pipeline_config = read_pipeline_config_from_yaml(path)
+    validate_config(pipeline_config=pipeline_config, strict_version_check=strict_version_check)
     logging.debug(f"'{path}' contains valid Haystack pipelines.")
 
 
-def validate_config(config: Dict[str, Any], overwrite_with_env_variables: bool = True):
+def validate_config(config: Dict[str, Any], strict_version_check: bool = False, overwrite_with_env_variables: bool = True):
     """
     Ensures that the given YAML file can be loaded without issues.
 
@@ -187,6 +188,7 @@ def validate_config(config: Dict[str, Any], overwrite_with_env_variables: bool =
       as this method does NOT load the nodes during the validation.
 
     :param config: the configuration to validate (from reading up a YAML file or from .get_config())
+    :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
     :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
                                          to change index name param for an ElasticsearchDocumentStore, an env
                                          variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
@@ -194,7 +196,7 @@ def validate_config(config: Dict[str, Any], overwrite_with_env_variables: bool =
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    validate_schema(config=config)
+    validate_schema(config=config, strict_version_check=strict_version_check)
     
     for pipeline_definition in config["pipelines"]:
         component_definitions = get_component_definitions(
@@ -203,7 +205,7 @@ def validate_config(config: Dict[str, Any], overwrite_with_env_variables: bool =
         validate_pipeline_graph(pipeline_definition=pipeline_definition, component_definitions=component_definitions)
 
 
-def validate_schema(config: Dict) -> None:
+def validate_schema(config: Dict, strict_version_check: bool = False) -> None:
     """
     Check that the YAML abides the JSON schema, so that every block 
     of the pipeline configuration file contains all required information
@@ -213,39 +215,42 @@ def validate_schema(config: Dict) -> None:
     the node's parameters (apart from their type).
 
     :param pipeline_config: the configuration to validate
+    :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
     validate_config_strings(config)
 
-    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-unstable.schema.json", "r") as schema_file:
+    # Check for the version manually (to avoid validation errors)
+    pipeline_version = config.get("version", None)
+
+    if pipeline_version != __version__:
+        if strict_version_check:
+            raise PipelineConfigError(
+                f"Cannot load pipeline configuration of version {pipeline_version} "
+                f"in Haystack version {__version__}\n"
+                "Please check out the release notes (https://github.com/deepset-ai/haystack/releases/latest), "
+                "the documentation (https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
+                "and fix your configuration accordingly."
+            )
+        logging.warning(
+            f"This pipeline is version {pipeline_version}, but you're using Haystack {__version__}\n"
+            "This might cause bugs and unexpected behaviors."
+            "Please check out the release notes (https://github.com/deepset-ai/haystack/releases/latest), "
+            "the documentation (https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
+            "and fix your configuration accordingly."
+        )
+
+    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-master.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 
-    compatible_versions = [version["const"].replace('"', "") for version in schema["properties"]["version"]["oneOf"]]
-    loaded_custom_nodes = []
+    # Remove the version value from the schema to prevent validation errors on it - a version only have to be present.
+    del schema["properties"]["version"]["const"]
 
+    loaded_custom_nodes = []
     while True:
         try:
             Draft7Validator(schema).validate(instance=config)
-
-            if config["version"] == "unstable":
-                logging.warning(
-                    "You seem to be using the 'unstable' version of the schema to validate "
-                    "your pipeline configuration.\n"
-                    "This is NOT RECOMMENDED in production environments, as pipelines "
-                    "might manage to load and then misbehave without warnings.\n"
-                    f"Please pin your configurations to '{__version__}' to ensure stability."
-                )
-
-            elif config["version"] not in compatible_versions:
-                raise PipelineConfigError(
-                    f"Cannot load pipeline configuration of version {config['version']} "
-                    f"in Haystack version {__version__} "
-                    f"(only versions {compatible_versions} are compatible with this Haystack release).\n"
-                    "Please check out the release notes (https://github.com/deepset-ai/haystack/releases/latest), "
-                    "the documentation (https://haystack.deepset.ai/components/pipelines#yaml-file-definitions) "
-                    "and fix your configuration accordingly."
-                )
             break
 
         except ValidationError as validation:

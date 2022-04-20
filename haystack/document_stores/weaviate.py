@@ -70,7 +70,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
-        **kwargs,
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.

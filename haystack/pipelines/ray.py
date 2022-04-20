@@ -19,7 +19,7 @@ from haystack.pipelines.config import (
     read_pipeline_config_from_yaml,
 )
 from haystack.schema import MultiLabel, Document
-from haystack.nodes.base import BaseComponent
+from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
 
 
@@ -71,6 +71,7 @@ class RayPipeline(Pipeline):
         pipeline_config: Dict,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
         address: Optional[str] = None,
         **kwargs,
     ):
@@ -105,12 +106,13 @@ class RayPipeline(Pipeline):
         return pipeline
 
     @classmethod
-    def load_from_yaml(
+    def load_from_yaml(  # type: ignore
         cls,
         path: Path,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
         address: Optional[str] = None,
+        strict_version_check: bool = False,
         **kwargs,
     ):
         """
@@ -310,4 +312,3 @@ class _RayDeploymentWrapper:
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
         return self.node._dispatch_run(*args, **kwargs)
-
