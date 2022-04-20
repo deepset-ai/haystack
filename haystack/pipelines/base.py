@@ -29,7 +29,7 @@ from haystack.pipelines.config import (
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
     validate_config,
-    _add_node_to_pipeline_graph
+    _add_node_to_pipeline_graph,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
@@ -349,11 +349,11 @@ class Pipeline:
         component.name = name
         component_definitions = get_component_definitions(config=self.get_config())
         self.graph, self.root_node = _add_node_to_pipeline_graph(
-            graph=self.graph, 
-            root_node_name=self.root_node, 
-            components=component_definitions, 
-            node={"name": name, "inputs":inputs}, 
-            instance=component
+            graph=self.graph,
+            root_node_name=self.root_node,
+            components=component_definitions,
+            node={"name": name, "inputs": inputs},
+            instance=component,
         )
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
@@ -923,9 +923,7 @@ class Pipeline:
 
         config = read_pipeline_config_from_yaml(path)
         return cls.load_from_config(
-            config=config,
-            pipeline_name=pipeline_name,
-            overwrite_with_env_variables=overwrite_with_env_variables,
+            config=config, pipeline_name=pipeline_name, overwrite_with_env_variables=overwrite_with_env_variables
         )
 
     @classmethod
@@ -986,7 +984,9 @@ class Pipeline:
         )
         components: Dict[str, BaseComponent] = {}
         for node_config in pipeline_definition["nodes"]:
-            component = cls._load_or_get_component(name=node_config["name"], definitions=component_definitions, components=components)
+            component = cls._load_or_get_component(
+                name=node_config["name"], definitions=component_definitions, components=components
+            )
             pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
 
         return pipeline

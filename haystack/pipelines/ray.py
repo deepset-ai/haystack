@@ -13,11 +13,7 @@ except:
     serve = None  # type: ignore
 
 from haystack import __version__
-from haystack.pipelines.config import (
-    get_component_definitions,
-    get_pipeline_definition,
-    read_pipeline_config_from_yaml,
-)
+from haystack.pipelines.config import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml
 from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent
 from haystack.pipelines.base import Pipeline
@@ -310,4 +306,3 @@ class _RayDeploymentWrapper:
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
         return self.node._dispatch_run(*args, **kwargs)
-

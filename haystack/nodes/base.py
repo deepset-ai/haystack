@@ -239,7 +239,6 @@ class BaseComponent(ABC):
         return component_signature
 
 
-
 class RootNode(BaseComponent):
     """
     RootNode feeds inputs together with corresponding params to a Pipeline.
@@ -249,4 +248,3 @@ class RootNode(BaseComponent):
 
     def run(self):  # type: ignore
         return {}, "output_1"
-
