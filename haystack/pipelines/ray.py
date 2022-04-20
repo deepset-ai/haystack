@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pathlib import Path
 
@@ -52,12 +52,13 @@ class RayPipeline(Pipeline):
     set the `address` parameter when creating the RayPipeline instance.
     """
 
-    def __init__(self, address: str = None, **kwargs):
+    def __init__(self, address: str = None, ray_args: Optional[Dict[str, Any]] = None):
         """
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
         :param kwargs: Optional parameters for initializing Ray.
         """
-        ray.init(address=address, **kwargs)
+        ray_args = ray_args or {}
+        ray.init(address=address, **ray_args)
         serve.start()
         super().__init__()
 
@@ -69,13 +70,13 @@ class RayPipeline(Pipeline):
         overwrite_with_env_variables: bool = True,
         strict_version_check: bool = False,
         address: Optional[str] = None,
-        **kwargs,
+        ray_args: Optional[Dict[str, Any]] = None,
     ):
         pipeline_definition = get_pipeline_definition(config=config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             config=config, overwrite_with_env_variables=overwrite_with_env_variables
         )
-        pipeline = cls(address=address, **kwargs)
+        pipeline = cls(address=address, ray_args=ray_args or {})
 
         for node_config in pipeline_definition["nodes"]:
             if pipeline.root_node is None:
@@ -109,7 +110,7 @@ class RayPipeline(Pipeline):
         overwrite_with_env_variables: bool = True,
         address: Optional[str] = None,
         strict_version_check: bool = False,
-        **kwargs,
+        ray_args: Optional[Dict[str, Any]] = None,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -162,11 +163,11 @@ class RayPipeline(Pipeline):
         """
         pipeline_config = read_pipeline_config_from_yaml(path)
         return RayPipeline.load_from_config(
-            pipeline_config=pipeline_config,
+            config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
             address=address,
-            **kwargs,
+            ray_args=ray_args,
         )
 
     @classmethod

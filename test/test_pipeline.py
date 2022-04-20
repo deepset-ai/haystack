@@ -106,10 +106,10 @@ class JoinNode(RootNode):
 @pytest.mark.elasticsearch
 def test_to_code_creates_same_pipelines():
     index_pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack.pipeline.yml", pipeline_name="indexing_pipeline"
     )
     query_pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack.pipeline.yml", pipeline_name="query_pipeline"
     )
     query_pipeline_code = query_pipeline.to_code(pipeline_variable_name="query_pipeline_from_code")
     index_pipeline_code = index_pipeline.to_code(pipeline_variable_name="index_pipeline_from_code")
