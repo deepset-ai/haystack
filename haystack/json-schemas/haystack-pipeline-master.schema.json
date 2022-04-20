@@ -2601,6 +2601,11 @@
             "top_k_join": {
               "title": "Top K Join",
               "type": "integer"
+            },
+            "sort": {
+              "title": "Sort",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,

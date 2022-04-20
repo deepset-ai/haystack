@@ -70,7 +70,7 @@ A node to join `Answer`s produced by multiple `Reader` nodes.
 #### \_\_init\_\_
 
 ```python
-def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None)
+def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None, sort: bool = True)
 ```
 
 **Arguments**:
