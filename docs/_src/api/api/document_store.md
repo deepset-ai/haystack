@@ -272,7 +272,7 @@ None
 #### run
 
 ```python
-def run(documents: List[dict], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None)
+def run(documents: List[Union[dict, Document]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None)
 ```
 
 Run requests of document stores
@@ -414,7 +414,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
+def __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -1231,7 +1231,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(verify_certs=False, scheme="https", username="admin", password="admin", port=9200, **kwargs)
+def __init__(scheme: str = "https", username: str = "admin", password: str = "admin", host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", ca_certs: Optional[str] = None, verify_certs: bool = False, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
 ```
 
 Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -2235,7 +2235,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, **kwargs, ,)
+def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, n_links: int = 64, ef_search: int = 20, ef_construction: int = 80)
 ```
 
 **Arguments**:
@@ -2282,6 +2282,9 @@ If specified no other params besides faiss_config_path must be specified.
 - `faiss_config_path`: Stored FAISS initial configuration parameters.
 Can be created via calling `save()`
 - `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+- `n_links`: used only if index_factory == "HNSW"
+- `ef_search`: used only if index_factory == "HNSW"
+- `ef_construction`: used only if index_factory == "HNSW"
 
 <a id="faiss.FAISSDocumentStore.write_documents"></a>
 
@@ -2545,7 +2548,7 @@ Usage:
 #### \_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, **kwargs, ,)
+def __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None)
 ```
 
 **Arguments**:
@@ -3144,7 +3147,7 @@ class WeaviateDocumentStore(BaseDocumentStore)
 ```
 
 Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
-(See https://www.semi.technology/developers/weaviate/current/index.html#what-is-weaviate)
+(See https://weaviate.io/developers/weaviate/current/index.html#what-is-weaviate)
 
 Some of the key differences in contrast to FAISS & Milvus:
 1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
@@ -3157,7 +3160,7 @@ Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
 
 Usage:
-1. Start a Weaviate server (see https://www.semi.technology/developers/weaviate/current/getting-started/installation.html)
+1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)
 2. Init a WeaviateDocumentStore in Haystack
 
 Limitations:
@@ -3168,13 +3171,13 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
-def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", **kwargs, ,)
+def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite")
 ```
 
 **Arguments**:
 
 - `host`: Weaviate server connection URL for storing and processing documents and vectors.
-For more details, refer "https://www.semi.technology/developers/weaviate/current/getting-started/installation.html"
+For more details, refer "https://weaviate.io/developers/weaviate/current/getting-started/installation.html"
 - `port`: port of Weaviate instance
 - `timeout_config`: Weaviate Timeout config as a tuple of (retries, time out seconds).
 - `username`: username (standard authentication via http_auth)
@@ -3188,11 +3191,11 @@ If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will
 'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
 Currently, HSNW is only supported.
-See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
+See: https://weaviate.io/developers/weaviate/current/more-resources/performance.html
 - `custom_schema`: Allows to create custom schema in Weaviate, for more details
-See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
+See https://weaviate.io/developers/weaviate/current/data-schema/schema-configuration.html
 - `module_name`: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
-For more details, See https://www.semi.technology/developers/weaviate/current/modules/
+For more details, See https://weaviate.io/developers/weaviate/current/modules/
 - `return_embedding`: To return document embedding.
 - `embedding_field`: Name of field containing an embedding vector.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
@@ -3295,6 +3298,22 @@ def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, U
 
 Get documents from the document store.
 
+Note this limitation from the changelog of Weaviate 1.8.0:
+
+.. quote::
+    Due to the increasing cost of each page outlined above, there is a limit to
+    how many objects can be retrieved using pagination. By default setting the sum
+    of offset and limit to higher than 10,000 objects, will lead to an error.
+    If you must retrieve more than 10,000 objects, you can increase this limit by
+    setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`.
+
+    Warning: Setting this to arbitrarily high values can make the memory consumption
+    of a single query explode and single queries can slow down the entire cluster.
+    We recommend setting this value to the lowest possible value that does not
+    interfere with your users' expectations.
+
+(https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
+
 **Arguments**:
 
 - `index`: Name of the index to get the documents from. If None, the
@@ -3340,6 +3359,22 @@ Get documents from the document store. Under-the-hood, documents are fetched in 
 
 document store and yielded as individual documents. This method can be used to iteratively process
 a large number of documents without having to load all documents in memory.
+
+Note this limitation from the changelog of Weaviate 1.8.0:
+
+.. quote::
+    Due to the increasing cost of each page outlined above, there is a limit to
+    how many objects can be retrieved using pagination. By default setting the sum
+    of offset and limit to higher than 10,000 objects, will lead to an error.
+    If you must retrieve more than 10,000 objects, you can increase this limit by
+    setting the environment variable `QUERY_MAXIMUM_RESULTS=<desired-value>`.
+
+    Warning: Setting this to arbitrarily high values can make the memory consumption
+    of a single query explode and single queries can slow down the entire cluster.
+    We recommend setting this value to the lowest possible value that does not
+    interfere with your users' expectations.
+
+(https://github.com/semi-technologies/weaviate/releases/tag/v1.8.0)
 
 **Arguments**:
 
@@ -3454,7 +3489,7 @@ operation.
     ```
 - `top_k`: How many documents to return per query.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
-https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
+https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a id="weaviate.WeaviateDocumentStore.query_by_embedding"></a>
@@ -3938,7 +3973,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False)
+def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -3964,6 +3999,7 @@ exists.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
@@ -4256,6 +4292,61 @@ exists.
 **Returns**:
 
 None
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_evaluation_sets"></a>
+
+#### get\_evaluation\_sets
+
+```python
+def get_evaluation_sets() -> List[dict]
+```
+
+Returns a list of uploaded evaluation sets to deepset cloud.
+
+**Returns**:
+
+list of evaluation sets as dicts
+These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_labels"></a>
+
+#### get\_all\_labels
+
+```python
+def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]
+```
+
+Returns a list of labels for the given index name.
+
+**Arguments**:
+
+- `index`: Optional name of evaluation set for which labels should be searched.
+If None, the DocumentStore's default label_index (self.label_index) will be used.
+- `headers`: Not supported.
+
+**Returns**:
+
+list of Labels.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_label_count"></a>
+
+#### get\_label\_count
+
+```python
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
+```
+
+Counts the number of labels for the given index and returns the value.
+
+**Arguments**:
+
+- `index`: Optional evaluation set name for which the labels should be counted.
+If None, the DocumentStore's default label_index (self.label_index) will be used.
+- `headers`: Not supported.
+
+**Returns**:
+
+number of labels for the given index
 
 <a id="pinecone"></a>
 
@@ -4663,108 +4754,4 @@ and UTC as default time zone.
 
 This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
 and filter_utils.py.
-
-<a id="utils.open_search_index_to_document_store"></a>
-
-#### open\_search\_index\_to\_document\_store
-
-```python
-def open_search_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "admin", password: str = "admin", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "https", ca_certs: Optional[str] = None, verify_certs: bool = False, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
-```
-
-This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
-
-the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
-on a regular basis in order to add new records of the OpenSearch index to the `DocumentStore`.
-
-**Arguments**:
-
-- `document_store`: The haystack `DocumentStore` to write the converted `Document` objects to.
-- `original_index_name`: OpenSearch index containing the records to be converted.
-- `original_content_field`: OpenSearch field containing the text to be put in the `content` field of the
-resulting haystack `Document` objects.
-- `original_name_field`: Optional OpenSearch field containing the title of the Document.
-- `included_metadata_fields`: List of OpenSearch fields that shall be stored in the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `excluded_metadata_fields`: List of OpenSearch fields that shall be excluded from the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `store_original_ids`: Whether to store the ID a record had in the original OpenSearch index at the
-`"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
-if you want to continuously update the `DocumentStore` with new records inside your OpenSearch index. If this
-parameter was set to `False` on the first call of `open_search_index_to_document_store`,
-all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
-- `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
-- `preprocessor`: Optional PreProcessor that will be applied on the content field of the original OpenSearch
-record.
-- `batch_size`: Number of records to process at once.
-- `host`: URL(s) of OpenSearch nodes.
-- `port`: Ports(s) of OpenSearch nodes.
-- `username`: Username (standard authentication via http_auth).
-- `password`: Password (standard authentication via http_auth).
-- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth).
-- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth).
-- `aws4auth`: Authentication for usage with AWS OpenSearch
-(can be generated with the requests-aws4auth package).
-- `scheme`: `"https"` or `"http"`, protocol used to connect to your OpenSearch instance.
-- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
-You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
-- `verify_certs`: Whether to be strict about ca certificates.
-- `timeout`: Number of seconds after which an OpenSearch request times out.
-- `use_system_proxy`: Whether to use system proxy.
-
-<a id="utils.elasticsearch_index_to_document_store"></a>
-
-#### elasticsearch\_index\_to\_document\_store
-
-```python
-def elasticsearch_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
-```
-
-This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
-
-the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
-on a regular basis in order to add new records of the Elasticsearch index to the `DocumentStore`.
-
-**Arguments**:
-
-- `document_store`: The haystack `DocumentStore` to write the converted `Document` objects to.
-- `original_index_name`: Elasticsearch index containing the records to be converted.
-- `original_content_field`: Elasticsearch field containing the text to be put in the `content` field of the
-resulting haystack `Document` objects.
-- `original_name_field`: Optional Elasticsearch field containing the title of the Document.
-- `included_metadata_fields`: List of Elasticsearch fields that shall be stored in the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `excluded_metadata_fields`: List of Elasticsearch fields that shall be excluded from the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `store_original_ids`: Whether to store the ID a record had in the original Elasticsearch index at the
-`"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
-if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
-parameter was set to `False` on the first call of `elasticsearch_index_to_document_store`,
-all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
-- `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
-- `preprocessor`: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
-record.
-- `batch_size`: Number of records to process at once.
-- `host`: URL(s) of Elasticsearch nodes.
-- `port`: Ports(s) of Elasticsearch nodes.
-- `username`: Username (standard authentication via http_auth).
-- `password`: Password (standard authentication via http_auth).
-- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth).
-- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth).
-- `aws4auth`: Authentication for usage with AWS Elasticsearch
-(can be generated with the requests-aws4auth package).
-- `scheme`: `"https"` or `"http"`, protocol used to connect to your Elasticsearch instance.
-- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
-You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
-- `verify_certs`: Whether to be strict about ca certificates.
-- `timeout`: Number of seconds after which an Elasticsearch request times out.
-- `use_system_proxy`: Whether to use system proxy.
 

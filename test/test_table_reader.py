@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 import pytest
 
@@ -60,3 +62,21 @@ def test_table_reader_aggregation(table_reader):
     assert prediction["answers"][0].answer == "43046.0 m"
     assert prediction["answers"][0].meta["aggregation_operator"] == "SUM"
     assert prediction["answers"][0].meta["answer_cells"] == ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
+
+
+def test_table_without_rows(caplog, table_reader):
+    # empty DataFrame
+    table = pd.DataFrame()
+    document = Document(content=table, content_type="table", id="no_rows")
+    with caplog.at_level(logging.WARNING):
+        predictions = table_reader.predict(query="test", documents=[document])
+        assert "Skipping document with id 'no_rows'" in caplog.text
+        assert len(predictions["answers"]) == 0
+
+
+def test_text_document(caplog, table_reader):
+    document = Document(content="text", id="text_doc")
+    with caplog.at_level(logging.WARNING):
+        predictions = table_reader.predict(query="test", documents=[document])
+        assert "Skipping document with id 'text_doc'" in caplog.text
+        assert len(predictions["answers"]) == 0

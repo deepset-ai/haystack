@@ -1,4 +1,3 @@
-# coding: utf-8
 """
     Telemetry
     Haystack reports anonymous usage statistics to support continuous software improvements for all its users.
@@ -7,11 +6,12 @@
     You can log all events to the local file specified in LOG_PATH for inspection by setting the environment variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to "True".
 """
 import os
+from typing import Any, Dict, List, Optional
 import uuid
+import logging
 from enum import Enum
 from functools import wraps
 from pathlib import Path
-from typing import List, Dict, Any, Optional
 
 import yaml
 
@@ -196,7 +196,7 @@ def send_tutorial_event(url: str):
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt12.zip": "12",
         # Tutorial 13: no dataset available yet
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt14.zip": "14",
-        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/ottqa_sample.zip": "15",
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/table_text_dataset.zip": "15",
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
     }

@@ -9,17 +9,7 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "oneOf": [
-        {
-          "const": "1.0.0"
-        },
-        {
-          "const": "1.1.0"
-        },
-        {
-          "const": "1.2.0"
-        }
-      ]
+      "const": "1.0.0"
     },
     "components": {
       "title": "Components",

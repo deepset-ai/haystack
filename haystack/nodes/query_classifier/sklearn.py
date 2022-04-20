@@ -4,7 +4,7 @@ from typing import Union, Any
 import pickle
 import urllib
 
-from haystack.nodes.query_classifier import BaseQueryClassifier
+from haystack.nodes.query_classifier.base import BaseQueryClassifier
 
 
 logger = logging.getLogger(__name__)

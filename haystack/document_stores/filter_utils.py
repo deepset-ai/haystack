@@ -1,12 +1,11 @@
 from typing import Union, List, Dict, Optional, Tuple
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from functools import reduce
 
 from sqlalchemy.sql import select
 from sqlalchemy import and_, or_
 
-from haystack.document_stores import utils
+from haystack.document_stores.utils import convert_date_to_rfc3339
 
 
 def nested_defaultdict() -> defaultdict:
@@ -273,11 +272,14 @@ class ComparisonOperation(ABC):
         if isinstance(value, str):
             # Check if comparison value is a date
             try:
-                value = utils.convert_date_to_rfc3339(value)
+                value = convert_date_to_rfc3339(value)
                 data_type = "valueDate"
             # Comparison value is a plain string
             except ValueError:
-                data_type = "valueString"
+                if self.field_name == "content":
+                    data_type = "valueText"
+                else:
+                    data_type = "valueString"
         elif isinstance(value, int):
             data_type = "valueInt"
         elif isinstance(value, float):

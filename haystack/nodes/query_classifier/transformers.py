@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Union
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
-from haystack.nodes.query_classifier import BaseQueryClassifier
+from haystack.nodes.query_classifier.base import BaseQueryClassifier
 from haystack.modeling.utils import initialize_device_settings
 
 

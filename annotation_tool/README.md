@@ -5,7 +5,7 @@
 - Upload your documents or import labels from an existing SQuAD-style dataset
 - Export your labels in SQuAD Format
 
-![image](../docs/_src//img/annotation_tool.png)
+![image](../docs/img/annotation_tool.png)
 
 # Hosted version
  Signup here: [Haystack Annotation Tool](https://annotate.deepset.ai/login)

@@ -21,7 +21,7 @@ This tutorial will show you all the tools that Haystack provides to help you cas
 from pathlib import Path
 
 from haystack.nodes import TextConverter, PDFToTextConverter, DocxToTextConverter, PreProcessor
-from haystack.utils import convert_files_to_dicts, fetch_archive_from_http
+from haystack.utils import convert_files_to_docs, fetch_archive_from_http
 
 
 def tutorial8_preprocessing():
@@ -54,7 +54,7 @@ def tutorial8_preprocessing():
 
     # Haystack also has a convenience function that will automatically apply the right converter to each file in a directory.
 
-    all_docs = convert_files_to_dicts(dir_path=doc_dir)
+    all_docs = convert_files_to_docs(dir_path=doc_dir)
 
     """
     
@@ -80,7 +80,7 @@ def tutorial8_preprocessing():
         split_length=1000,
         split_respect_sentence_boundary=True,
     )
-    docs_default = preprocessor.process(doc_txt)
+    docs_default = preprocessor.process([doc_txt])
     print(f"\nn_docs_input: 1\nn_docs_output: {len(docs_default)}")
 
     """
@@ -100,14 +100,14 @@ def tutorial8_preprocessing():
     # Not respecting sentence boundary vs respecting sentence boundary
 
     preprocessor_nrsb = PreProcessor(split_respect_sentence_boundary=False)
-    docs_nrsb = preprocessor_nrsb.process(doc_txt)
+    docs_nrsb = preprocessor_nrsb.process([doc_txt])
 
     print("\nRESPECTING SENTENCE BOUNDARY:")
-    end_text = docs_default[0]["content"][-50:]
+    end_text = docs_default[0].content[-50:]
     print('End of document: "...' + end_text + '"')
 
     print("\nNOT RESPECTING SENTENCE BOUNDARY:")
-    end_text_nrsb = docs_nrsb[0]["content"][-50:]
+    end_text_nrsb = docs_nrsb[0].content[-50:]
     print('End of document: "...' + end_text_nrsb + '"')
     print()
 
@@ -126,11 +126,11 @@ def tutorial8_preprocessing():
     # Sliding window approach
 
     preprocessor_sliding_window = PreProcessor(split_overlap=3, split_length=10, split_respect_sentence_boundary=False)
-    docs_sliding_window = preprocessor_sliding_window.process(doc_txt)
+    docs_sliding_window = preprocessor_sliding_window.process([doc_txt])
 
-    doc1 = docs_sliding_window[0]["content"][:200]
-    doc2 = docs_sliding_window[1]["content"][:100]
-    doc3 = docs_sliding_window[2]["content"][:100]
+    doc1 = docs_sliding_window[0].content[:200]
+    doc2 = docs_sliding_window[1].content[:100]
+    doc3 = docs_sliding_window[2].content[:100]
 
     print('Document 1: "' + doc1 + '..."')
     print('Document 2: "' + doc2 + '..."')

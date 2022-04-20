@@ -20,8 +20,8 @@ from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 from haystack.schema import Document, Answer, Span
-from haystack.document_stores import BaseDocumentStore
-from haystack.nodes.reader import BaseReader
+from haystack.document_stores.base import BaseDocumentStore
+from haystack.nodes.reader.base import BaseReader
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ class FARMReader(BaseReader):
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
+        devices: List[torch.device] = [],
         no_ans_boost: float = 0.0,
         return_no_answer: bool = False,
         top_k: int = 10,
@@ -56,11 +57,11 @@ class FARMReader(BaseReader):
         progress_bar: bool = True,
         duplicate_filtering: int = 0,
         use_confidence_scores: bool = True,
+        confidence_threshold: Optional[float] = None,
         proxies: Optional[Dict[str, str]] = None,
         local_files_only=False,
         force_download=False,
         use_auth_token: Optional[Union[str, bool]] = None,
-        **kwargs,
     ):
 
         """
@@ -73,7 +74,9 @@ class FARMReader(BaseReader):
         :param batch_size: Number of samples the model receives in one batch for inference.
                            Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
                            to a value so only a single batch is used.
-        :param use_gpu: Whether to use GPU (if available)
+        :param use_gpu: Whether to use GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+                        Unused if `use_gpu` is False.
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
         If set to 0 (default), the no_answer logit is not changed.
         If a negative number, there is a lower chance of "no_answer" being predicted.
@@ -106,6 +109,7 @@ class FARMReader(BaseReader):
                                       (see https://haystack.deepset.ai/components/reader#confidence-scores) .
                                       `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
                                       from the model for the predicted span.
+        :param confidence_threshold: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
         :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
@@ -115,15 +119,14 @@ class FARMReader(BaseReader):
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-
+        self.devices, self.n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
         self.return_no_answers = return_no_answer
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         self.inferencer = QAInferencer.load(
             model_name_or_path,
             batch_size=batch_size,
-            gpu=use_gpu,
+            gpu=self.n_gpu > 0,
             task_type="question_answering",
             max_seq_len=max_seq_len,
             doc_stride=doc_stride,
@@ -136,7 +139,6 @@ class FARMReader(BaseReader):
             force_download=force_download,
             devices=self.devices,
             use_auth_token=use_auth_token,
-            **kwargs,
         )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
@@ -150,9 +152,9 @@ class FARMReader(BaseReader):
         except:
             logger.warning("Could not set `duplicate_filtering` in FARM. Please update FARM version.")
         self.max_seq_len = max_seq_len
-        self.use_gpu = use_gpu
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
+        self.confidence_threshold = confidence_threshold
         self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
 
     def _training_procedure(
@@ -162,6 +164,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -195,12 +198,12 @@ class FARMReader(BaseReader):
 
         # For these variables, by default, we use the value set when initializing the FARMReader.
         # These can also be manually set when train() is called if you want a different value at train vs inference
-        if use_gpu is None:
-            use_gpu = self.use_gpu
+        if devices is None:
+            devices = self.devices
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
 
-        devices, n_gpu = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"
@@ -331,6 +334,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
         batch_size: int = 10,
         n_epochs: int = 2,
         learning_rate: float = 1e-5,
@@ -362,6 +366,8 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+                        Unused if `use_gpu` is False.
         :param batch_size: Number of samples the model receives in one batch for training
         :param n_epochs: Number of iterations on the whole training data set
         :param learning_rate: Learning rate of the optimizer
@@ -397,6 +403,7 @@ class FARMReader(BaseReader):
             dev_filename=dev_filename,
             test_filename=test_filename,
             use_gpu=use_gpu,
+            devices=devices,
             batch_size=batch_size,
             n_epochs=n_epochs,
             learning_rate=learning_rate,
@@ -422,6 +429,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
         student_batch_size: int = 10,
         teacher_batch_size: Optional[int] = None,
         n_epochs: int = 2,
@@ -468,6 +476,8 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+                        Unused if `use_gpu` is False.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
@@ -511,6 +521,7 @@ class FARMReader(BaseReader):
             dev_filename=dev_filename,
             test_filename=test_filename,
             use_gpu=use_gpu,
+            devices=devices,
             batch_size=student_batch_size,
             n_epochs=n_epochs,
             learning_rate=learning_rate,
@@ -541,6 +552,7 @@ class FARMReader(BaseReader):
         dev_filename: Optional[str] = None,
         test_filename: Optional[str] = None,
         use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
         batch_size: int = 10,
         n_epochs: int = 5,
         learning_rate: float = 5e-5,
@@ -582,6 +594,8 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
+        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
+                        Unused if `use_gpu` is False.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
@@ -621,6 +635,7 @@ class FARMReader(BaseReader):
             dev_filename=dev_filename,
             test_filename=test_filename,
             use_gpu=use_gpu,
+            devices=devices,
             batch_size=batch_size,
             n_epochs=n_epochs,
             learning_rate=learning_rate,
@@ -963,6 +978,16 @@ class FARMReader(BaseReader):
             "top_n": self.inferencer.model.prediction_heads[0].n_best,
             "reader_time": reader_time,
             "seconds_per_query": reader_time / n_queries,
+            "EM_text_answer": eval_results[0]["EM_text_answer"] * 100,
+            "f1_text_answer": eval_results[0]["f1_text_answer"] * 100,
+            "top_n_accuracy_text_answer": eval_results[0]["top_n_accuracy_text_answer"] * 100,
+            "top_n_EM_text_answer": eval_results[0]["top_n_EM_text_answer"] * 100,
+            "top_n_f1_text_answer": eval_results[0]["top_n_f1_text_answer"] * 100,
+            "Total_text_answer": eval_results[0]["Total_text_answer"] * 100,
+            "EM_no_answer": eval_results[0]["EM_no_answer"] * 100,
+            "f1_no_answer": eval_results[0]["f1_no_answer"] * 100,
+            "top_n_accuracy_no_answer": eval_results[0]["top_n_accuracy_no_answer"] * 100,
+            "Total_no_answer": eval_results[0]["Total_no_answer"],
         }
         return results
 
@@ -1015,6 +1040,10 @@ class FARMReader(BaseReader):
         # sort answers by score (descending) and select top-k
         answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
+
+        # apply confidence based filtering if enabled
+        if self.confidence_threshold is not None:
+            answers = [ans for ans in answers if ans.score is not None and ans.score >= self.confidence_threshold]
 
         return answers, max_no_ans_gap
 

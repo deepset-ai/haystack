@@ -6,32 +6,21 @@ import copy
 import json
 import inspect
 import logging
+import tempfile
 import traceback
+from pathlib import Path
+from abc import ABC, abstractmethod
+
+import yaml
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import networkx as nx
-from abc import ABC, abstractmethod
 from pandas.core.frame import DataFrame
 from tqdm import tqdm
-import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
+
 from haystack.utils.experiment_tracking import Tracker as tracker, MLflowTrackingHead
-from haystack.nodes.evaluator.evaluator import (
-    calculate_em_str_multi,
-    calculate_f1_str_multi,
-    semantic_answer_similarity,
-)
-from haystack.pipelines.config import (
-    JSON_SCHEMAS_PATH,
-    get_component_definitions,
-    get_pipeline_definition,
-    read_pipeline_config_from_yaml,
-    validate_config,
-)
-from haystack.pipelines.utils import generate_code, print_eval_report
-from haystack.utils import DeepsetCloud
 
 try:
     from ray import serve
@@ -41,7 +30,20 @@ except:
     serve = None  # type: ignore
 
 from haystack import __version__
-from haystack.schema import FileCorpus, EvaluationDataset, EvaluationResult, MultiLabel, Document
+from haystack.nodes.evaluator.evaluator import (
+    calculate_em_str_multi,
+    calculate_f1_str_multi,
+    semantic_answer_similarity,
+)
+from haystack.pipelines.config import (
+    get_component_definitions,
+    get_pipeline_definition,
+    read_pipeline_config_from_yaml,
+    validate_config,
+)
+from haystack.pipelines.utils import generate_code, print_eval_report
+from haystack.utils import DeepsetCloud
+from haystack.schema import EvaluationDataset, EvaluationResult, FileCorpus, MultiLabel, Document
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
@@ -174,7 +176,11 @@ class BasePipeline(ABC):
     @classmethod
     @abstractmethod
     def load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -220,6 +226,7 @@ class BasePipeline(ABC):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
@@ -546,6 +553,7 @@ class Pipeline(BasePipeline):
                     f"The '{name}' node can only input from {self.root_node}. "
                     f"Set the 'inputs' parameter to ['{self.root_node}']"
                 )
+            # edges_count = self.graph.graph.
             self.graph.add_edge(self.root_node, name, label="output_1")
             return
 
@@ -1158,7 +1166,7 @@ class Pipeline(BasePipeline):
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
-        return pd.concat(partial_dfs, ignore_index=True)
+        return pd.concat(partial_dfs, ignore_index=True).reset_index()
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
@@ -1214,7 +1222,7 @@ class Pipeline(BasePipeline):
         :param path: the path to save the image.
         """
         try:
-            import pygraphviz
+            import pygraphviz  # pylint: disable=unused-import
         except ImportError:
             raise ImportError(
                 f"Could not import `pygraphviz`. Please install via: \n"
@@ -1227,7 +1235,13 @@ class Pipeline(BasePipeline):
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+    def load_from_yaml(
+        cls,
+        path: Path,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
+    ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -1272,6 +1286,7 @@ class Pipeline(BasePipeline):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
 
         pipeline_config = read_pipeline_config_from_yaml(path)
@@ -1279,11 +1294,16 @@ class Pipeline(BasePipeline):
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
+            strict_version_check=strict_version_check,
         )
 
     @classmethod
     def load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -1329,8 +1349,9 @@ class Pipeline(BasePipeline):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise).
         """
-        validate_config(pipeline_config)
+        validate_config(pipeline_config, strict_version_check=strict_version_check)
 
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
@@ -1557,6 +1578,7 @@ class RayPipeline(Pipeline):
         pipeline_config: Dict,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
         address: Optional[str] = None,
         **kwargs,
     ):
@@ -1591,12 +1613,13 @@ class RayPipeline(Pipeline):
         return pipeline
 
     @classmethod
-    def load_from_yaml(
+    def load_from_yaml(  # type: ignore
         cls,
         path: Path,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
         address: Optional[str] = None,
+        strict_version_check: bool = False,
         **kwargs,
     ):
         """
