@@ -1057,34 +1057,3 @@ class EvaluationResult:
         node_results = {file.stem: pd.read_csv(file, header=0, converters=converters) for file in csv_files}
         result = cls(node_results)
         return result
-
-
-class EvaluationDataset:
-    def __init__(self, name: str, labels: List[MultiLabel], meta: Dict[str, Any] = {}) -> None:
-        """
-        Set of labels belonging together and forming a well-specified and referenceable evaluation dataset.
-        """
-        self.name = name
-        self.labels = labels
-        self.meta = meta
-
-    def __len__(self) -> int:
-        return len(self.labels)
-
-
-class FileCorpus:
-    def __init__(
-        self, name: str, file_paths: List[str], file_metas: List[Dict[str, Any]] = None, meta: Dict[str, Any] = {}
-    ) -> None:
-        """
-        Set of files belonging together and forming a well-specified and referenceable file corpus.
-        """
-        if file_metas is not None and len(file_paths) != len(file_metas):
-            raise HaystackError("file_paths and file_metas must be of same length.")
-        self.file_paths = file_paths
-        self.file_metas = file_metas
-        self.name = name
-        self.meta = meta
-
-    def __len__(self):
-        return len(self.file_paths)

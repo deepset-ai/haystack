@@ -22,7 +22,7 @@ logging.getLogger("haystack").setLevel(logging.INFO)
 
 import pandas as pd
 
-from haystack.schema import Document, Answer, Label, MultiLabel, Span, EvaluationDataset, EvaluationResult
+from haystack.schema import Document, Answer, Label, MultiLabel, Span, EvaluationResult
 from haystack.nodes.base import BaseComponent
 from haystack.pipelines.base import Pipeline
 
