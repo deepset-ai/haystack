@@ -145,7 +145,7 @@ class BaseConverter(BaseComponent):
         if isinstance(file_paths, Path):
             file_paths = [file_paths]
 
-        if meta is None or isinstance(meta, dict):
+        if not isinstance(meta, list):
             meta = [meta] * len(file_paths)
 
         documents: list = []

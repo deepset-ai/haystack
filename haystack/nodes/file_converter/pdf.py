@@ -13,7 +13,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "ocr", ie)
 
-from haystack.nodes.file_converter.base import BaseConverter, KNOWN_LIGATURES
+from haystack.nodes.file_converter.base import BaseConverter
 from haystack.nodes.file_converter.image import ImageToTextConverter
 from haystack.schema import Document
 
@@ -156,10 +156,12 @@ class PDFToTextConverter(BaseConverter):
         :param layout: whether to retain the original physical layout for a page. If disabled, PDF pages are read in
                        the content stream order.
         """
-        if layout:
-            command = ["pdftotext", "-enc", encoding, "-layout", str(file_path), "-"]
-        else:
-            command = ["pdftotext", "-enc", encoding, str(file_path), "-"]
+        # if layout:
+        #     command = ["pdftotext", "-enc", encoding, "-layout", str(file_path), "-"]
+        # else:
+        #     command = ["pdftotext", "-enc", encoding, str(file_path), "-"]
+
+        command = f"pdftotext -enc {encoding} {'-layout ' if layout else ''}{str(file_path)} -".split()
         output = subprocess.run(command, stdout=subprocess.PIPE, shell=False)
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")
