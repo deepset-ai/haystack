@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, List, Optional, Any, Set, Tuple, Type, Union
+from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 import copy
 import json

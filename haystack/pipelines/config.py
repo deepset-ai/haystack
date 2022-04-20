@@ -171,7 +171,7 @@ def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with
     :raise: `PipelineConfigError` in case of issues.
     """
     pipeline_config = read_pipeline_config_from_yaml(path)
-    validate_config(pipeline_config=pipeline_config, strict_version_check=strict_version_check)
+    validate_config(config=pipeline_config, strict_version_check=strict_version_check)
     logging.debug(f"'{path}' contains valid Haystack pipelines.")
 
 
@@ -315,7 +315,7 @@ def _add_node_to_pipeline_graph(
     graph: nx.DiGraph,
     root_node_name: Optional[str],
     components: Dict[str, Dict[str, str]],
-    node: Dict[str, Union[str, List[str]]],
+    node: Dict[str, Any],
     instance: BaseComponent = None,
 ):
     """
@@ -401,10 +401,10 @@ def _add_node_to_pipeline_graph(
                     "It must start with 'output_' and must contain no dots."
                 )
 
-            requested_edge = input_edge_name.split("_")[1]
+            requested_edge_name = input_edge_name.split("_")[1]
 
             try:
-                requested_edge = int(requested_edge)
+                requested_edge = int(requested_edge_name)
             except ValueError:
                 raise PipelineConfigError(
                     f"You must specified a numbered edge, like filetype_classifier.output_2, not {input_node}"
@@ -439,7 +439,7 @@ def _get_class_for_valid_node(node_name: str, components: Dict[str, Dict[str, st
         node_class = BaseComponent.get_subclass(node_type)
     except KeyError as e:
         raise PipelineConfigError(
-            f"Node of type '{node_class}' not recognized. Check for typos in the node type."
+            f"Node of type '{node_type}' not recognized. Check for typos in the node type."
         ) from e
 
     return node_class

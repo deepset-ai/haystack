@@ -64,16 +64,16 @@ class RayPipeline(Pipeline):
     @classmethod
     def load_from_config(
         cls,
-        pipeline_config: Dict,
+        config: Dict,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
         strict_version_check: bool = False,
         address: Optional[str] = None,
         **kwargs,
     ):
-        pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
+        pipeline_definition = get_pipeline_definition(config=config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
-            pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
+            config=config, overwrite_with_env_variables=overwrite_with_env_variables
         )
         pipeline = cls(address=address, **kwargs)
 
@@ -82,7 +82,7 @@ class RayPipeline(Pipeline):
                 root_node = node_config["inputs"][0]
                 if root_node in ["Query", "File"]:
                     pipeline.root_node = root_node
-                    handle = cls._create_ray_deployment(component_name=root_node, pipeline_config=pipeline_config)
+                    handle = cls._create_ray_deployment(component_name=root_node, pipeline_config=config)
                     pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1, inputs=[])
                 else:
                     raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
@@ -91,7 +91,7 @@ class RayPipeline(Pipeline):
             component_type = component_definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
             replicas = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get("replicas", 1)
-            handle = cls._create_ray_deployment(component_name=name, pipeline_config=pipeline_config, replicas=replicas)
+            handle = cls._create_ray_deployment(component_name=name, pipeline_config=config, replicas=replicas)
             pipeline._add_ray_deployment_in_graph(
                 handle=handle,
                 name=name,

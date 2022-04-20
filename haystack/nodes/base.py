@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Optional, Dict, List, Tuple
+from typing import Any, Optional, Dict, List, Tuple, Type
 
 from copy import deepcopy
 from abc import ABC, abstractmethod
@@ -109,7 +109,7 @@ class BaseComponent(ABC):
         return params
 
     @classmethod
-    def get_subclass(cls, component_type: str) -> BaseComponent:
+    def get_subclass(cls, component_type: str) -> Type[BaseComponent]:
         if component_type not in cls._subclasses.keys():
             raise PipelineSchemaError(f"Haystack component with the name '{component_type}' not found.")
         subclass = cls._subclasses[component_type]
