@@ -46,7 +46,7 @@ from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event
-from haystack.utils.experiment_tracking import BaseTrackingHead, Tracker as tracker, MLflowTrackingHead
+from haystack.utils.experiment_tracking import BaseTrackingHead, Tracker as tracker
 
 
 logger = logging.getLogger(__name__)
