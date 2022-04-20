@@ -128,7 +128,8 @@ def test_add_eval_data(document_store, batch_size):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_eval_reader(reader, document_store: BaseDocumentStore):
+@pytest.mark.parametrize("use_confidence_scores", [True, False])
+def test_eval_reader(reader, document_store: BaseDocumentStore, use_confidence_scores):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
         filename=SAMPLES_PATH / "squad" / "tiny.json",
@@ -136,6 +137,9 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
         label_index="haystack_test_feedback",
     )
     assert document_store.get_document_count(index="haystack_test_eval_document") == 2
+
+    reader.use_confidence_scores = use_confidence_scores
+
     # eval reader
     reader_eval_results = reader.eval(
         document_store=document_store,
@@ -143,10 +147,15 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
         doc_index="haystack_test_eval_document",
         device="cpu",
     )
-    assert reader_eval_results["f1"] > 66.65
-    assert reader_eval_results["f1"] < 66.67
-    assert reader_eval_results["EM"] == 50
-    assert reader_eval_results["top_n_accuracy"] == 100.0
+
+    if use_confidence_scores:
+        assert reader_eval_results["f1"] == 50
+        assert reader_eval_results["EM"] == 50
+        assert reader_eval_results["top_n_accuracy"] == 100.0
+    else:
+        assert 66.67 > reader_eval_results["f1"] > 66.65
+        assert reader_eval_results["EM"] == 50
+        assert reader_eval_results["top_n_accuracy"] == 100.0
 
 
 @pytest.mark.elasticsearch
