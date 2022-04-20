@@ -642,7 +642,6 @@ class Pipeline(BasePipeline):
             # in each node's params dictionary.
             if debug is None and node_input and node_input.get("params", {}).get("debug", None):
                 debug = node_input["params"]["debug"]
-                
             if debug is not None:
                 if not node_input.get("params", None):
                     node_input["params"] = {}
