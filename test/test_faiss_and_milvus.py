@@ -564,7 +564,9 @@ def test_cosine_sanity_check(document_store_small):
 @pytest.mark.integration
 def test_pipeline_with_existing_faiss_docstore(tmp_path):
 
-    document_store: FAISSDocumentStore = FAISSDocumentStore(sql_url=f'sqlite:///{(tmp_path / "faiss_document_store.db").absolute()}')
+    document_store: FAISSDocumentStore = FAISSDocumentStore(
+        sql_url=f'sqlite:///{(tmp_path / "faiss_document_store.db").absolute()}'
+    )
     retriever = MockDenseRetriever(document_store=document_store)
     document_store.write_documents(DOCUMENTS)
     document_store.update_embeddings(retriever=retriever, update_existing_embeddings=True)

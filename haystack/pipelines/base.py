@@ -1084,7 +1084,7 @@ class Pipeline:
         for node_name, node_attributes in self.graph.nodes.items():
             if node_name == self.root_node:
                 continue
-            
+
             component: BaseComponent = node_attributes["component"]
             if node_name != component.name:
                 raise PipelineError(f"Component name '{component.name}' does not match node name '{node_name}'.")
