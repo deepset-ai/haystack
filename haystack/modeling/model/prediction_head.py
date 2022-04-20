@@ -525,7 +525,11 @@ class QuestionAnsweringHead(PredictionHead):
             if self.duplicate_filtering > -1 and (start_idx in start_idx_candidates or end_idx in end_idx_candidates):
                 continue
             score = start_end_matrix[start_idx, end_idx].item()
-            confidence = (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
+            confidence = (
+                (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
+                if score > -500
+                else np.exp(score / 10)  # disqualify answers according to scores in logits_to_preds()
+            )
             top_candidates.append(
                 QACandidate(
                     offset_answer_start=start_idx,
