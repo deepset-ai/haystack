@@ -564,6 +564,7 @@ def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_forma
             in caplog.text
         )
 
+
 @pytest.mark.parametrize("retriever", ["es_filter_only"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_es_filter_only(document_store, retriever):
@@ -579,7 +580,7 @@ def test_es_filter_only(document_store, retriever):
         Document(content="Doc9", meta={"f1": "0"}),
         Document(content="Doc10", meta={"f1": "0"}),
         Document(content="Doc11", meta={"f1": "0"}),
-        Document(content="Doc12", meta={"f1": "0"})
+        Document(content="Doc12", meta={"f1": "0"}),
     ]
     document_store.write_documents(docs)
     retrieved_docs = retriever.retrieve('', filters={"f1": ["0"]})
