@@ -1072,7 +1072,9 @@ class EvaluationDataset:
 
 
 class FileCorpus:
-    def __init__(self, name: str, file_paths: List[str], file_metas: List[Dict[str, Any]] = None, meta: Dict[str, Any] = {}) -> None:
+    def __init__(
+        self, name: str, file_paths: List[str], file_metas: List[Dict[str, Any]] = None, meta: Dict[str, Any] = {}
+    ) -> None:
         """
         Set of files belonging together and forming a well-specified and referenceable file corpus.
         """
