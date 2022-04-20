@@ -5,7 +5,7 @@ from typing import Any, Dict, Union
 import mlflow
 from requests.exceptions import ConnectionError
 
-from haystack.utils.environment import get_or_create_env_meta_data
+from haystack.environment import get_or_create_env_meta_data
 
 
 logger = logging.getLogger(__name__)

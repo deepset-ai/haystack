@@ -18,7 +18,7 @@ import yaml
 import logging
 import posthog
 
-from haystack.utils.environment import HAYSTACK_EXECUTION_CONTEXT, get_or_create_env_meta_data
+from haystack.environment import HAYSTACK_EXECUTION_CONTEXT, get_or_create_env_meta_data
 
 posthog.api_key = "phc_F5v11iI2YHkoP6Er3cPILWSrLhY3D6UY4dEMga4eoaa"
 posthog.host = "https://tm.hs.deepset.ai"
