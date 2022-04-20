@@ -1,5 +1,4 @@
 from __future__ import annotations
-import tempfile
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 import copy
@@ -19,8 +18,6 @@ from pandas.core.frame import DataFrame
 from tqdm import tqdm
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-
-from haystack.utils.experiment_tracking import Tracker as tracker, MLflowTrackingHead
 
 try:
     from ray import serve
@@ -49,6 +46,7 @@ from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event
+from haystack.utils.experiment_tracking import Tracker as tracker, MLflowTrackingHead
 
 
 logger = logging.getLogger(__name__)

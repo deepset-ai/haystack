@@ -14,8 +14,6 @@ from functools import wraps
 from pathlib import Path
 
 import yaml
-
-import logging
 import posthog
 
 from haystack.environment import HAYSTACK_EXECUTION_CONTEXT, get_or_create_env_meta_data
