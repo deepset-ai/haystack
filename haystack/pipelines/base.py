@@ -794,13 +794,13 @@ class Pipeline(BasePipeline):
         reuse_index: bool = False,
     ) -> EvaluationResult:
         """
-        Starts an experiment run that first indexes the corpus files using the index pipeline 
+        Starts an experiment run that first indexes the corpus files using the index pipeline
         and subsequently evaluates the query pipeline on the provided evalset labels using pipeline.eval().
-        Parameters and results (metrics and predictions) of the run are tracked by an experiment tracking tool for further analysis. 
+        Parameters and results (metrics and predictions) of the run are tracked by an experiment tracking tool for further analysis.
         You can specify the experiement tracking tool by passing a tracking_head (e.g. MLflowTrackingHead or StoutTrackingHead).
 
         This method conducts an experiment run. Each experiment run is part of at least one experiment.
-        An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline). 
+        An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
         Within the experiment tracking tool you can compare experiment runs across the experiment.
 
         E.g. you can call conduct_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
