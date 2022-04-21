@@ -1,5 +1,10 @@
 from __future__ import annotations
-from typing import Dict, List, Literal, Optional, Any, Set, Tuple, Union
+from typing import Dict, List, Optional, Any, Set, Tuple, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import copy
 import json
