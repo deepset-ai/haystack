@@ -464,13 +464,13 @@ If True the index will be kept after beir evaluation. Otherwise it will be delet
 Returns a tuple containing the ncdg, map, recall and precision scores.
 Each metric is represented by a dictionary containing the scores for each top_k value.
 
-<a id="base.Pipeline.conduct_eval_run"></a>
+<a id="base.Pipeline.conduct_eval_experiment_run"></a>
 
-#### conduct\_eval\_run
+#### conduct\_eval\_experiment\_run
 
 ```python
 @classmethod
-def conduct_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evalset_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evalset_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
+def conduct_eval_experiment_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evalset_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evalset_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
 ```
 
 Starts an experiment run that first indexes the corpus files using the index pipeline
@@ -484,11 +484,11 @@ This method conducts an experiment run. Each experiment run is part of at least 
 An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
 Within the experiment tracking tool you can compare experiment runs across the experiment.
 
-E.g. you can call conduct_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
+E.g. you can call conduct_eval_experiment_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
 
 ```python
     |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
-    |       eval_result = Pipeline.conduct_eval_run(
+    |       eval_result = Pipeline.conduct_eval_experiment_run(
     |           index_pipeline=index_pipeline,
     |           query_pipeline=query_pipeline,
     |           evalset_labels=labels,
@@ -516,10 +516,10 @@ E.g. you can call conduct_eval_run() multiple times with different retrievers in
 - `experiment_tracking_tool`: The experiment tracking tool to be used. Currently we only support "mlflow".
 If left unset the current TrackingHead specified by Tracker.set_tracking_head() will be used.
 - `experiment_tracking_uri`: The uri of the experiment tracking server to be used.
-Must be specified if experiment_tracking_tool is set.
+Must be specified if experiment_tracking_tool is set. You can use deepset's public mlflow server via https://public-mlflow.deepset.ai/.
 - `corpus_file_metas`: The optional metadata to be stored for each corpus file (e.g. title).
 - `corpus_meta`: Metadata about the corpus to track (e.g. name, date, author, version).
-- `evalset_meta`: Metadata about the evalset to trac (e.g. name, date, author, version).
+- `evalset_meta`: Metadata about the evalset to track (e.g. name, date, author, version).
 - `pipeline_meta`: Metadata about the pipelines to track (e.g. name, author, version).
 - `index_params`: The params to use during indexing (see pipeline.run's params).
 - `query_params`: The params to use during querying (see pipeline.run's params).
