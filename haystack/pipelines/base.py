@@ -641,7 +641,8 @@ class Pipeline(BasePipeline):
             # NOTE: global debug attributes will override the value specified
             # in each node's params dictionary.
             if debug is None and node_input:
-                debug = node_input["params"]["debug"] = node_input.get("params", {}).get("debug", None)
+                if node_input.get("params", None):
+                    debug = params.get("debug", None)
             if debug is not None:
                 if not node_input.get("params", None):
                     node_input["params"] = {}
