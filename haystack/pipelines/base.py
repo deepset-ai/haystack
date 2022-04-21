@@ -778,7 +778,7 @@ class Pipeline(BasePipeline):
         return ndcg, map_, recall, precision
 
     @classmethod
-    def conduct_eval_run(
+    def conduct_eval_experiment_run(
         cls,
         index_pipeline: Pipeline,
         query_pipeline: Pipeline,
@@ -811,11 +811,11 @@ class Pipeline(BasePipeline):
         An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
         Within the experiment tracking tool you can compare experiment runs across the experiment.
 
-        E.g. you can call conduct_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
+        E.g. you can call conduct_eval_experiment_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
 
         ```python
             |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
-            |       eval_result = Pipeline.conduct_eval_run(
+            |       eval_result = Pipeline.conduct_eval_experiment_run(
             |           index_pipeline=index_pipeline,
             |           query_pipeline=query_pipeline,
             |           evalset_labels=labels,
@@ -841,10 +841,10 @@ class Pipeline(BasePipeline):
         :param experiment_tracking_tool: The experiment tracking tool to be used. Currently we only support "mlflow".
                                          If left unset the current TrackingHead specified by Tracker.set_tracking_head() will be used.
         :param experiment_tracking_uri: The uri of the experiment tracking server to be used.
-                                        Must be specified if experiment_tracking_tool is set.
+                                        Must be specified if experiment_tracking_tool is set. You can use deepset's public mlflow server via https://public-mlflow.deepset.ai/.
         :param corpus_file_metas: The optional metadata to be stored for each corpus file (e.g. title).
         :param corpus_meta: Metadata about the corpus to track (e.g. name, date, author, version).
-        :param evalset_meta: Metadata about the evalset to trac (e.g. name, date, author, version).
+        :param evalset_meta: Metadata about the evalset to track (e.g. name, date, author, version).
         :param pipeline_meta: Metadata about the pipelines to track (e.g. name, author, version).
         :param index_params: The params to use during indexing (see pipeline.run's params).
         :param query_params: The params to use during querying (see pipeline.run's params).
@@ -885,80 +885,85 @@ class Pipeline(BasePipeline):
             tracking_head = tracking_head_cls(tracking_uri=experiment_tracking_uri)
             tracker.set_tracking_head(tracking_head)
 
-        tracker.init_experiment(
-            experiment_name=experiment_name, run_name=experiment_run_name, tags={experiment_name: "True"}
-        )
-        tracker.track_params(
-            {
-                "dataset_label_count": len(evalset_labels),
-                "dataset": evalset_meta,
-                "sas_model_name_or_path": sas_model_name_or_path,
-                "sas_batch_size": sas_batch_size,
-                "sas_use_gpu": sas_use_gpu,
-                "pipeline_index_params": index_params,
-                "pipeline_query_params": query_params,
-                "pipeline": pipeline_meta,
-                "corpus_file_count": len(corpus_file_paths),
-                "corpus": corpus_meta,
-                "type": "offline/evaluation",
-            }
-        )
+        try:
+            tracker.init_experiment(
+                experiment_name=experiment_name, run_name=experiment_run_name, tags={experiment_name: "True"}
+            )
+            tracker.track_params(
+                {
+                    "dataset_label_count": len(evalset_labels),
+                    "dataset": evalset_meta,
+                    "sas_model_name_or_path": sas_model_name_or_path,
+                    "sas_batch_size": sas_batch_size,
+                    "sas_use_gpu": sas_use_gpu,
+                    "pipeline_index_params": index_params,
+                    "pipeline_query_params": query_params,
+                    "pipeline": pipeline_meta,
+                    "corpus_file_count": len(corpus_file_paths),
+                    "corpus": corpus_meta,
+                    "type": "offline/evaluation",
+                }
+            )
 
-        # check index before eval
-        document_store = index_pipeline.get_document_store()
-        if document_store is None:
-            raise HaystackError(f"Document store not found. Please provide pipelines with proper document store.")
-        document_count = document_store.get_document_count()
-
-        if document_count > 0:
-            if not reuse_index:
-                raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
-        else:
-            logger.info(f"indexing {len(corpus_file_paths)} documents...")
-            index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
+            # check index before eval
+            document_store = index_pipeline.get_document_store()
+            if document_store is None:
+                raise HaystackError(f"Document store not found. Please provide pipelines with proper document store.")
             document_count = document_store.get_document_count()
-            logger.info(f"indexing {len(evalset_labels)} files to {document_count} documents finished.")
 
-        tracker.track_params({"pipeline_index_document_count": document_count})
+            if document_count > 0:
+                if not reuse_index:
+                    raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+            else:
+                logger.info(f"indexing {len(corpus_file_paths)} documents...")
+                index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
+                document_count = document_store.get_document_count()
+                logger.info(f"indexing {len(evalset_labels)} files to {document_count} documents finished.")
 
-        eval_result = query_pipeline.eval(
-            labels=evalset_labels,
-            params=query_params,
-            sas_model_name_or_path=sas_model_name_or_path,
-            sas_batch_size=sas_batch_size,
-            sas_use_gpu=sas_use_gpu,
-            add_isolated_node_eval=add_isolated_node_eval,
-        )
+            tracker.track_params({"pipeline_index_document_count": document_count})
 
-        integrated_metrics = eval_result.calculate_metrics()
-        metrics = {"integrated": integrated_metrics}
-        if add_isolated_node_eval:
-            isolated_metrics = eval_result.calculate_metrics(eval_mode="isolated")
-            metrics["isolated"] = isolated_metrics
-        tracker.track_metrics(metrics, step=0)
+            eval_result = query_pipeline.eval(
+                labels=evalset_labels,
+                params=query_params,
+                sas_model_name_or_path=sas_model_name_or_path,
+                sas_batch_size=sas_batch_size,
+                sas_use_gpu=sas_use_gpu,
+                add_isolated_node_eval=add_isolated_node_eval,
+            )
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            eval_result_dir = Path(temp_dir) / "eval_result"
-            eval_result_dir.mkdir(exist_ok=True)
-            eval_result.save(out_dir=eval_result_dir)
-            tracker.track_artifacts(eval_result_dir, artifact_path="eval_result")
-            with open(Path(temp_dir) / "pipelines.yaml", "w") as outfile:
-                index_config = index_pipeline.get_config()
-                query_config = query_pipeline.get_config()
-                components = list(
-                    {c["name"]: c for c in (index_config["components"] + query_config["components"])}.values()
-                )
-                pipelines = index_config["pipelines"] + query_config["pipelines"]
-                config = {"version": index_config["version"], "components": components, "pipelines": pipelines}
-                yaml.dump(config, outfile, default_flow_style=False)
-            tracker.track_artifacts(temp_dir)
+            integrated_metrics = eval_result.calculate_metrics()
+            integrated_top_1_metrics = eval_result.calculate_metrics(simulated_top_k_reader=1)
+            metrics = {"integrated": integrated_metrics, "integrated_top_1": integrated_top_1_metrics}
+            if add_isolated_node_eval:
+                isolated_metrics = eval_result.calculate_metrics(eval_mode="isolated")
+                isolated_top_1_metrics = eval_result.calculate_metrics(eval_mode="isolated", simulated_top_k_reader=1)
+                metrics["isolated"] = isolated_metrics
+                metrics["isolated_top_1"] = isolated_top_1_metrics
+            tracker.track_metrics(metrics, step=0)
 
-        tracker.end_run()
+            with tempfile.TemporaryDirectory() as temp_dir:
+                eval_result_dir = Path(temp_dir) / "eval_result"
+                eval_result_dir.mkdir(exist_ok=True)
+                eval_result.save(out_dir=eval_result_dir)
+                tracker.track_artifacts(eval_result_dir, artifact_path="eval_result")
+                with open(Path(temp_dir) / "pipelines.yaml", "w") as outfile:
+                    index_config = index_pipeline.get_config()
+                    query_config = query_pipeline.get_config()
+                    components = list(
+                        {c["name"]: c for c in (index_config["components"] + query_config["components"])}.values()
+                    )
+                    pipelines = index_config["pipelines"] + query_config["pipelines"]
+                    config = {"version": index_config["version"], "components": components, "pipelines": pipelines}
+                    yaml.dump(config, outfile, default_flow_style=False)
+                tracker.track_artifacts(temp_dir)
 
-        # Clean up document store
-        if not reuse_index and document_store.index is not None:
-            logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
-            document_store.delete_index(document_store.index)
+        finally:
+            tracker.end_run()
+
+            # Clean up document store
+            if not reuse_index and document_store.index is not None:
+                logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+                document_store.delete_index(document_store.index)
 
         return eval_result
 
