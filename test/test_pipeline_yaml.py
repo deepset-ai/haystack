@@ -327,7 +327,7 @@ def test_load_yaml_custom_component_with_no_init(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: unstable
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -358,7 +358,7 @@ def test_load_yaml_custom_component_neednt_call_super(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: unstable
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -722,7 +722,7 @@ def test_load_yaml_custom_component_with_variadic_args(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: unstable
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -755,7 +755,7 @@ def test_load_yaml_custom_component_with_variadic_kwargs(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: unstable
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
