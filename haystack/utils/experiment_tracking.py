@@ -148,6 +148,7 @@ class MLflowTrackingHead(BaseTrackingHead):
             mlflow.set_tracking_uri(self.tracking_uri)
             mlflow.set_experiment(experiment_name)
             mlflow.start_run(run_name=run_name, nested=nested, tags=tags)
+            logger.info(f"Tracking run {run_name} of experiment {experiment_name} by mlflow under {self.tracking_uri}")
             if self.auto_track_environment:
                 mlflow.log_params(flatten_dict({"environment": get_or_create_env_meta_data()}))
         except ConnectionError:

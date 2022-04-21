@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, List, Optional, Any, Set, Tuple, Union
+from typing import Dict, List, Literal, Optional, Any, Set, Tuple, Union
 
 import copy
 import json
@@ -46,7 +46,7 @@ from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event
-from haystack.utils.experiment_tracking import BaseTrackingHead, Tracker as tracker
+from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ logger = logging.getLogger(__name__)
 
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
 CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
+TRACKING_TOOL_TO_HEAD = {"mlflow": MLflowTrackingHead}
 
 
 class RootNode(BaseComponent):
@@ -780,7 +781,8 @@ class Pipeline(BasePipeline):
         corpus_file_paths: List[str],
         experiment_name: str,
         experiment_run_name: str,
-        tracking_head: BaseTrackingHead,
+        experiment_tracking_tool: Literal["mlflow", None] = None,
+        experiment_tracking_uri: Optional[str] = None,
         corpus_file_metas: List[Dict[str, Any]] = None,
         corpus_meta: Dict[str, Any] = {},
         evalset_meta: Dict[str, Any] = {},
@@ -797,7 +799,8 @@ class Pipeline(BasePipeline):
         Starts an experiment run that first indexes the corpus files using the index pipeline
         and subsequently evaluates the query pipeline on the provided evalset labels using pipeline.eval().
         Parameters and results (metrics and predictions) of the run are tracked by an experiment tracking tool for further analysis.
-        You can specify the experiement tracking tool by passing a tracking_head (e.g. MLflowTrackingHead or StoutTrackingHead).
+        You can specify the experiement tracking tool by setting the params experiment_tracking_tool and experiment_tracking_uri
+        or passing a tracking head to Tracker.set_tracking_head() (Note, that currently only mlflow is supported).
 
         This method conducts an experiment run. Each experiment run is part of at least one experiment.
         An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
@@ -806,7 +809,6 @@ class Pipeline(BasePipeline):
         E.g. you can call conduct_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
 
         ```python
-            |   tracking_head = MLflowTrackingHead(experiment_tracking_uri="http://localhost:5000")
             |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
             |       eval_result = Pipeline.conduct_eval_run(
             |           index_pipeline=index_pipeline,
@@ -814,7 +816,8 @@ class Pipeline(BasePipeline):
             |           evalset_labels=labels,
             |           corpus_file_paths=file_paths,
             |           corpus_file_metas=file_metas,
-            |           tracking_head=tracking_head,
+            |           experiment_tracking_tool="mlflow",
+            |           experiment_tracking_uri="http://localhost:5000",
             |           experiment_name="my-retriever-experiment",
             |           experiment_run_name=f"run_{retriever_type}",
             |           pipeline_meta={"name": f"my-pipeline-{retriever_type}"},
@@ -826,15 +829,18 @@ class Pipeline(BasePipeline):
 
         :param index_pipeline: The indexing pipeline to use.
         :param query_pipeline: The query pipeline to evaluate.
-        :evalset_labels: The labels to evaluate on.
-        :corpus_file_paths: The files of the corpus to index and evaluate on.
+        :param evalset_labels: The labels to evaluate on.
+        :param corpus_file_paths: The files of the corpus to index and evaluate on.
         :param experiment_name: The name of the experiment
         :param experiment_run_name: The name of the experiment run
-        :param tracking_head: The tracking head specifying the experiment tracking server to track the results to.
-        :corpus_file_metas: The optional metadata to be stored for each corpus file (e.g. title).
-        :corpus_meta: Metadata about the corpus to track (e.g. name, date, author, version).
-        :evalset_meta: Metadata about the evalset to trac (e.g. name, date, author, version).
-        :pipeline_meta: Metadata about the pipelines to track (e.g. name, author, version).
+        :param experiment_tracking_tool: The experiment tracking tool to be used. Currently we only support "mlflow".
+                                         If left unset the current TrackingHead specified by Tracker.set_tracking_head() will be used.
+        :param experiment_tracking_uri: The uri of the experiment tracking server to be used.
+                                        Must be specified if experiment_tracking_tool is set.
+        :param corpus_file_metas: The optional metadata to be stored for each corpus file (e.g. title).
+        :param corpus_meta: Metadata about the corpus to track (e.g. name, date, author, version).
+        :param evalset_meta: Metadata about the evalset to trac (e.g. name, date, author, version).
+        :param pipeline_meta: Metadata about the pipelines to track (e.g. name, author, version).
         :param index_params: The params to use during indexing (see pipeline.run's params).
         :param query_params: The params to use during querying (see pipeline.run's params).
         :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
@@ -863,7 +869,17 @@ class Pipeline(BasePipeline):
                            If True the index will be kept after evaluation and no indexing will take place if index has already documents. Otherwise it will be deleted immediately afterwards.
                            Defaults to False.
         """
-        tracker.set_tracking_head(tracking_head)
+        if experiment_tracking_tool is not None:
+            tracking_head_cls = TRACKING_TOOL_TO_HEAD.get(experiment_tracking_tool, None)
+            if tracking_head_cls is None:
+                raise HaystackError(
+                    f"Please specify a valid experiment_tracking_tool. Possible values are: {TRACKING_TOOL_TO_HEAD.keys()}"
+                )
+            if experiment_tracking_uri is None:
+                raise HaystackError(f"experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
+            tracking_head = tracking_head_cls(tracking_uri=experiment_tracking_uri)
+            tracker.set_tracking_head(tracking_head)
+
         tracker.init_experiment(
             experiment_name=experiment_name, run_name=experiment_run_name, tags={experiment_name: "True"}
         )
