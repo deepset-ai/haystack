@@ -23,8 +23,6 @@ import pandas as pd
 from pydantic import BaseConfig
 from pydantic.json import pydantic_encoder
 
-from haystack.errors import HaystackError
-
 if not typing.TYPE_CHECKING:
     # We are using Pydantic dataclasses instead of vanilla Python's
     # See #1598 for the reasons behind this choice & performance considerations
