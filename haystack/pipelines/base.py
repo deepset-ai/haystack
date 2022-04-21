@@ -794,22 +794,49 @@ class Pipeline(BasePipeline):
         reuse_index: bool = False,
     ) -> EvaluationResult:
         """
-        Starts an experiment run that evaluates the pipeline bundle using pipeline.eval() by indexing the corpus and running the query pipeline once per query in debug mode
-        and putting together all data that is needed for evaluation, e.g. calculating metrics.
-        The resulting data is collected and tracked by an experiment tracking tool (currently we only support mlflow).
+        Starts an experiment run that first indexes the corpus files using the index pipeline 
+        and subsequently evaluates the query pipeline on the provided evalset labels using pipeline.eval().
+        Parameters and results (metrics and predictions) of the run are tracked by an experiment tracking tool for further analysis. 
+        You can specify the experiement tracking tool by passing a tracking_head (e.g. MLflowTrackingHead or StoutTrackingHead).
 
-        This method starts an experiment run. Each experiment run is part of at least one experiment.
-        An experiment typically consists of multiple runs. Within the experiment tracking tool you can compare experiment runs across the experiment.
-        E.g. you can call run_eval_experiment() multiple times with different params and its respecting experiment_run_names and later on compare the results in mlflow.
+        This method conducts an experiment run. Each experiment run is part of at least one experiment.
+        An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline). 
+        Within the experiment tracking tool you can compare experiment runs across the experiment.
 
-        :param dataset: The dataset containing the labels to evaluate on
+        E.g. you can call conduct_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
+
+        ```python
+            |   tracking_head = MLflowTrackingHead(experiment_tracking_uri="http://localhost:5000")
+            |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
+            |       eval_result = Pipeline.conduct_eval_run(
+            |           index_pipeline=index_pipeline,
+            |           query_pipeline=query_pipeline,
+            |           evalset_labels=labels,
+            |           corpus_file_paths=file_paths,
+            |           corpus_file_metas=file_metas,
+            |           tracking_head=tracking_head,
+            |           experiment_name="my-retriever-experiment",
+            |           experiment_run_name=f"run_{retriever_type}",
+            |           pipeline_meta={"name": f"my-pipeline-{retriever_type}"},
+            |           evalset_meta={"name": "my-evalset"},
+            |           corpus_meta={"name": "my-corpus"}.
+            |           reuse_index=False
+            |       )
+        ```
+
+        :param index_pipeline: The indexing pipeline to use.
+        :param query_pipeline: The query pipeline to evaluate.
+        :evalset_labels: The labels to evaluate on.
+        :corpus_file_paths: The files of the corpus to index and evaluate on.
         :param experiment_name: The name of the experiment
         :param experiment_run_name: The name of the experiment run
-        :param experiment_tracking_uri: The uri of the experiment tracking server to track the results to.
-        :param params: Dictionary of parameters to be dispatched to the nodes.
-                    If you want to pass a param to all nodes, you can just use: {"top_k":10}
-                    If you want to pass it to targeted nodes, you can do:
-                    {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+        :param tracking_head: The tracking head specifying the experiment tracking server to track the results to.
+        :corpus_file_metas: The optional metadata to be stored for each corpus file (e.g. title).
+        :corpus_meta: Metadata about the corpus to track (e.g. name, date, author, version).
+        :evalset_meta: Metadata about the evalset to trac (e.g. name, date, author, version).
+        :pipeline_meta: Metadata about the pipelines to track (e.g. name, author, version).
+        :param index_params: The params to use during indexing (see pipeline.run's params).
+        :param query_params: The params to use during querying (see pipeline.run's params).
         :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
                     The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
                     Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
@@ -868,8 +895,8 @@ class Pipeline(BasePipeline):
         else:
             logger.info(f"indexing {len(corpus_file_paths)} documents...")
             index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
-            logger.info(f"indexing finished.")
             document_count = document_store.get_document_count()
+            logger.info(f"indexing {len(evalset_labels)} files to {document_count} documents finished.")
 
         tracker.track_params({"pipeline_index_document_count": document_count})
 
