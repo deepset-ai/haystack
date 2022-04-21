@@ -430,7 +430,7 @@ or use the Reader's device by default.
 #### eval
 
 ```python
-def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
+def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False, use_no_answer_legacy_confidence=False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -450,6 +450,8 @@ or use the Reader's device by default.
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
 - `calibrate_conf_scores`: Whether to calibrate the temperature for temperature scaling of the confidence scores
+- `use_no_answer_legacy_confidence`: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
+Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
 
 <a id="farm.FARMReader.calibrate_confidence_scores"></a>
 

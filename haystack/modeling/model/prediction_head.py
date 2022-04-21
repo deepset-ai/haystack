@@ -10,6 +10,7 @@ from torch import nn
 from torch import optim
 from torch.nn import CrossEntropyLoss, NLLLoss
 from transformers import AutoModelForQuestionAnswering
+from scipy.special import expit
 
 from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.model.predictions import QACandidate, QAPred
@@ -234,7 +235,8 @@ class QuestionAnsweringHead(PredictionHead):
         n_best_per_sample: Optional[int] = None,
         duplicate_filtering: int = -1,
         temperature_for_confidence: float = 1.0,
-        use_confidence_scores_for_ranking: bool = False,
+        use_confidence_scores_for_ranking: bool = True,
+        use_no_answer_legacy_confidence: bool = False,
         **kwargs,
     ):
         """
@@ -250,7 +252,9 @@ class QuestionAnsweringHead(PredictionHead):
         :param duplicate_filtering: Answers are filtered based on their position. Both start and end position of the answers are considered.
                                     The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
         :param temperature_for_confidence: The divisor that is used to scale logits to calibrate confidence scores
-        :param use_confidence_scores_for_ranking: Whether to sort answers by confidence score (normalized between 0 and 1) or by standard score (unbounded)(default).
+        :param use_confidence_scores_for_ranking: Whether to sort answers by confidence score (normalized between 0 and 1)(default) or by standard score (unbounded).
+        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
+                                                Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
         """
         super(QuestionAnsweringHead, self).__init__()
         if len(kwargs) > 0:
@@ -279,6 +283,7 @@ class QuestionAnsweringHead(PredictionHead):
         self.generate_config()
         self.temperature_for_confidence = nn.Parameter(torch.ones(1) * temperature_for_confidence)
         self.use_confidence_scores_for_ranking = use_confidence_scores_for_ranking
+        self.use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
 
     @classmethod
     def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore
@@ -520,7 +525,11 @@ class QuestionAnsweringHead(PredictionHead):
             if self.duplicate_filtering > -1 and (start_idx in start_idx_candidates or end_idx in end_idx_candidates):
                 continue
             score = start_end_matrix[start_idx, end_idx].item()
-            confidence = (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
+            confidence = (
+                (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
+                if score > -500
+                else np.exp(score / 10)  # disqualify answers according to scores in logits_to_preds()
+            )
             top_candidates.append(
                 QACandidate(
                     offset_answer_start=start_idx,
@@ -795,7 +804,9 @@ class QuestionAnsweringHead(PredictionHead):
             aggregation_level="document",
             passage_id=None,
             n_passages_in_doc=n_samples,
-            confidence=best_overall_positive_confidence - no_ans_gap_confidence,
+            confidence=best_overall_positive_confidence - no_ans_gap_confidence
+            if self.use_no_answer_legacy_confidence
+            else float(expit(np.asarray(best_overall_positive_score - no_ans_gap) / 8)),
         )
 
         # Add no answer to positive answers, sort the order and return the n_best
