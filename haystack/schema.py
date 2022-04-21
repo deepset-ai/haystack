@@ -26,7 +26,7 @@ from pydantic.json import pydantic_encoder
 if not typing.TYPE_CHECKING:
     # We are using Pydantic dataclasses instead of vanilla Python's
     # See #1598 for the reasons behind this choice & performance considerations
-    from pydantic.dataclasses import dataclass  # type: ignore  # pylint: disable=ungrouped-imports
+    from pydantic.dataclasses import dataclass
 else:
     from dataclasses import dataclass  # type: ignore  # pylint: disable=ungrouped-imports
 
@@ -595,16 +595,6 @@ class MultiLabel:
 
     def __str__(self):
         return f"<MultiLabel: {self.to_dict()}>"
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.labels == other.labels
-
-    def __hash__(self):
-        h = self.id
-        label_hashes = sorted(hash(label) for label in self.labels)
-        for label_hash in label_hashes:
-            h = h ^ hash(label_hash)
-        return h
 
 
 def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
