@@ -166,7 +166,7 @@ class BaseConverter(BaseComponent):
             file_paths = [file_paths]
 
         if not isinstance(meta, list):
-            meta = [meta] * len(file_paths)
+            meta: List[Optional[Dict[str, str]]] = [meta] * len(file_paths)
 
         documents: list = []
         for file_path, file_meta in zip(file_paths, meta):
