@@ -314,29 +314,31 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         """
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
-            mapping = self.client.indices.get(index_name, headers=headers)[index_name]["mappings"]
-            if self.search_fields:
-                for search_field in self.search_fields:
-                    if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+            indices = self.client.indices.get(index_name, headers=headers)
+            for index in indices.values():
+                mapping = index["mappings"]
+                if self.search_fields:
+                    for search_field in self.search_fields:
+                        if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+                            raise Exception(
+                                f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
+                                f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                                f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                                f'In this case deleting the index with `delete_index(index="{index_name}")` will fix your environment. '
+                                f"Note, that all data stored in the index will be lost!"
+                            )
+                if self.embedding_field:
+                    if (
+                        self.embedding_field in mapping["properties"]
+                        and mapping["properties"][self.embedding_field]["type"] != "dense_vector"
+                    ):
                         raise Exception(
-                            f"The search_field '{search_field}' of index '{index_name}' with type '{mapping['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
-                            f'In this case deleting the index with `delete_index(index="{index_name}")` will fix your environment. '
-                            f"Note, that all data stored in the index will be lost!"
+                            f"The '{index_name}' index in Elasticsearch already has a field called '{self.embedding_field}'"
+                            f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
+                            f"document_store to use a different name for the embedding_field parameter."
                         )
-            if self.embedding_field:
-                if (
-                    self.embedding_field in mapping["properties"]
-                    and mapping["properties"][self.embedding_field]["type"] != "dense_vector"
-                ):
-                    raise Exception(
-                        f"The '{index_name}' index in Elasticsearch already has a field called '{self.embedding_field}'"
-                        f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
-                        f"document_store to use a different name for the embedding_field parameter."
-                    )
-                mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
-                self.client.indices.put_mapping(index=index_name, body=mapping, headers=headers)
+                    mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
+                    self.client.indices.put_mapping(index=index_name, body=mapping, headers=headers)
             return
 
         if self.custom_mapping:
