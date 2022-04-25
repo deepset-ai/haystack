@@ -654,7 +654,7 @@ def document_store_with_docs(request, test_docs_xs, tmp_path):
     )
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture
@@ -664,16 +664,7 @@ def document_store(request, tmp_path):
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path
     )
     yield document_store
-    document_store.delete_documents()
-
-    # Make sure to drop Milvus2 collection, required for tests using different embedding dimensions
-    if isinstance(document_store, MilvusDocumentStore) and not milvus1:
-        document_store.collection.drop()
-
-    # Make sure to delete Pinecone indexes, required for tests using different embedding dimensions
-    if isinstance(document_store, PineconeDocumentStore):
-        for index in document_store.pinecone_indexes:
-            pinecone.delete_index(index)
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
@@ -686,7 +677,7 @@ def document_store_dot_product(request, tmp_path):
         tmp_path=tmp_path,
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
@@ -700,7 +691,7 @@ def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     )
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "pinecone"])
@@ -713,7 +704,7 @@ def document_store_dot_product_small(request, tmp_path):
         tmp_path=tmp_path,
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
@@ -723,7 +714,7 @@ def document_store_small(request, tmp_path):
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(scope="function", autouse=True)

@@ -541,6 +541,12 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         super().delete_documents(index=index, ids=ids, filters=filters)
 
+    def delete_index(self, index: str):
+        index = self._sanitize_index_name(index)
+        if index in self.pinecone_indexes:
+            self.pinecone_indexes[index].delete()
+        super().delete_index(index)
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
