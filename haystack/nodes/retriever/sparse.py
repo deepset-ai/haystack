@@ -157,20 +157,16 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
 
-        :param query: The query
+        :param query: Has no effect, can pass in empty string
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-        :param top_k: How many documents to return per query.
+        :param top_k: Has no effect, pass in any int or None
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
-        if top_k is None:
-            top_k = self.top_k
         if index is None:
             index = self.document_store.index
-        documents = self.document_store.query(
-            query=None, filters=filters, top_k=top_k, custom_query=self.custom_query, index=index, headers=headers
-        )
+        documents = self.document_store.get_all_documents(filters=filters, index=index, headers=headers)
         return documents
 
 
