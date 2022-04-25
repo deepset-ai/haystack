@@ -583,5 +583,5 @@ def test_es_filter_only(document_store, retriever):
         Document(content="Doc12", meta={"f1": "0"}),
     ]
     document_store.write_documents(docs)
-    retrieved_docs = retriever.retrieve("", filters={"f1": ["0"]})
+    retrieved_docs = retriever.retrieve(query="", filters={"f1": ["0"]})
     assert len(retrieved_docs) == 11
