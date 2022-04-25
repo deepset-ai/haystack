@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://haystack.deepset.ai/json-schemas/haystack-pipeline-1.1.0.schema.json",
+  "$id": "https://haystack.deepset.ai/haystack/json-schemas/haystack-pipeline-1.3.1rc0.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -9,7 +9,11 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "const": "1.1.0"
+      "oneOf": [
+        {
+          "const": "1.3.1rc0"
+        }
+      ]
     },
     "components": {
       "title": "Components",
@@ -40,6 +44,9 @@
           },
           {
             "$ref": "#/definitions/OpenSearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/PineconeDocumentStoreComponent"
           },
           {
             "$ref": "#/definitions/SQLDocumentStoreComponent"
@@ -897,10 +904,6 @@
           "title": "Parameters",
           "type": "object",
           "properties": {
-            "host": {
-              "title": "Host",
-              "default": "https://admin:admin@localhost:9200/"
-            },
             "similarity": {
               "title": "Similarity",
               "default": "cosine"
@@ -955,6 +958,102 @@
               "default": 9200
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PineconeDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PineconeDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "environment": {
+              "title": "Environment",
+              "default": "us-west1-gcp",
+              "type": "string"
+            },
+            "sql_url": {
+              "title": "Sql Url",
+              "default": "sqlite:///pinecone_document_store.db",
+              "type": "string"
+            },
+            "pinecone_index": {
+              "title": "Pinecone Index",
+              "type": "string",
+              "default": null
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "cosine",
+              "type": "string"
+            },
+            "replicas": {
+              "title": "Replicas",
+              "default": 1,
+              "type": "integer"
+            },
+            "shards": {
+              "title": "Shards",
+              "default": 1,
+              "type": "integer"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            }
+          },
+          "required": [
+            "api_key"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -1396,9 +1495,6 @@
               "items": {
                 "anyOf": [
                   {
-                    "type": "integer"
-                  },
-                  {
                     "type": "string"
                   },
                   {
@@ -1528,6 +1624,11 @@
               "default": 10,
               "type": "integer"
             },
+            "all_terms_must_match": {
+              "title": "All Terms Must Match",
+              "default": false,
+              "type": "boolean"
+            },
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
@@ -1572,6 +1673,11 @@
               "title": "Top K",
               "default": 10,
               "type": "integer"
+            },
+            "all_terms_must_match": {
+              "title": "All Terms Must Match",
+              "default": false,
+              "type": "boolean"
             },
             "custom_query": {
               "title": "Custom Query",
@@ -1666,9 +1772,6 @@
               "type": "array",
               "items": {
                 "anyOf": [
-                  {
-                    "type": "integer"
-                  },
                   {
                     "type": "string"
                   },
@@ -2539,14 +2642,9 @@
               "default": null
             },
             "generator_type": {
-              "default": [
-                1
-              ],
-              "allOf": [
-                {
-                  "$ref": "#/definitions/RAGeneratorType"
-                }
-              ]
+              "title": "Generator Type",
+              "default": "token",
+              "type": "string"
             },
             "top_k": {
               "title": "Top K",
@@ -2592,16 +2690,6 @@
         "name"
       ],
       "additionalProperties": false
-    },
-    "RAGeneratorType": {
-      "title": "RAGeneratorType",
-      "description": "An enumeration.",
-      "enum": [
-        [
-          1
-        ],
-        2
-      ]
     },
     "RCIReaderComponent": {
       "type": "object",
@@ -2763,9 +2851,6 @@
               "type": "array",
               "items": {
                 "anyOf": [
-                  {
-                    "type": "integer"
-                  },
                   {
                     "type": "string"
                   },
@@ -3108,9 +3193,6 @@
               "type": "array",
               "items": {
                 "anyOf": [
-                  {
-                    "type": "integer"
-                  },
                   {
                     "type": "string"
                   },

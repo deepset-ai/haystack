@@ -455,7 +455,7 @@ class DensePassageRetriever(BaseRetriever):
             use_amp=use_amp,
         )
 
-        # 7. Let it grow! Watch the tracked metrics live on the public mlflow server: https://public-mlflow.deepset.ai
+        # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
         trainer.train()
 
         self.model.save(Path(save_dir), lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
@@ -985,7 +985,7 @@ class TableTextRetriever(BaseRetriever):
             use_amp=use_amp,
         )
 
-        # 7. Let it grow! Watch the tracked metrics live on the public mlflow server: https://public-mlflow.deepset.ai
+        # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
         trainer.train()
 
         self.model.save(
