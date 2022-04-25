@@ -957,13 +957,13 @@ class Pipeline(BasePipeline):
                     yaml.dump(config, outfile, default_flow_style=False)
                 tracker.track_artifacts(temp_dir)
 
-        finally:
-            tracker.end_run()
-
             # Clean up document store
             if not reuse_index and document_store.index is not None:
                 logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
                 document_store.delete_index(document_store.index)
+
+        finally:
+            tracker.end_run()
 
         return eval_result
 
