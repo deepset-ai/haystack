@@ -778,7 +778,7 @@ class Pipeline(BasePipeline):
         return ndcg, map_, recall, precision
 
     @classmethod
-    def conduct_eval_experiment_run(
+    def execute_eval_run(
         cls,
         index_pipeline: Pipeline,
         query_pipeline: Pipeline,
@@ -811,11 +811,11 @@ class Pipeline(BasePipeline):
         An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
         Within the experiment tracking tool you can compare experiment runs across the experiment.
 
-        E.g. you can call conduct_eval_experiment_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
+        E.g. you can call execute_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
 
         ```python
             |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
-            |       eval_result = Pipeline.conduct_eval_experiment_run(
+            |       eval_result = Pipeline.execute_eval_run(
             |           index_pipeline=index_pipeline,
             |           query_pipeline=query_pipeline,
             |           evalset_labels=labels,
@@ -840,8 +840,9 @@ class Pipeline(BasePipeline):
         :param experiment_run_name: The name of the experiment run
         :param experiment_tracking_tool: The experiment tracking tool to be used. Currently we only support "mlflow".
                                          If left unset the current TrackingHead specified by Tracker.set_tracking_head() will be used.
-        :param experiment_tracking_uri: The uri of the experiment tracking server to be used.
-                                        Must be specified if experiment_tracking_tool is set. You can use deepset's public mlflow server via https://public-mlflow.deepset.ai/.
+        :param experiment_tracking_uri: The uri of the experiment tracking server to be used. Must be specified if experiment_tracking_tool is set. 
+                                        You can use deepset's public mlflow server via https://public-mlflow.deepset.ai/.
+                                        Note, that artifact logging (e.g. Pipeline YAML or evaluation result CSVs) are currently not allowed on deepset's public mlflow server as this might expose sensitive data.
         :param corpus_file_metas: The optional metadata to be stored for each corpus file (e.g. title).
         :param corpus_meta: Metadata about the corpus to track (e.g. name, date, author, version).
         :param evalset_meta: Metadata about the evalset to track (e.g. name, date, author, version).
