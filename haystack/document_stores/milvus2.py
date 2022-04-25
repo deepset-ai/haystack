@@ -172,13 +172,19 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self.id_field = id_field
         self.custom_fields = custom_fields
 
-        self.collection = self._create_collection_and_index(self.index, consistency_level, recreate_index=recreate_index)
+        self.collection = self._create_collection_and_index(
+            self.index, consistency_level, recreate_index=recreate_index
+        )
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
 
     def _create_collection_and_index(
-        self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None, recreate_index: bool = False
+        self,
+        index: Optional[str] = None,
+        consistency_level: int = 0,
+        index_param: Optional[Dict[str, Any]] = None,
+        recreate_index: bool = False,
     ):
         index = index or self.index
         index_param = index_param or self.index_param

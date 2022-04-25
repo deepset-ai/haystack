@@ -123,7 +123,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 metric_type=self.metric_type,
                 replicas=self.replicas,
                 shards=self.shards,
-                recreate_index=recreate_index
+                recreate_index=recreate_index,
             )
 
         self.return_embedding = return_embedding
@@ -143,7 +143,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         metric_type: Optional[str] = "cosine",
         replicas: Optional[int] = 1,
         shards: Optional[int] = 1,
-        recreate_index: bool = False
+        recreate_index: bool = False,
     ):
         """
         Create a new index for storing documents in case an
@@ -153,7 +153,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
 
         if recreate_index:
-            self.delete_index(index) 
+            self.delete_index(index)
 
         # Skip if already exists
         if index in self.pinecone_indexes.keys():
@@ -229,7 +229,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 metric_type=self.metric_type,
                 replicas=self.replicas,
                 shards=self.shards,
-                recreate_index=False
+                recreate_index=False,
             )
 
         field_map = self._create_document_field_map()
