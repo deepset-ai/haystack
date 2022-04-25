@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
 import time
 import logging
 from copy import deepcopy
+from collections import defaultdict
 
 import numpy as np
 import torch
@@ -66,7 +67,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         super().__init__()
 
-        self.indexes: Dict[str, Dict] = {index: {}}
+        self.indexes: Dict[str, Dict] = defaultdict(dict)
         self.index: str = index
         self.label_index: str = label_index
         self.embedding_field = embedding_field
@@ -748,12 +749,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
         :param index: The name of the index to delete.
         :return: None
         """
-        if index == self.index:
-            logger.warning(
-                f"Deletion of default index '{index}' detected. "
-                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
-            )
-        del self.indexes[index]
+        if index in self.indexes:
+            del self.indexes[index]
 
     def delete_labels(
         self,
