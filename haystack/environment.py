@@ -4,7 +4,8 @@ import sys
 from typing import Any, Dict
 import torch
 import transformers
-import haystack
+
+from haystack import __version__
 
 
 HAYSTACK_EXECUTION_CONTEXT = "HAYSTACK_EXECUTION_CONTEXT"
@@ -25,7 +26,7 @@ def get_or_create_env_meta_data() -> Dict[str, Any]:
             "os_family": platform.system(),
             "os_machine": platform.machine(),
             "python_version": platform.python_version(),
-            "haystack_version": haystack.__version__,
+            "haystack_version": __version__,
             "transformers_version": transformers.__version__,
             "torch_version": torch.__version__,
             "torch_cuda_version": torch.version.cuda if torch.cuda.is_available() else 0,
