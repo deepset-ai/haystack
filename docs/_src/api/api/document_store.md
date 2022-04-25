@@ -4590,6 +4590,24 @@ operation.
     ```
 - `headers`: PineconeDocumentStore does not support headers.
 
+<a id="pinecone.PineconeDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a id="pinecone.PineconeDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
