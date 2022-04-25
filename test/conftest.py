@@ -785,8 +785,6 @@ def get_document_store(
 
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
-        client = Elasticsearch()
-        client.indices.delete(index=index + "*", ignore=[404])
         document_store = ElasticsearchDocumentStore(
             index=index,
             return_embedding=True,
@@ -816,10 +814,6 @@ def get_document_store(
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
         )
-        _, collections = document_store.milvus_server.list_collections()
-        for collection in collections:
-            if collection.startswith(index):
-                document_store.milvus_server.drop_collection(collection)
 
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
@@ -834,8 +828,6 @@ def get_document_store(
 
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(index=index, similarity=similarity, embedding_dim=embedding_dim)
-        document_store.weaviate_client.schema.delete_all()
-        document_store._create_schema_and_index_if_not_exist()
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(

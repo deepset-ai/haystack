@@ -1211,7 +1211,10 @@ def test_update_meta(document_store: BaseDocumentStore):
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type, tmp_path):
     document_store = get_document_store(
-        document_store_type=document_store_type, tmp_path=tmp_path, embedding_field="custom_embedding_field"
+        document_store_type=document_store_type,
+        tmp_path=tmp_path,
+        embedding_field="custom_embedding_field",
+        index="custom_embedding_field",
     )
     doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
     document_store.write_documents([doc_to_write])
