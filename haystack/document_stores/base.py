@@ -672,6 +672,7 @@ class KeywordDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents

@@ -56,6 +56,7 @@ class DensePassageRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_scores_to_probabilities: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -125,6 +126,7 @@ class DensePassageRetriever(BaseRetriever):
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.top_k = top_k
+        self.scale_scores_to_probabilities = scale_scores_to_probabilities
 
         if document_store is None:
             logger.warning(
@@ -211,6 +213,7 @@ class DensePassageRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -228,9 +231,16 @@ class DensePassageRetriever(BaseRetriever):
             return []
         if index is None:
             index = self.document_store.index
+        if scale_scores_to_probabilities is None:
+            scale_scores_to_probabilities = self.scale_scores_to_probabilities
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers
+            query_emb=query_emb[0],
+            top_k=top_k,
+            filters=filters,
+            index=index,
+            headers=headers,
+            scale_scores_to_probabilities=scale_scores_to_probabilities,
         )
         return documents
 
@@ -553,6 +563,7 @@ class TableTextRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_scores_to_probabilities: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -609,6 +620,7 @@ class TableTextRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.top_k = top_k
         self.embed_meta_fields = embed_meta_fields
+        self.scale_scores_to_probabilities = scale_scores_to_probabilities
 
         if document_store is None:
             logger.warning(
@@ -720,6 +732,7 @@ class TableTextRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
@@ -728,9 +741,16 @@ class TableTextRetriever(BaseRetriever):
             return []
         if index is None:
             index = self.document_store.index
+        if scale_scores_to_probabilities is None:
+            scale_scores_to_probabilities = self.scale_scores_to_probabilities
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers
+            query_emb=query_emb[0],
+            top_k=top_k,
+            filters=filters,
+            index=index,
+            headers=headers,
+            scale_scores_to_probabilities=scale_scores_to_probabilities,
         )
         return documents
 
@@ -1083,6 +1103,7 @@ class EmbeddingRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_scores_to_probabilities: bool = True,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1138,6 +1159,7 @@ class EmbeddingRetriever(BaseRetriever):
         self.top_k = top_k
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
+        self.scale_scores_to_probabilities = scale_scores_to_probabilities
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
@@ -1159,6 +1181,7 @@ class EmbeddingRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1173,9 +1196,16 @@ class EmbeddingRetriever(BaseRetriever):
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
+        if scale_scores_to_probabilities is None:
+            scale_scores_to_probabilities = self.scale_scores_to_probabilities
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers
+            query_emb=query_emb[0],
+            filters=filters,
+            top_k=top_k,
+            index=index,
+            headers=headers,
+            scale_scores_to_probabilities=scale_scores_to_probabilities,
         )
         return documents
 

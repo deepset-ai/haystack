@@ -237,6 +237,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -321,6 +322,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             top_k=top_k,
             return_embedding=return_embedding,
             index=index,
+            scale_scores_to_probabilities=scale_scores_to_probabilities,
             headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
@@ -335,6 +337,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -420,6 +423,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             custom_query=custom_query,
             index=index,
             all_terms_must_match=all_terms_must_match,
+            scale_scores_to_probabilities=scale_scores_to_probabilities,
             headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]

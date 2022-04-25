@@ -873,6 +873,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1078,7 +1079,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         logger.debug(f"Retriever query: {body}")
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
-        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
+        documents = [
+            self._convert_es_hit_to_document(
+                hit, return_embedding=self.return_embedding, scale_scores_to_probabilities=scale_scores_to_probabilities
+            )
+            for hit in result
+        ]
         return documents
 
     def query_by_embedding(
@@ -1089,6 +1095,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1216,7 +1223,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             raise e
 
         documents = [
-            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+            self._convert_es_hit_to_document(
+                hit,
+                adapt_score_for_embedding=True,
+                return_embedding=return_embedding,
+                scale_scores_to_probabilities=scale_scores_to_probabilities,
+            )
             for hit in result
         ]
         return documents
@@ -1254,7 +1266,11 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         return query
 
     def _convert_es_hit_to_document(
-        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False
+        self,
+        hit: dict,
+        return_embedding: bool,
+        adapt_score_for_embedding: bool = False,
+        scale_scores_to_probabilities: bool = True,
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {
@@ -1272,13 +1288,16 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         score = hit["_score"]
         if score:
             if adapt_score_for_embedding:
-                score = self._scale_embedding_score(score)
-                if self.similarity == "cosine":
-                    score = (score + 1) / 2  # scaling probability from cosine similarity
+                score = self._get_raw_similarity_score(score)
+
+            if scale_scores_to_probabilities:
+                if adapt_score_for_embedding:
+                    if self.similarity == "cosine":
+                        score = (score + 1) / 2  # scaling probability from cosine similarity
+                    else:
+                        score = float(expit(np.asarray(score / 100)))  # scaling probability from dot product and l2
                 else:
-                    score = float(expit(np.asarray(score / 100)))  # scaling probability from dot product and l2
-            else:
-                score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
+                    score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
         embedding = None
         if return_embedding:
@@ -1298,7 +1317,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         return document
 
-    def _scale_embedding_score(self, score):
+    def _get_raw_similarity_score(self, score):
         return score - 1000
 
     def describe_documents(self, index=None):
@@ -1745,6 +1764,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1852,7 +1872,12 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
         documents = [
-            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+            self._convert_es_hit_to_document(
+                hit,
+                adapt_score_for_embedding=True,
+                return_embedding=return_embedding,
+                scale_scores_to_probabilities=scale_scores_to_probabilities,
+            )
             for hit in result
         ]
         return documents
@@ -2054,7 +2079,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             }
         return query
 
-    def _scale_embedding_score(self, score):
+    def _get_raw_similarity_score(self, score):
         # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
         if self.similarity == "dot_product":

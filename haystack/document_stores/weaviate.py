@@ -779,6 +779,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -896,6 +897,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.

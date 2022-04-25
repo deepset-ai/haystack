@@ -381,6 +381,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -427,11 +428,13 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            if self.cosine:
-                doc.score = float((raw_score + 1) / 2)
-            else:
-                doc.score = float(expit(np.asarray(raw_score / 100)))
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_scores_to_probabilities:
+                if self.cosine:
+                    score = float((score + 1) / 2)
+                else:
+                    score = float(expit(np.asarray(score / 100)))
+            doc.score = score
 
         return documents
 

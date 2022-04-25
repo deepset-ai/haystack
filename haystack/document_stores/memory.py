@@ -284,6 +284,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -374,7 +375,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
             new_document.embedding = doc.embedding if return_embedding is True else None
 
             new_document.embedding = doc.embedding if return_embedding is True else None
-            new_document.score = self.finalize_raw_score(score, self.similarity)
+            if scale_scores_to_probabilities:
+                score = self.finalize_raw_score(score, self.similarity)
+            new_document.score = score
             candidate_docs.append(new_document)
 
         return sorted(candidate_docs, key=lambda x: x.score if x.score is not None else 0.0, reverse=True)[0:top_k]

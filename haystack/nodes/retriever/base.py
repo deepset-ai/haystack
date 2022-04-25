@@ -59,6 +59,7 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -240,6 +241,7 @@ class BaseRetriever(BaseComponent):
         documents: Optional[List[dict]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ):
         if root_node == "Query":
             if not query:
@@ -248,7 +250,14 @@ class BaseRetriever(BaseComponent):
                 )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
-            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
+            output, stream = run_query_timed(
+                query=query,
+                filters=filters,
+                top_k=top_k,
+                index=index,
+                headers=headers,
+                scale_scores_to_probabilities=scale_scores_to_probabilities,
+            )
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
             run_indexing = self.timing(self.run_indexing, "index_time")
@@ -264,8 +273,16 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ):
-        documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
+        documents = self.retrieve(
+            query=query,
+            filters=filters,
+            top_k=top_k,
+            index=index,
+            headers=headers,
+            scale_scores_to_probabilities=scale_scores_to_probabilities,
+        )
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {"documents": documents}

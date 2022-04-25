@@ -563,6 +563,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -603,8 +604,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])
         }
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = self.finalize_raw_score(raw_score, self.similarity)
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_scores_to_probabilities:
+                score = self.finalize_raw_score(score, self.similarity)
+            doc.score = score
 
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))

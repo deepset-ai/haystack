@@ -22,6 +22,7 @@ class ElasticsearchRetriever(BaseRetriever):
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
+        scale_scores_to_probabilities: bool = True,
     ):
         """
         :param document_store: an instance of an ElasticsearchDocumentStore to retrieve documents from.
@@ -102,6 +103,7 @@ class ElasticsearchRetriever(BaseRetriever):
         self.top_k = top_k
         self.custom_query = custom_query
         self.all_terms_must_match = all_terms_must_match
+        self.scale_scores_to_probabilities = scale_scores_to_probabilities
 
     def retrieve(
         self,
@@ -110,6 +112,7 @@ class ElasticsearchRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -127,6 +130,9 @@ class ElasticsearchRetriever(BaseRetriever):
         if index is None:
             index = self.document_store.index
 
+        if scale_scores_to_probabilities is None:
+            scale_scores_to_probabilities = self.scale_scores_to_probabilities
+
         documents = self.document_store.query(
             query=query,
             filters=filters,
@@ -135,6 +141,7 @@ class ElasticsearchRetriever(BaseRetriever):
             custom_query=self.custom_query,
             index=index,
             headers=headers,
+            scale_scores_to_probabilities=scale_scores_to_probabilities,
         )
         return documents
 
@@ -152,6 +159,7 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -238,6 +246,7 @@ class TfidfRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_scores_to_probabilities: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -264,6 +273,8 @@ class TfidfRetriever(BaseRetriever):
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
         if index:
             raise NotImplementedError("Switching index is not supported in TfidfRetriever.")
+        if scale_scores_to_probabilities:
+            raise NotImplementedError("Scaling scores to probabilities is not supported in TfidfRetriever.")
 
         if top_k is None:
             top_k = self.top_k
