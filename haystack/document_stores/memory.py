@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
 import time
 import logging
 from copy import deepcopy
-from collections import defaultdict
 
 import numpy as np
 import torch
