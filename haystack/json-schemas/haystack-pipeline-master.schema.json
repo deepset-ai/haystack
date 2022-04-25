@@ -1895,6 +1895,11 @@
                   "type": "string"
                 }
               ]
+            },
+            "scale_scores_to_probabilities": {
+              "title": "Scale Scores To Probabilities",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -2021,6 +2026,11 @@
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
+            },
+            "scale_scores_to_probabilities": {
+              "title": "Scale Scores To Probabilities",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -2071,6 +2081,11 @@
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
+            },
+            "scale_scores_to_probabilities": {
+              "title": "Scale Scores To Probabilities",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -2180,6 +2195,11 @@
                   "type": "string"
                 }
               ]
+            },
+            "scale_scores_to_probabilities": {
+              "title": "Scale Scores To Probabilities",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -3655,6 +3675,11 @@
                   "type": "string"
                 }
               ]
+            },
+            "scale_scores_to_probabilities": {
+              "title": "Scale Scores To Probabilities",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
