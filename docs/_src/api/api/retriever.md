@@ -229,9 +229,9 @@ that are most relevant to the query.
 
 **Arguments**:
 
-- `query`: The query
+- `query`: Has no effect, can pass in empty string
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-- `top_k`: How many documents to return per query.
+- `top_k`: Has no effect, pass in any int or None
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
