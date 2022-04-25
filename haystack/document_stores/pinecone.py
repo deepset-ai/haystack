@@ -51,6 +51,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
+        recreate_index: bool = False,
     ):
         """
         :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
@@ -80,6 +81,9 @@ class PineconeDocumentStore(SQLDocumentStore):
                 - `"skip"`: Ignore the duplicate documents.
                 - `"overwrite"`: Update any existing documents with the same ID when adding documents.
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
+        :param recreate_index: If set to True, an existing Pinecone index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index.
         """
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
@@ -113,12 +117,13 @@ class PineconeDocumentStore(SQLDocumentStore):
         if pinecone_index:
             self.pinecone_indexes[clean_index] = pinecone_index
         else:
-            self.pinecone_indexes[clean_index] = self._create_index_if_not_exist(
+            self.pinecone_indexes[clean_index] = self._create_index(
                 embedding_dim=self.embedding_dim,
                 index=clean_index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
                 shards=self.shards,
+                recreate_index=recreate_index
             )
 
         self.return_embedding = return_embedding
@@ -131,13 +136,14 @@ class PineconeDocumentStore(SQLDocumentStore):
     def _sanitize_index_name(self, index: str) -> str:
         return index.replace("_", "-").lower()
 
-    def _create_index_if_not_exist(
+    def _create_index(
         self,
         embedding_dim: int,
         index: Optional[str] = None,
         metric_type: Optional[str] = "cosine",
         replicas: Optional[int] = 1,
         shards: Optional[int] = 1,
+        recreate_index: bool = False
     ):
         """
         Create a new index for storing documents in case an
@@ -145,6 +151,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         index = index or self.index
         index = self._sanitize_index_name(index)
+
+        if recreate_index:
+            self.delete_index(index) 
 
         # Skip if already exists
         if index in self.pinecone_indexes.keys():
@@ -214,12 +223,13 @@ class PineconeDocumentStore(SQLDocumentStore):
         ), f"duplicate_documents parameter must be {', '.join(self.duplicate_documents_options)}"
 
         if index not in self.pinecone_indexes:
-            self.pinecone_indexes[index] = self._create_index_if_not_exist(
+            self.pinecone_indexes[index] = self._create_index(
                 embedding_dim=self.embedding_dim,
                 index=index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
                 shards=self.shards,
+                recreate_index=False
             )
 
         field_map = self._create_document_field_map()
@@ -549,6 +559,8 @@ class PineconeDocumentStore(SQLDocumentStore):
         :return: None
         """
         index = self._sanitize_index_name(index)
+        if index in pinecone.list_indexes():
+            pinecone.delete_index(index)
         if index in self.pinecone_indexes:
             pinecone.delete_index(index)
             del self.pinecone_indexes[index]

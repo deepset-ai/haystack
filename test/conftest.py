@@ -791,6 +791,7 @@ def get_document_store(
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             similarity=similarity,
+            recreate_index=True,
         )
 
     elif document_store_type == "faiss":
@@ -824,10 +825,13 @@ def get_document_store(
             index=index,
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
+            recreate_index=True,
         )
 
     elif document_store_type == "weaviate":
-        document_store = WeaviateDocumentStore(index=index, similarity=similarity, embedding_dim=embedding_dim)
+        document_store = WeaviateDocumentStore(
+            index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=True
+        )
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(
@@ -836,6 +840,7 @@ def get_document_store(
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
+            recreate_index=True,
         )
 
     else:
