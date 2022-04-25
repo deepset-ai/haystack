@@ -67,7 +67,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         super().__init__()
 
-        self.indexes: Dict[str, Dict] = defaultdict(dict)
+        self.indexes: Dict[str, Dict] = {index: {}}
         self.index: str = index
         self.label_index: str = label_index
         self.embedding_field = embedding_field
