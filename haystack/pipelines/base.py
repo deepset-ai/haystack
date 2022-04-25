@@ -782,7 +782,7 @@ class Pipeline(BasePipeline):
         cls,
         index_pipeline: Pipeline,
         query_pipeline: Pipeline,
-        evalset_labels: List[MultiLabel],
+        evaluation_set_labels: List[MultiLabel],
         corpus_file_paths: List[str],
         experiment_name: str,
         experiment_run_name: str,
@@ -790,7 +790,7 @@ class Pipeline(BasePipeline):
         experiment_tracking_uri: Optional[str] = None,
         corpus_file_metas: List[Dict[str, Any]] = None,
         corpus_meta: Dict[str, Any] = {},
-        evalset_meta: Dict[str, Any] = {},
+        evaluation_set_meta: Dict[str, Any] = {},
         pipeline_meta: Dict[str, Any] = {},
         index_params: dict = {},
         query_params: dict = {},
@@ -801,15 +801,19 @@ class Pipeline(BasePipeline):
         reuse_index: bool = False,
     ) -> EvaluationResult:
         """
-        Starts an experiment run that first indexes the corpus files using the index pipeline
-        and subsequently evaluates the query pipeline on the provided evalset labels using pipeline.eval().
+        Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
+        and subsequently evaluates the query pipeline on the provided labels (forming an evaluation set) using pipeline.eval().
         Parameters and results (metrics and predictions) of the run are tracked by an experiment tracking tool for further analysis.
-        You can specify the experiement tracking tool by setting the params experiment_tracking_tool and experiment_tracking_uri
-        or passing a tracking head to Tracker.set_tracking_head() (Note, that currently only mlflow is supported).
+        You can specify the experiment tracking tool by setting the params `experiment_tracking_tool` and `experiment_tracking_uri`
+        or by passing a (custom) tracking head to Tracker.set_tracking_head().
+        Note, that `experiment_tracking_tool` only supports `mlflow` currently.
 
-        This method conducts an experiment run. Each experiment run is part of at least one experiment.
+        For easier comparison you can pass additional metadata regarding corpus (corpus_meta), evaluation set (evaluation_set_meta) and pipelines (pipeline_meta).
+        E.g. you can give them names or ids to identify them across experiment runs.
+
+        This method executes an experiment run. Each experiment run is part of at least one experiment.
         An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
-        Within the experiment tracking tool you can compare experiment runs across the experiment.
+        Experiment tracking tools usually share the same concepts of experiments and provide additional functionality to easily compare runs across experiments.
 
         E.g. you can call execute_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
 
@@ -818,7 +822,7 @@ class Pipeline(BasePipeline):
             |       eval_result = Pipeline.execute_eval_run(
             |           index_pipeline=index_pipeline,
             |           query_pipeline=query_pipeline,
-            |           evalset_labels=labels,
+            |           evaluation_set_labels=labels,
             |           corpus_file_paths=file_paths,
             |           corpus_file_metas=file_metas,
             |           experiment_tracking_tool="mlflow",
@@ -826,7 +830,7 @@ class Pipeline(BasePipeline):
             |           experiment_name="my-retriever-experiment",
             |           experiment_run_name=f"run_{retriever_type}",
             |           pipeline_meta={"name": f"my-pipeline-{retriever_type}"},
-            |           evalset_meta={"name": "my-evalset"},
+            |           evaluation_set_meta={"name": "my-evalset"},
             |           corpus_meta={"name": "my-corpus"}.
             |           reuse_index=False
             |       )
@@ -834,8 +838,8 @@ class Pipeline(BasePipeline):
 
         :param index_pipeline: The indexing pipeline to use.
         :param query_pipeline: The query pipeline to evaluate.
-        :param evalset_labels: The labels to evaluate on.
-        :param corpus_file_paths: The files of the corpus to index and evaluate on.
+        :param evaluation_set_labels: The labels to evaluate on forming an evalution set.
+        :param corpus_file_paths: The files to be indexed and searched during evaluation forming a corpus.
         :param experiment_name: The name of the experiment
         :param experiment_run_name: The name of the experiment run
         :param experiment_tracking_tool: The experiment tracking tool to be used. Currently we only support "mlflow".
@@ -845,7 +849,7 @@ class Pipeline(BasePipeline):
                                         Note, that artifact logging (e.g. Pipeline YAML or evaluation result CSVs) are currently not allowed on deepset's public mlflow server as this might expose sensitive data.
         :param corpus_file_metas: The optional metadata to be stored for each corpus file (e.g. title).
         :param corpus_meta: Metadata about the corpus to track (e.g. name, date, author, version).
-        :param evalset_meta: Metadata about the evalset to track (e.g. name, date, author, version).
+        :param evaluation_set_meta: Metadata about the evalset to track (e.g. name, date, author, version).
         :param pipeline_meta: Metadata about the pipelines to track (e.g. name, author, version).
         :param index_params: The params to use during indexing (see pipeline.run's params).
         :param query_params: The params to use during querying (see pipeline.run's params).
@@ -892,8 +896,8 @@ class Pipeline(BasePipeline):
             )
             tracker.track_params(
                 {
-                    "dataset_label_count": len(evalset_labels),
-                    "dataset": evalset_meta,
+                    "dataset_label_count": len(evaluation_set_labels),
+                    "dataset": evaluation_set_meta,
                     "sas_model_name_or_path": sas_model_name_or_path,
                     "sas_batch_size": sas_batch_size,
                     "sas_use_gpu": sas_use_gpu,
@@ -919,12 +923,12 @@ class Pipeline(BasePipeline):
                 logger.info(f"indexing {len(corpus_file_paths)} documents...")
                 index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
                 document_count = document_store.get_document_count()
-                logger.info(f"indexing {len(evalset_labels)} files to {document_count} documents finished.")
+                logger.info(f"indexing {len(evaluation_set_labels)} files to {document_count} documents finished.")
 
             tracker.track_params({"pipeline_index_document_count": document_count})
 
             eval_result = query_pipeline.eval(
-                labels=evalset_labels,
+                labels=evaluation_set_labels,
                 params=query_params,
                 sas_model_name_or_path=sas_model_name_or_path,
                 sas_batch_size=sas_batch_size,
