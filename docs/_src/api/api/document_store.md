@@ -2939,7 +2939,8 @@ exists.
 - `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
 - `recreate_index`: If set to True, an existing Milvus index will be deleted and a new one will be
 created using the config you are using for initialization. Be aware that all data in the old index will be
-lost if you choose to recreate the index.
+lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+be recreated.
 
 <a id="milvus2.Milvus2DocumentStore.write_documents"></a>
 
@@ -4415,7 +4416,8 @@ Parameter options:
     - `"fail"`: An error is raised if the document ID of the document being added already exists.
 - `recreate_index`: If set to True, an existing Pinecone index will be deleted and a new one will be
 created using the config you are using for initialization. Be aware that all data in the old index will be
-lost if you choose to recreate the index.
+lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+be recreated.
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>
 
