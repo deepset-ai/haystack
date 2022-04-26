@@ -552,7 +552,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        del self.faiss_indexes[index]
+        if index in self.faiss_indexes:
+            del self.faiss_indexes[index]
+            logger.info(f"Index '{index}' deleted.")
         super().delete_index(index)
 
     def query_by_embedding(

@@ -2888,7 +2888,7 @@ does not allow these data types (yet).
 #### \_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: str = "IVF_FLAT", index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", id_field: str = "id", custom_fields: Optional[List[Any]] = None, progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, consistency_level: int = 0)
+def __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: str = "IVF_FLAT", index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", id_field: str = "id", custom_fields: Optional[List[Any]] = None, progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, consistency_level: int = 0, recreate_index: bool = False)
 ```
 
 **Arguments**:
@@ -2937,6 +2937,10 @@ overwrite: Update any existing documents with the same ID when adding documents.
 fail: an error is raised if the document ID of the document being added already
 exists.
 - `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+- `recreate_index`: If set to True, an existing Milvus index will be deleted and a new one will be
+created using the config you are using for initialization. Be aware that all data in the old index will be
+lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+be recreated.
 
 <a id="milvus2.Milvus2DocumentStore.write_documents"></a>
 
@@ -3171,7 +3175,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
-def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite")
+def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False)
 ```
 
 **Arguments**:
@@ -3205,6 +3209,9 @@ Parameter options : ( 'skip','overwrite','fail')
 skip: Ignore the duplicates documents
 overwrite: Update any existing documents with the same ID when adding documents.
 fail: an error is raised if the document ID of the document being added already exists.
+- `recreate_index`: If set to True, an existing Weaviate index will be deleted and a new one will be
+created using the config you are using for initialization. Be aware that all data in the old index will be
+lost if you choose to recreate the index.
 
 <a id="weaviate.WeaviateDocumentStore.get_document_by_id"></a>
 
@@ -4376,7 +4383,7 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### \_\_init\_\_
 
 ```python
-def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite")
+def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False)
 ```
 
 **Arguments**:
@@ -4407,6 +4414,10 @@ Parameter options:
     - `"skip"`: Ignore the duplicate documents.
     - `"overwrite"`: Update any existing documents with the same ID when adding documents.
     - `"fail"`: An error is raised if the document ID of the document being added already exists.
+- `recreate_index`: If set to True, an existing Pinecone index will be deleted and a new one will be
+created using the config you are using for initialization. Be aware that all data in the old index will be
+lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+be recreated.
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>
 
@@ -4589,6 +4600,24 @@ operation.
     }
     ```
 - `headers`: PineconeDocumentStore does not support headers.
+
+<a id="pinecone.PineconeDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
 
 <a id="pinecone.PineconeDocumentStore.query_by_embedding"></a>
 

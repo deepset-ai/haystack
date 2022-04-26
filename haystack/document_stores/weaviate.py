@@ -70,6 +70,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
+        recreate_index: bool = False,
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
@@ -101,6 +102,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                     skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already exists.
+        :param recreate_index: If set to True, an existing Weaviate index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index.
         """
         if similarity != "cosine":
             raise ValueError(f"Weaviate only supports cosine similarity, but you provided {similarity}")
@@ -142,7 +146,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
 
-        self._create_schema_and_index_if_not_exist(self.index)
+        self._create_schema_and_index(self.index, recreate_index=recreate_index)
         self.uuid_format_warning_raised = False
 
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
@@ -153,7 +157,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         else:
             return index[0].upper() + index[1:]
 
-    def _create_schema_and_index_if_not_exist(self, index: Optional[str] = None):
+    def _create_schema_and_index(self, index: Optional[str] = None, recreate_index: bool = False):
         """
         Create a new index (schema/class in Weaviate) for storing documents in case if an
         index (schema) with the name doesn't exist already.
@@ -182,6 +186,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 ]
             }
         if not self.weaviate_client.schema.contains(schema):
+            self.weaviate_client.schema.create(schema)
+        elif recreate_index and index is not None:
+            self._delete_index(index)
             self.weaviate_client.schema.create(schema)
 
     def _convert_weaviate_result_to_document(self, result: dict, return_embedding: bool) -> Document:
@@ -418,7 +425,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         index = self._sanitize_index_name(index) or self.index
-        self._create_schema_and_index_if_not_exist(index)
+        self._create_schema_and_index(index, recreate_index=False)
         field_map = self._create_document_field_map()
 
         duplicate_documents = duplicate_documents or self.duplicate_documents
@@ -1190,13 +1197,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         index = self._sanitize_index_name(index) or self.index
 
-        # create index if it doesn't exist yet
-        self._create_schema_and_index_if_not_exist(index)
-
         if not filters and not ids:
-            self.weaviate_client.schema.delete_class(index)
-            self._create_schema_and_index_if_not_exist(index)
+            self._create_schema_and_index(index, recreate_index=True)
         else:
+            # create index if it doesn't exist yet
+            self._create_schema_and_index(index, recreate_index=False)
             docs_to_delete = self.get_all_documents(index, filters=filters)
             if ids:
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
@@ -1215,7 +1220,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        self.weaviate_client.schema.delete_class(index)
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
+        index = self._sanitize_index_name(index) or index
+        if any(c for c in self.weaviate_client.schema.get()["classes"] if c["class"] == index):
+            self.weaviate_client.schema.delete_class(index)
+            logger.info(f"Index '{index}' deleted.")
 
     def delete_labels(self):
         """
