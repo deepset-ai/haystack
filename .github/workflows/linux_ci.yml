@@ -359,7 +359,8 @@ jobs:
   test-pinecone:
     needs: build-cache
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
+    # we have to recreate indexes multiple times: that takes a significant amount of time on pinecone
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v2
