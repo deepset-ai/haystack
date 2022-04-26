@@ -751,6 +751,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if index in self.indexes:
             del self.indexes[index]
+            logger.info(f"Index '{index}' deleted.")
 
     def delete_labels(
         self,

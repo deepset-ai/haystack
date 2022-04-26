@@ -1226,6 +1226,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index) or index
         if len([c for c in self.weaviate_client.schema.get()["classes"] if c["class"] == index]) > 0:
             self.weaviate_client.schema.delete_class(index)
+            logger.info(f"Index '{index}' deleted.")
 
     def delete_labels(self):
         """

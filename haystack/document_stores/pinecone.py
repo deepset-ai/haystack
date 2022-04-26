@@ -561,8 +561,8 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
         if index in pinecone.list_indexes():
             pinecone.delete_index(index)
+            logger.info(f"Index '{index}' deleted.")
         if index in self.pinecone_indexes:
-            pinecone.delete_index(index)
             del self.pinecone_indexes[index]
         super().delete_index(index)
 

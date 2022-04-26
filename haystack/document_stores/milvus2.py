@@ -501,6 +501,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     def _delete_index(self, index: str):
         if utility.has_collection(collection_name=index):
             utility.drop_collection(collection_name=index)
+            logger.info(f"Index '{index}' deleted.")
         super().delete_index(index)
 
     def get_all_documents_generator(

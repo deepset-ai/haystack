@@ -554,6 +554,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             )
         if index in self.faiss_indexes:
             del self.faiss_indexes[index]
+            logger.info(f"Index '{index}' deleted.")
         super().delete_index(index)
 
     def query_by_embedding(

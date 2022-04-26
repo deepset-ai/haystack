@@ -1590,8 +1590,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         self._delete_index(index)
 
     def _delete_index(self, index: str):
-        self.client.indices.delete(index=index, ignore=[400, 404])
-        logger.debug(f"deleted elasticsearch index {index}")
+        if self.client.indices.exists(index):
+            self.client.indices.delete(index=index, ignore=[400, 404])
+            logger.info(f"Index '{index}' deleted.")
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):
