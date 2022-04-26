@@ -1200,9 +1200,9 @@ class EmbeddingRetriever(BaseRetriever):
         :param docs: List of documents to embed
         :return: Embeddings, one per input document
         """
-        docs = self.linearize_tables(docs) # linearize tables
+        docs = self.linearize_tables(docs)  # linearize tables
         return self.embedding_encoder.embed_documents(docs)
-    
+
     def linearize_tables(self, docs: List[Document]) -> List[Document]:
         """
         Turns table documents into text documents by representing the table in csv format.
