@@ -7,7 +7,7 @@ from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.dense import DensePassageRetriever
-from haystack.nodes.retriever.sparse import ElasticsearchRetriever
+from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.pipelines.base import Pipeline
 from haystack.pipelines import ExtractiveQAPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
 from haystack.pipelines.standard_pipelines import (
@@ -129,7 +129,8 @@ def test_add_eval_data(document_store, batch_size):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_eval_reader(reader, document_store: BaseDocumentStore):
+@pytest.mark.parametrize("use_confidence_scores", [True, False])
+def test_eval_reader(reader, document_store: BaseDocumentStore, use_confidence_scores):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
         filename=SAMPLES_PATH / "squad" / "tiny.json",
@@ -137,6 +138,9 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
         label_index="haystack_test_feedback",
     )
     assert document_store.get_document_count(index="haystack_test_eval_document") == 2
+
+    reader.use_confidence_scores = use_confidence_scores
+
     # eval reader
     reader_eval_results = reader.eval(
         document_store=document_store,
@@ -144,10 +148,15 @@ def test_eval_reader(reader, document_store: BaseDocumentStore):
         doc_index="haystack_test_eval_document",
         device="cpu",
     )
-    assert reader_eval_results["f1"] > 66.65
-    assert reader_eval_results["f1"] < 66.67
-    assert reader_eval_results["EM"] == 50
-    assert reader_eval_results["top_n_accuracy"] == 100.0
+
+    if use_confidence_scores:
+        assert reader_eval_results["f1"] == 50
+        assert reader_eval_results["EM"] == 50
+        assert reader_eval_results["top_n_accuracy"] == 100.0
+    else:
+        assert 66.67 > reader_eval_results["f1"] > 66.65
+        assert reader_eval_results["EM"] == 50
+        assert reader_eval_results["top_n_accuracy"] == 100.0
 
 
 @pytest.mark.elasticsearch
@@ -948,7 +957,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
 
@@ -1012,7 +1021,7 @@ def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
 
@@ -1071,7 +1080,7 @@ def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_docs, reader):
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
 

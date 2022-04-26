@@ -1,6 +1,7 @@
 import math
 
 import pytest
+from haystack.modeling.data_handler.inputs import QAInput, Question
 
 from haystack.schema import Document, Answer
 from haystack.nodes.reader.base import BaseReader
@@ -169,3 +170,38 @@ def test_farm_reader_update_params(test_docs_xs):
     with pytest.raises(Exception):
         reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=99, doc_stride=128)
         reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+
+
+@pytest.mark.parametrize("use_confidence_scores", [True, False])
+def test_farm_reader_uses_same_sorting_as_QAPredictionHead(use_confidence_scores):
+    reader = FARMReader(
+        model_name_or_path="deepset/roberta-base-squad2",
+        use_gpu=False,
+        num_processes=0,
+        return_no_answer=True,
+        use_confidence_scores=use_confidence_scores,
+    )
+
+    text = """Beer is one of the oldest[1][2][3] and most widely consumed[4] alcoholic drinks in the world, and the third most popular drink overall after water and tea.[5] It is produced by the brewing and fermentation of starches, mainly derived from cereal grains—most commonly from malted barley, though wheat, maize (corn), rice, and oats are also used. During the brewing process, fermentation of the starch sugars in the wort produces ethanol and carbonation in the resulting beer.[6] Most modern beer is brewed with hops, which add bitterness and other flavours and act as a natural preservative and stabilizing agent. Other flavouring agents such as gruit, herbs, or fruits may be included or used instead of hops. In commercial brewing, the natural carbonation effect is often removed during processing and replaced with forced carbonation.[7]
+Some of humanity's earliest known writings refer to the production and distribution of beer: the Code of Hammurabi included laws regulating beer and beer parlours,[8] and "The Hymn to Ninkasi", a prayer to the Mesopotamian goddess of beer, served as both a prayer and as a method of remembering the recipe for beer in a culture with few literate people.[9][10]
+Beer is distributed in bottles and cans and is also commonly available on draught, particularly in pubs and bars. The brewing industry is a global business, consisting of several dominant multinational companies and many thousands of smaller producers ranging from brewpubs to regional breweries. The strength of modern beer is usually around 4% to 6% alcohol by volume (ABV), although it may vary between 0.5% and 20%, with some breweries creating examples of 40% ABV and above.[11]
+Beer forms part of the culture of many nations and is associated with social traditions such as beer festivals, as well as a rich pub culture involving activities like pub crawling, pub quizzes and pub games.
+When beer is distilled, the resulting liquor is a form of whisky.[12]
+"""
+
+    docs = [Document(text)]
+    query = "What is the third most popular drink?"
+
+    reader_predictions = reader.predict(query=query, documents=docs, top_k=5)
+
+    farm_input = [QAInput(doc_text=d.content, questions=Question(query)) for d in docs]
+    inferencer_predictions = reader.inferencer.inference_from_objects(farm_input, return_json=False)
+
+    for answer, qa_cand in zip(reader_predictions["answers"], inferencer_predictions[0].prediction):
+        assert answer.answer == ("" if qa_cand.answer_type == "no_answer" else qa_cand.answer)
+        assert answer.offsets_in_document[0].start == qa_cand.offset_answer_start
+        assert answer.offsets_in_document[0].end == qa_cand.offset_answer_end
+        if use_confidence_scores:
+            assert answer.score == qa_cand.confidence
+        else:
+            assert answer.score == qa_cand.score

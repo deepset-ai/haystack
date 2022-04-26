@@ -14,7 +14,7 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
-from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
+from haystack.nodes.retriever.sparse import BM25Retriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 from .conftest import SAMPLES_PATH
@@ -70,7 +70,7 @@ def docs():
     indirect=True,
 )
 def test_retrieval(retriever_with_docs, document_store_with_docs):
-    if not isinstance(retriever_with_docs, (ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever)):
+    if not isinstance(retriever_with_docs, (BM25Retriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     # test without filters
@@ -121,7 +121,7 @@ def test_elasticsearch_custom_query():
     document_store.write_documents(documents)
 
     # test custom "terms" query
-    retriever = ElasticsearchRetriever(
+    retriever = BM25Retriever(
         document_store=document_store,
         custom_query="""
             {
@@ -136,7 +136,7 @@ def test_elasticsearch_custom_query():
     assert len(results) == 4
 
     # test custom "term" query
-    retriever = ElasticsearchRetriever(
+    retriever = BM25Retriever(
         document_store=document_store,
         custom_query="""
                 {
@@ -399,7 +399,7 @@ def test_elasticsearch_highlight():
     document_store.write_documents(documents)
 
     # Enabled highlighting on "title"&"content" field only using custom query
-    retriever_1 = ElasticsearchRetriever(
+    retriever_1 = BM25Retriever(
         document_store=document_store,
         custom_query="""{
             "size": 20,
@@ -441,7 +441,7 @@ def test_elasticsearch_highlight():
     assert results[0].meta["highlighted"]["content"] == ["The **green**", "**tea** plant", "range of **healthy**"]
 
     # Enabled highlighting on "title" field only using custom query
-    retriever_2 = ElasticsearchRetriever(
+    retriever_2 = BM25Retriever(
         document_store=document_store,
         custom_query="""{
             "size": 20,
@@ -563,3 +563,25 @@ def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_forma
             "You may need to set 'model_format='sentence_transformers' to ensure correct loading of model."
             in caplog.text
         )
+
+
+@pytest.mark.parametrize("retriever", ["es_filter_only"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_es_filter_only(document_store, retriever):
+    docs = [
+        Document(content="Doc1", meta={"f1": "0"}),
+        Document(content="Doc2", meta={"f1": "0"}),
+        Document(content="Doc3", meta={"f1": "0"}),
+        Document(content="Doc4", meta={"f1": "0"}),
+        Document(content="Doc5", meta={"f1": "0"}),
+        Document(content="Doc6", meta={"f1": "0"}),
+        Document(content="Doc7", meta={"f1": "1"}),
+        Document(content="Doc8", meta={"f1": "0"}),
+        Document(content="Doc9", meta={"f1": "0"}),
+        Document(content="Doc10", meta={"f1": "0"}),
+        Document(content="Doc11", meta={"f1": "0"}),
+        Document(content="Doc12", meta={"f1": "0"}),
+    ]
+    document_store.write_documents(docs)
+    retrieved_docs = retriever.retrieve(query="", filters={"f1": ["0"]})
+    assert len(retrieved_docs) == 11

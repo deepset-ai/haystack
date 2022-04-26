@@ -16,7 +16,7 @@ from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
-from haystack.nodes.retriever.sparse import ElasticsearchRetriever
+from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.pipelines import Pipeline, RootNode
 from haystack.pipelines.config import validate_config_strings
 from haystack.pipelines.utils import generate_code
@@ -408,7 +408,7 @@ def test_generate_code_simple_pipeline():
         "components": [
             {
                 "name": "retri",
-                "type": "ElasticsearchRetriever",
+                "type": "BM25Retriever",
                 "params": {"document_store": "ElasticsearchDocumentStore", "top_k": 20},
             },
             {
@@ -423,7 +423,7 @@ def test_generate_code_simple_pipeline():
     code = generate_code(pipeline_config=config, pipeline_variable_name="p", generate_imports=False)
     assert code == (
         'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
-        "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        "retri = BM25Retriever(document_store=elasticsearch_document_store, top_k=20)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])'
@@ -435,7 +435,7 @@ def test_generate_code_imports():
         "version": "ignore",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
-            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri", "type": "BM25Retriever", "params": {"document_store": "DocumentStore"}},
             {"name": "retri2", "type": "TfidfRetriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [
@@ -449,11 +449,11 @@ def test_generate_code_imports():
     code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=True)
     assert code == (
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
-        "from haystack.nodes import ElasticsearchRetriever, TfidfRetriever\n"
+        "from haystack.nodes import BM25Retriever, TfidfRetriever\n"
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
-        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "retri = BM25Retriever(document_store=document_store)\n"
         "retri_2 = TfidfRetriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -467,7 +467,7 @@ def test_generate_code_imports_no_pipeline_cls():
         "version": "ignore",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
-            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri", "type": "BM25Retriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
@@ -480,10 +480,10 @@ def test_generate_code_imports_no_pipeline_cls():
     )
     assert code == (
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
-        "from haystack.nodes import ElasticsearchRetriever\n"
+        "from haystack.nodes import BM25Retriever\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
-        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])'
@@ -495,7 +495,7 @@ def test_generate_code_comment():
         "version": "ignore",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
-            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri", "type": "BM25Retriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
@@ -506,11 +506,11 @@ def test_generate_code_comment():
         "# This is my comment\n"
         "# ...and here is a new line\n"
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
-        "from haystack.nodes import ElasticsearchRetriever\n"
+        "from haystack.nodes import BM25Retriever\n"
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
-        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])'
@@ -535,7 +535,7 @@ def test_generate_code_is_component_order_invariant():
     doc_store = {"name": "ElasticsearchDocumentStore", "type": "ElasticsearchDocumentStore"}
     es_retriever = {
         "name": "EsRetriever",
-        "type": "ElasticsearchRetriever",
+        "type": "BM25Retriever",
         "params": {"document_store": "ElasticsearchDocumentStore"},
     }
     emb_retriever = {
@@ -556,7 +556,7 @@ def test_generate_code_is_component_order_invariant():
 
     expected_code = (
         "elasticsearch_document_store = ElasticsearchDocumentStore()\n"
-        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store)\n"
+        "es_retriever = BM25Retriever(document_store=elasticsearch_document_store)\n"
         'embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
         "join_results = JoinDocuments()\n"
         "\n"
@@ -700,7 +700,7 @@ def test_load_from_deepset_cloud_query():
     )
     retriever = query_pipeline.get_node("Retriever")
     document_store = retriever.document_store
-    assert isinstance(retriever, ElasticsearchRetriever)
+    assert isinstance(retriever, BM25Retriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
     assert document_store == query_pipeline.get_document_store()
 
@@ -928,7 +928,7 @@ def test_save_nonexisting_pipeline_to_deepset_cloud():
         )
 
     es_document_store = ElasticsearchDocumentStore()
-    es_retriever = ElasticsearchRetriever(document_store=es_document_store)
+    es_retriever = BM25Retriever(document_store=es_document_store)
     file_converter = TextConverter()
     preprocessor = PreProcessor()
 

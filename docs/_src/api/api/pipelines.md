@@ -54,7 +54,122 @@ Default value is True.
 - `add_comment`: Whether to add a preceding comment that this code has been generated.
 Default value is True.
 
-<a id="base.Pipeline.load_from_deepset_cloud"></a>
+<a id="base.BasePipeline.load_from_config"></a>
+
+#### load\_from\_config
+
+```python
+@classmethod
+@abstractmethod
+def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False)
+```
+
+Load Pipeline from a config dict defining the individual components and how they're tied together to form
+
+a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+    ```python
+    |   {
+    |       "version": "1.0",
+    |       "components": [
+    |           {  # define all the building-blocks for Pipeline
+    |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
+    |               "type": "FARMReader",  # Haystack Class name for the component
+    |               "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
+    |           },
+    |           {
+    |               "name": "MyESRetriever",
+    |               "type": "BM25Retriever",
+    |               "params": {
+    |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
+    |                   "custom_query": None,
+    |               },
+    |           },
+    |           {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
+    |       ],
+    |       "pipelines": [
+    |           {  # multiple Pipelines can be defined using the components from above
+    |               "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
+    |               "nodes": [
+    |                   {"name": "MyESRetriever", "inputs": ["Query"]},
+    |                   {"name": "MyReader", "inputs": ["MyESRetriever"]},
+    |               ],
+    |           }
+    |       ],
+    |   }
+    ```
+
+**Arguments**:
+
+- `pipeline_config`: the pipeline config as dict
+- `pipeline_name`: if the config contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
+- `strict_version_check`: whether to fail in case of a version mismatch (throws a warning otherwise)
+
+<a id="base.BasePipeline.load_from_yaml"></a>
+
+#### load\_from\_yaml
+
+```python
+@classmethod
+@abstractmethod
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+```
+
+Load Pipeline from a YAML file defining the individual components and how they're tied together to form
+
+a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
+be passed.
+
+Here's a sample configuration:
+
+    ```yaml
+    |   version: '1.0'
+    |
+    |    components:    # define all the building-blocks for Pipeline
+    |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+    |      type: FARMReader    # Haystack Class name for the component
+    |      params:
+    |        no_ans_boost: -10
+    |        model_name_or_path: deepset/roberta-base-squad2
+    |    - name: MyESRetriever
+    |      type: BM25Retriever
+    |      params:
+    |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
+    |        custom_query: null
+    |    - name: MyDocumentStore
+    |      type: ElasticsearchDocumentStore
+    |      params:
+    |        index: haystack_test
+    |
+    |    pipelines:    # multiple Pipelines can be defined using the components from above
+    |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
+    |      nodes:
+    |      - name: MyESRetriever
+    |        inputs: [Query]
+    |      - name: MyReader
+    |        inputs: [MyESRetriever]
+    ```
+
+Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
+If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
+
+**Arguments**:
+
+- `path`: path of the YAML file.
+- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
+- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
+to change index name param for an ElasticsearchDocumentStore, an env
+variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+`_` sign must be used to specify nested hierarchical properties.
+
+<a id="base.BasePipeline.load_from_deepset_cloud"></a>
 
 #### load\_from\_deepset\_cloud
 
@@ -223,8 +338,8 @@ Add a new node to the pipeline.
 method to process incoming data from predecessor node.
 - `name`: The name for the node. It must not contain any dots.
 - `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+edge with a list of documents. It can be represented as ["BM25Retriever"].
 
 In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
 must be specified explicitly as "QueryClassifier.output_2".
@@ -312,6 +427,96 @@ If True the index will be kept after beir evaluation. Otherwise it will be delet
 
 Returns a tuple containing the ncdg, map, recall and precision scores.
 Each metric is represented by a dictionary containing the scores for each top_k value.
+
+<a id="base.Pipeline.execute_eval_run"></a>
+
+#### execute\_eval\_run
+
+```python
+@classmethod
+def execute_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evaluation_set_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evaluation_set_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
+```
+
+Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
+
+and subsequently evaluates the query pipeline on the provided labels (forming an evaluation set) using pipeline.eval().
+Parameters and results (metrics and predictions) of the run are tracked by an experiment tracking tool for further analysis.
+You can specify the experiment tracking tool by setting the params `experiment_tracking_tool` and `experiment_tracking_uri`
+or by passing a (custom) tracking head to Tracker.set_tracking_head().
+Note, that `experiment_tracking_tool` only supports `mlflow` currently.
+
+For easier comparison you can pass additional metadata regarding corpus (corpus_meta), evaluation set (evaluation_set_meta) and pipelines (pipeline_meta).
+E.g. you can give them names or ids to identify them across experiment runs.
+
+This method executes an experiment run. Each experiment run is part of at least one experiment.
+An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
+Experiment tracking tools usually share the same concepts of experiments and provide additional functionality to easily compare runs across experiments.
+
+E.g. you can call execute_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
+
+```python
+    |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
+    |       eval_result = Pipeline.execute_eval_run(
+    |           index_pipeline=index_pipeline,
+    |           query_pipeline=query_pipeline,
+    |           evaluation_set_labels=labels,
+    |           corpus_file_paths=file_paths,
+    |           corpus_file_metas=file_metas,
+    |           experiment_tracking_tool="mlflow",
+    |           experiment_tracking_uri="http://localhost:5000",
+    |           experiment_name="my-retriever-experiment",
+    |           experiment_run_name=f"run_{retriever_type}",
+    |           pipeline_meta={"name": f"my-pipeline-{retriever_type}"},
+    |           evaluation_set_meta={"name": "my-evalset"},
+    |           corpus_meta={"name": "my-corpus"}.
+    |           reuse_index=False
+    |       )
+```
+
+**Arguments**:
+
+- `index_pipeline`: The indexing pipeline to use.
+- `query_pipeline`: The query pipeline to evaluate.
+- `evaluation_set_labels`: The labels to evaluate on forming an evalution set.
+- `corpus_file_paths`: The files to be indexed and searched during evaluation forming a corpus.
+- `experiment_name`: The name of the experiment
+- `experiment_run_name`: The name of the experiment run
+- `experiment_tracking_tool`: The experiment tracking tool to be used. Currently we only support "mlflow".
+If left unset the current TrackingHead specified by Tracker.set_tracking_head() will be used.
+- `experiment_tracking_uri`: The uri of the experiment tracking server to be used. Must be specified if experiment_tracking_tool is set.
+You can use deepset's public mlflow server via https://public-mlflow.deepset.ai/.
+Note, that artifact logging (e.g. Pipeline YAML or evaluation result CSVs) are currently not allowed on deepset's public mlflow server as this might expose sensitive data.
+- `corpus_file_metas`: The optional metadata to be stored for each corpus file (e.g. title).
+- `corpus_meta`: Metadata about the corpus to track (e.g. name, date, author, version).
+- `evaluation_set_meta`: Metadata about the evalset to track (e.g. name, date, author, version).
+- `pipeline_meta`: Metadata about the pipelines to track (e.g. name, author, version).
+- `index_params`: The params to use during indexing (see pipeline.run's params).
+- `query_params`: The params to use during querying (see pipeline.run's params).
+- `sas_model_name_or_path`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+More info in the paper: https://arxiv.org/abs/2108.06130
+Models:
+- You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+Not all cross encoders can be used because of different return types.
+If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+- Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+- Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+- Large model for German only: "deepset/gbert-large-sts"
+- `sas_batch_size`: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+- `sas_use_gpu`: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+Falls back to CPU if no GPU is available.
+- `add_isolated_node_eval`: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+- `reuse_index`: Whether to reuse existing non-empty index and to keep the index after evaluation.
+If True the index will be kept after evaluation and no indexing will take place if index has already documents. Otherwise it will be deleted immediately afterwards.
+Defaults to False.
 
 <a id="base.Pipeline.eval"></a>
 
@@ -431,7 +636,7 @@ Here's a sample configuration:
     |        no_ans_boost: -10
     |        model_name_or_path: deepset/roberta-base-squad2
     |    - name: MyESRetriever
-    |      type: ElasticsearchRetriever
+    |      type: BM25Retriever
     |      params:
     |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
     |        custom_query: null
@@ -489,7 +694,7 @@ Here's a sample configuration:
     |           },
     |           {
     |               "name": "MyESRetriever",
-    |               "type": "ElasticsearchRetriever",
+    |               "type": "BM25Retriever",
     |               "params": {
     |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
     |                   "custom_query": None,
@@ -673,7 +878,7 @@ Here's a sample configuration:
     |        no_ans_boost: -10
     |        model_name_or_path: deepset/roberta-base-squad2
     |    - name: MyESRetriever
-    |      type: ElasticsearchRetriever
+    |      type: BM25Retriever
     |      params:
     |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
     |        custom_query: null
@@ -780,8 +985,8 @@ Add a new node to the pipeline.
 method to process incoming data from predecessor node.
 - `name`: The name for the node. It must not contain any dots.
 - `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+edge with a list of documents. It can be represented as ["BM25Retriever"].
 
 In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
 must be specified explicitly as "QueryClassifier.output_2".
@@ -870,7 +1075,7 @@ Here's a sample configuration:
     |        no_ans_boost: -10
     |        model_name_or_path: deepset/roberta-base-squad2
     |    - name: MyESRetriever
-    |      type: ElasticsearchRetriever
+    |      type: BM25Retriever
     |      params:
     |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
     |        custom_query: null

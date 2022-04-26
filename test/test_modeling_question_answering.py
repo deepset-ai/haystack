@@ -64,17 +64,8 @@ def test_span_inference_result_ranking_by_confidence(bert_base_squad2, caplog=No
             questions=Question("Who counted the game among the best ever made?", uid="best_id_ever"),
         )
     ]
-    result = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
 
-    # by default, result is sorted by score and not by confidence
-    assert all(result.prediction[i].score >= result.prediction[i + 1].score for i in range(len(result.prediction) - 1))
-    assert not all(
-        result.prediction[i].confidence >= result.prediction[i + 1].confidence
-        for i in range(len(result.prediction) - 1)
-    )
-
-    # ranking can be adjusted so that result is sorted by confidence
-    bert_base_squad2.model.prediction_heads[0].use_confidence_scores_for_ranking = True
+    # by default, result is sorted by confidence and not by score
     result_ranked_by_confidence = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
     assert all(
         result_ranked_by_confidence.prediction[i].confidence >= result_ranked_by_confidence.prediction[i + 1].confidence
@@ -83,6 +74,18 @@ def test_span_inference_result_ranking_by_confidence(bert_base_squad2, caplog=No
     assert not all(
         result_ranked_by_confidence.prediction[i].score >= result_ranked_by_confidence.prediction[i + 1].score
         for i in range(len(result_ranked_by_confidence.prediction) - 1)
+    )
+
+    # ranking can be adjusted so that result is sorted by score
+    bert_base_squad2.model.prediction_heads[0].use_confidence_scores_for_ranking = False
+    result_ranked_by_score = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
+    assert all(
+        result_ranked_by_score.prediction[i].score >= result_ranked_by_score.prediction[i + 1].score
+        for i in range(len(result_ranked_by_score.prediction) - 1)
+    )
+    assert not all(
+        result_ranked_by_score.prediction[i].confidence >= result_ranked_by_score.prediction[i + 1].confidence
+        for i in range(len(result_ranked_by_score.prediction) - 1)
     )
 
 
@@ -226,6 +229,7 @@ def test_no_duplicate_answer_filtering(bert_base_squad2):
     bert_base_squad2.model.prediction_heads[0].n_best = 5
     bert_base_squad2.model.prediction_heads[0].n_best_per_sample = 5
     bert_base_squad2.model.prediction_heads[0].duplicate_filtering = -1
+    bert_base_squad2.model.prediction_heads[0].no_ans_boost = -100.0
 
     result = bert_base_squad2.inference_from_dicts(dicts=qa_input)
     offset_answer_starts = []

@@ -94,15 +94,15 @@ contains the keys "predictions" and "metrics".
 
 # Module sparse
 
-<a id="sparse.ElasticsearchRetriever"></a>
+<a id="sparse.BM25Retriever"></a>
 
-## ElasticsearchRetriever
+## BM25Retriever
 
 ```python
-class ElasticsearchRetriever(BaseRetriever)
+class BM25Retriever(BaseRetriever)
 ```
 
-<a id="sparse.ElasticsearchRetriever.__init__"></a>
+<a id="sparse.BM25Retriever.__init__"></a>
 
 #### \_\_init\_\_
 
@@ -183,7 +183,7 @@ Defaults to False.
     ```
 - `top_k`: How many documents to return per query.
 
-<a id="sparse.ElasticsearchRetriever.retrieve"></a>
+<a id="sparse.BM25Retriever.retrieve"></a>
 
 #### retrieve
 
@@ -209,7 +209,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 ## ElasticsearchFilterOnlyRetriever
 
 ```python
-class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
+class ElasticsearchFilterOnlyRetriever(BM25Retriever)
 ```
 
 Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
@@ -229,9 +229,9 @@ that are most relevant to the query.
 
 **Arguments**:
 
-- `query`: The query
+- `query`: Has no effect, can pass in empty string
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-- `top_k`: How many documents to return per query.
+- `top_k`: Has no effect, pass in any int or None
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.

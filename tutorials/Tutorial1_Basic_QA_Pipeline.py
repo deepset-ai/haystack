@@ -11,8 +11,8 @@
 
 import logging
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.utils import clean_wiki_text, convert_files_to_docs, fetch_archive_from_http, print_answers, launch_es
-from haystack.nodes import FARMReader, TransformersReader, ElasticsearchRetriever
+from haystack.utils import clean_wiki_text, convert_files_to_dicts, fetch_archive_from_http, print_answers, launch_es
+from haystack.nodes import FARMReader, TransformersReader, BM25Retriever
 
 
 def tutorial1_basic_qa_pipeline():
@@ -75,12 +75,12 @@ def tutorial1_basic_qa_pipeline():
     # They use some simple but fast algorithm.
     # **Here:** We use Elasticsearch's default BM25 algorithm
     # **Alternatives:**
-    # - Customize the `ElasticsearchRetriever`with custom queries (e.g. boosting) and filters
+    # - Customize the `BM25Retriever`with custom queries (e.g. boosting) and filters
     # - Use `EmbeddingRetriever` to find candidate documents based on the similarity of
     #   embeddings (e.g. created via Sentence-BERT)
     # - Use `TfidfRetriever` in combination with a SQL or InMemory Document store for simple prototyping and debugging
 
-    retriever = ElasticsearchRetriever(document_store=document_store)
+    retriever = BM25Retriever(document_store=document_store)
 
     # Alternative: An in-memory TfidfRetriever based on Pandas dataframes for building quick-prototypes
     # with SQLite document store.
