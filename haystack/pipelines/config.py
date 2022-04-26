@@ -171,7 +171,7 @@ def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with
     :raise: `PipelineConfigError` in case of issues.
     """
     pipeline_config = read_pipeline_config_from_yaml(path)
-    validate_config(config=pipeline_config, strict_version_check=strict_version_check)
+    validate_config(pipeline_config=pipeline_config, strict_version_check=strict_version_check)
     logging.debug(f"'{path}' contains valid Haystack pipelines.")
 
 
@@ -198,7 +198,7 @@ def validate_config(
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    validate_schema(config=pipeline_config, strict_version_check=strict_version_check)
+    validate_schema(pipeline_config=pipeline_config, strict_version_check=strict_version_check)
 
     for pipeline_definition in pipeline_config["pipelines"]:
         component_definitions = get_component_definitions(

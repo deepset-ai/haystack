@@ -268,14 +268,14 @@ class Pipeline:
                     raise ValueError(
                         f"Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config '{pipeline_config_name}' first."
                     )
-                client.update_pipeline_config(pipeline_config=config, pipeline_config_name=pipeline_config_name)
+                client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
                 logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
             else:
                 raise ValueError(
                     f"Pipeline config '{pipeline_config_name}' already exists. Set `overwrite=True` to overwrite pipeline config."
                 )
         else:
-            client.save_pipeline_config(pipeline_config=config, pipeline_config_name=pipeline_config_name)
+            client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
 
     @classmethod
