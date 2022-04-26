@@ -12,7 +12,6 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack import __version__
 from haystack.pipelines.config import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml
 from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent, RootNode
