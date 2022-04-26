@@ -37,8 +37,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
                         See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
         :param workspace: workspace name in Deepset Cloud
-        :param index: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline. 
-                      You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones. 
+        :param index: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline.
+                      You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicates documents
