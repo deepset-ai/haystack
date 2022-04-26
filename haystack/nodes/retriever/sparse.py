@@ -138,6 +138,8 @@ class BM25Retriever(BaseRetriever):
         )
         return documents
 
+class ElasticsearchRetriever(BM25Retriever):
+    pass
 
 class ElasticsearchFilterOnlyRetriever(BM25Retriever):
     """
