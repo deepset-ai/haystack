@@ -1352,7 +1352,7 @@ def test_undeploy_on_deepset_cloud_timeout():
         )
 
 
-def test_graph_creation_invalid_edge():
+def test_graph_validation_invalid_edge():
     docstore = MockDocumentStore()
     retriever = DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
@@ -1362,7 +1362,7 @@ def test_graph_creation_invalid_edge():
         pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.output_2"])
 
 
-def test_graph_creation_non_existing_edge():
+def test_graph_validation_non_existing_edge():
     docstore = MockDocumentStore()
     retriever = DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
@@ -1372,7 +1372,7 @@ def test_graph_creation_non_existing_edge():
         pipeline.add_node(name="Retriever", component=retriever, inputs=["DocStore.wrong_edge_label"])
 
 
-def test_graph_creation_invalid_node():
+def test_graph_validation_invalid_node():
     docstore = MockDocumentStore()
     retriever = DummyRetriever(document_store=docstore)
     pipeline = Pipeline()
@@ -1382,12 +1382,21 @@ def test_graph_creation_invalid_node():
         pipeline.add_node(name="Retriever", component=retriever, inputs=["InvalidNode"])
 
 
-def test_graph_creation_invalid_root_node():
+def test_graph_validation_invalid_root_node():
     docstore = MockDocumentStore()
     pipeline = Pipeline()
 
     with pytest.raises(PipelineConfigError, match="Root node 'InvalidNode' is invalid"):
         pipeline.add_node(name="DocStore", component=docstore, inputs=["InvalidNode"])
+
+
+def test_graph_validation_duplicate_node_instance():
+    node = MockNode()
+    pipeline = Pipeline()
+    pipeline.add_node(name="node_a", component=node, inputs=["Query"])
+
+    with pytest.raises(PipelineConfigError, match="You have already added the same instance to the pipeline"):
+        pipeline.add_node(name="node_b", component=node, inputs=["node_a"])
 
 
 def test_parallel_paths_in_pipeline_graph():

@@ -364,6 +364,15 @@ def _add_node_to_pipeline_graph(
         raise PipelineConfigError(
             f"non root nodes cannot be named {' or '.join(VALID_ROOT_NODES)}. Choose another name."
         )
+    
+    # Check if the same instance has already been added to the graph before
+    if instance:
+        existing_node_names = [name for name, data in graph.nodes.items() if data["component"] == instance]
+        if len(existing_node_names) > 0:
+            raise PipelineConfigError(
+                f"Cannot add node '{node['name']}' You have already added the same instance to the pipeline "
+                f"under the name '{existing_node_names[0]}'."
+            )
 
     graph.add_node(node["name"], component=instance, inputs=node["inputs"])
 

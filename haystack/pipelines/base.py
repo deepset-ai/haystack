@@ -346,10 +346,10 @@ class Pipeline:
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
         """
-        component.name = name
         component_definitions = get_component_definitions(config=self.get_config())
 
         # Name any nested component before adding them
+        component.name = name
         component_names = self._get_all_component_names()
         component_names.add(name)
         self._set_sub_component_names(component, component_names=component_names)
