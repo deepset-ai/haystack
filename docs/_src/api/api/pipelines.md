@@ -464,6 +464,96 @@ If True the index will be kept after beir evaluation. Otherwise it will be delet
 Returns a tuple containing the ncdg, map, recall and precision scores.
 Each metric is represented by a dictionary containing the scores for each top_k value.
 
+<a id="base.Pipeline.execute_eval_run"></a>
+
+#### execute\_eval\_run
+
+```python
+@classmethod
+def execute_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evaluation_set_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evaluation_set_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
+```
+
+Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
+
+and subsequently evaluates the query pipeline on the provided labels (forming an evaluation set) using pipeline.eval().
+Parameters and results (metrics and predictions) of the run are tracked by an experiment tracking tool for further analysis.
+You can specify the experiment tracking tool by setting the params `experiment_tracking_tool` and `experiment_tracking_uri`
+or by passing a (custom) tracking head to Tracker.set_tracking_head().
+Note, that `experiment_tracking_tool` only supports `mlflow` currently.
+
+For easier comparison you can pass additional metadata regarding corpus (corpus_meta), evaluation set (evaluation_set_meta) and pipelines (pipeline_meta).
+E.g. you can give them names or ids to identify them across experiment runs.
+
+This method executes an experiment run. Each experiment run is part of at least one experiment.
+An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
+Experiment tracking tools usually share the same concepts of experiments and provide additional functionality to easily compare runs across experiments.
+
+E.g. you can call execute_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
+
+```python
+    |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
+    |       eval_result = Pipeline.execute_eval_run(
+    |           index_pipeline=index_pipeline,
+    |           query_pipeline=query_pipeline,
+    |           evaluation_set_labels=labels,
+    |           corpus_file_paths=file_paths,
+    |           corpus_file_metas=file_metas,
+    |           experiment_tracking_tool="mlflow",
+    |           experiment_tracking_uri="http://localhost:5000",
+    |           experiment_name="my-retriever-experiment",
+    |           experiment_run_name=f"run_{retriever_type}",
+    |           pipeline_meta={"name": f"my-pipeline-{retriever_type}"},
+    |           evaluation_set_meta={"name": "my-evalset"},
+    |           corpus_meta={"name": "my-corpus"}.
+    |           reuse_index=False
+    |       )
+```
+
+**Arguments**:
+
+- `index_pipeline`: The indexing pipeline to use.
+- `query_pipeline`: The query pipeline to evaluate.
+- `evaluation_set_labels`: The labels to evaluate on forming an evalution set.
+- `corpus_file_paths`: The files to be indexed and searched during evaluation forming a corpus.
+- `experiment_name`: The name of the experiment
+- `experiment_run_name`: The name of the experiment run
+- `experiment_tracking_tool`: The experiment tracking tool to be used. Currently we only support "mlflow".
+If left unset the current TrackingHead specified by Tracker.set_tracking_head() will be used.
+- `experiment_tracking_uri`: The uri of the experiment tracking server to be used. Must be specified if experiment_tracking_tool is set.
+You can use deepset's public mlflow server via https://public-mlflow.deepset.ai/.
+Note, that artifact logging (e.g. Pipeline YAML or evaluation result CSVs) are currently not allowed on deepset's public mlflow server as this might expose sensitive data.
+- `corpus_file_metas`: The optional metadata to be stored for each corpus file (e.g. title).
+- `corpus_meta`: Metadata about the corpus to track (e.g. name, date, author, version).
+- `evaluation_set_meta`: Metadata about the evalset to track (e.g. name, date, author, version).
+- `pipeline_meta`: Metadata about the pipelines to track (e.g. name, author, version).
+- `index_params`: The params to use during indexing (see pipeline.run's params).
+- `query_params`: The params to use during querying (see pipeline.run's params).
+- `sas_model_name_or_path`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+More info in the paper: https://arxiv.org/abs/2108.06130
+Models:
+- You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+Not all cross encoders can be used because of different return types.
+If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+- Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+- Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+- Large model for German only: "deepset/gbert-large-sts"
+- `sas_batch_size`: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+- `sas_use_gpu`: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+Falls back to CPU if no GPU is available.
+- `add_isolated_node_eval`: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+- `reuse_index`: Whether to reuse existing non-empty index and to keep the index after evaluation.
+If True the index will be kept after evaluation and no indexing will take place if index has already documents. Otherwise it will be deleted immediately afterwards.
+Defaults to False.
+
 <a id="base.Pipeline.eval"></a>
 
 #### eval

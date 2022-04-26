@@ -21,7 +21,6 @@ from haystack.modeling.utils import (
 )
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
-from haystack.modeling.logger import MLFlowLogger
 from haystack.modeling.model.predictions import QAPred
 
 
@@ -74,8 +73,6 @@ class Inferencer:
         :return: An instance of the Inferencer.
 
         """
-        MLFlowLogger.disable()
-
         # Init device and distributed settings
         self.devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
 

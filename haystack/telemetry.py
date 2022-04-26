@@ -5,34 +5,26 @@
     You can opt-out of sharing usage statistics by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page.
     You can log all events to the local file specified in LOG_PATH for inspection by setting the environment variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to "True".
 """
-from typing import List, Dict, Any, Optional
-
 import os
-import sys
+from typing import Any, Dict, List, Optional
 import uuid
 import logging
-import platform
 from enum import Enum
 from functools import wraps
 from pathlib import Path
 
 import yaml
-import torch
 import posthog
-import transformers
 
-from haystack import __version__
+from haystack.environment import HAYSTACK_EXECUTION_CONTEXT, get_or_create_env_meta_data
 
 posthog.api_key = "phc_F5v11iI2YHkoP6Er3cPILWSrLhY3D6UY4dEMga4eoaa"
 posthog.host = "https://tm.hs.deepset.ai"
 HAYSTACK_TELEMETRY_ENABLED = "HAYSTACK_TELEMETRY_ENABLED"
 HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED = "HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED"
-HAYSTACK_EXECUTION_CONTEXT = "HAYSTACK_EXECUTION_CONTEXT"
-HAYSTACK_DOCKER_CONTAINER = "HAYSTACK_DOCKER_CONTAINER"
 CONFIG_PATH = Path("~/.haystack/config.yaml").expanduser()
 LOG_PATH = Path("~/.haystack/telemetry.log").expanduser()
 
-telemetry_meta_data: Dict[str, Any] = {}
 user_id: Optional[str] = None
 
 logger = logging.getLogger(__name__)
@@ -49,7 +41,7 @@ def print_telemetry_report():
     """
     if is_telemetry_enabled():
         user_id = _get_or_create_user_id()
-        meta_data = _get_or_create_telemetry_meta_data()
+        meta_data = get_or_create_env_meta_data()
         print({**{"user_id": user_id}, **meta_data})
     else:
         print("Telemetry is disabled.")
@@ -152,7 +144,7 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
 
             :param payload: A dictionary containing event meta data, e.g., parameter settings
             """
-            event_properties = {**(NonPrivateParameters.apply_filter(payload)), **_get_or_create_telemetry_meta_data()}
+            event_properties = {**(NonPrivateParameters.apply_filter(payload)), **get_or_create_env_meta_data()}
             if user_id is None:
                 raise RuntimeError("User id was not initialized")
             try:
@@ -222,53 +214,6 @@ def _get_or_create_user_id() -> str:
             user_id = str(uuid.uuid4())
             _write_telemetry_config()
     return user_id
-
-
-def _get_or_create_telemetry_meta_data() -> Dict[str, Any]:
-    """
-    Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
-    """
-    global telemetry_meta_data  # pylint: disable=global-statement
-    if not telemetry_meta_data:
-        telemetry_meta_data = {
-            "os_version": platform.release(),
-            "os_family": platform.system(),
-            "os_machine": platform.machine(),
-            "python_version": platform.python_version(),
-            "haystack_version": __version__,
-            "transformers_version": transformers.__version__,
-            "torch_version": torch.__version__,
-            "torch_cuda_version": torch.version.cuda if torch.cuda.is_available() else 0,
-            "n_gpu": torch.cuda.device_count() if torch.cuda.is_available() else 0,
-            "n_cpu": os.cpu_count(),
-            "context": os.environ.get(HAYSTACK_EXECUTION_CONTEXT),
-            "execution_env": _get_execution_environment(),
-        }
-    return telemetry_meta_data
-
-
-def _get_execution_environment():
-    """
-    Identifies the execution environment that Haystack is running in.
-    Options are: colab notebook, kubernetes, CPU/GPU docker container, test environment, jupyter notebook, python script
-    """
-    if os.environ.get("CI", "False").lower() == "true":
-        execution_env = "ci"
-    elif "google.colab" in sys.modules:
-        execution_env = "colab"
-    elif "KUBERNETES_SERVICE_HOST" in os.environ:
-        execution_env = "kubernetes"
-    elif HAYSTACK_DOCKER_CONTAINER in os.environ:
-        execution_env = os.environ.get(HAYSTACK_DOCKER_CONTAINER)
-    # check if pytest is imported
-    elif "pytest" in sys.modules:
-        execution_env = "test"
-    else:
-        try:
-            execution_env = get_ipython().__class__.__name__  # pylint: disable=undefined-variable
-        except NameError:
-            execution_env = "script"
-    return execution_env
 
 
 def _read_telemetry_config():

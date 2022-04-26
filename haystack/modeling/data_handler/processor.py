@@ -31,7 +31,7 @@ from haystack.modeling.data_handler.samples import (
     offset_to_token_idx_vecorized,
 )
 from haystack.modeling.data_handler.input_features import sample_to_features_text
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 
 DOWNSTREAM_TASK_MAP = {
@@ -359,7 +359,7 @@ class Processor(ABC):
         for name in names:
             value = getattr(self, name)
             params.update({name: str(value)})
-        MlLogger.log_params(params)
+        tracker.track_params(params)
 
 
 class SquadProcessor(Processor):

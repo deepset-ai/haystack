@@ -563,3 +563,25 @@ def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_forma
             "You may need to set 'model_format='sentence_transformers' to ensure correct loading of model."
             in caplog.text
         )
+
+
+@pytest.mark.parametrize("retriever", ["es_filter_only"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_es_filter_only(document_store, retriever):
+    docs = [
+        Document(content="Doc1", meta={"f1": "0"}),
+        Document(content="Doc2", meta={"f1": "0"}),
+        Document(content="Doc3", meta={"f1": "0"}),
+        Document(content="Doc4", meta={"f1": "0"}),
+        Document(content="Doc5", meta={"f1": "0"}),
+        Document(content="Doc6", meta={"f1": "0"}),
+        Document(content="Doc7", meta={"f1": "1"}),
+        Document(content="Doc8", meta={"f1": "0"}),
+        Document(content="Doc9", meta={"f1": "0"}),
+        Document(content="Doc10", meta={"f1": "0"}),
+        Document(content="Doc11", meta={"f1": "0"}),
+        Document(content="Doc12", meta={"f1": "0"}),
+    ]
+    document_store.write_documents(docs)
+    retrieved_docs = retriever.retrieve(query="", filters={"f1": ["0"]})
+    assert len(retrieved_docs) == 11
