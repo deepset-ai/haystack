@@ -138,6 +138,7 @@ class BM25Retriever(BaseRetriever):
         )
         return documents
 
+
 class ElasticsearchRetriever(BM25Retriever):
     def __init__(
         self,
@@ -148,6 +149,7 @@ class ElasticsearchRetriever(BM25Retriever):
     ):
         logger.warn("This class is now deprecated. Please use the BM25Retriever instead")
         super().__init__(document_store, top_k, all_terms_must_match, custom_query)
+
 
 class ElasticsearchFilterOnlyRetriever(BM25Retriever):
     """
