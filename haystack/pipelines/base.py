@@ -177,7 +177,7 @@ class Pipeline:
 
         del pipeline_config["name"]  # Would fail validation otherwise
         pipeline = cls.load_from_config(
-            config=pipeline_config,
+            pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
         )
@@ -268,14 +268,14 @@ class Pipeline:
                     raise ValueError(
                         f"Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config '{pipeline_config_name}' first."
                     )
-                client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
+                client.update_pipeline_config(pipeline_config=config, pipeline_config_name=pipeline_config_name)
                 logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
             else:
                 raise ValueError(
                     f"Pipeline config '{pipeline_config_name}' already exists. Set `overwrite=True` to overwrite pipeline config."
                 )
         else:
-            client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
+            client.save_pipeline_config(pipeline_config=config, pipeline_config_name=pipeline_config_name)
             logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
 
     @classmethod
@@ -353,7 +353,7 @@ class Pipeline:
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
         """
-        component_definitions = get_component_definitions(config=self.get_config())
+        component_definitions = get_component_definitions(pipeline_config=self.get_config())
 
         # Name any nested component before adding them
         component.name = name
@@ -1144,7 +1144,7 @@ class Pipeline:
 
         config = read_pipeline_config_from_yaml(path)
         return cls.load_from_config(
-            config=config,
+            pipeline_config=config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
             strict_version_check=strict_version_check,
@@ -1207,9 +1207,9 @@ class Pipeline:
         validate_config(pipeline_config, strict_version_check=strict_version_check)
         pipeline = cls()
 
-        pipeline_definition = get_pipeline_definition(config=pipeline_config, pipeline_name=pipeline_name)
+        pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
-            config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
+            pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
         )
         components: Dict[str, BaseComponent] = {}
         for node_config in pipeline_definition["nodes"]:

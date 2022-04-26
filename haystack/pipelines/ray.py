@@ -71,9 +71,9 @@ class RayPipeline(Pipeline):
         address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
     ):
-        pipeline_definition = get_pipeline_definition(config=pipeline_config, pipeline_name=pipeline_name)
+        pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
-            config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
+            pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
         )
         pipeline = cls(address=address, ray_args=ray_args or {})
 
@@ -162,7 +162,7 @@ class RayPipeline(Pipeline):
         """
         pipeline_config = read_pipeline_config_from_yaml(path)
         return RayPipeline.load_from_config(
-            config=pipeline_config,
+            pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
             address=address,

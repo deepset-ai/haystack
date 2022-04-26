@@ -53,9 +53,9 @@ def generate_code(
     """
     validate_schema(pipeline_config)
 
-    component_definitions = get_component_definitions(config=pipeline_config, overwrite_with_env_variables=False)
+    component_definitions = get_component_definitions(pipeline_config=pipeline_config, overwrite_with_env_variables=False)
     component_variable_names = {name: camel_to_snake_case(name) for name in component_definitions.keys()}
-    pipeline_definition = get_pipeline_definition(config=pipeline_config, pipeline_name=pipeline_name)
+    pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
     component_dependency_graph = build_component_dependency_graph(
         pipeline_definition=pipeline_definition, component_definitions=component_definitions
     )
