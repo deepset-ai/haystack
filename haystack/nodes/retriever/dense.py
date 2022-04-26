@@ -1215,7 +1215,8 @@ class EmbeddingRetriever(BaseRetriever):
         for doc in docs:
             if doc.content_type == "table":
                 doc = deepcopy(doc)
-                doc.content = doc.content.to_csv()
+                doc.content = doc.content.to_csv() # type: ignore
+                # necessary to ignore type as we know that doc.content must be a DataFrame, but mypy doesn't
                 doc.content_type = "text"
             linearized_docs.append(doc)
         return linearized_docs
