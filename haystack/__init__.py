@@ -1,8 +1,9 @@
 # pylint: disable=wrong-import-position,wrong-import-order
 
-from ast import Import
 from typing import Union
 from types import ModuleType
+
+from haystack.nodes.retriever.sparse import BM25Retriever
 
 try:
     from importlib import metadata
@@ -154,6 +155,8 @@ setattr(haystack, "reader", DeprecatedModule(reader))
 setattr(haystack, "retriever", DeprecatedModule(retriever))
 setattr(haystack, "summarizer", DeprecatedModule(summarizer))
 setattr(haystack, "translator", DeprecatedModule(translator))
+setattr(haystack.nodes, "ElasticsearchRetriver", DeprecatedModule(BM25Retriever))
+setattr(haystack.nodes.retriever, "ElasticsearchRetriver", DeprecatedModule(BM25Retriever))
 sys.modules["haystack.document_store"] = DeprecatedModule(document_stores)
 sys.modules["haystack.connector"] = DeprecatedModule(connector)
 sys.modules["haystack.generator"] = DeprecatedModule(generator)
