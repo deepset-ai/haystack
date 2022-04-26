@@ -9,6 +9,7 @@ import os
 from typing import Any, Dict, List, Optional
 import uuid
 import logging
+from logging import CRITICAL
 from enum import Enum
 from functools import wraps
 from pathlib import Path
@@ -28,6 +29,10 @@ LOG_PATH = Path("~/.haystack/telemetry.log").expanduser()
 user_id: Optional[str] = None
 
 logger = logging.getLogger(__name__)
+
+# disable posthog logging
+logging.getLogger("posthog").setLevel(CRITICAL)
+logging.getLogger("backoff").setLevel(CRITICAL)
 
 
 class TelemetryFileType(Enum):
