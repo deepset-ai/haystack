@@ -188,7 +188,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if not self.weaviate_client.schema.contains(schema):
             self.weaviate_client.schema.create(schema)
         elif recreate_index and index is not None:
-            self.delete_index(index)
+            self._delete_index(index)
             self.weaviate_client.schema.create(schema)
 
     def _convert_weaviate_result_to_document(self, result: dict, return_embedding: bool) -> Document:
@@ -1220,7 +1220,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        self.weaviate_client.schema.delete_class(index)
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
+        index = self._sanitize_index_name(index) or index
+        if len([c for c in self.weaviate_client.schema.get()["classes"] if c["class"] == index]) > 0:
+            self.weaviate_client.schema.delete_class(index)
 
     def delete_labels(self):
         """

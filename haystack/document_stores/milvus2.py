@@ -191,7 +191,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         custom_fields = self.custom_fields or []
 
         if recreate_index:
-            self.delete_index(index)
+            self._delete_index(index)
 
         has_collection = utility.has_collection(collection_name=index)
         if not has_collection:
@@ -496,6 +496,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
         if utility.has_collection(collection_name=index):
             utility.drop_collection(collection_name=index)
         super().delete_index(index)

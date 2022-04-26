@@ -731,8 +731,14 @@ def test_labels(document_store: BaseDocumentStore):
     assert label == labels[0]
 
     # different index
-    labels = document_store.get_all_labels(index="empty_index")
+    document_store.write_labels([label], index="another_index")
+    labels = document_store.get_all_labels(index="another_index")
+    assert len(labels) == 1
+    document_store.delete_labels(index="another_index")
+    labels = document_store.get_all_labels(index="another_index")
     assert len(labels) == 0
+    labels = document_store.get_all_labels()
+    assert len(labels) == 1
 
     # write second label + duplicate
     label2 = Label(
@@ -898,12 +904,6 @@ def test_multilabel(document_store: BaseDocumentStore):
     assert label_counts == set([2, 1, 1])
 
     assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
-
-    # make sure there' nothing stored in another index
-    multi_labels = document_store.get_all_labels_aggregated()
-    assert len(multi_labels) == 0
-    docs = document_store.get_all_documents()
-    assert len(docs) == 0
 
 
 # exclude weaviate because it does not support storing labels
