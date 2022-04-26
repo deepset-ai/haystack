@@ -3997,8 +3997,9 @@ skip: Ignore the duplicates documents
 overwrite: Update any existing documents with the same ID when adding documents.
 fail: an error is raised if the document ID of the document being added already
 exists.
-- `api_endpoint`: The URL of the Deepset Cloud API. Usually this is: "https://api.cloud.deepset.ai/api/v1".
+- `api_endpoint`: The URL of the Deepset Cloud API.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defaults to "https://api.cloud.deepset.ai/api/v1".
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
 - `label_index`: index for the evaluation set interface
