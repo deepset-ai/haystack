@@ -210,7 +210,7 @@ def test_eval_pipeline(document_store, reader, retriever):
     p.add_node(component=eval_reader_cross, name="EvalAnswers_cross", inputs=["QAReader"])
     p.add_node(component=eval_reader_vanila, name="EvalAnswers_vanilla", inputs=["QAReader"])
     for l in labels:
-        res = p.run(query=l.query, labels=l, params={"ESRetriever": {"index": "haystack_test_eval_document"}})
+        res = p.run(query=l.query, labels=l)
     assert eval_retriever.recall == 1.0
     assert round(eval_reader.top_k_f1, 4) == 0.8333
     assert eval_reader.top_k_em == 0.5
