@@ -9,14 +9,7 @@ from haystack.utils import (
 from pprint import pprint
 from haystack import Pipeline
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes import (
-    ElasticsearchRetriever,
-    EmbeddingRetriever,
-    FARMReader,
-    RAGenerator,
-    BaseComponent,
-    JoinDocuments,
-)
+from haystack.nodes import BM25Retriever, EmbeddingRetriever, FARMReader, RAGenerator, BaseComponent, JoinDocuments
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline, GenerativeQAPipeline
 
 
@@ -36,7 +29,7 @@ def tutorial11_pipelines():
     document_store.write_documents(got_docs)
 
     # Initialize Sparse retriever
-    es_retriever = ElasticsearchRetriever(document_store=document_store)
+    es_retriever = BM25Retriever(document_store=document_store)
 
     # Initialize dense retriever
     embedding_retriever = EmbeddingRetriever(

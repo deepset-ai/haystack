@@ -54,7 +54,7 @@ from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
+from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, BM25Retriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
@@ -622,7 +622,7 @@ def get_retriever(retriever_type, document_store):
             embed_title=True,
         )
     elif retriever_type == "elasticsearch":
-        retriever = ElasticsearchRetriever(document_store=document_store)
+        retriever = BM25Retriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
         retriever = ElasticsearchFilterOnlyRetriever(document_store=document_store)
     elif retriever_type == "table_text_retriever":
