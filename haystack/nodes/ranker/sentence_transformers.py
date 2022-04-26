@@ -28,7 +28,7 @@ class SentenceTransformersRanker(BaseRanker):
 
     Usage example:
     ...
-    retriever = ElasticsearchRetriever(document_store=document_store)
+    retriever = BM25Retriever(document_store=document_store)
     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
     p = Pipeline()
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
