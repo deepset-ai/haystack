@@ -195,11 +195,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 "Try the OpenSearchDocumentStore instead."
             )
         if recreate_index:
-            self.delete_index(index)
-            self.delete_index(label_index)
-            self._create_document_index(index)
-            self._create_label_index(label_index)
-        elif create_index:
+            self._delete_index(index)
+            self._delete_index(label_index)
+
+        if create_index or recreate_index:
             self._create_document_index(index)
             self._create_label_index(label_index)
 
@@ -1588,8 +1587,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        self.client.indices.delete(index=index, ignore=[400, 404])
-        logger.debug(f"deleted elasticsearch index {index}")
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
+        if self.client.indices.exists(index):
+            self.client.indices.delete(index=index, ignore=[400, 404])
+            logger.info(f"Index '{index}' deleted.")
 
 
 class OpenSearchDocumentStore(ElasticsearchDocumentStore):

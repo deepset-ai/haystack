@@ -895,6 +895,11 @@
               "title": "Consistency Level",
               "default": 0,
               "type": "integer"
+            },
+            "recreate_index": {
+              "title": "Recreate Index",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -1420,6 +1425,11 @@
               "title": "Duplicate Documents",
               "default": "overwrite",
               "type": "string"
+            },
+            "recreate_index": {
+              "title": "Recreate Index",
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
@@ -1611,6 +1621,11 @@
               "title": "Duplicate Documents",
               "default": "overwrite",
               "type": "string"
+            },
+            "recreate_index": {
+              "title": "Recreate Index",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,

@@ -664,7 +664,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param index: The name of the index to delete.
         :return: None
         """
-        self.delete_documents(index)
+        SQLDocumentStore.delete_documents(self, index)
 
     def delete_labels(
         self,
