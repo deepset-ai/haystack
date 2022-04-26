@@ -113,7 +113,14 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         # Initialize dictionary of index connections
         self.pinecone_indexes: Dict[str, pinecone.Index] = {}
+        self.return_embedding = return_embedding
+        self.embedding_field = embedding_field
+
+        self.progress_bar = progress_bar
+
         clean_index = self._sanitize_index_name(index)
+        super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
+
         if pinecone_index:
             self.pinecone_indexes[clean_index] = pinecone_index
         else:
@@ -125,13 +132,6 @@ class PineconeDocumentStore(SQLDocumentStore):
                 shards=self.shards,
                 recreate_index=recreate_index,
             )
-
-        self.return_embedding = return_embedding
-        self.embedding_field = embedding_field
-
-        self.progress_bar = progress_bar
-
-        super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
 
     def _sanitize_index_name(self, index: str) -> str:
         return index.replace("_", "-").lower()

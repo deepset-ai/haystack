@@ -496,7 +496,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        utility.drop_collection(collection_name=index)
+        if utility.has_collection(collection_name=index):
+            utility.drop_collection(collection_name=index)
         super().delete_index(index)
 
     def get_all_documents_generator(
