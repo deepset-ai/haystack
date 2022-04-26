@@ -25,7 +25,7 @@ VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/\\.:]+$")
 VALID_ROOT_NODES = ["Query", "File"]
 
 
-def get_pipeline_definition(config: Dict[str, Any], pipeline_name: Optional[str] = None) -> Dict[str, Any]:
+def get_pipeline_definition(pipeline_config: Dict[str, Any], pipeline_name: Optional[str] = None) -> Dict[str, Any]:
     """
     Get the definition of Pipeline from a given pipeline config. If the config contains more than one Pipeline,
     then the pipeline_name must be supplied.
@@ -34,11 +34,11 @@ def get_pipeline_definition(config: Dict[str, Any], pipeline_name: Optional[str]
     :param pipeline_name: name of the Pipeline.
     """
     if pipeline_name is None:
-        if len(config["pipelines"]) != 1:
+        if len(pipeline_config["pipelines"]) != 1:
             raise PipelineConfigError("The YAML contains multiple pipelines. Please specify the pipeline name to load.")
-        return config["pipelines"][0]
+        return pipeline_config["pipelines"][0]
 
-    matching_pipelines = [p for p in config["pipelines"] if p["name"] == pipeline_name]
+    matching_pipelines = [p for p in pipeline_config["pipelines"] if p["name"] == pipeline_name]
 
     if len(matching_pipelines) == 1:
         return matching_pipelines[0]
@@ -46,7 +46,7 @@ def get_pipeline_definition(config: Dict[str, Any], pipeline_name: Optional[str]
     if not matching_pipelines:
         raise PipelineConfigError(
             f"Cannot find any pipeline with name '{pipeline_name}' declared in the YAML file. "
-            f"Existing pipelines: {[p['name'] for p in config['pipelines']]}"
+            f"Existing pipelines: {[p['name'] for p in pipeline_config['pipelines']]}"
         )
     raise PipelineConfigError(
         f"There's more than one pipeline called '{pipeline_name}' in the YAML file. "
@@ -54,7 +54,7 @@ def get_pipeline_definition(config: Dict[str, Any], pipeline_name: Optional[str]
     )
 
 
-def get_component_definitions(config: Dict[str, Any], overwrite_with_env_variables: bool = True) -> Dict[str, Any]:
+def get_component_definitions(pipeline_config: Dict[str, Any], overwrite_with_env_variables: bool = True) -> Dict[str, Any]:
     """
     Returns the definitions of all components from a given pipeline config.
 
@@ -65,7 +65,7 @@ def get_component_definitions(config: Dict[str, Any], overwrite_with_env_variabl
                                          `_` sign must be used to specify nested hierarchical properties.
     """
     component_definitions = {}  # definitions of each component from the YAML.
-    raw_component_definitions = copy.deepcopy(config["components"])
+    raw_component_definitions = copy.deepcopy(pipeline_config["components"])
     for component_definition in raw_component_definitions:
         if overwrite_with_env_variables:
             _overwrite_with_env_variables(component_definition)
@@ -176,7 +176,7 @@ def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with
 
 
 def validate_config(
-    config: Dict[str, Any], strict_version_check: bool = False, overwrite_with_env_variables: bool = True
+    pipeline_config: Dict[str, Any], strict_version_check: bool = False, overwrite_with_env_variables: bool = True
 ):
     """
     Ensures that the given YAML file can be loaded without issues.
@@ -189,7 +189,7 @@ def validate_config(
     - The content of each node's parameter (except for their type),
       as this method does NOT load the nodes during the validation.
 
-    :param config: the configuration to validate (from reading up a YAML file or from .get_config())
+    :param pipeline_config: the configuration to validate (from reading up a YAML file or from .get_config())
     :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
     :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
                                          to change index name param for an ElasticsearchDocumentStore, an env
@@ -198,16 +198,16 @@ def validate_config(
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    validate_schema(config=config, strict_version_check=strict_version_check)
+    validate_schema(config=pipeline_config, strict_version_check=strict_version_check)
 
-    for pipeline_definition in config["pipelines"]:
+    for pipeline_definition in pipeline_config["pipelines"]:
         component_definitions = get_component_definitions(
-            config=config, overwrite_with_env_variables=overwrite_with_env_variables
+            pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
         )
         validate_pipeline_graph(pipeline_definition=pipeline_definition, component_definitions=component_definitions)
 
 
-def validate_schema(config: Dict, strict_version_check: bool = False) -> None:
+def validate_schema(pipeline_config: Dict, strict_version_check: bool = False) -> None:
     """
     Check that the YAML abides the JSON schema, so that every block
     of the pipeline configuration file contains all required information
@@ -221,10 +221,10 @@ def validate_schema(config: Dict, strict_version_check: bool = False) -> None:
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    validate_config_strings(config)
+    validate_config_strings(pipeline_config)
 
     # Check for the version manually (to avoid validation errors)
-    pipeline_version = config.get("version", None)
+    pipeline_version = pipeline_config.get("version", None)
 
     if pipeline_version != __version__:
         if strict_version_check:
@@ -254,7 +254,7 @@ def validate_schema(config: Dict, strict_version_check: bool = False) -> None:
     loaded_custom_nodes = []
     while True:
         try:
-            Draft7Validator(schema).validate(instance=config)
+            Draft7Validator(schema).validate(instance=pipeline_config)
             break
 
         except ValidationError as validation:

@@ -946,7 +946,7 @@ class Pipeline:
     @classmethod
     def load_from_config(
         cls,
-        config: Dict,
+        pipeline_config: Dict,
         pipeline_name: Optional[str] = None,
         overwrite_with_env_variables: bool = True,
         strict_version_check: bool = False,
@@ -997,12 +997,12 @@ class Pipeline:
                                              `_` sign must be used to specify nested hierarchical properties.
         :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise).
         """
-        validate_config(config, strict_version_check=strict_version_check)
+        validate_config(pipeline_config, strict_version_check=strict_version_check)
         pipeline = cls()
 
-        pipeline_definition = get_pipeline_definition(config=config, pipeline_name=pipeline_name)
+        pipeline_definition = get_pipeline_definition(config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
-            config=config, overwrite_with_env_variables=overwrite_with_env_variables
+            config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
         )
         components: Dict[str, BaseComponent] = {}
         for node_config in pipeline_definition["nodes"]:
