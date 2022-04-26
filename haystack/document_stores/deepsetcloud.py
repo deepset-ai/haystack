@@ -9,7 +9,7 @@ from haystack.schema import Document, Label
 from haystack.utils import DeepsetCloud
 
 
-DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1"  # TODO
+DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
 
 logger = logging.getLogger(__name__)
 
@@ -35,18 +35,20 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param workspace: workspace in Deepset Cloud
-        :param index: index to access within the Deepset Cloud workspace
+                        See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
+        :param workspace: workspace name in Deepset Cloud
+        :param index: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline. 
+                      You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones. 
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param api_endpoint: The URL of the Deepset Cloud API.
+        :param api_endpoint: The URL of the Deepset Cloud API. Usually this is: "https://api.cloud.deepset.ai/api/v1".
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
         :param label_index: index for the evaluation set interface
 
         :param return_embedding: To return document embedding.
