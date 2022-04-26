@@ -1,3 +1,4 @@
+from haystack import DeprecatedModule
 from haystack.utils.import_utils import safe_import
 
 from haystack.nodes.base import BaseComponent
@@ -30,7 +31,6 @@ from haystack.nodes.retriever import (
     BaseRetriever,
     DensePassageRetriever,
     EmbeddingRetriever,
-    ElasticsearchRetriever,
     BM25Retriever,
     ElasticsearchFilterOnlyRetriever,
     TfidfRetriever,
@@ -41,3 +41,4 @@ from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
 
 Crawler = safe_import("haystack.nodes.connector.crawler", "Crawler", "crawler")  # Has optional dependencies
+ElasticsearchRetriever = DeprecatedModule(BM25Retriever)

@@ -104,12 +104,6 @@ try:
 except ImportError:
     pass
 
-elasticsearch_retriever: Union[ModuleType, None] = None
-try:
-    from haystack.nodes.retriever import ElasticsearchRetriever as elasticsearch_retriever
-except ImportError:
-    pass
-
 from haystack.modeling.evaluation import eval
 from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogger
 from haystack.nodes.other import JoinDocuments, Docs2Answers, JoinAnswers, RouteDocuments
@@ -179,9 +173,6 @@ sys.modules["haystack.translator"] = DeprecatedModule(translator)
 if graph_retriever:
     setattr(haystack, "graph_retriever", DeprecatedModule(graph_retriever))
     sys.modules["haystack.graph_retriever"] = DeprecatedModule(graph_retriever)
-if elasticsearch_retriever:
-    setattr(haystack, "elasticsearch_retriever", DeprecatedModule(elasticsearch_retriever))
-    sys.modules["haystack.elasticsearch_retriever"] = DeprecatedModule(elasticsearch_retriever)
 
 # To be imported from modules, classes need only to be set as attributes,
 # they don't need to be present in sys.modules too.

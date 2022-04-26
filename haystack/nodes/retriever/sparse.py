@@ -138,9 +138,6 @@ class BM25Retriever(BaseRetriever):
         )
         return documents
 
-class ElasticsearchRetriever(BM25Retriever):
-    pass
-
 class ElasticsearchFilterOnlyRetriever(BM25Retriever):
     """
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
