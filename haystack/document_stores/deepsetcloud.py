@@ -9,8 +9,6 @@ from haystack.schema import Document, Label
 from haystack.utils import DeepsetCloud
 
 
-DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
-
 logger = logging.getLogger(__name__)
 
 
