@@ -901,8 +901,8 @@ class Pipeline(BasePipeline):
             )
             tracker.track_params(
                 {
-                    "dataset_label_count": len(evaluation_set_labels),
-                    "dataset": evaluation_set_meta,
+                    "evaluation_set_label_count": len(evaluation_set_labels),
+                    "evaluation_set": evaluation_set_meta,
                     "sas_model_name_or_path": sas_model_name_or_path,
                     "sas_batch_size": sas_batch_size,
                     "sas_use_gpu": sas_use_gpu,
