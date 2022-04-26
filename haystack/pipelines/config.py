@@ -54,7 +54,9 @@ def get_pipeline_definition(pipeline_config: Dict[str, Any], pipeline_name: Opti
     )
 
 
-def get_component_definitions(pipeline_config: Dict[str, Any], overwrite_with_env_variables: bool = True) -> Dict[str, Any]:
+def get_component_definitions(
+    pipeline_config: Dict[str, Any], overwrite_with_env_variables: bool = True
+) -> Dict[str, Any]:
     """
     Returns the definitions of all components from a given pipeline config.
 
