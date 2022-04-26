@@ -3,8 +3,6 @@
 from typing import Union
 from types import ModuleType
 
-from haystack.nodes.retriever.sparse import BM25Retriever
-
 try:
     from importlib import metadata
 except (ModuleNotFoundError, ImportError):
@@ -61,7 +59,6 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
             return getattr(mod, attr)
 
     return DeprecationWrapper()
-
 
 # All modules to be aliased need to be imported here
 
@@ -154,8 +151,6 @@ setattr(haystack, "reader", DeprecatedModule(reader))
 setattr(haystack, "retriever", DeprecatedModule(retriever))
 setattr(haystack, "summarizer", DeprecatedModule(summarizer))
 setattr(haystack, "translator", DeprecatedModule(translator))
-setattr(haystack.nodes, "ElasticsearchRetriver", DeprecatedModule(BM25Retriever))
-setattr(haystack.nodes.retriever, "ElasticsearchRetriver", DeprecatedModule(BM25Retriever))
 sys.modules["haystack.document_store"] = DeprecatedModule(document_stores)
 sys.modules["haystack.connector"] = DeprecatedModule(connector)
 sys.modules["haystack.generator"] = DeprecatedModule(generator)

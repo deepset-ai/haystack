@@ -138,6 +138,17 @@ class BM25Retriever(BaseRetriever):
         )
         return documents
 
+class ElasticsearchRetriever(BM25Retriever):
+    def __init__(
+        self,
+        document_store: KeywordDocumentStore,
+        top_k: int = 10,
+        all_terms_must_match: bool = False,
+        custom_query: Optional[str] = None,
+    ):
+        logger.warn("This class is now deprecated. Please use the BM25Retriever instead")
+        super().__init__(document_store, top_k, all_terms_must_match, custom_query)
+
 class ElasticsearchFilterOnlyRetriever(BM25Retriever):
     """
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
