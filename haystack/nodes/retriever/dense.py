@@ -2,6 +2,7 @@ from typing import List, Dict, Union, Optional
 
 import logging
 from pathlib import Path
+from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -1199,4 +1200,22 @@ class EmbeddingRetriever(BaseRetriever):
         :param docs: List of documents to embed
         :return: Embeddings, one per input document
         """
+        docs = self.linearize_tables(docs) # linearize tables
         return self.embedding_encoder.embed_documents(docs)
+    
+    def linearize_tables(self, docs: List[Document]) -> List[Document]:
+        """
+        Turns table documents into text documents by representing the table in csv format.
+        This allows us to use text embedding models for table retrieval.
+
+        :param docs: List of documents to linearize. If the document is not a table, it is returned as is.
+        :return: List of documents with linearized tables or original documents if they are not tables.
+        """
+        linearized_docs = []
+        for doc in docs:
+            if doc.content_type == "table":
+                doc = deepcopy(doc)
+                doc.content = doc.content.to_csv()
+                doc.content_type = "text"
+            linearized_docs.append(doc)
+        return linearized_docs
