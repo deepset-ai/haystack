@@ -128,7 +128,8 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         :param recreate_index: If set to True, an existing Milvus index will be deleted and a new one will be
             created using the config you are using for initialization. Be aware that all data in the old index will be
-            lost if you choose to recreate the index.
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
         """
         super().__init__(
             url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
@@ -192,6 +193,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         if recreate_index:
             self._delete_index(index)
+            super().delete_labels()
 
         has_collection = utility.has_collection(collection_name=index)
         if not has_collection:

@@ -83,7 +83,8 @@ class PineconeDocumentStore(SQLDocumentStore):
                 - `"fail"`: An error is raised if the document ID of the document being added already exists.
         :param recreate_index: If set to True, an existing Pinecone index will be deleted and a new one will be
             created using the config you are using for initialization. Be aware that all data in the old index will be
-            lost if you choose to recreate the index.
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
         """
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
@@ -154,6 +155,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         if recreate_index:
             self.delete_index(index)
+            super().delete_labels()
 
         # Skip if already exists
         if index in self.pinecone_indexes.keys():
