@@ -67,9 +67,9 @@ def tutorial15_tableqa():
     # Add table embeddings to the tables in DocumentStore
     document_store.update_embeddings(retriever=retriever)
 
-    ## Alternative: ElasticsearchRetriever
-    # from haystack.nodes.retriever import ElasticsearchRetriever
-    # retriever = ElasticsearchRetriever(document_store=document_store)
+    ## Alternative: BM25Retriever
+    # from haystack.nodes.retriever import BM25Retriever
+    # retriever = BM25Retriever(document_store=document_store)
 
     # Try the Retriever
     from haystack.utils import print_documents

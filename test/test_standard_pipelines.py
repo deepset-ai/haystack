@@ -9,7 +9,7 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.pipelines import Pipeline, FAQPipeline, DocumentSearchPipeline, RootNode, MostSimilarDocumentsPipeline
 from haystack.nodes import (
     DensePassageRetriever,
-    ElasticsearchRetriever,
+    BM25Retriever,
     SklearnQueryClassifier,
     TransformersQueryClassifier,
     JoinDocuments,
@@ -111,7 +111,7 @@ def test_most_similar_documents_pipeline(retriever, document_store):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
 def test_join_merge_no_weights(document_store_dot_product_with_docs):
-    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    es = BM25Retriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
@@ -134,7 +134,7 @@ def test_join_merge_no_weights(document_store_dot_product_with_docs):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
 def test_join_merge_with_weights(document_store_dot_product_with_docs):
-    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    es = BM25Retriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
@@ -158,7 +158,7 @@ def test_join_merge_with_weights(document_store_dot_product_with_docs):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
 def test_join_concatenate(document_store_dot_product_with_docs):
-    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    es = BM25Retriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
@@ -181,7 +181,7 @@ def test_join_concatenate(document_store_dot_product_with_docs):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
 def test_join_concatenate_with_topk(document_store_dot_product_with_docs):
-    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    es = BM25Retriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
@@ -207,7 +207,7 @@ def test_join_concatenate_with_topk(document_store_dot_product_with_docs):
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_join_with_reader(document_store_dot_product_with_docs, reader):
-    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    es = BM25Retriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
@@ -232,7 +232,7 @@ def test_join_with_reader(document_store_dot_product_with_docs, reader):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
 def test_join_with_rrf(document_store_dot_product_with_docs):
-    es = ElasticsearchRetriever(document_store=document_store_dot_product_with_docs)
+    es = BM25Retriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
         query_embedding_model="facebook/dpr-question_encoder-single-nq-base",

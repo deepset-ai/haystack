@@ -9,7 +9,7 @@ from haystack.utils import (
 from haystack.pipelines import Pipeline
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes import (
-    ElasticsearchRetriever,
+    BM25Retriever,
     EmbeddingRetriever,
     FARMReader,
     TransformersQueryClassifier,
@@ -34,7 +34,7 @@ def tutorial14_query_classifier():
     document_store.write_documents(got_docs)
 
     # Initialize Sparse retriever
-    es_retriever = ElasticsearchRetriever(document_store=document_store)
+    es_retriever = BM25Retriever(document_store=document_store)
 
     # Initialize dense retriever
     embedding_retriever = EmbeddingRetriever(

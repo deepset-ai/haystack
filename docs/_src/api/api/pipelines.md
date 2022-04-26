@@ -104,7 +104,7 @@ Here's a sample configuration:
     |           },
     |           {
     |               "name": "MyESRetriever",
-    |               "type": "ElasticsearchRetriever",
+    |               "type": "BM25Retriever",
     |               "params": {
     |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
     |                   "custom_query": None,
@@ -161,7 +161,7 @@ Here's a sample configuration:
     |        no_ans_boost: -10
     |        model_name_or_path: deepset/roberta-base-squad2
     |    - name: MyESRetriever
-    |      type: ElasticsearchRetriever
+    |      type: BM25Retriever
     |      params:
     |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
     |        custom_query: null
@@ -374,8 +374,8 @@ Add a new node to the pipeline.
 method to process incoming data from predecessor node.
 - `name`: The name for the node. It must not contain any dots.
 - `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+edge with a list of documents. It can be represented as ["BM25Retriever"].
 
 In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
 must be specified explicitly as "QueryClassifier.output_2".
@@ -672,7 +672,7 @@ Here's a sample configuration:
     |        no_ans_boost: -10
     |        model_name_or_path: deepset/roberta-base-squad2
     |    - name: MyESRetriever
-    |      type: ElasticsearchRetriever
+    |      type: BM25Retriever
     |      params:
     |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
     |        custom_query: null
@@ -730,7 +730,7 @@ Here's a sample configuration:
     |           },
     |           {
     |               "name": "MyESRetriever",
-    |               "type": "ElasticsearchRetriever",
+    |               "type": "BM25Retriever",
     |               "params": {
     |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
     |                   "custom_query": None,
@@ -882,7 +882,7 @@ Here's a sample configuration:
     |        no_ans_boost: -10
     |        model_name_or_path: deepset/roberta-base-squad2
     |    - name: MyESRetriever
-    |      type: ElasticsearchRetriever
+    |      type: BM25Retriever
     |      params:
     |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
     |        custom_query: null
@@ -1017,8 +1017,8 @@ Add a new node to the pipeline.
 method to process incoming data from predecessor node.
 - `name`: The name for the node. It must not contain any dots.
 - `inputs`: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+edge with a list of documents. It can be represented as ["BM25Retriever"].
 
 In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
 must be specified explicitly as "QueryClassifier.output_2".
@@ -1107,7 +1107,7 @@ Here's a sample configuration:
     |        no_ans_boost: -10
     |        model_name_or_path: deepset/roberta-base-squad2
     |    - name: MyESRetriever
-    |      type: ElasticsearchRetriever
+    |      type: BM25Retriever
     |      params:
     |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
     |        custom_query: null
