@@ -323,7 +323,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 mapping = index_info["mappings"]
                 if self.search_fields:
                     for search_field in self.search_fields:
-                        if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
+                        if (
+                            search_field in mapping["properties"]
+                            and mapping["properties"][search_field]["type"] != "text"
+                        ):
                             raise Exception(
                                 f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
                                 f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
