@@ -136,7 +136,7 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store: BaseDocumentS
         Document(content="Doc1", id_hash_keys=["content"]),
         Document(content="Doc1", id_hash_keys=["content"]),
     ]
-    document_store.delete_documents(index="haystack_custom_test")
+    document_store.delete_index(index="haystack_custom_test")
     document_store.write_documents(duplicate_documents, index="haystack_custom_test", duplicate_documents="skip")
     assert len(document_store.get_all_documents(index="haystack_custom_test")) == 1
     with pytest.raises(DuplicateDocumentError):
@@ -372,13 +372,12 @@ def test_get_documents_by_id(document_store: BaseDocumentStore):
     # generate more documents than the elasticsearch default query size limit of 10
     docs_to_generate = 15
     documents = [{"content": "doc-" + str(i)} for i in range(docs_to_generate)]
-    doc_idx = "green_fields"
-    document_store.write_documents(documents, index=doc_idx)
+    document_store.write_documents(documents)
 
-    all_docs = document_store.get_all_documents(index=doc_idx)
+    all_docs = document_store.get_all_documents()
     all_ids = [doc.id for doc in all_docs]
 
-    retrieved_by_id = document_store.get_documents_by_id(all_ids, index=doc_idx)
+    retrieved_by_id = document_store.get_documents_by_id(all_ids)
     retrieved_ids = [doc.id for doc in retrieved_by_id]
 
     # all documents in the index should be retrieved when passing all document ids in the index
@@ -452,6 +451,8 @@ def test_write_document_meta(document_store: BaseDocumentStore):
 
 
 def test_write_document_index(document_store: BaseDocumentStore):
+    document_store.delete_index("haystack_test_one")
+    document_store.delete_index("haystack_test_two")
     documents = [{"content": "text1", "id": "1"}, {"content": "text2", "id": "2"}]
     document_store.write_documents([documents[0]], index="haystack_test_one")
     assert len(document_store.get_all_documents(index="haystack_test_one")) == 1
@@ -473,17 +474,15 @@ def test_document_with_embeddings(document_store: BaseDocumentStore):
         {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
         {"content": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
     ]
-    document_store.write_documents(documents, index="haystack_test_one")
-    assert len(document_store.get_all_documents(index="haystack_test_one")) == 4
+    document_store.write_documents(documents)
+    assert len(document_store.get_all_documents()) == 4
 
     if not isinstance(document_store, WeaviateDocumentStore):
         # weaviate is excluded because it would return dummy vectors instead of None
-        documents_without_embedding = document_store.get_all_documents(
-            index="haystack_test_one", return_embedding=False
-        )
+        documents_without_embedding = document_store.get_all_documents(return_embedding=False)
         assert documents_without_embedding[0].embedding is None
 
-    documents_with_embedding = document_store.get_all_documents(index="haystack_test_one", return_embedding=True)
+    documents_with_embedding = document_store.get_all_documents(return_embedding=True)
     assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
 
 
@@ -497,24 +496,20 @@ def test_update_embeddings(document_store, retriever):
         documents.append({"content": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
     documents.append({"content": "text_0", "id": "6", "meta_field": "value_0"})
 
-    document_store.write_documents(documents, index="haystack_test_one")
-    document_store.update_embeddings(retriever, index="haystack_test_one", batch_size=3)
-    documents = document_store.get_all_documents(index="haystack_test_one", return_embedding=True)
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever, batch_size=3)
+    documents = document_store.get_all_documents(return_embedding=True)
     assert len(documents) == 7
     for doc in documents:
         assert type(doc.embedding) is np.ndarray
 
-    documents = document_store.get_all_documents(
-        index="haystack_test_one", filters={"meta_field": ["value_0"]}, return_embedding=True
-    )
+    documents = document_store.get_all_documents(filters={"meta_field": ["value_0"]}, return_embedding=True)
     assert len(documents) == 2
     for doc in documents:
         assert doc.meta["meta_field"] == "value_0"
     np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding, decimal=4)
 
-    documents = document_store.get_all_documents(
-        index="haystack_test_one", filters={"meta_field": ["value_0", "value_5"]}, return_embedding=True
-    )
+    documents = document_store.get_all_documents(filters={"meta_field": ["value_0", "value_5"]}, return_embedding=True)
     documents_with_value_0 = [doc for doc in documents if doc.meta["meta_field"] == "value_0"]
     documents_with_value_5 = [doc for doc in documents if doc.meta["meta_field"] == "value_5"]
     np.testing.assert_raises(
@@ -530,27 +525,21 @@ def test_update_embeddings(document_store, retriever):
         "meta_field": "value_7",
         "embedding": retriever.embed_queries(texts=["a random string"])[0],
     }
-    document_store.write_documents([doc], index="haystack_test_one")
+    document_store.write_documents([doc])
 
     documents = []
     for i in range(8, 11):
         documents.append({"content": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
-    document_store.write_documents(documents, index="haystack_test_one")
+    document_store.write_documents(documents)
 
-    doc_before_update = document_store.get_all_documents(
-        index="haystack_test_one", filters={"meta_field": ["value_7"]}
-    )[0]
+    doc_before_update = document_store.get_all_documents(filters={"meta_field": ["value_7"]})[0]
     embedding_before_update = doc_before_update.embedding
 
     # test updating only documents without embeddings
     if not isinstance(document_store, WeaviateDocumentStore):
         # All the documents in Weaviate store have an embedding by default. "update_existing_embeddings=False" is not allowed
-        document_store.update_embeddings(
-            retriever, index="haystack_test_one", batch_size=3, update_existing_embeddings=False
-        )
-        doc_after_update = document_store.get_all_documents(
-            index="haystack_test_one", filters={"meta_field": ["value_7"]}
-        )[0]
+        document_store.update_embeddings(retriever, batch_size=3, update_existing_embeddings=False)
+        doc_after_update = document_store.get_all_documents(filters={"meta_field": ["value_7"]})[0]
         embedding_after_update = doc_after_update.embedding
         np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
 
@@ -558,26 +547,18 @@ def test_update_embeddings(document_store, retriever):
     if isinstance(document_store, FAISSDocumentStore):
         with pytest.raises(Exception):
             document_store.update_embeddings(
-                retriever, index="haystack_test_one", update_existing_embeddings=True, filters={"meta_field": ["value"]}
+                retriever, update_existing_embeddings=True, filters={"meta_field": ["value"]}
             )
     else:
-        document_store.update_embeddings(
-            retriever, index="haystack_test_one", batch_size=3, filters={"meta_field": ["value_0", "value_1"]}
-        )
-        doc_after_update = document_store.get_all_documents(
-            index="haystack_test_one", filters={"meta_field": ["value_7"]}
-        )[0]
+        document_store.update_embeddings(retriever, batch_size=3, filters={"meta_field": ["value_0", "value_1"]})
+        doc_after_update = document_store.get_all_documents(filters={"meta_field": ["value_7"]})[0]
         embedding_after_update = doc_after_update.embedding
         np.testing.assert_array_equal(embedding_before_update, embedding_after_update)
 
     # test update all embeddings
-    document_store.update_embeddings(
-        retriever, index="haystack_test_one", batch_size=3, update_existing_embeddings=True
-    )
-    assert document_store.get_embedding_count(index="haystack_test_one") == 11
-    doc_after_update = document_store.get_all_documents(index="haystack_test_one", filters={"meta_field": ["value_7"]})[
-        0
-    ]
+    document_store.update_embeddings(retriever, batch_size=3, update_existing_embeddings=True)
+    assert document_store.get_embedding_count() == 11
+    doc_after_update = document_store.get_all_documents(filters={"meta_field": ["value_7"]})[0]
     embedding_after_update = doc_after_update.embedding
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, embedding_before_update, embedding_after_update
@@ -587,14 +568,12 @@ def test_update_embeddings(document_store, retriever):
     documents = []
     for i in range(12, 15):
         documents.append({"content": f"text_{i}", "id": str(i), "meta_field": f"value_{i}"})
-    document_store.write_documents(documents, index="haystack_test_one")
+    document_store.write_documents(documents)
 
     if not isinstance(document_store, WeaviateDocumentStore):
         # All the documents in Weaviate store have an embedding by default. "update_existing_embeddings=False" is not allowed
-        document_store.update_embeddings(
-            retriever, index="haystack_test_one", batch_size=3, update_existing_embeddings=False
-        )
-        assert document_store.get_embedding_count(index="haystack_test_one") == 14
+        document_store.update_embeddings(retriever, batch_size=3, update_existing_embeddings=False)
+        assert document_store.get_embedding_count() == 14
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
@@ -624,26 +603,22 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
         }
     )
 
-    document_store.write_documents(documents, index="haystack_test_one")
-    document_store.update_embeddings(retriever, index="haystack_test_one", batch_size=3)
-    documents = document_store.get_all_documents(index="haystack_test_one", return_embedding=True)
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever, batch_size=3)
+    documents = document_store.get_all_documents(return_embedding=True)
     assert len(documents) == 8
     for doc in documents:
         assert type(doc.embedding) is np.ndarray
 
     # Check if Documents with same content (text) get same embedding
-    documents = document_store.get_all_documents(
-        index="haystack_test_one", filters={"meta_field": ["value_text_0"]}, return_embedding=True
-    )
+    documents = document_store.get_all_documents(filters={"meta_field": ["value_text_0"]}, return_embedding=True)
     assert len(documents) == 2
     for doc in documents:
         assert doc.meta["meta_field"] == "value_text_0"
     np.testing.assert_array_almost_equal(documents[0].embedding, documents[1].embedding, decimal=4)
 
     # Check if Documents with same content (table) get same embedding
-    documents = document_store.get_all_documents(
-        index="haystack_test_one", filters={"meta_field": ["value_table_0"]}, return_embedding=True
-    )
+    documents = document_store.get_all_documents(filters={"meta_field": ["value_table_0"]}, return_embedding=True)
     assert len(documents) == 2
     for doc in documents:
         assert doc.meta["meta_field"] == "value_table_0"
@@ -651,7 +626,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents wih different content (text) get different embedding
     documents = document_store.get_all_documents(
-        index="haystack_test_one", filters={"meta_field": ["value_text_1", "value_text_2"]}, return_embedding=True
+        filters={"meta_field": ["value_text_1", "value_text_2"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -659,7 +634,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with different content (table) get different embeddings
     documents = document_store.get_all_documents(
-        index="haystack_test_one", filters={"meta_field": ["value_table_1", "value_table_2"]}, return_embedding=True
+        filters={"meta_field": ["value_table_1", "value_table_2"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -667,7 +642,7 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
 
     # Check if Documents with different content (table + text) get different embeddings
     documents = document_store.get_all_documents(
-        index="haystack_test_one", filters={"meta_field": ["value_text_1", "value_table_1"]}, return_embedding=True
+        filters={"meta_field": ["value_text_1", "value_table_1"]}, return_embedding=True
     )
     np.testing.assert_raises(
         AssertionError, np.testing.assert_array_equal, documents[0].embedding, documents[1].embedding
@@ -750,14 +725,20 @@ def test_labels(document_store: BaseDocumentStore):
         no_answer=False,
         origin="gold-label",
     )
-    document_store.write_labels([label], index="haystack_test_label")
-    labels = document_store.get_all_labels(index="haystack_test_label")
+    document_store.write_labels([label])
+    labels = document_store.get_all_labels()
     assert len(labels) == 1
     assert label == labels[0]
 
     # different index
-    labels = document_store.get_all_labels()
+    document_store.write_labels([label], index="another_index")
+    labels = document_store.get_all_labels(index="another_index")
+    assert len(labels) == 1
+    document_store.delete_labels(index="another_index")
+    labels = document_store.get_all_labels(index="another_index")
     assert len(labels) == 0
+    labels = document_store.get_all_labels()
+    assert len(labels) == 1
 
     # write second label + duplicate
     label2 = Label(
@@ -776,8 +757,8 @@ def test_labels(document_store: BaseDocumentStore):
         no_answer=False,
         origin="gold-label",
     )
-    document_store.write_labels([label, label2], index="haystack_test_label")
-    labels = document_store.get_all_labels(index="haystack_test_label")
+    document_store.write_labels([label, label2])
+    labels = document_store.get_all_labels()
 
     # check that second label has been added but not the duplicate
     assert len(labels) == 2
@@ -785,37 +766,37 @@ def test_labels(document_store: BaseDocumentStore):
     assert label2 in labels
 
     # delete filtered label2 by id
-    document_store.delete_labels(index="haystack_test_label", ids=[labels[1].id])
-    labels = document_store.get_all_labels(index="haystack_test_label")
+    document_store.delete_labels(ids=[labels[1].id])
+    labels = document_store.get_all_labels()
     assert label == labels[0]
     assert len(labels) == 1
 
     # re-add label2
-    document_store.write_labels([label2], index="haystack_test_label")
-    labels = document_store.get_all_labels(index="haystack_test_label")
+    document_store.write_labels([label2])
+    labels = document_store.get_all_labels()
     assert len(labels) == 2
 
     # delete filtered label2 by query text
-    document_store.delete_labels(index="haystack_test_label", filters={"query": [labels[1].query]})
-    labels = document_store.get_all_labels(index="haystack_test_label")
+    document_store.delete_labels(filters={"query": [labels[1].query]})
+    labels = document_store.get_all_labels()
     assert label == labels[0]
     assert len(labels) == 1
 
     # re-add label2
-    document_store.write_labels([label2], index="haystack_test_label")
-    labels = document_store.get_all_labels(index="haystack_test_label")
+    document_store.write_labels([label2])
+    labels = document_store.get_all_labels()
     assert len(labels) == 2
 
     # delete intersection of filters and ids, which is empty
-    document_store.delete_labels(index="haystack_test_label", ids=[labels[0].id], filters={"query": [labels[1].query]})
-    labels = document_store.get_all_labels(index="haystack_test_label")
+    document_store.delete_labels(ids=[labels[0].id], filters={"query": [labels[1].query]})
+    labels = document_store.get_all_labels()
     assert len(labels) == 2
     assert label in labels
     assert label2 in labels
 
     # delete all labels
-    document_store.delete_labels(index="haystack_test_label")
-    labels = document_store.get_all_labels(index="haystack_test_label")
+    document_store.delete_labels()
+    labels = document_store.get_all_labels()
     assert len(labels) == 0
 
 
@@ -878,21 +859,19 @@ def test_multilabel(document_store: BaseDocumentStore):
             origin="gold-label",
         ),
     ]
-    document_store.write_labels(labels, index="haystack_test_multilabel")
+    document_store.write_labels(labels)
     # regular labels - not aggregated
-    list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
+    list_labels = document_store.get_all_labels()
     assert list_labels == labels
     assert len(list_labels) == 5
 
     # Currently we don't enforce writing (missing) docs automatically when adding labels and there's no DB relationship between the two.
     # We should introduce this when we refactored the logic of "index" to be rather a "collection" of labels+documents
-    # docs = document_store.get_all_documents(index="haystack_test_multilabel")
+    # docs = document_store.get_all_documents()
     # assert len(docs) == 3
 
     # Multi labels (open domain)
-    multi_labels_open = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel", open_domain=True, drop_negative_labels=True
-    )
+    multi_labels_open = document_store.get_all_labels_aggregated(open_domain=True, drop_negative_labels=True)
 
     # for open-domain we group all together as long as they have the same question
     assert len(multi_labels_open) == 1
@@ -904,7 +883,7 @@ def test_multilabel(document_store: BaseDocumentStore):
 
     # Don't drop the negative label
     multi_labels_open = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel", open_domain=True, drop_no_answers=False, drop_negative_labels=False
+        open_domain=True, drop_no_answers=False, drop_negative_labels=False
     )
     assert len(multi_labels_open[0].labels) == 5
     assert len(multi_labels_open[0].answers) == 4
@@ -912,27 +891,19 @@ def test_multilabel(document_store: BaseDocumentStore):
 
     # Drop no answer + negative
     multi_labels_open = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel", open_domain=True, drop_no_answers=True, drop_negative_labels=True
+        open_domain=True, drop_no_answers=True, drop_negative_labels=True
     )
     assert len(multi_labels_open[0].labels) == 3
     assert len(multi_labels_open[0].answers) == 3
     assert len(multi_labels_open[0].document_ids) == 3
 
     # for closed domain we group by document so we expect 3 multilabels with 2,1,1 labels each (negative dropped again)
-    multi_labels = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel", open_domain=False, drop_negative_labels=True
-    )
+    multi_labels = document_store.get_all_labels_aggregated(open_domain=False, drop_negative_labels=True)
     assert len(multi_labels) == 3
     label_counts = set([len(ml.labels) for ml in multi_labels])
     assert label_counts == set([2, 1, 1])
 
     assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
-
-    # make sure there' nothing stored in another index
-    multi_labels = document_store.get_all_labels_aggregated()
-    assert len(multi_labels) == 0
-    docs = document_store.get_all_documents()
-    assert len(docs) == 0
 
 
 # exclude weaviate because it does not support storing labels
@@ -980,13 +951,13 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
         ),
     ]
 
-    document_store.write_labels(labels, index="haystack_test_multilabel_no_answer")
+    document_store.write_labels(labels)
 
-    labels = document_store.get_all_labels(index="haystack_test_multilabel_no_answer")
+    labels = document_store.get_all_labels()
     assert len(labels) == 4
 
     multi_labels = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel_no_answer", open_domain=True, drop_no_answers=False, drop_negative_labels=True
+        open_domain=True, drop_no_answers=False, drop_negative_labels=True
     )
     assert len(multi_labels) == 1
     assert multi_labels[0].no_answer == True
@@ -994,7 +965,7 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
     assert len(multi_labels[0].answers) == 1
 
     multi_labels = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel_no_answer", open_domain=True, drop_no_answers=False, drop_negative_labels=False
+        open_domain=True, drop_no_answers=False, drop_negative_labels=False
     )
     assert len(multi_labels) == 1
     assert multi_labels[0].no_answer == True
@@ -1068,16 +1039,14 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             filters={"name": ["123"]},
         ),
     ]
-    document_store.write_labels(labels, index="haystack_test_multilabel")
+    document_store.write_labels(labels)
     # regular labels - not aggregated
-    list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
+    list_labels = document_store.get_all_labels()
     assert list_labels == labels
     assert len(list_labels) == 5
 
     # Multi labels (open domain)
-    multi_labels_open = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel", open_domain=True, drop_negative_labels=True
-    )
+    multi_labels_open = document_store.get_all_labels_aggregated(open_domain=True, drop_negative_labels=True)
 
     # for open-domain we group all together as long as they have the same question and filters
     assert len(multi_labels_open) == 3
@@ -1089,9 +1058,7 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
     assert len(multi_labels_open[0].answers) == len(multi_labels_open[0].document_ids)
 
     # for closed domain we group by document so we expect the same as with filters
-    multi_labels = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel", open_domain=False, drop_negative_labels=True
-    )
+    multi_labels = document_store.get_all_labels_aggregated(open_domain=False, drop_negative_labels=True)
     assert len(multi_labels) == 3
     label_counts = set([len(ml.labels) for ml in multi_labels])
     assert label_counts == set([2, 1, 1])
@@ -1164,23 +1131,21 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             meta={"file_id": ["888"]},
         ),
     ]
-    document_store.write_labels(labels, index="haystack_test_multilabel")
+    document_store.write_labels(labels)
     # regular labels - not aggregated
-    list_labels = document_store.get_all_labels(index="haystack_test_multilabel")
+    list_labels = document_store.get_all_labels()
     assert list_labels == labels
     assert len(list_labels) == 5
 
     # Multi labels (open domain)
-    multi_labels_open = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel", open_domain=True, drop_negative_labels=True
-    )
+    multi_labels_open = document_store.get_all_labels_aggregated(open_domain=True, drop_negative_labels=True)
 
     # for open-domain we group all together as long as they have the same question and filters
     assert len(multi_labels_open) == 1
     assert len(multi_labels_open[0].labels) == 5
 
     multi_labels = document_store.get_all_labels_aggregated(
-        index="haystack_test_multilabel", open_domain=True, drop_negative_labels=True, aggregate_by_meta="file_id"
+        open_domain=True, drop_negative_labels=True, aggregate_by_meta="file_id"
     )
     assert len(multi_labels) == 4
     label_counts = set([len(ml.labels) for ml in multi_labels])
@@ -1211,7 +1176,10 @@ def test_update_meta(document_store: BaseDocumentStore):
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type, tmp_path):
     document_store = get_document_store(
-        document_store_type=document_store_type, tmp_path=tmp_path, embedding_field="custom_embedding_field"
+        document_store_type=document_store_type,
+        tmp_path=tmp_path,
+        embedding_field="custom_embedding_field",
+        index="custom_embedding_field",
     )
     doc_to_write = {"content": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
     document_store.write_documents([doc_to_write])
@@ -1251,10 +1219,11 @@ def test_get_meta_values_by_key(document_store: BaseDocumentStore):
 
 @pytest.mark.elasticsearch
 def test_elasticsearch_custom_fields():
-    client = Elasticsearch()
-    client.indices.delete(index="haystack_test_custom", ignore=[404])
     document_store = ElasticsearchDocumentStore(
-        index="haystack_test_custom", content_field="custom_text_field", embedding_field="custom_embedding_field"
+        index="haystack_test_custom",
+        content_field="custom_text_field",
+        embedding_field="custom_embedding_field",
+        recreate_index=True,
     )
 
     doc_to_write = {"custom_text_field": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
@@ -1284,7 +1253,7 @@ def test_elasticsearch_delete_index():
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store: BaseDocumentStore):
+def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store: ElasticsearchDocumentStore):
     document_store.write_documents(DOCUMENTS)
     document_without_embedding = Document(
         content="Doc without embedding", meta={"name": "name_7", "year": "2021", "month": "04"}
@@ -1328,8 +1297,7 @@ def test_get_document_count_only_documents_without_embedding_arg():
     ]
 
     _index: str = "haystack_test_count"
-    document_store = ElasticsearchDocumentStore(index=_index)
-    document_store.delete_documents(index=_index)
+    document_store = ElasticsearchDocumentStore(index=_index, recreate_index=True)
 
     document_store.write_documents(documents)
 
@@ -1357,7 +1325,7 @@ def test_skip_missing_embeddings():
         {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
         {"content": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
     ]
-    document_store = ElasticsearchDocumentStore(index="skip_missing_embedding_index")
+    document_store = ElasticsearchDocumentStore(index="skip_missing_embedding_index", recreate_index=True)
     document_store.write_documents(documents)
 
     document_store.skip_missing_embeddings = True

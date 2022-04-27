@@ -79,6 +79,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         duplicate_documents: str = "overwrite",
         isolation_level: str = None,
         consistency_level: int = 0,
+        recreate_index: bool = False,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -125,6 +126,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+        :param recreate_index: If set to True, an existing Milvus index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
         """
         super().__init__(
             url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
@@ -168,17 +173,27 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self.id_field = id_field
         self.custom_fields = custom_fields
 
-        self.collection = self._create_collection_and_index_if_not_exist(self.index, consistency_level)
+        self.collection = self._create_collection_and_index(
+            self.index, consistency_level, recreate_index=recreate_index
+        )
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
 
-    def _create_collection_and_index_if_not_exist(
-        self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None
+    def _create_collection_and_index(
+        self,
+        index: Optional[str] = None,
+        consistency_level: int = 0,
+        index_param: Optional[Dict[str, Any]] = None,
+        recreate_index: bool = False,
     ):
         index = index or self.index
         index_param = index_param or self.index_param
         custom_fields = self.custom_fields or []
+
+        if recreate_index:
+            self._delete_index(index)
+            super().delete_labels()
 
         has_collection = utility.has_collection(collection_name=index)
         if not has_collection:
@@ -466,8 +481,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             if len(batch) != 0:
                 self._delete_vector_ids_from_milvus(documents=batch, index=index)
         else:
-            self.collection.drop()
-            self.collection = self._create_collection_and_index_if_not_exist(self.index)
+            self.collection = self._create_collection_and_index(self.index, recreate_index=True)
 
         index = index or self.index
         super().delete_documents(index=index, filters=filters, ids=ids)
@@ -484,7 +498,12 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        utility.drop_collection(collection_name=index)
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
+        if utility.has_collection(collection_name=index):
+            utility.drop_collection(collection_name=index)
+            logger.info(f"Index '{index}' deleted.")
         super().delete_index(index)
 
     def get_all_documents_generator(
