@@ -263,8 +263,6 @@ jobs:
           - marker: weaviate
             command: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
           - marker: pinecone
-            env:
-              PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           - marker: graphdb
             command: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
@@ -294,7 +292,8 @@ jobs:
         pip install .[test]
 
     - name: Run document store tests
-      env: ${{ fromJSON(matrix.env) }}
+      env:
+        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}  # FIXME set only for Pinecone!
       run: pytest -s -m "${{ matrix.marker }} and not integration" test/ --document_store_type=${{ matrix.marker }}
 
 
