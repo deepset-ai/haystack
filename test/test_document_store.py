@@ -1614,7 +1614,16 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
         responses.add(
             method=responses.POST,
             url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-            match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50, "all_terms_must_match": False, "scale_scores_to_probabilities": True})],
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "query": "winterfell",
+                        "top_k": 50,
+                        "all_terms_must_match": False,
+                        "scale_scores_to_probabilities": True,
+                    }
+                )
+            ],
             status=200,
             body=query_winterfell_response,
         )
