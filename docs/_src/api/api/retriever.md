@@ -795,26 +795,6 @@ Create embeddings for a list of documents.
 
 Embeddings, one per input document
 
-<a id="dense.EmbeddingRetriever.linearize_tables"></a>
-
-#### linearize\_tables
-
-```python
-def linearize_tables(docs: List[Document]) -> List[Document]
-```
-
-Turns table documents into text documents by representing the table in csv format.
-
-This allows us to use text embedding models for table retrieval.
-
-**Arguments**:
-
-- `docs`: List of documents to linearize. If the document is not a table, it is returned as is.
-
-**Returns**:
-
-List of documents with linearized tables or original documents if they are not tables.
-
 <a id="text2sparql"></a>
 
 # Module text2sparql
