@@ -9,6 +9,7 @@ import responses
 from responses import matchers
 from unittest.mock import Mock
 from elasticsearch import Elasticsearch
+from elasticsearch.helpers import bulk
 from elasticsearch.exceptions import RequestError
 
 from .conftest import (
@@ -1910,6 +1911,78 @@ def test_elasticsearch_search_field_mapping():
 
     assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["content"]["type"] == "text"
     assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["sub_content"]["type"] == "text"
+
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_existing_alias():
+
+    client = Elasticsearch()
+    client.indices.delete(index="haystack_existing_alias_1", ignore=[404])
+    client.indices.delete(index="haystack_existing_alias_2", ignore=[404])
+    client.indices.delete_alias(index="_all", name="haystack_existing_alias", ignore=[404])
+
+    index_data = [
+        {
+            "_index": "haystack_existing_alias_1",
+            "_op_type": "index",
+            "_id": "1",
+            "title": "Green tea components",
+            "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
+        },
+        {
+            "_index": "haystack_existing_alias_2",
+            "_op_type": "index",
+            "_id": "1",
+            "title": "Minerals in Green tea",
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+        },
+    ]
+
+    client.indices.create(index="haystack_existing_alias_1")
+    client.indices.create(index="haystack_existing_alias_2")
+    bulk(client, index_data)
+
+    client.indices.put_alias(index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias")
+
+    ElasticsearchDocumentStore(
+        index="haystack_existing_alias", search_fields=["content"], content_field="title"
+    )
+
+@pytest.mark.elasticsearch
+def test_elasticsearch_existing_alias_missing_fields():
+
+    client = Elasticsearch()
+    client.indices.delete(index="haystack_existing_alias_1", ignore=[404])
+    client.indices.delete(index="haystack_existing_alias_2", ignore=[404])
+    client.indices.delete_alias(index="_all", name="haystack_existing_alias", ignore=[404])
+
+    index_data = [
+        {
+            "_index": "haystack_existing_alias_1",
+            "_op_type": "index",
+            "_id": "1",
+            "title": "Green tea components",
+        },
+        {
+            "_index": "haystack_existing_alias_2",
+            "_op_type": "index",
+            "_id": "1",
+            "title": "Minerals in Green tea",
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+        },
+    ]
+
+    client.indices.create(index="haystack_existing_alias_1")
+    client.indices.create(index="haystack_existing_alias_2")
+    bulk(client, index_data)
+
+    client.indices.put_alias(index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias")
+
+    with pytest.raises(Exception):
+        # missing field "content" in index "haystack_existing_alias_1"
+        ElasticsearchDocumentStore(
+            index="haystack_existing_alias", search_fields=["content"], content_field="title"
+        )
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
