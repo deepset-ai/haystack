@@ -1902,7 +1902,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                     # bad embedding field
                     if mappings["properties"][self.embedding_field]["type"] != "knn_vector":
                         raise Exception(
-                            f"The '{index}' index in OpenSearch already has a field called '{self.embedding_field}'"
+                            f"The '{index_id}' index in OpenSearch already has a field called '{self.embedding_field}'"
                             f" with the type '{mappings['properties'][self.embedding_field]['type']}'. Please update the "
                             f"document_store to use a different name for the embedding_field parameter."
                         )
