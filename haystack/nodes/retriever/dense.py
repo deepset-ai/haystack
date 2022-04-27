@@ -11,6 +11,7 @@ from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
 
+from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -1214,8 +1215,11 @@ class EmbeddingRetriever(BaseRetriever):
         """
         linearized_docs = []
         for doc in docs:
-            if isinstance(doc.content, pd.DataFrame):
+            if doc.content_type == "table":
                 doc = deepcopy(doc)
-                doc.content = doc.content.to_csv(index=False)
+                if isinstance(doc.content, pd.DataFrame):
+                    doc.content = doc.content.to_csv(index=False)
+                else:
+                    raise HaystackError("Documents of type 'table' need to have a pd.DataFrame as content field")
             linearized_docs.append(doc)
         return linearized_docs
