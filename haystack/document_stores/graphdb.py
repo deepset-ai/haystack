@@ -55,11 +55,12 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         :param headers: Custom HTTP headers to pass to http client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
         https://graphdb.ontotext.com/documentation/free/configuring-a-repository.html#configure-a-repository-programmatically
         """
-        url = f"{self.url}/rest/repositories"
-        files = {"config": open(config_path, "r", encoding="utf-8")}
-        response = requests.post(url, files=files, headers=headers)
-        if response.status_code > 299:
-            raise Exception(response.text)
+        with open(config_path, "r", encoding="utf-8") as config:
+            url = f"{self.url}/rest/repositories"
+            files = {"config": config}
+            response = requests.post(url, files=files, headers=headers)
+            if response.status_code > 299:
+                raise Exception(response.text)
 
     def delete_index(self, headers: Optional[Dict[str, str]] = None):
         """

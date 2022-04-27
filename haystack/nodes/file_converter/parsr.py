@@ -130,7 +130,7 @@ class ParsrConverter(BaseConverter):
             send_response = requests.post(
                 url=f"{self.parsr_url}/api/v1/document",
                 files={
-                    "file": (file_path, pdf_file, "application/pdf"),
+                    "file": (str(file_path), pdf_file, "application/pdf"),
                     "config": ("config", json.dumps(self.config), "application/json"),
                 },
             )
