@@ -235,8 +235,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if "_additional" in props:
             if "certainty" in props["_additional"]:
                 score = props["_additional"]["certainty"]
-                if scale_score_to_probability:
-                    score = self.score_to_probability(score, self.similarity)
+                # weaviate returns already scaled values
+                if score and not scale_score_to_probability:
+                    score = score * 2 - 1
             if "id" in props["_additional"]:
                 id = props["_additional"]["id"]
             if "vector" in props["_additional"]:

@@ -4,7 +4,6 @@ import logging
 import warnings
 import numpy as np
 
-from scipy.special import expit
 from tqdm import tqdm
 
 try:
@@ -147,22 +146,20 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self.embedding_dim = embedding_dim
 
         self.index_file_size = index_file_size
+        self.similarity = similarity
         self.cosine = False
 
         if similarity == "dot_product":
             self.metric_type = "IP"
-            self.similarity = similarity
         elif similarity == "l2":
             self.metric_type = "L2"
-            self.similarity = similarity
         elif similarity == "cosine":
             self.metric_type = "IP"
-            self.similarity = "dot_product"
             self.cosine = True
         else:
             raise ValueError(
-                "The Milvus document store can currently only support dot_product and L2 similarity. "
-                'Please set similarity="dot_product" or "l2"'
+                "The Milvus document store can currently only support dot_product, cosine and L2 similarity. "
+                'Please set similarity="dot_product" or "cosine" or "l2"'
             )
 
         self.index_type = index_type
