@@ -2,13 +2,16 @@ from typing import List, Dict, Union, Optional
 
 import logging
 from pathlib import Path
+from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
 import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
+import pandas as pd
 
+from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -1199,4 +1202,24 @@ class EmbeddingRetriever(BaseRetriever):
         :param docs: List of documents to embed
         :return: Embeddings, one per input document
         """
+        docs = self._linearize_tables(docs)
         return self.embedding_encoder.embed_documents(docs)
+
+    def _linearize_tables(self, docs: List[Document]) -> List[Document]:
+        """
+        Turns table documents into text documents by representing the table in csv format.
+        This allows us to use text embedding models for table retrieval.
+
+        :param docs: List of documents to linearize. If the document is not a table, it is returned as is.
+        :return: List of documents with linearized tables or original documents if they are not tables.
+        """
+        linearized_docs = []
+        for doc in docs:
+            if doc.content_type == "table":
+                doc = deepcopy(doc)
+                if isinstance(doc.content, pd.DataFrame):
+                    doc.content = doc.content.to_csv(index=False)
+                else:
+                    raise HaystackError("Documents of type 'table' need to have a pd.DataFrame as content field")
+            linearized_docs.append(doc)
+        return linearized_docs
