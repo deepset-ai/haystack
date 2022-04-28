@@ -1753,6 +1753,11 @@
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
+            },
+            "scale_score_to_probability": {
+              "title": "Scale Score To Probability",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -1964,8 +1969,8 @@
                 }
               ]
             },
-            "scale_scores_to_probabilities": {
-              "title": "Scale Scores To Probabilities",
+            "scale_score_to_probability": {
+              "title": "Scale Score To Probability",
               "default": true,
               "type": "boolean"
             }
@@ -2095,8 +2100,8 @@
               "title": "Custom Query",
               "type": "string"
             },
-            "scale_scores_to_probabilities": {
-              "title": "Scale Scores To Probabilities",
+            "scale_score_to_probability": {
+              "title": "Scale Score To Probability",
               "default": true,
               "type": "boolean"
             }
@@ -2149,11 +2154,6 @@
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
-            },
-            "scale_scores_to_probabilities": {
-              "title": "Scale Scores To Probabilities",
-              "default": true,
-              "type": "boolean"
             }
           },
           "required": [
@@ -2264,8 +2264,8 @@
                 }
               ]
             },
-            "scale_scores_to_probabilities": {
-              "title": "Scale Scores To Probabilities",
+            "scale_score_to_probability": {
+              "title": "Scale Score To Probability",
               "default": true,
               "type": "boolean"
             }
@@ -3744,8 +3744,8 @@
                 }
               ]
             },
-            "scale_scores_to_probabilities": {
-              "title": "Scale Scores To Probabilities",
+            "scale_score_to_probability": {
+              "title": "Scale Score To Probability",
               "default": true,
               "type": "boolean"
             }
