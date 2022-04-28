@@ -1,5 +1,5 @@
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes import ElasticsearchRetriever, DensePassageRetriever, EmbeddingRetriever, FARMReader, PreProcessor
+from haystack.nodes import BM25Retriever, DensePassageRetriever, EmbeddingRetriever, FARMReader, PreProcessor
 from haystack.utils import fetch_archive_from_http, launch_es
 from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
@@ -62,9 +62,9 @@ def tutorial5_evaluation():
     )
 
     # Initialize Retriever
-    from haystack.nodes import ElasticsearchRetriever
+    from haystack.nodes import BM25Retriever
 
-    retriever = ElasticsearchRetriever(document_store=document_store)
+    retriever = BM25Retriever(document_store=document_store)
 
     # Alternative: Evaluate dense retrievers (EmbeddingRetriever or DensePassageRetriever)
     # The EmbeddingRetriever uses a single transformer based encoder model for query and document.

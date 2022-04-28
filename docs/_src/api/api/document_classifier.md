@@ -47,7 +47,7 @@ With this document_classifier, you can directly get predictions via predict()
  **Usage example at query time:**
  ```python
 |    ...
-|    retriever = ElasticsearchRetriever(document_store=document_store)
+|    retriever = BM25Retriever(document_store=document_store)
 |    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion")
 |    p = Pipeline()
 |    p.add_node(component=retriever, name="Retriever", inputs=["Query"])

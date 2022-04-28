@@ -14,7 +14,7 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
-from haystack.nodes.retriever.sparse import ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
+from haystack.nodes.retriever.sparse import BM25Retriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 from .conftest import SAMPLES_PATH
@@ -70,7 +70,7 @@ def docs():
     indirect=True,
 )
 def test_retrieval(retriever_with_docs, document_store_with_docs):
-    if not isinstance(retriever_with_docs, (ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever)):
+    if not isinstance(retriever_with_docs, (BM25Retriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     # test without filters
@@ -121,7 +121,7 @@ def test_elasticsearch_custom_query():
     document_store.write_documents(documents)
 
     # test custom "terms" query
-    retriever = ElasticsearchRetriever(
+    retriever = BM25Retriever(
         document_store=document_store,
         custom_query="""
             {
@@ -136,7 +136,7 @@ def test_elasticsearch_custom_query():
     assert len(results) == 4
 
     # test custom "term" query
-    retriever = ElasticsearchRetriever(
+    retriever = BM25Retriever(
         document_store=document_store,
         custom_query="""
                 {
@@ -192,9 +192,7 @@ def test_retribert_embedding(document_store, retriever, docs):
     if isinstance(document_store, WeaviateDocumentStore):
         # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
         # We need 128 here and therefore initialize a new WeaviateDocumentStore.
-        document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=128)
-        document_store.weaviate_client.schema.delete_all()
-        document_store._create_schema_and_index_if_not_exist()
+        document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=128, recreate_index=True)
     document_store.return_embedding = True
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever=retriever)
@@ -399,7 +397,7 @@ def test_elasticsearch_highlight():
     document_store.write_documents(documents)
 
     # Enabled highlighting on "title"&"content" field only using custom query
-    retriever_1 = ElasticsearchRetriever(
+    retriever_1 = BM25Retriever(
         document_store=document_store,
         custom_query="""{
             "size": 20,
@@ -441,7 +439,7 @@ def test_elasticsearch_highlight():
     assert results[0].meta["highlighted"]["content"] == ["The **green**", "**tea** plant", "range of **healthy**"]
 
     # Enabled highlighting on "title" field only using custom query
-    retriever_2 = ElasticsearchRetriever(
+    retriever_2 = BM25Retriever(
         document_store=document_store,
         custom_query="""{
             "size": 20,

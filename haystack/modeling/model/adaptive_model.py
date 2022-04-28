@@ -15,7 +15,7 @@ from transformers.convert_graph_to_onnx import convert, quantize as quantize_mod
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 
 logger = logging.getLogger(__name__)
@@ -556,7 +556,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             "lm_output_types": ",".join(self.lm_output_types),
         }
         try:
-            MlLogger.log_params(params)
+            tracker.track_params(params)
         except Exception as e:
             logger.warning(f"ML logging didn't work: {e}")
 
