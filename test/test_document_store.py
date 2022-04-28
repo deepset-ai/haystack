@@ -1886,29 +1886,19 @@ def test_elasticsearch_existing_alias():
     client = Elasticsearch()
     client.indices.delete(index="haystack_existing_alias_1", ignore=[404])
     client.indices.delete(index="haystack_existing_alias_2", ignore=[404])
-    client.indices.delete_alias(
-        index="_all", name="haystack_existing_alias", ignore=[404])
+    client.indices.delete_alias(index="_all", name="haystack_existing_alias", ignore=[404])
 
-    settings = {
-        "mappings": {
-            "properties": {
-                "content": {
-                    "type": "text"
-                }
-            }
-        }
-    }
+    settings = {"mappings": {"properties": {"content": {"type": "text"}}}}
 
     client.indices.create(index="haystack_existing_alias_1", body=settings)
     client.indices.create(index="haystack_existing_alias_2", body=settings)
 
     client.indices.put_alias(
-        index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias")
+        index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias"
+    )
 
     # To be valid, all indices related to the alias must have content field of type text
-    _ = ElasticsearchDocumentStore(
-        index="haystack_existing_alias", search_fields=["content"]
-    )
+    _ = ElasticsearchDocumentStore(index="haystack_existing_alias", search_fields=["content"])
 
 
 @pytest.mark.elasticsearch
@@ -1917,36 +1907,18 @@ def test_elasticsearch_existing_alias_missing_fields():
     client = Elasticsearch()
     client.indices.delete(index="haystack_existing_alias_1", ignore=[404])
     client.indices.delete(index="haystack_existing_alias_2", ignore=[404])
-    client.indices.delete_alias(
-        index="_all", name="haystack_existing_alias", ignore=[404])
+    client.indices.delete_alias(index="_all", name="haystack_existing_alias", ignore=[404])
 
-    right_settings = {
-        "mappings": {
-            "properties": {
-                "content": {
-                    "type": "text"
-                }
-            }
-        }
-    }
+    right_settings = {"mappings": {"properties": {"content": {"type": "text"}}}}
 
-    wrong_settings = {
-        "mappings": {
-            "properties": {
-                "content": {
-                    "type": "histogram"
-                }
-            }
-        }
-    }
+    wrong_settings = {"mappings": {"properties": {"content": {"type": "histogram"}}}}
 
-    client.indices.create(
-        index="haystack_existing_alias_1", body=right_settings)
-    client.indices.create(
-        index="haystack_existing_alias_2", body=wrong_settings)
+    client.indices.create(index="haystack_existing_alias_1", body=right_settings)
+    client.indices.create(index="haystack_existing_alias_2", body=wrong_settings)
 
     client.indices.put_alias(
-        index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias")
+        index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias"
+    )
 
     with pytest.raises(Exception):
         # wrong field type for "content" in index "haystack_existing_alias_2"
