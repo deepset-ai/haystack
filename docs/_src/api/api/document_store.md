@@ -3994,8 +3994,10 @@ See https://haystack.deepset.ai/components/document-store for more information.
 
 - `api_key`: Secret value of the API key.
 If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-- `workspace`: workspace in Deepset Cloud
-- `index`: index to access within the Deepset Cloud workspace
+See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
+- `workspace`: workspace name in Deepset Cloud
+- `index`: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline.
+You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
 - `duplicate_documents`: Handle duplicates document based on parameter options.
 Parameter options : ( 'skip','overwrite','fail')
 skip: Ignore the duplicates documents
@@ -4004,8 +4006,9 @@ fail: an error is raised if the document ID of the document being added already
 exists.
 - `api_endpoint`: The URL of the Deepset Cloud API.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defaults to "https://api.cloud.deepset.ai/api/v1".
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
 - `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
 

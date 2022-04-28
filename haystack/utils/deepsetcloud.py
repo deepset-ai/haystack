@@ -16,7 +16,7 @@ import requests
 from haystack.schema import Label, Document, Answer
 
 
-DEFAULT_API_ENDPOINT = f"DC_API_PLACEHOLDER/v1"  # TODO
+DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
 
 
 class PipelineStatus(Enum):
