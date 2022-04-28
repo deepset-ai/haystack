@@ -56,7 +56,7 @@ class DensePassageRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
-        scale_scores_to_probabilities: bool = True,
+        scale_score_to_probability: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -111,6 +111,9 @@ class DensePassageRetriever(BaseRetriever):
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
+                                           If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
 
@@ -126,7 +129,7 @@ class DensePassageRetriever(BaseRetriever):
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.top_k = top_k
-        self.scale_scores_to_probabilities = scale_scores_to_probabilities
+        self.scale_score_to_probability = scale_score_to_probability
 
         if document_store is None:
             logger.warning(
@@ -213,7 +216,7 @@ class DensePassageRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_scores_to_probabilities: bool = None,
+        scale_score_to_probability: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -223,6 +226,9 @@ class DensePassageRetriever(BaseRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if top_k is None:
             top_k = self.top_k
@@ -231,8 +237,8 @@ class DensePassageRetriever(BaseRetriever):
             return []
         if index is None:
             index = self.document_store.index
-        if scale_scores_to_probabilities is None:
-            scale_scores_to_probabilities = self.scale_scores_to_probabilities
+        if scale_score_to_probability is None:
+            scale_score_to_probability = self.scale_score_to_probability
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
             query_emb=query_emb[0],
@@ -240,7 +246,7 @@ class DensePassageRetriever(BaseRetriever):
             filters=filters,
             index=index,
             headers=headers,
-            scale_scores_to_probabilities=scale_scores_to_probabilities,
+            scale_score_to_probability=scale_score_to_probability,
         )
         return documents
 
@@ -563,7 +569,7 @@ class TableTextRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
-        scale_scores_to_probabilities: bool = True,
+        scale_score_to_probability: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -604,6 +610,9 @@ class TableTextRetriever(BaseRetriever):
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
+                                           If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
 
@@ -620,7 +629,7 @@ class TableTextRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.top_k = top_k
         self.embed_meta_fields = embed_meta_fields
-        self.scale_scores_to_probabilities = scale_scores_to_probabilities
+        self.scale_score_to_probability = scale_score_to_probability
 
         if document_store is None:
             logger.warning(
@@ -732,7 +741,7 @@ class TableTextRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_scores_to_probabilities: bool = None,
+        scale_score_to_probability: bool = None,
     ) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
@@ -741,8 +750,8 @@ class TableTextRetriever(BaseRetriever):
             return []
         if index is None:
             index = self.document_store.index
-        if scale_scores_to_probabilities is None:
-            scale_scores_to_probabilities = self.scale_scores_to_probabilities
+        if scale_score_to_probability is None:
+            scale_score_to_probability = self.scale_score_to_probability
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
             query_emb=query_emb[0],
@@ -750,7 +759,7 @@ class TableTextRetriever(BaseRetriever):
             filters=filters,
             index=index,
             headers=headers,
-            scale_scores_to_probabilities=scale_scores_to_probabilities,
+            scale_score_to_probability=scale_score_to_probability,
         )
         return documents
 
@@ -1103,7 +1112,7 @@ class EmbeddingRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
-        scale_scores_to_probabilities: bool = True,
+        scale_score_to_probability: bool = True,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1136,6 +1145,9 @@ class EmbeddingRetriever(BaseRetriever):
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
+                                           If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
 
@@ -1159,7 +1171,7 @@ class EmbeddingRetriever(BaseRetriever):
         self.top_k = top_k
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
-        self.scale_scores_to_probabilities = scale_scores_to_probabilities
+        self.scale_score_to_probability = scale_score_to_probability
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
@@ -1181,7 +1193,7 @@ class EmbeddingRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_scores_to_probabilities: bool = None,
+        scale_score_to_probability: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1191,13 +1203,16 @@ class EmbeddingRetriever(BaseRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
-        if scale_scores_to_probabilities is None:
-            scale_scores_to_probabilities = self.scale_scores_to_probabilities
+        if scale_score_to_probability is None:
+            scale_score_to_probability = self.scale_score_to_probability
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
             query_emb=query_emb[0],
@@ -1205,7 +1220,7 @@ class EmbeddingRetriever(BaseRetriever):
             top_k=top_k,
             index=index,
             headers=headers,
-            scale_scores_to_probabilities=scale_scores_to_probabilities,
+            scale_score_to_probability=scale_score_to_probability,
         )
         return documents
 

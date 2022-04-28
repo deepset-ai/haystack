@@ -586,7 +586,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_scores_to_probabilities: bool = True,
+        scale_score_to_probability: bool = True,
     ) -> List[Document]:
 
         raise NotImplementedError(

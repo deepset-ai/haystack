@@ -1620,7 +1620,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
                         "query": "winterfell",
                         "top_k": 50,
                         "all_terms_must_match": False,
-                        "scale_scores_to_probabilities": True,
+                        "scale_score_to_probability": True,
                     }
                 )
             ],
@@ -1638,7 +1638,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
                         "top_k": 50,
                         "filters": {"file_id": [query_winterfell_docs[0]["meta"]["file_id"]]},
                         "all_terms_must_match": False,
-                        "scale_scores_to_probabilities": True,
+                        "scale_score_to_probability": True,
                     }
                 )
             ],
@@ -1857,7 +1857,7 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
                         "top_k": 10,
                         "return_embedding": False,
                         "similarity": "dot_product",
-                        "scale_scores_to_probabilities": True,
+                        "scale_score_to_probability": True,
                     }
                 )
             ],

@@ -873,7 +873,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
-        scale_scores_to_probabilities: bool = True,
+        scale_score_to_probability: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1017,6 +1017,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to false.
+        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
+                                           If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
 
         if index is None:
@@ -1081,7 +1084,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         documents = [
             self._convert_es_hit_to_document(
-                hit, return_embedding=self.return_embedding, scale_scores_to_probabilities=scale_scores_to_probabilities
+                hit, return_embedding=self.return_embedding, scale_score_to_probability=scale_score_to_probability
             )
             for hit in result
         ]
@@ -1095,7 +1098,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_scores_to_probabilities: bool = True,
+        scale_score_to_probability: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1169,6 +1172,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
+                                           If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if index is None:
@@ -1227,7 +1233,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 hit,
                 adapt_score_for_embedding=True,
                 return_embedding=return_embedding,
-                scale_scores_to_probabilities=scale_scores_to_probabilities,
+                scale_score_to_probability=scale_score_to_probability,
             )
             for hit in result
         ]
@@ -1270,7 +1276,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         hit: dict,
         return_embedding: bool,
         adapt_score_for_embedding: bool = False,
-        scale_scores_to_probabilities: bool = True,
+        scale_score_to_probability: bool = True,
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {
@@ -1290,7 +1296,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             if adapt_score_for_embedding:
                 score = self._get_raw_similarity_score(score)
 
-            if scale_scores_to_probabilities:
+            if scale_score_to_probability:
                 if adapt_score_for_embedding:
                     if self.similarity == "cosine":
                         score = (score + 1) / 2  # scaling probability from cosine similarity
@@ -1764,7 +1770,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_scores_to_probabilities: bool = True,
+        scale_score_to_probability: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1838,6 +1844,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
+                                           If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if index is None:
@@ -1876,7 +1885,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 hit,
                 adapt_score_for_embedding=True,
                 return_embedding=return_embedding,
-                scale_scores_to_probabilities=scale_scores_to_probabilities,
+                scale_score_to_probability=scale_score_to_probability,
             )
             for hit in result
         ]
