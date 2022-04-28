@@ -204,18 +204,18 @@ that are most relevant to the query.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="sparse.ElasticsearchFilterOnlyRetriever"></a>
+<a id="sparse.FilterRetriever"></a>
 
-## ElasticsearchFilterOnlyRetriever
+## FilterRetriever
 
 ```python
-class ElasticsearchFilterOnlyRetriever(BM25Retriever)
+class FilterRetriever(BM25Retriever)
 ```
 
 Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
 Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
 
-<a id="sparse.ElasticsearchFilterOnlyRetriever.retrieve"></a>
+<a id="sparse.FilterRetriever.retrieve"></a>
 
 #### retrieve
 

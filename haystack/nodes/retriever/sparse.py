@@ -181,13 +181,14 @@ class FilterRetriever(BM25Retriever):
         documents = self.document_store.get_all_documents(filters=filters, index=index, headers=headers)
         return documents
 
+
 class ElasticsearchFilterOnlyRetriever(FilterRetriever):
     def __init__(
-    self,
-    document_store: KeywordDocumentStore,
-    top_k: int = 10,
-    all_terms_must_match: bool = False,
-    custom_query: Optional[str] = None,
+        self,
+        document_store: KeywordDocumentStore,
+        top_k: int = 10,
+        all_terms_must_match: bool = False,
+        custom_query: Optional[str] = None,
     ):
         logger.warn("This class is now deprecated. Please use the FilterRetriever instead")
         super().__init__(document_store, top_k, all_terms_must_match, custom_query)
