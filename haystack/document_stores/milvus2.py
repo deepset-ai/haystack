@@ -433,10 +433,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         for doc in documents:
             score = scores_for_vector_ids[doc.meta["vector_id"]]
             if scale_score_to_probability:
-                if self.cosine:
-                    score = float((score + 1) / 2)
-                else:
-                    score = float(expit(np.asarray(score / 100)))
+                score = self.score_to_probability(score, self.similarity)
             doc.score = score
 
         return documents
