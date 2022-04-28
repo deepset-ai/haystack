@@ -319,6 +319,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
             indices = self.client.indices.get(index_name, headers=headers)
+            # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
             for index_id, index_info in indices.items():
                 mapping = index_info["mappings"]
                 if self.search_fields:
@@ -1877,6 +1878,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
             indices = self.client.indices.get(index_name, headers=headers)
+            # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
             for index_id, index_info in indices.items():
                 mappings = index_info["mappings"]
                 index_settings = index_info["settings"]["index"]
