@@ -24,7 +24,7 @@ class BM25Retriever(BaseRetriever):
         custom_query: Optional[str] = None,
     ):
         """
-        :param document_store: an instance of an ElasticsearchDocumentStore to retrieve documents from.
+        :param document_store: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
@@ -151,7 +151,7 @@ class ElasticsearchRetriever(BM25Retriever):
         super().__init__(document_store, top_k, all_terms_must_match, custom_query)
 
 
-class ElasticsearchFilterOnlyRetriever(BM25Retriever):
+class FilterRetriever(BM25Retriever):
     """
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
@@ -180,6 +180,18 @@ class ElasticsearchFilterOnlyRetriever(BM25Retriever):
             index = self.document_store.index
         documents = self.document_store.get_all_documents(filters=filters, index=index, headers=headers)
         return documents
+
+
+class ElasticsearchFilterOnlyRetriever(FilterRetriever):
+    def __init__(
+        self,
+        document_store: KeywordDocumentStore,
+        top_k: int = 10,
+        all_terms_must_match: bool = False,
+        custom_query: Optional[str] = None,
+    ):
+        logger.warn("This class is now deprecated. Please use the FilterRetriever instead")
+        super().__init__(document_store, top_k, all_terms_must_match, custom_query)
 
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
