@@ -45,7 +45,7 @@ def exportable_to_yaml(init_func):
             sig = inspect.signature(init_func)
             parameter_names = list(sig.parameters.keys())
             # we can be sure that the first one is always "self"
-            arg_names = parameter_names[1:1+len(args)]
+            arg_names = parameter_names[1 : 1 + len(args)]
             for arg, arg_name in zip(args, arg_names):
                 self._component_config["params"][arg_name] = arg
 
