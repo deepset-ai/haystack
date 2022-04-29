@@ -1090,11 +1090,16 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
         return documents
 
+    @staticmethod
+    def _transform_min_score(min_score):
+        return min_score * 2 - 1 + 1000
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
+        min_score: Optional[float] = None,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1167,6 +1172,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return
+        :param min_score: Only return documents with a score higher than min_score - recommended to set top_k=10000
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -1184,6 +1190,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         # +1 in similarity to avoid negative numbers (for cosine sim)
         body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+
+        if min_score:
+            body['min_score'] = self._transform_min_score(min_score)
+
         if filters:
             filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
             if body["query"]["script_score"]["query"] == {"match_all": {}}:
