@@ -554,14 +554,14 @@ def test_cosine_sanity_check(document_store_small):
     document_store_small.write_documents(documents=docs)
 
     query_results = document_store_small.query_by_embedding(
-        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score_to_probability=True
+        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=True
     )
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
     assert math.isclose(query_results[0].score, KNOWN_SCALED_COSINE, abs_tol=0.00002)
 
     query_results = document_store_small.query_by_embedding(
-        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score_to_probability=False
+        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=False
     )
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318

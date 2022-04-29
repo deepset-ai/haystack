@@ -1399,7 +1399,7 @@ def test_similarity_score_without_scaling(document_store_with_docs):
     retriever = EmbeddingRetriever(
         document_store=document_store_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
-        scale_score_to_probability=False,
+        scale_score=False,
     )
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1437,7 +1437,7 @@ def test_similarity_score_dot_product_without_scaling(document_store_dot_product
     retriever = EmbeddingRetriever(
         document_store=document_store_dot_product_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
-        scale_score_to_probability=False,
+        scale_score=False,
     )
     document_store_dot_product_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1627,7 +1627,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
                         "query": "winterfell",
                         "top_k": 50,
                         "all_terms_must_match": False,
-                        "scale_score_to_probability": True,
+                        "scale_score": True,
                     }
                 )
             ],
@@ -1645,7 +1645,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
                         "top_k": 50,
                         "filters": {"file_id": [query_winterfell_docs[0]["meta"]["file_id"]]},
                         "all_terms_must_match": False,
-                        "scale_score_to_probability": True,
+                        "scale_score": True,
                     }
                 )
             ],
@@ -1864,7 +1864,7 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
                         "top_k": 10,
                         "return_embedding": False,
                         "similarity": "dot_product",
-                        "scale_score_to_probability": True,
+                        "scale_score": True,
                     }
                 )
             ],

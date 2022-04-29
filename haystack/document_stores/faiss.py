@@ -565,7 +565,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score_to_probability: bool = True,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -576,9 +576,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
         :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
-        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
-                                           If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -610,8 +610,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         }
         for doc in documents:
             score = scores_for_vector_ids[doc.meta["vector_id"]]
-            if scale_score_to_probability:
-                score = self.score_to_probability(score, self.similarity)
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
             doc.score = score
 
             if return_embedding is True:

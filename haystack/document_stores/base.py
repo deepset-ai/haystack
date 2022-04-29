@@ -372,7 +372,7 @@ class BaseDocumentStore(BaseComponent):
             if norm != 0.0:
                 vec /= norm
 
-    def score_to_probability(self, score: float, similarity: Optional[str]) -> float:
+    def scale_to_unit_interval(self, score: float, similarity: Optional[str]) -> float:
         if similarity == "cosine":
             return (score + 1) / 2
         else:
@@ -387,7 +387,7 @@ class BaseDocumentStore(BaseComponent):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score_to_probability: bool = True,
+        scale_score: bool = True,
     ) -> List[Document]:
         pass
 
@@ -673,7 +673,7 @@ class KeywordDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
-        scale_score_to_probability: bool = True,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -752,9 +752,9 @@ class KeywordDocumentStore(BaseDocumentStore):
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to False.
-        :param scale_score_to_probability: Whether to scale the similarity scores to probabilities (range of [0,1]).
-                                           If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
 
 
