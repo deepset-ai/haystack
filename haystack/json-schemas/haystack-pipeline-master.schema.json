@@ -1754,8 +1754,8 @@
               "title": "Custom Query",
               "type": "string"
             },
-            "scale_score_to_probability": {
-              "title": "Scale Score To Probability",
+            "scale_score": {
+              "title": "Scale Score",
               "default": true,
               "type": "boolean"
             }
@@ -1969,8 +1969,8 @@
                 }
               ]
             },
-            "scale_score_to_probability": {
-              "title": "Scale Score To Probability",
+            "scale_score": {
+              "title": "Scale Score",
               "default": true,
               "type": "boolean"
             }
@@ -2100,8 +2100,8 @@
               "title": "Custom Query",
               "type": "string"
             },
-            "scale_score_to_probability": {
-              "title": "Scale Score To Probability",
+            "scale_score": {
+              "title": "Scale Score",
               "default": true,
               "type": "boolean"
             }
@@ -2264,8 +2264,8 @@
                 }
               ]
             },
-            "scale_score_to_probability": {
-              "title": "Scale Score To Probability",
+            "scale_score": {
+              "title": "Scale Score",
               "default": true,
               "type": "boolean"
             }
@@ -3744,8 +3744,8 @@
                 }
               ]
             },
-            "scale_score_to_probability": {
-              "title": "Scale Score To Probability",
+            "scale_score": {
+              "title": "Scale Score",
               "default": true,
               "type": "boolean"
             }

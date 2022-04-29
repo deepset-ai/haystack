@@ -899,9 +899,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(
-                result, return_embedding=True, scale_score=scale_score
-            )
+            doc = self._convert_weaviate_result_to_document(result, return_embedding=True, scale_score=scale_score)
             documents.append(doc)
 
         return documents

@@ -305,7 +305,7 @@ Base class for implementing Document Stores that support keyword searches.
 
 ```python
 @abstractmethod
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score_to_probability: bool = True) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -386,7 +386,7 @@ operation.
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to False.
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -769,7 +769,7 @@ Return all labels in the document store
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score_to_probability: bool = True) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -914,7 +914,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to false.
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -923,7 +923,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -999,7 +999,7 @@ operation.
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -1318,7 +1318,7 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1394,7 +1394,7 @@ operation.
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -1549,7 +1549,7 @@ Calculate similarity scores between query embedding and a list of documents usin
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1620,7 +1620,7 @@ Example:
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -2473,7 +2473,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -2486,7 +2486,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name to query the document from.
 - `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -2678,7 +2678,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -2691,7 +2691,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: (SQL) index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -3023,7 +3023,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3036,7 +3036,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: (SQL) index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -3445,7 +3445,7 @@ operation.
 #### query
 
 ```python
-def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -3522,7 +3522,7 @@ operation.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
 https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -3531,7 +3531,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3605,7 +3605,7 @@ operation.
 - `top_k`: How many documents to return
 - `index`: index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -4138,7 +4138,7 @@ operation.
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -4213,7 +4213,7 @@ operation.
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to requests
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -4222,7 +4222,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score_to_probability: bool = True) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -4303,7 +4303,7 @@ operation.
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to False.
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
@@ -4663,7 +4663,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score_to_probability: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -4735,7 +4735,7 @@ operation.
 - `index`: The name of the index from which to retrieve documents.
 - `return_embedding`: Whether to return document embedding.
 - `headers`: PineconeDocumentStore does not support headers.
-- `scale_score_to_probability`: Whether to scale the similarity scores to probabilities (range of [0,1]).
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 

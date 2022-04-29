@@ -254,12 +254,7 @@ class BaseRetriever(BaseComponent):
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
             output, stream = run_query_timed(
-                query=query,
-                filters=filters,
-                top_k=top_k,
-                index=index,
-                headers=headers,
-                scale_score=scale_score,
+                query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
             )
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
@@ -279,12 +274,7 @@ class BaseRetriever(BaseComponent):
         scale_score: bool = None,
     ):
         documents = self.retrieve(
-            query=query,
-            filters=filters,
-            top_k=top_k,
-            index=index,
-            headers=headers,
-            scale_score=scale_score,
+            query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")

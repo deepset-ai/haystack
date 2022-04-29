@@ -1092,9 +1092,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
-            self._convert_es_hit_to_document(
-                hit, return_embedding=self.return_embedding, scale_score=scale_score
-            )
+            self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding, scale_score=scale_score)
             for hit in result
         ]
         return documents
@@ -1239,10 +1237,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         documents = [
             self._convert_es_hit_to_document(
-                hit,
-                adapt_score_for_embedding=True,
-                return_embedding=return_embedding,
-                scale_score=scale_score,
+                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
             )
             for hit in result
         ]
@@ -1281,11 +1276,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         return query
 
     def _convert_es_hit_to_document(
-        self,
-        hit: dict,
-        return_embedding: bool,
-        adapt_score_for_embedding: bool = False,
-        scale_score: bool = True,
+        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False, scale_score: bool = True
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {
@@ -1892,10 +1883,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
 
         documents = [
             self._convert_es_hit_to_document(
-                hit,
-                adapt_score_for_embedding=True,
-                return_embedding=return_embedding,
-                scale_score=scale_score,
+                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
             )
             for hit in result
         ]
