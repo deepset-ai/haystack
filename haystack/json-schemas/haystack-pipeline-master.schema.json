@@ -93,6 +93,9 @@
             "$ref": "#/definitions/FileTypeClassifierComponent"
           },
           {
+            "$ref": "#/definitions/FilterRetrieverComponent"
+          },
+          {
             "$ref": "#/definitions/ImageToTextConverterComponent"
           },
           {
@@ -2575,6 +2578,56 @@
               }
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "FilterRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "FilterRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "all_terms_must_match": {
+              "title": "All Terms Must Match",
+              "default": false,
+              "type": "boolean"
+            },
+            "custom_query": {
+              "title": "Custom Query",
+              "type": "string"
+            }
+          },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
