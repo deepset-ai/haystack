@@ -410,8 +410,9 @@ Dict containing query and answers
 def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None)
 ```
 
-Performs evaluation on a SQuAD-formatted file.
+FARMReader.eval_on_file() has been deprecated and might be removed in a future version. Please use `Pipeline.eval()` instead.
 
+Performs evaluation on a SQuAD-formatted file.
 Returns a dict containing the following metrics:
     - "EM": exact match score
     - "f1": F1-Score
@@ -433,8 +434,9 @@ or use the Reader's device by default.
 def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False, use_no_answer_legacy_confidence=False)
 ```
 
-Performs evaluation on evaluation documents in the DocumentStore.
+FARMReader.eval() has been deprecated and might be removed in a future version. Please use `Pipeline.eval()` instead.
 
+Performs evaluation on evaluation documents in the DocumentStore.
 Returns a dict containing the following metrics:
       - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
       - "f1": Average overlap between predicted answers and their corresponding correct answers

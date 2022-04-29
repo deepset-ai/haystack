@@ -805,7 +805,9 @@ class FARMReader(BaseReader):
                Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
                or use the Reader's device by default.
         """
-        logger.warning("FARMReader.eval_on_file() has been deprecated and might be removed in a future version. Please use `Pipeline.eval()` instead.")
+        logger.warning(
+            "FARMReader.eval_on_file() has been deprecated and might be removed in a future version. Please use `Pipeline.eval()` instead."
+        )
 
         if device is None:
             device = self.devices[0]
@@ -867,7 +869,9 @@ class FARMReader(BaseReader):
         :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
                                                 Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
         """
-        logger.warning("FARMReader.eval() has been deprecated and might be removed in a future version. Please use `Pipeline.eval()` instead.")
+        logger.warning(
+            "FARMReader.eval() has been deprecated and might be removed in a future version. Please use `Pipeline.eval()` instead."
+        )
 
         if device is None:
             device = self.devices[0]
