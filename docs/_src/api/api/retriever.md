@@ -112,7 +112,7 @@ def __init__(document_store: KeywordDocumentStore, top_k: int = 10, all_terms_mu
 
 **Arguments**:
 
-- `document_store`: an instance of an ElasticsearchDocumentStore to retrieve documents from.
+- `document_store`: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore
 - `all_terms_must_match`: Whether all terms of the query must match the document.
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
@@ -204,18 +204,18 @@ that are most relevant to the query.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="sparse.ElasticsearchFilterOnlyRetriever"></a>
+<a id="sparse.FilterRetriever"></a>
 
-## ElasticsearchFilterOnlyRetriever
+## FilterRetriever
 
 ```python
-class ElasticsearchFilterOnlyRetriever(BM25Retriever)
+class FilterRetriever(BM25Retriever)
 ```
 
 Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
 Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
 
-<a id="sparse.ElasticsearchFilterOnlyRetriever.retrieve"></a>
+<a id="sparse.FilterRetriever.retrieve"></a>
 
 #### retrieve
 
