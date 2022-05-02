@@ -1,4 +1,9 @@
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import re
 import sys
