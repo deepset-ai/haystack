@@ -21,6 +21,8 @@ from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
 
+import torch_scatter # transformers library won't raise an error if not installed
+
 
 logger = logging.getLogger(__name__)
 
