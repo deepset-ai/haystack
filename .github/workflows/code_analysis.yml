@@ -1,0 +1,79 @@
+name: Code Analysis
+
+on:
+  # Activate this workflow manually
+  workflow_dispatch:
+  # Activate this workflow when the PR is opened and code is added to it
+  # Note: using pull_request instead of push to keep the CI workflows 
+  # running on our repo, not the contributor's. See autoformat.yml
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.png'
+      - '**/*.gif'
+  # Activate this workflow on every push of code changes on master
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.png'
+      - '**/*.gif'
+
+jobs:
+
+  type-check:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        # Mypy can't run properly on 3.7 as it misses support for Literal types.
+        # FIXME once we drop support for 3.7, use the cache.
+        python-version: 3.8
+    - name: Setup mypy
+      run: |
+        # FIXME installing the packages before running mypy raises
+        # a lot of errors which were never detected before!
+        # pip install .
+        # pip install rest_api/
+        # pip install ui/
+
+        # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
+        # Hotfixing by installing type packages explicitly. 
+        # Run mypy --install-types haystack locally to ensure the list is still up to date
+        # mypy --install-types --non-interactive .
+
+        pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
+
+    - name: Test with mypy
+      run: |
+        echo "=== haystack/ ==="
+        mypy haystack
+
+        echo "=== rest_api/ ==="
+        mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
+
+        echo "=== ui/ ==="
+        mypy ui --exclude=ui/build/ --exclude=ui/test/
+
+
+  linter:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    steps:
+    - uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
+      with:
+        python_version: 3.7
+
+    - name: Linter
+      run: |
+        pylint -ry haystack/
+        pylint -ry rest_api/
+        pylint -ry ui/
