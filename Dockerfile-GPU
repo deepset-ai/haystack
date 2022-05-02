@@ -5,6 +5,12 @@ WORKDIR /home/user
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
+#Temporary fix until this is fixed: https://forums.developer.nvidia.com/t/notice-cuda-linux-repository-key-rotation/212772
+RUN rm /etc/apt/sources.list.d/cuda.list && \
+    rm /etc/apt/sources.list.d/nvidia-ml.list && \
+    apt-key del 7fa2af80 && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub 
+
 # Install software dependencies
 RUN apt-get update && apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa && \
