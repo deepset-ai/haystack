@@ -305,7 +305,7 @@ Base class for implementing Document Stores that support keyword searches.
 
 ```python
 @abstractmethod
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -386,6 +386,9 @@ operation.
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to False.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="base.get_batches_from_generator"></a>
 
@@ -766,7 +769,7 @@ Return all labels in the document store
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -911,13 +914,16 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to false.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="elasticsearch.ElasticsearchDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -993,6 +999,9 @@ operation.
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="elasticsearch.ElasticsearchDocumentStore.describe_documents"></a>
 
@@ -1309,7 +1318,7 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1385,6 +1394,9 @@ operation.
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="elasticsearch.OpenDistroElasticsearchDocumentStore"></a>
 
@@ -1537,7 +1549,7 @@ Calculate similarity scores between query embedding and a list of documents usin
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1608,6 +1620,9 @@ Example:
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="memory.InMemoryDocumentStore.update_embeddings"></a>
 
@@ -2458,7 +2473,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -2471,6 +2486,9 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name to query the document from.
 - `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="faiss.FAISSDocumentStore.save"></a>
 
@@ -2660,7 +2678,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -2673,6 +2691,9 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: (SQL) index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 **Returns**:
 
@@ -3002,7 +3023,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3015,6 +3036,9 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: (SQL) index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="milvus2.Milvus2DocumentStore.delete_documents"></a>
 
@@ -3421,7 +3445,7 @@ operation.
 #### query
 
 ```python
-def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None) -> List[Document]
+def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -3498,13 +3522,16 @@ operation.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
 https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="weaviate.WeaviateDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3578,6 +3605,9 @@ operation.
 - `top_k`: How many documents to return
 - `index`: index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="weaviate.WeaviateDocumentStore.update_embeddings"></a>
 
@@ -3994,8 +4024,10 @@ See https://haystack.deepset.ai/components/document-store for more information.
 
 - `api_key`: Secret value of the API key.
 If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-- `workspace`: workspace in Deepset Cloud
-- `index`: index to access within the Deepset Cloud workspace
+See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
+- `workspace`: workspace name in Deepset Cloud
+- `index`: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline.
+You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
 - `duplicate_documents`: Handle duplicates document based on parameter options.
 Parameter options : ( 'skip','overwrite','fail')
 skip: Ignore the duplicates documents
@@ -4004,8 +4036,9 @@ fail: an error is raised if the document ID of the document being added already
 exists.
 - `api_endpoint`: The URL of the Deepset Cloud API.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defaults to "https://api.cloud.deepset.ai/api/v1".
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
 - `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
 
@@ -4105,7 +4138,7 @@ operation.
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -4180,13 +4213,16 @@ operation.
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to requests
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.query"></a>
 
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -4267,6 +4303,9 @@ operation.
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to False.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.write_documents"></a>
 
@@ -4624,7 +4663,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -4696,6 +4735,9 @@ operation.
 - `index`: The name of the index from which to retrieve documents.
 - `return_embedding`: Whether to return document embedding.
 - `headers`: PineconeDocumentStore does not support headers.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="pinecone.PineconeDocumentStore.load"></a>
 

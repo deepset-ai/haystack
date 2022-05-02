@@ -565,6 +565,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -575,6 +576,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
         :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -605,8 +609,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])
         }
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = self.finalize_raw_score(raw_score, self.similarity)
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))

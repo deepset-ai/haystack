@@ -4,7 +4,6 @@ import logging
 import warnings
 import numpy as np
 
-from scipy.special import expit
 from tqdm import tqdm
 
 try:
@@ -147,22 +146,20 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self.embedding_dim = embedding_dim
 
         self.index_file_size = index_file_size
+        self.similarity = similarity
         self.cosine = False
 
         if similarity == "dot_product":
             self.metric_type = "IP"
-            self.similarity = similarity
         elif similarity == "l2":
             self.metric_type = "L2"
-            self.similarity = similarity
         elif similarity == "cosine":
             self.metric_type = "IP"
-            self.similarity = "dot_product"
             self.cosine = True
         else:
             raise ValueError(
-                "The Milvus document store can currently only support dot_product and L2 similarity. "
-                'Please set similarity="dot_product" or "l2"'
+                "The Milvus document store can currently only support dot_product, cosine and L2 similarity. "
+                'Please set similarity="dot_product" or "cosine" or "l2"'
             )
 
         self.index_type = index_type
@@ -396,6 +393,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -406,6 +404,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -442,11 +443,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            if self.cosine:
-                doc.score = float((raw_score + 1) / 2)
-            else:
-                doc.score = float(expit(np.asarray(raw_score / 100)))
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
         return documents
 

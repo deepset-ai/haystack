@@ -4,6 +4,7 @@ from haystack.nodes.retriever.sparse import (
     BM25Retriever,
     ElasticsearchRetriever,
     ElasticsearchFilterOnlyRetriever,
+    FilterRetriever,
     TfidfRetriever,
 )
 from haystack.nodes.retriever.text2sparql import Text2SparqlRetriever

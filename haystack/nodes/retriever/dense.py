@@ -2,13 +2,16 @@ from typing import List, Dict, Union, Optional
 
 import logging
 from pathlib import Path
+from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
 import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
+import pandas as pd
 
+from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -56,6 +59,7 @@ class DensePassageRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_score: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -110,6 +114,9 @@ class DensePassageRetriever(BaseRetriever):
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
 
@@ -125,6 +132,7 @@ class DensePassageRetriever(BaseRetriever):
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.top_k = top_k
+        self.scale_score = scale_score
 
         if document_store is None:
             logger.warning(
@@ -211,6 +219,7 @@ class DensePassageRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -220,6 +229,9 @@ class DensePassageRetriever(BaseRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if top_k is None:
             top_k = self.top_k
@@ -228,9 +240,11 @@ class DensePassageRetriever(BaseRetriever):
             return []
         if index is None:
             index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers
+            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
 
@@ -553,6 +567,7 @@ class TableTextRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_score: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -593,6 +608,9 @@ class TableTextRetriever(BaseRetriever):
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
 
@@ -609,6 +627,7 @@ class TableTextRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.top_k = top_k
         self.embed_meta_fields = embed_meta_fields
+        self.scale_score = scale_score
 
         if document_store is None:
             logger.warning(
@@ -720,6 +739,7 @@ class TableTextRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
@@ -728,9 +748,11 @@ class TableTextRetriever(BaseRetriever):
             return []
         if index is None:
             index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers
+            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
 
@@ -1083,6 +1105,7 @@ class EmbeddingRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_score: bool = True,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1115,6 +1138,9 @@ class EmbeddingRetriever(BaseRetriever):
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
 
@@ -1138,6 +1164,7 @@ class EmbeddingRetriever(BaseRetriever):
         self.top_k = top_k
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
+        self.scale_score = scale_score
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
@@ -1159,6 +1186,7 @@ class EmbeddingRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1168,14 +1196,19 @@ class EmbeddingRetriever(BaseRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers
+            query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         return documents
 
@@ -1199,4 +1232,24 @@ class EmbeddingRetriever(BaseRetriever):
         :param docs: List of documents to embed
         :return: Embeddings, one per input document
         """
+        docs = self._linearize_tables(docs)
         return self.embedding_encoder.embed_documents(docs)
+
+    def _linearize_tables(self, docs: List[Document]) -> List[Document]:
+        """
+        Turns table documents into text documents by representing the table in csv format.
+        This allows us to use text embedding models for table retrieval.
+
+        :param docs: List of documents to linearize. If the document is not a table, it is returned as is.
+        :return: List of documents with linearized tables or original documents if they are not tables.
+        """
+        linearized_docs = []
+        for doc in docs:
+            if doc.content_type == "table":
+                doc = deepcopy(doc)
+                if isinstance(doc.content, pd.DataFrame):
+                    doc.content = doc.content.to_csv(index=False)
+                else:
+                    raise HaystackError("Documents of type 'table' need to have a pd.DataFrame as content field")
+            linearized_docs.append(doc)
+        return linearized_docs
