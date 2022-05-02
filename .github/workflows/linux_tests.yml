@@ -40,7 +40,7 @@ jobs:
       run: pip install .
 
     - name: Run tests
-      run: pytest -s -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/ --document_store_type=memory,sql
+      run: pytest -s -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/ --document_store_type=memory,sql  --durations=10
 
 
   document-store-tests:
