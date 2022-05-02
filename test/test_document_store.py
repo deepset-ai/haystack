@@ -1392,6 +1392,26 @@ def test_similarity_score(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
+    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+)
+@pytest.mark.embedding_dim(384)
+def test_similarity_score_without_scaling(document_store_with_docs):
+    retriever = EmbeddingRetriever(
+        document_store=document_store_with_docs,
+        embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        scale_score=False,
+    )
+    document_store_with_docs.update_embeddings(retriever)
+    pipeline = DocumentSearchPipeline(retriever)
+    prediction = pipeline.run("Paul lives in New York")
+    scores = [document.score for document in prediction["documents"]]
+    assert scores == pytest.approx(
+        [0.8205015882815654, 0.3875582935754016, 0.29833657786100765, 0.26432449826370585, 0.18182588827418789],
+        abs=1e-3,
+    )
+
+
+@pytest.mark.parametrize(
     "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
@@ -1406,6 +1426,25 @@ def test_similarity_score_dot_product(document_store_dot_product_with_docs):
     scores = [document.score for document in prediction["documents"]]
     assert scores == pytest.approx(
         [0.5526494403409358, 0.5247784342375555, 0.5189836829440964, 0.5179697273254912, 0.5112024928228626], abs=1e-3
+    )
+
+
+@pytest.mark.parametrize(
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch"], indirect=True
+)
+@pytest.mark.embedding_dim(384)
+def test_similarity_score_dot_product_without_scaling(document_store_dot_product_with_docs):
+    retriever = EmbeddingRetriever(
+        document_store=document_store_dot_product_with_docs,
+        embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        scale_score=False,
+    )
+    document_store_dot_product_with_docs.update_embeddings(retriever)
+    pipeline = DocumentSearchPipeline(retriever)
+    prediction = pipeline.run("Paul lives in New York")
+    scores = [document.score for document in prediction["documents"]]
+    assert scores == pytest.approx(
+        [21.13810000000001, 9.919499999999971, 7.597099999999955, 7.191000000000031, 4.481750000000034], abs=1e-3
     )
 
 
@@ -1582,7 +1621,11 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
         responses.add(
             method=responses.POST,
             url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
-            match=[matchers.json_params_matcher({"query": "winterfell", "top_k": 50, "all_terms_must_match": False})],
+            match=[
+                matchers.json_params_matcher(
+                    {"query": "winterfell", "top_k": 50, "all_terms_must_match": False, "scale_score": True}
+                )
+            ],
             status=200,
             body=query_winterfell_response,
         )
@@ -1597,6 +1640,7 @@ def test_DeepsetCloudDocumentStore_query(deepset_cloud_document_store):
                         "top_k": 50,
                         "filters": {"file_id": [query_winterfell_docs[0]["meta"]["file_id"]]},
                         "all_terms_must_match": False,
+                        "scale_score": True,
                     }
                 )
             ],
@@ -1815,6 +1859,7 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
                         "top_k": 10,
                         "return_embedding": False,
                         "similarity": "dot_product",
+                        "scale_score": True,
                     }
                 )
             ],

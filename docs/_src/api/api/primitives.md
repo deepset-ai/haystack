@@ -40,7 +40,7 @@ handling of Documents and check compatibility.
 - `id`: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
 creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
 - `score`: The relevance score of the Document determined by a model (e.g. Retriever or Re-Ranker).
-In the range of [0,1], where 1 means extremely relevant.
+If model's `scale_score` was set to True (default) score is in the unit interval (range of [0,1]), where 1 means extremely relevant.
 - `meta`: Meta fields for a document like name, url, or author in the form of a custom dict (any keys and values allowed).
 - `embedding`: Vector encoding of the text
 - `id_hash_keys`: Generate the document id from a custom list of strings that refere to the documents attributes.

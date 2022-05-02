@@ -576,6 +576,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -645,6 +646,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param index: The name of the index from which to retrieve documents.
         :param return_embedding: Whether to return document embedding.
         :param headers: PineconeDocumentStore does not support headers.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -681,8 +685,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
         for i, doc in enumerate(documents):
-            raw_score = scores_for_vector_ids[doc.id]
-            doc.score = self.finalize_raw_score(raw_score, self.similarity)
+            score = scores_for_vector_ids[doc.id]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
         return documents
 
