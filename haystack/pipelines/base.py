@@ -1,8 +1,6 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
-from haystack.utils.context_matching import calculate_context_similarity
-
 try:
     from typing import Literal
 except ImportError:
@@ -44,7 +42,7 @@ from haystack.pipelines.config import (
     validate_config,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
-from haystack.utils import DeepsetCloud
+from haystack.utils import DeepsetCloud, calculate_context_similarity
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
