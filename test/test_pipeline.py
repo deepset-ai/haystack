@@ -1624,6 +1624,7 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
     with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
         pipeline.get_document_store()
 
+
 #
 # RouteDocuments tests
 #

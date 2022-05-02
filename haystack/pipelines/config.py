@@ -330,21 +330,21 @@ def _add_node_to_pipeline_graph(
     :param node: `{"name": node_name, "inputs": [node_inputs]}` (the entry to add from get_component_definitions())
     :param instance: Optional instance of the node. Note that the instance is optional because in some cases
                      we want to be able to validate the graph without loading the nodes in the process.
-                     Even if an instance is given, this method expects the component definition to be in 
-                     `components`. Add the content of `BaseComponent._component_config` to `components` under your 
+                     Even if an instance is given, this method expects the component definition to be in
+                     `components`. Add the content of `BaseComponent._component_config` to `components` under your
                      component's name before calling this method if that's not the case (see `Pipeline.add_node()`).
     """
     # Validate node definition
     node_class = _get_defined_node_class(node_name=node["name"], components=components)
     if instance and not type(instance) == node_class:  # to exclude subclasses from matching
         raise PipelineConfigError(
-                f"You are trying to load a node instance ({instance}) along with "
-                "the definition for a node of a different class "
-                f"({node['name']}, defined as {node_class}). "
-                "Either pass no instance to this method, or correct the node definitions "
-                "in your pipeline configuration."
-            )
-    
+            f"You are trying to load a node instance ({instance}) along with "
+            "the definition for a node of a different class "
+            f"({node['name']}, defined as {node_class}). "
+            "Either pass no instance to this method, or correct the node definitions "
+            "in your pipeline configuration."
+        )
+
     # If the graph is empty, let's first add a root node
     if len(graph) == 0:
         if root_node_name:
@@ -452,7 +452,7 @@ def _add_node_to_pipeline_graph(
 def _get_defined_node_class(node_name: str, components: Dict[str, Dict[str, str]]):
     """
     Returns the class of a given component, given the component's list and the
-    component's name. Will fail if the component is not in the components list, 
+    component's name. Will fail if the component is not in the components list,
     or the component's class is not a subclass of BaseComponent.
 
     :param node_name: the name of the node as defined into the component's definition.

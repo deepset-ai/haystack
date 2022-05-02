@@ -16,6 +16,17 @@ Under-the-hood, a pipeline is represented as a directed acyclic graph of compone
 flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
 Reader from multiple Retrievers, or re-ranking of candidate documents.
 
+<a id="base.Pipeline.root_node"></a>
+
+#### root\_node
+
+```python
+@property
+def root_node() -> str
+```
+
+Returns the root node of the pipeline's graph.
+
 <a id="base.Pipeline.to_code"></a>
 
 #### to\_code
@@ -837,6 +848,22 @@ def __call__(*args, **kwargs)
 ```
 
 Ray calls this method which is then re-directed to the corresponding component's run().
+
+<a id="ray._RayDeploymentWrapper.load_from_pipeline_config"></a>
+
+#### load\_from\_pipeline\_config
+
+```python
+@staticmethod
+def load_from_pipeline_config(pipeline_config: dict, component_name: str)
+```
+
+Load an individual component from a YAML config for Pipelines.
+
+**Arguments**:
+
+- `pipeline_config`: the Pipelines YAML config parsed as a dict.
+- `component_name`: the name of the component to load.
 
 <a id="standard_pipelines"></a>
 

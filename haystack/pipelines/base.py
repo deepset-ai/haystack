@@ -34,7 +34,7 @@ from haystack.pipelines.config import (
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
     validate_config,
-    _add_node_to_pipeline_graph
+    _add_node_to_pipeline_graph,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
@@ -365,9 +365,7 @@ class Pipeline:
 
         # Check for duplicates before adding the definition
         if name in component_definitions.keys():
-            raise PipelineConfigError(
-                f"A node named '{name}' is already in the pipeline. Choose another name."
-            )
+            raise PipelineConfigError(f"A node named '{name}' is already in the pipeline. Choose another name.")
         component_definitions[name] = component._component_config
 
         # Name any nested component before adding them
@@ -375,7 +373,7 @@ class Pipeline:
         component_names = self._get_all_component_names()
         component_names.add(name)
         self._set_sub_component_names(component, component_names=component_names)
-        
+
         self.graph = _add_node_to_pipeline_graph(
             graph=self.graph,
             root_node_name=self.root_node,
