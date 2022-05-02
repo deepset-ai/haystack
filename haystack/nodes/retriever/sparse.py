@@ -306,8 +306,10 @@ class TfidfRetriever(BaseRetriever):
             for idx_query, score in enumerate(cur_doc_scores):
                 idx_scores[idx_query].append((idx_doc, score))
 
-        indices_and_scores: List[Dict] = [OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
-                                          for query_idx_scores in idx_scores]
+        indices_and_scores: List[Dict] = [
+            OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
+            for query_idx_scores in idx_scores
+        ]
         return indices_and_scores
 
     def retrieve(

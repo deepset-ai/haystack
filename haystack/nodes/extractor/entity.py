@@ -59,8 +59,9 @@ class EntityExtractor(BaseComponent):
         else:
             flattened_documents = list(itertools.chain.from_iterable(documents))  # type: ignore
 
-        all_entities = self.extract_batch([doc.content for doc in flattened_documents if isinstance(doc, Document)],
-                                          batch_size=batch_size)
+        all_entities = self.extract_batch(
+            [doc.content for doc in flattened_documents if isinstance(doc, Document)], batch_size=batch_size
+        )
 
         for entities_per_doc, doc in zip(all_entities, flattened_documents):
             if not isinstance(doc, Document):

@@ -710,8 +710,9 @@ class Pipeline(BasePipeline):
         debug: Optional[bool] = None,
     ):
         if file_paths is not None or meta is not None:
-            logger.info("It seems that an indexing Pipeline is run, "
-                        "so using the nodes' run method instead of run_batch.")
+            logger.info(
+                "It seems that an indexing Pipeline is run, " "so using the nodes' run method instead of run_batch."
+            )
             if isinstance(queries, list):
                 raise PipelineError("For indexing, only a single query can be provided.")
             if isinstance(labels, list):
@@ -721,8 +722,15 @@ class Pipeline(BasePipeline):
                 for doc_list in documents:
                     assert isinstance(doc_list, list)
                     flattened_documents.extend(doc_list)
-            return self.run(query=queries, file_paths=file_paths, labels=labels, documents=flattened_documents,
-                            meta=meta, params=params, debug=debug)
+            return self.run(
+                query=queries,
+                file_paths=file_paths,
+                labels=labels,
+                documents=flattened_documents,
+                meta=meta,
+                params=params,
+                debug=debug,
+            )
         # Validate node names
         self._validate_node_names_in_params(params=params)
 

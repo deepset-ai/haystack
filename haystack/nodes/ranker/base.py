@@ -23,8 +23,13 @@ class BaseRanker(BaseComponent):
         pass
 
     @abstractmethod
-    def predict_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
-                      top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]:
+    def predict_batch(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
         pass
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore

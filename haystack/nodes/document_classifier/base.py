@@ -23,9 +23,7 @@ class BaseDocumentClassifier(BaseComponent):
 
     @abstractmethod
     def predict_batch(
-        self,
-        documents: Union[List[Document], List[List[Document]]],
-        batch_size: Optional[int] = None,
+        self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 

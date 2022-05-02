@@ -186,4 +186,3 @@ class TransformersTranslator(BaseTranslator):
                     translated.append(cur_translation)
 
         return translated
-

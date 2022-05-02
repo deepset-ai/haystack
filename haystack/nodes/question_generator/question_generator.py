@@ -80,8 +80,9 @@ class QuestionGenerator(BaseComponent):
             questions_iterator = questions  # type: ignore
             documents_iterator = documents
         else:
-            questions = self.generate_batch(texts=[[d.content for d in doc_list]
-                                                   for doc_list in documents if isinstance(doc_list, list)])
+            questions = self.generate_batch(
+                texts=[[d.content for d in doc_list] for doc_list in documents if isinstance(doc_list, list)]
+            )
             questions_iterator = itertools.chain.from_iterable(questions)  # type: ignore
             documents_iterator = itertools.chain.from_iterable(documents)  # type: ignore
         for cur_questions, doc in zip(questions_iterator, documents_iterator):
@@ -145,17 +146,22 @@ class QuestionGenerator(BaseComponent):
             number_of_docs = [len(text_list) for text_list in texts]
             text_iterator = itertools.chain.from_iterable(texts)  # type: ignore
 
-        split_texts_docs = [self.preprocessor.split(
-            document={"content": text},
-            split_by="word",
-            split_respect_sentence_boundary=False,
-            split_overlap=self.split_overlap,
-            split_length=self.split_length,
-        ) for text in text_iterator]
+        split_texts_docs = [
+            self.preprocessor.split(
+                document={"content": text},
+                split_by="word",
+                split_respect_sentence_boundary=False,
+                split_overlap=self.split_overlap,
+                split_length=self.split_length,
+            )
+            for text in text_iterator
+        ]
         split_texts = [[doc.content for doc in split if isinstance(doc.content, str)] for split in split_texts_docs]
         number_of_splits = [len(split) for split in split_texts]
-        flat_split_texts = [f"{self.prompt} {text}" if self.prompt not in text else text
-                            for text in itertools.chain.from_iterable(split_texts)]
+        flat_split_texts = [
+            f"{self.prompt} {text}" if self.prompt not in text else text
+            for text in itertools.chain.from_iterable(split_texts)
+        ]
 
         batches = self._get_batches(flat_split_texts, batch_size=batch_size)
         all_string_outputs = []
