@@ -33,8 +33,8 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: deepset-ai/haystack/.github/workflows/linux_cache_action.yml
-    
+    - uses: .github/workflows/linux_cache_action.yml
+
     # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
     # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
     - name: Install Haystack
@@ -70,7 +70,7 @@ jobs:
           command: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
     steps:
-    - uses: deepset-ai/haystack/.github/workflows/linux_cache_action.yml
+    - uses: .github/workflows/linux_cache_action.yml
 
     - name: Setup Docstore
       run: ${{ matrix.command }}
@@ -92,7 +92,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
-    - uses: deepset-ai/haystack/.github/workflows/linux_cache_action.yml
+    - uses: .github/workflows/linux_cache_action.yml
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -139,7 +139,7 @@ jobs:
     timeout-minutes: 45
     
     steps:
-    - uses: deepset-ai/haystack/.github/workflows/linux_cache_action.yml
+    - uses: .github/workflows/linux_cache_action.yml
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2

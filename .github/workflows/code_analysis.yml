@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:
-    - uses: deepset-ai/haystack/.github/workflows/linux_cache_action.yml
+    - uses: .github/workflows/linux_cache_action.yml
 
     - name: Linter
       run: |
