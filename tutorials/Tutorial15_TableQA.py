@@ -1,5 +1,6 @@
 import os
 import json
+import time
 
 import pandas as pd
 
@@ -186,11 +187,12 @@ def tutorial15_tableqa():
     # It can sometimes be hard to provide your data in form of a pandas DataFrame.
     # For this case, we provide the `ParsrConverter` wrapper that can help you to convert, for example, a PDF file into a document that you can index.
     os.system("docker run -d -p 3001:3001 axarev/parsr")
+    time.sleep(30)
     os.system("wget https://www.w3.org/WAI/WCAG21/working-examples/pdf-table/table.pdf")
 
     converter = ParsrConverter()
     docs = converter.convert("table.pdf")
-    tables = [doc for doc in docs if doc["content_type"] == "table"]
+    tables = [doc for doc in docs if doc.content_type == "table"]
 
     print(tables)
 
