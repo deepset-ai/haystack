@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Dict, Any, Iterable, Tuple
+from typing import List, Optional, Union, Dict, Any, Tuple
 
 import logging
 import itertools

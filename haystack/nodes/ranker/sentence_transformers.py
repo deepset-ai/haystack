@@ -222,7 +222,7 @@ class SentenceTransformersRanker(BaseRanker):
                 )
 
             # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
-            elif len(documents) > 0 and isinstance(documents[0], list):
+            if len(documents) > 0 and isinstance(documents[0], list):
                 if len(queries) != len(documents):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
                 for query, cur_docs in zip(queries, documents):

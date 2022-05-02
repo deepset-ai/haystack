@@ -1394,24 +1394,6 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def _get_raw_similarity_score(self, score):
         return score - 1000
 
-    def describe_documents(self, index=None):
-        """
-        Return a summary of the documents in the document store
-        """
-        if index is None:
-            index = self.index
-        docs = self.get_all_documents(index)
-
-        l = [len(d.content) for d in docs]
-        stats = {
-            "count": len(docs),
-            "chars_mean": np.mean(l),
-            "chars_max": max(l),
-            "chars_min": min(l),
-            "chars_median": np.median(l),
-        }
-        return stats
-
     def update_embeddings(
         self,
         retriever,

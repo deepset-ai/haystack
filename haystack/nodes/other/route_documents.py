@@ -1,7 +1,5 @@
-from typing import List, Tuple, Dict, Optional, Union, Sequence
+from typing import List, Tuple, Dict, Optional, Union
 from collections import defaultdict
-
-from numpy.lib.shape_base import split
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document

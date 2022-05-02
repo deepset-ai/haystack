@@ -1,5 +1,5 @@
 import itertools
-from typing import List, Optional, Sequence, Dict, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 from abc import abstractmethod
 from copy import deepcopy
@@ -9,7 +9,6 @@ from time import perf_counter
 import numpy as np
 from scipy.special import expit
 
-from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
 

@@ -1,4 +1,4 @@
-from typing import List, Union, Optional, Iterator, Sequence, Iterable
+from typing import List, Union, Optional, Iterator
 import itertools
 
 from transformers import AutoModelForSeq2SeqLM

@@ -574,6 +574,24 @@ class BaseDocumentStore(BaseComponent):
     ):
         return self.run(documents=documents, index=index, headers=headers, id_hash_keys=id_hash_keys)
 
+    def describe_documents(self, index=None):
+        """
+        Return a summary of the documents in the document store
+        """
+        if index is None:
+            index = self.index
+        docs = self.get_all_documents(index)
+
+        l = [len(d.content) for d in docs]
+        stats = {
+            "count": len(docs),
+            "chars_mean": np.mean(l),
+            "chars_max": max(l),
+            "chars_min": min(l),
+            "chars_median": np.median(l),
+        }
+        return stats
+
     @abstractmethod
     def get_documents_by_id(
         self,

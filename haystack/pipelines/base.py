@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
