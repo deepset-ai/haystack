@@ -985,6 +985,7 @@ class Pipeline(BasePipeline):
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
+        custom_document_id_field: Optional[str] = None,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -1041,7 +1042,9 @@ class Pipeline(BasePipeline):
 
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
-                df = self._build_eval_dataframe(label.query, label, node_name, node_output)
+                df = self._build_eval_dataframe(
+                    label.query, label, node_name, node_output, custom_document_id_field=custom_document_id_field
+                )
                 eval_result.append(node_name, df)
 
         # add sas values in batch mode for whole Dataframe
@@ -1098,7 +1101,12 @@ class Pipeline(BasePipeline):
         return df.reindex(columns=reordered_columns)
 
     def _build_eval_dataframe(
-        self, query: str, query_labels: MultiLabel, node_name: str, node_output: dict
+        self,
+        query: str,
+        query_labels: MultiLabel,
+        node_name: str,
+        node_output: dict,
+        custom_document_id_field: Optional[str] = None,
     ) -> DataFrame:
         """
         Builds a Dataframe for each query from which evaluation metrics can be calculated.
@@ -1119,7 +1127,11 @@ class Pipeline(BasePipeline):
         # If all labels are no_answers, MultiLabel.answers will be [""] and the other aggregates []
         gold_answers = query_labels.answers
         gold_offsets_in_documents = query_labels.offsets_in_documents
-        gold_document_ids = query_labels.document_ids
+        gold_document_ids = (
+            query_labels.document_ids
+            if custom_document_id_field is None
+            else [l.document.meta[custom_document_id_field] for l in query_labels.labels if not l.no_answer]
+        )
         gold_contexts = query_labels.contexts
 
         # if node returned answers, include answer specific info:
@@ -1147,6 +1159,10 @@ class Pipeline(BasePipeline):
                     df_answers["gold_answers"] = [gold_answers] * len(df_answers)
                     df_answers["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
+                    if custom_document_id_field is not None:
+                        df_answers["document_id"] = [
+                            answer.meta.get(custom_document_id_field, "") for answer in answers
+                        ]
                     df_answers["gold_answers_exact_match"] = df_answers.apply(
                         lambda row: [calculate_em_str(gold_answer, row["answer"]) for gold_answer in gold_answers],
                         axis=1,
@@ -1166,10 +1182,16 @@ class Pipeline(BasePipeline):
                         ],
                         axis=1,
                     )
+                    df_answers["gold_answers_document_id_match"] = df_answers.apply(
+                        lambda row: [1.0 if row["document_id"] == gold_id else 0.0 for gold_id in gold_document_ids],
+                        axis=1,
+                    )
+
+                    # context matched metrics
                     df_answers["exact_match_context_matched"] = df_answers.apply(
                         lambda row: max(
-                            f1
-                            for f1, sim in zip(
+                            em
+                            for em, sim in zip(
                                 row["gold_answers_exact_match"] + [0.0], row["gold_answers_context_similarity"] + [100]
                             )
                             if sim > 65
@@ -1186,6 +1208,55 @@ class Pipeline(BasePipeline):
                         ),
                         axis=1,
                     )
+
+                    # document matched metrics
+                    df_answers["exact_match_document_matched"] = df_answers.apply(
+                        lambda row: max(
+                            em
+                            for em, doc_match in zip(
+                                row["gold_answers_exact_match"] + [0.0], row["gold_answers_document_id_match"] + [1.0]
+                            )
+                            if doc_match == 1.0
+                        ),
+                        axis=1,
+                    )
+                    df_answers["f1_document_matched"] = df_answers.apply(
+                        lambda row: max(
+                            f1
+                            for f1, doc_match in zip(
+                                row["gold_answers_f1"] + [0.0], row["gold_answers_document_id_match"] + [1.0]
+                            )
+                            if doc_match == 1.0
+                        ),
+                        axis=1,
+                    )
+
+                    # document and context matched metrics
+                    df_answers["exact_match_document_and_context_matched"] = df_answers.apply(
+                        lambda row: max(
+                            f1
+                            for f1, sim, doc_match in zip(
+                                row["gold_answers_exact_match"] + [0.0],
+                                row["gold_answers_context_similarity"] + [100],
+                                row["gold_answers_document_id_match"] + [1.0],
+                            )
+                            if sim > 65 and doc_match == 1.0
+                        ),
+                        axis=1,
+                    )
+                    df_answers["f1_document_and_context_matched"] = df_answers.apply(
+                        lambda row: max(
+                            f1
+                            for f1, sim, doc_match in zip(
+                                row["gold_answers_f1"] + [0.0],
+                                row["gold_answers_context_similarity"] + [100],
+                                row["gold_answers_document_id_match"] + [1.0],
+                            )
+                            if sim > 65 and doc_match == 1.0
+                        ),
+                        axis=1,
+                    )
+
                     df_answers["rank"] = np.arange(1, len(df_answers) + 1)
                     df = pd.concat([df, df_answers])
 
