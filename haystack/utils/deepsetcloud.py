@@ -316,6 +316,7 @@ class IndexClient:
         workspace: Optional[str] = None,
         index: Optional[str] = None,
         all_terms_must_match: Optional[bool] = None,
+        scale_score: bool = True,
         headers: dict = None,
     ) -> List[dict]:
         index_url = self._build_index_url(workspace=workspace, index=index)
@@ -329,6 +330,7 @@ class IndexClient:
             "similarity": similarity,
             "return_embedding": return_embedding,
             "all_terms_must_match": all_terms_must_match,
+            "scale_score": scale_score,
         }
         response = self.client.post(url=query_url, json=request, headers=headers)
         return response.json()

@@ -191,7 +191,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self._delete_index(index)
             self.weaviate_client.schema.create(schema)
 
-    def _convert_weaviate_result_to_document(self, result: dict, return_embedding: bool) -> Document:
+    def _convert_weaviate_result_to_document(
+        self, result: dict, return_embedding: bool, scale_score: bool = True
+    ) -> Document:
         """
         Convert weaviate result dict into haystack document object. This is more involved because
         weaviate search result dict varies between get and query interfaces.
@@ -233,6 +235,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if "_additional" in props:
             if "certainty" in props["_additional"]:
                 score = props["_additional"]["certainty"]
+                # weaviate returns already scaled values
+                if score and not scale_score:
+                    score = score * 2 - 1
             if "id" in props["_additional"]:
                 id = props["_additional"]["id"]
             if "vector" in props["_additional"]:
@@ -786,6 +791,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -859,6 +865,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
                             https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         index = self._sanitize_index_name(index) or self.index
 
@@ -890,7 +899,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=True)
+            doc = self._convert_weaviate_result_to_document(result, return_embedding=True, scale_score=scale_score)
             documents.append(doc)
 
         return documents
@@ -903,6 +912,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -974,6 +984,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -1017,7 +1030,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
+            doc = self._convert_weaviate_result_to_document(
+                result, return_embedding=return_embedding, scale_score=scale_score
+            )
             documents.append(doc)
 
         return documents

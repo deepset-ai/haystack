@@ -882,6 +882,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1025,6 +1026,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to false.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
 
         if index is None:
@@ -1087,7 +1091,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         logger.debug(f"Retriever query: {body}")
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
-        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
+        documents = [
+            self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding, scale_score=scale_score)
+            for hit in result
+        ]
         return documents
 
     def query_by_embedding(
@@ -1098,6 +1105,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1171,6 +1179,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if index is None:
@@ -1225,7 +1236,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             raise e
 
         documents = [
-            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+            self._convert_es_hit_to_document(
+                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
+            )
             for hit in result
         ]
         return documents
@@ -1263,7 +1276,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         return query
 
     def _convert_es_hit_to_document(
-        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False
+        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False, scale_score: bool = True
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         meta_data = {
@@ -1281,13 +1294,13 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         score = hit["_score"]
         if score:
             if adapt_score_for_embedding:
-                score = self._scale_embedding_score(score)
-                if self.similarity == "cosine":
-                    score = (score + 1) / 2  # scaling probability from cosine similarity
+                score = self._get_raw_similarity_score(score)
+
+            if scale_score:
+                if adapt_score_for_embedding:
+                    score = self.scale_to_unit_interval(score, self.similarity)
                 else:
-                    score = float(expit(np.asarray(score / 100)))  # scaling probability from dot product and l2
-            else:
-                score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
+                    score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
         embedding = None
         if return_embedding:
@@ -1307,7 +1320,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         return document
 
-    def _scale_embedding_score(self, score):
+    def _get_raw_similarity_score(self, score):
         return score - 1000
 
     def describe_documents(self, index=None):
@@ -1758,6 +1771,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1831,6 +1845,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if index is None:
@@ -1865,7 +1882,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
         documents = [
-            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, return_embedding=return_embedding)
+            self._convert_es_hit_to_document(
+                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
+            )
             for hit in result
         ]
         return documents
@@ -2073,7 +2092,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             }
         return query
 
-    def _scale_embedding_score(self, score):
+    def _get_raw_similarity_score(self, score):
         # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
         if self.similarity == "dot_product":
