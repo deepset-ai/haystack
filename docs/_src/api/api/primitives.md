@@ -40,7 +40,7 @@ handling of Documents and check compatibility.
 - `id`: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
 creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
 - `score`: The relevance score of the Document determined by a model (e.g. Retriever or Re-Ranker).
-In the range of [0,1], where 1 means extremely relevant.
+If model's `scale_score` was set to True (default) score is in the unit interval (range of [0,1]), where 1 means extremely relevant.
 - `meta`: Meta fields for a document like name, url, or author in the form of a custom dict (any keys and values allowed).
 - `embedding`: Vector encoding of the text
 - `id_hash_keys`: Generate the document id from a custom list of strings that refere to the documents attributes.
@@ -326,7 +326,7 @@ The DataFrames have the following schema:
 #### calculate\_metrics
 
 ```python
-def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", eval_mode: str = "integrated") -> Dict[str, Dict[str, float]]
+def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_or_answer_match", eval_mode: str = "integrated") -> Dict[str, Dict[str, float]]
 ```
 
 Calculates proper metrics for each node.
@@ -356,7 +356,8 @@ as there are situations the result can heavily differ from an actual eval run wi
 - `simulated_top_k_retriever`: simulates top_k param of retriever.
 remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
 - `doc_relevance_col`: column in the underlying eval table that contains the relevance criteria for documents.
-values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+Values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'.
+Default value is 'gold_id_or_answer_match'.
 - `eval_mode`: the input on which the node was evaluated on.
 Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
 However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,

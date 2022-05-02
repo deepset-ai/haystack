@@ -1,21 +1,22 @@
 from typing import Optional, Dict, List, Any
 
-from haystack.errors import HaystackError
-
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-import requests
 import json
-from pathlib import Path
 import copy
 import logging
+from pathlib import Path
+
+import requests
 import pandas as pd
 
-from haystack.nodes.file_converter import BaseConverter
+from haystack.nodes.file_converter.base import BaseConverter
 from haystack.schema import Document
+from haystack.errors import HaystackError
+
 
 logger = logging.getLogger(__name__)
 
@@ -128,8 +129,8 @@ class ParsrConverter(BaseConverter):
             # Send file to Parsr
             send_response = requests.post(
                 url=f"{self.parsr_url}/api/v1/document",
-                files={
-                    "file": (file_path, pdf_file, "application/pdf"),
+                files={  # type: ignore
+                    "file": (str(file_path), pdf_file, "application/pdf"),
                     "config": ("config", json.dumps(self.config), "application/json"),
                 },
             )

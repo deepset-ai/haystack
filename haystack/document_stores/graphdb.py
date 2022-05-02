@@ -1,7 +1,8 @@
 from typing import Dict, Optional
 
-import requests
 from pathlib import Path
+
+import requests
 from requests.auth import HTTPBasicAuth
 
 try:
@@ -56,7 +57,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         url = f"{self.url}/rest/repositories"
         files = {"config": open(config_path, "r", encoding="utf-8")}
-        response = requests.post(url, files=files, headers=headers)
+        response = requests.post(url, files=files, headers=headers)  # type: ignore
         if response.status_code > 299:
             raise Exception(response.text)
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import Any, Optional, Dict, List, Tuple, Optional, Union, Callable
+from typing import Any, Optional, Dict, List, Tuple, Union, Callable
 
-import sys
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from functools import wraps
@@ -11,7 +10,6 @@ import logging
 from haystack.schema import Document, MultiLabel
 from haystack.errors import PipelineSchemaError
 from haystack.telemetry import send_custom_event
-from haystack.errors import HaystackError
 
 
 logger = logging.getLogger(__name__)
@@ -29,21 +27,27 @@ def exportable_to_yaml(init_func):
         # Call the actuall __init__ function with all the arguments
         init_func(self, *args, **kwargs)
 
-        # Warn for unnamed input params - should be rare
-        if args:
-            logger.warning(
-                "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
-            )
         # Create the configuration dictionary if it doesn't exist yet
         if not self._component_config:
             self._component_config = {"params": {}, "type": type(self).__name__}
 
         # Make sure it runs only on the __init__of the implementations, not in superclasses
-        if init_func.__qualname__ == f"{self.__class__.__name__}.{init_func.__name__}":
+        # NOTE: we use '.endswith' because inner classes's __qualname__ will include the parent class'
+        #   name, like: ParentClass.InnerClass.__init__.
+        #   Inner classes are heavily used in tests.
+        if init_func.__qualname__.endswith(f"{self.__class__.__name__}.{init_func.__name__}"):
 
             # Store all the named input parameters in self._component_config
             for k, v in kwargs.items():
                 self._component_config["params"][k] = v
+
+            # Store unnamed input parameters in self._component_config too by inferring their names
+            sig = inspect.signature(init_func)
+            parameter_names = list(sig.parameters.keys())
+            # we can be sure that the first one is always "self"
+            arg_names = parameter_names[1 : 1 + len(args)]
+            for arg, arg_name in zip(args, arg_names):
+                self._component_config["params"][arg_name] = arg
 
     return wrapper_exportable_to_yaml
 
@@ -205,7 +209,7 @@ class BaseComponent(ABC):
 
         run_signature_args = inspect.signature(run_method).parameters.keys()
 
-        run_params = {}
+        run_params: Dict[str, Any] = {}
         for key, value in params.items():
             if key == self.name:  # targeted params for this node
                 if isinstance(value, dict):
@@ -215,7 +219,7 @@ class BaseComponent(ABC):
 
                     for _k, _v in value.items():
                         if _k not in run_signature_args:
-                            raise Exception(f"Invalied parameter '{_k}' for the node '{self.name}'.")
+                            raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
 
                 run_params.update(**value)
             elif key in run_signature_args:  # global params
@@ -234,7 +238,7 @@ class BaseComponent(ABC):
             # Include input
             debug_info["input"] = {**run_inputs, **run_params}
             debug_info["input"]["debug"] = self.debug
-            # Include output
+            # Include output, exclude _debug to avoid recursion
             filtered_output = {key: value for key, value in output.items() if key != "_debug"}
             debug_info["output"] = filtered_output
         # Include custom debug info

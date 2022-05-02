@@ -1,31 +1,28 @@
-import inspect
-import json
-import logging
+from typing import Optional, Dict, List, Union, Any, Iterable
+
 import os
+import json
+import uuid
+import inspect
+import logging
 import random
 import tarfile
 import tempfile
-import uuid
+from pathlib import Path
+from inspect import signature
+from abc import ABC, abstractmethod
+
+import numpy as np
 import requests
 from tqdm import tqdm
-from abc import ABC, abstractmethod
-from inspect import signature
-from pathlib import Path
-from io import StringIO
-from typing import Optional, Dict, List, Union, Any, Iterable
-
-import torch
 from torch.utils.data import TensorDataset
 
-import pandas as pd
-import numpy as np
 from haystack.modeling.model.tokenization import (
     Tokenizer,
     tokenize_batch_question_answering,
     tokenize_with_metadata,
     truncate_sequences,
 )
-
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset
 from haystack.modeling.data_handler.samples import (
     Sample,
@@ -34,7 +31,7 @@ from haystack.modeling.data_handler.samples import (
     offset_to_token_idx_vecorized,
 )
 from haystack.modeling.data_handler.input_features import sample_to_features_text
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 
 DOWNSTREAM_TASK_MAP = {
@@ -362,7 +359,7 @@ class Processor(ABC):
         for name in names:
             value = getattr(self, name)
             params.update({name: str(value)})
-        MlLogger.log_params(params)
+        tracker.track_params(params)
 
 
 class SquadProcessor(Processor):

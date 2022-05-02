@@ -7,7 +7,7 @@ from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.dense import DensePassageRetriever
-from haystack.nodes.retriever.sparse import ElasticsearchRetriever
+from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.pipelines.base import Pipeline
 from haystack.pipelines import ExtractiveQAPipeline, GenerativeQAPipeline, SearchSummarizationPipeline
 from haystack.pipelines.standard_pipelines import (
@@ -31,7 +31,7 @@ def test_generativeqa_calculate_metrics(
     pipeline = GenerativeQAPipeline(generator=rag_generator, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "Retriever" in eval_result
     assert "Generator" in eval_result
@@ -59,7 +59,7 @@ def test_summarizer_calculate_metrics(
     )
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "Retriever" in eval_result
     assert "Summarizer" in eval_result
@@ -85,21 +85,21 @@ def test_add_eval_data(document_store, batch_size):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
         filename=SAMPLES_PATH / "squad" / "small.json",
-        doc_index="haystack_test_eval_document",
-        label_index="haystack_test_feedback",
+        doc_index=document_store.index,
+        label_index=document_store.label_index,
         batch_size=batch_size,
     )
 
-    assert document_store.get_document_count(index="haystack_test_eval_document") == 87
-    assert document_store.get_label_count(index="haystack_test_feedback") == 1214
+    assert document_store.get_document_count() == 87
+    assert document_store.get_label_count() == 1214
 
     # test documents
-    docs = document_store.get_all_documents(index="haystack_test_eval_document", filters={"name": ["Normans"]})
+    docs = document_store.get_all_documents(filters={"name": ["Normans"]})
     assert docs[0].meta["name"] == "Normans"
     assert len(docs[0].meta.keys()) == 1
 
     # test labels
-    labels = document_store.get_all_labels(index="haystack_test_feedback")
+    labels = document_store.get_all_labels()
     label = None
     for l in labels:
         if l.query == "In what country is Normandy located?":
@@ -119,7 +119,7 @@ def test_add_eval_data(document_store, batch_size):
     assert label.answer.document_id == label.document.id
 
     # check combination
-    doc = document_store.get_document_by_id(label.document.id, index="haystack_test_eval_document")
+    doc = document_store.get_document_by_id(label.document.id)
     start = label.answer.offsets_in_document[0].start
     end = label.answer.offsets_in_document[0].end
     assert end == start + len(label.answer.answer)
@@ -128,43 +128,52 @@ def test_add_eval_data(document_store, batch_size):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_eval_reader(reader, document_store: BaseDocumentStore):
+@pytest.mark.parametrize("use_confidence_scores", [True, False])
+def test_eval_reader(reader, document_store, use_confidence_scores):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
         filename=SAMPLES_PATH / "squad" / "tiny.json",
-        doc_index="haystack_test_eval_document",
-        label_index="haystack_test_feedback",
+        doc_index=document_store.index,
+        label_index=document_store.label_index,
     )
-    assert document_store.get_document_count(index="haystack_test_eval_document") == 2
+    assert document_store.get_document_count() == 2
+
+    reader.use_confidence_scores = use_confidence_scores
+
     # eval reader
     reader_eval_results = reader.eval(
         document_store=document_store,
-        label_index="haystack_test_feedback",
-        doc_index="haystack_test_eval_document",
+        label_index=document_store.label_index,
+        doc_index=document_store.index,
         device="cpu",
     )
-    assert reader_eval_results["f1"] > 66.65
-    assert reader_eval_results["f1"] < 66.67
-    assert reader_eval_results["EM"] == 50
-    assert reader_eval_results["top_n_accuracy"] == 100.0
+
+    if use_confidence_scores:
+        assert reader_eval_results["f1"] == 50
+        assert reader_eval_results["EM"] == 50
+        assert reader_eval_results["top_n_accuracy"] == 100.0
+    else:
+        assert 66.67 > reader_eval_results["f1"] > 66.65
+        assert reader_eval_results["EM"] == 50
+        assert reader_eval_results["top_n_accuracy"] == 100.0
 
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
 @pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
-def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, retriever):
+def test_eval_elastic_retriever(document_store, open_domain, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
         filename=SAMPLES_PATH / "squad" / "tiny.json",
-        doc_index="haystack_test_eval_document",
-        label_index="haystack_test_feedback",
+        doc_index=document_store.index,
+        label_index=document_store.label_index,
     )
-    assert document_store.get_document_count(index="haystack_test_eval_document") == 2
+    assert document_store.get_document_count() == 2
 
     # eval retriever
     results = retriever.eval(
-        top_k=1, label_index="haystack_test_feedback", doc_index="haystack_test_eval_document", open_domain=open_domain
+        top_k=1, label_index=document_store.label_index, doc_index=document_store.index, open_domain=open_domain
     )
     assert results["recall"] == 1.0
     assert results["mrr"] == 1.0
@@ -177,24 +186,22 @@ def test_eval_elastic_retriever(document_store: BaseDocumentStore, open_domain, 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
-def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
+def test_eval_pipeline(document_store, reader, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
         filename=SAMPLES_PATH / "squad" / "tiny.json",
-        doc_index="haystack_test_eval_document",
-        label_index="haystack_test_feedback",
+        doc_index=document_store.index,
+        label_index=document_store.label_index,
     )
 
-    labels = document_store.get_all_labels_aggregated(
-        index="haystack_test_feedback", drop_negative_labels=True, drop_no_answers=False
-    )
+    labels = document_store.get_all_labels_aggregated(drop_negative_labels=True, drop_no_answers=False)
 
     eval_retriever = EvalDocuments()
     eval_reader = EvalAnswers(sas_model="sentence-transformers/paraphrase-MiniLM-L3-v2", debug=True)
     eval_reader_cross = EvalAnswers(sas_model="cross-encoder/stsb-TinyBERT-L-4", debug=True)
     eval_reader_vanila = EvalAnswers()
 
-    assert document_store.get_document_count(index="haystack_test_eval_document") == 2
+    assert document_store.get_document_count() == 2
     p = Pipeline()
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
     p.add_node(component=eval_retriever, name="EvalDocuments", inputs=["ESRetriever"])
@@ -203,7 +210,7 @@ def test_eval_pipeline(document_store: BaseDocumentStore, reader, retriever):
     p.add_node(component=eval_reader_cross, name="EvalAnswers_cross", inputs=["QAReader"])
     p.add_node(component=eval_reader_vanila, name="EvalAnswers_vanilla", inputs=["QAReader"])
     for l in labels:
-        res = p.run(query=l.query, labels=l, params={"ESRetriever": {"index": "haystack_test_eval_document"}})
+        res = p.run(query=l.query, labels=l)
     assert eval_retriever.recall == 1.0
     assert round(eval_reader.top_k_f1, 4) == 0.8333
     assert eval_reader.top_k_em == 0.5
@@ -227,12 +234,12 @@ def test_eval_data_split_word(document_store):
 
     document_store.add_eval_data(
         filename=SAMPLES_PATH / "squad" / "tiny.json",
-        doc_index="haystack_test_eval_document",
-        label_index="haystack_test_feedback",
+        doc_index=document_store.index,
+        label_index=document_store.label_index,
         preprocessor=preprocessor,
     )
-    labels = document_store.get_all_labels_aggregated(index="haystack_test_feedback")
-    docs = document_store.get_all_documents(index="haystack_test_eval_document")
+    labels = document_store.get_all_labels_aggregated()
+    docs = document_store.get_all_documents()
     assert len(docs) == 5
     assert len(set(labels[0].document_ids)) == 2
 
@@ -252,11 +259,11 @@ def test_eval_data_split_passage(document_store):
 
     document_store.add_eval_data(
         filename=SAMPLES_PATH / "squad" / "tiny_passages.json",
-        doc_index="haystack_test_eval_document",
-        label_index="haystack_test_feedback",
+        doc_index=document_store.index,
+        label_index=document_store.label_index,
         preprocessor=preprocessor,
     )
-    docs = document_store.get_all_documents(index="haystack_test_eval_document")
+    docs = document_store.get_all_documents()
     assert len(docs) == 2
     assert len(docs[1].content) == 56
 
@@ -303,7 +310,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     reader_result = eval_result["Reader"]
     retriever_result = eval_result["Retriever"]
@@ -327,7 +334,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
-    metrics = saved_eval_result.calculate_metrics()
+    metrics = saved_eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert (
         reader_result[reader_result["rank"] == 1]["answer"].iloc[0]
@@ -353,7 +360,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     reader_result = eval_result["Reader"]
     retriever_result = eval_result["Retriever"]
@@ -391,7 +398,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
-    metrics = saved_eval_result.calculate_metrics()
+    metrics = saved_eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert (
         reader_berlin[reader_berlin["rank"] == 1]["answer"].iloc[0]
@@ -464,7 +471,7 @@ def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result = pipeline.eval(labels=labels, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     reader_result = eval_result["Reader"]
     retriever_result = eval_result["Retriever"]
@@ -498,7 +505,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
     )
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Reader"]["f1"] == 1.0
@@ -521,7 +528,7 @@ def test_reader_eval_in_pipeline(reader):
         params={},
     )
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert metrics["Reader"]["exact_match"] == 1.0
     assert metrics["Reader"]["f1"] == 1.0
@@ -553,7 +560,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
         sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
     )
 
-    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1)
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, doc_relevance_col="gold_id_match")
 
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
@@ -565,7 +572,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     assert metrics_top_1["Retriever"]["precision"] == 0.1
     assert metrics_top_1["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=2)
+    metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=2, doc_relevance_col="gold_id_match")
 
     assert metrics_top_2["Reader"]["exact_match"] == 0.5
     assert metrics_top_2["Reader"]["f1"] == 0.5
@@ -577,7 +584,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     assert metrics_top_2["Retriever"]["precision"] == 0.1
     assert metrics_top_2["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=3)
+    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=3, doc_relevance_col="gold_id_match")
 
     assert metrics_top_3["Reader"]["exact_match"] == 1.0
     assert metrics_top_3["Reader"]["f1"] == 1.0
@@ -596,7 +603,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
-    metrics_top_10 = eval_result.calculate_metrics()
+    metrics_top_10 = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert metrics_top_10["Reader"]["exact_match"] == 1.0
     assert metrics_top_10["Reader"]["f1"] == 1.0
@@ -607,7 +614,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     assert metrics_top_10["Retriever"]["precision"] == 0.1
     assert metrics_top_10["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_retriever=1)
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_retriever=1, doc_relevance_col="gold_id_match")
 
     assert metrics_top_1["Reader"]["exact_match"] == 1.0
     assert metrics_top_1["Reader"]["f1"] == 1.0
@@ -618,7 +625,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     assert metrics_top_1["Retriever"]["precision"] == 0.5
     assert metrics_top_1["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_retriever=2)
+    metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_retriever=2, doc_relevance_col="gold_id_match")
 
     assert metrics_top_2["Reader"]["exact_match"] == 1.0
     assert metrics_top_2["Reader"]["f1"] == 1.0
@@ -629,7 +636,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
     assert metrics_top_2["Retriever"]["precision"] == 0.25
     assert metrics_top_2["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_retriever=3)
+    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_retriever=3, doc_relevance_col="gold_id_match")
 
     assert metrics_top_3["Reader"]["exact_match"] == 1.0
     assert metrics_top_3["Reader"]["f1"] == 1.0
@@ -647,7 +654,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 10}})
 
-    metrics_top_10 = eval_result.calculate_metrics(simulated_top_k_reader=1)
+    metrics_top_10 = eval_result.calculate_metrics(simulated_top_k_reader=1, doc_relevance_col="gold_id_match")
 
     assert metrics_top_10["Reader"]["exact_match"] == 0.5
     assert metrics_top_10["Reader"]["f1"] == 0.5
@@ -658,7 +665,9 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_10["Retriever"]["precision"] == 0.1
     assert metrics_top_10["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=1)
+    metrics_top_1 = eval_result.calculate_metrics(
+        simulated_top_k_reader=1, simulated_top_k_retriever=1, doc_relevance_col="gold_id_match"
+    )
 
     assert metrics_top_1["Reader"]["exact_match"] == 1.0
     assert metrics_top_1["Reader"]["f1"] == 1.0
@@ -670,7 +679,9 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_1["Retriever"]["precision"] == 0.5
     assert metrics_top_1["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_2 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=2)
+    metrics_top_2 = eval_result.calculate_metrics(
+        simulated_top_k_reader=1, simulated_top_k_retriever=2, doc_relevance_col="gold_id_match"
+    )
 
     assert metrics_top_2["Reader"]["exact_match"] == 0.5
     assert metrics_top_2["Reader"]["f1"] == 0.5
@@ -681,7 +692,9 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
     assert metrics_top_2["Retriever"]["precision"] == 0.25
     assert metrics_top_2["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=1, simulated_top_k_retriever=3)
+    metrics_top_3 = eval_result.calculate_metrics(
+        simulated_top_k_reader=1, simulated_top_k_retriever=3, doc_relevance_col="gold_id_match"
+    )
 
     assert metrics_top_3["Reader"]["exact_match"] == 0.5
     assert metrics_top_3["Reader"]["f1"] == 0.5
@@ -703,7 +716,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
         add_isolated_node_eval=True,
     )
 
-    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1)
+    metrics_top_1 = eval_result.calculate_metrics(simulated_top_k_reader=1, doc_relevance_col="gold_id_match")
 
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
@@ -823,7 +836,7 @@ def test_document_search_calculate_metrics(retriever_with_docs):
     pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "Retriever" in eval_result
     assert len(eval_result) == 1
@@ -853,7 +866,7 @@ def test_faq_calculate_metrics(retriever_with_docs):
     pipeline = FAQPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "Retriever" in eval_result
     assert "Docs2Answers" in eval_result
@@ -878,7 +891,7 @@ def test_extractive_qa_eval_translation(reader, retriever_with_docs, de_to_en_tr
     )
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "Retriever" in eval_result
     assert "Reader" in eval_result
@@ -911,7 +924,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
 
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "Retriever" in eval_result
     assert "Question Generator" in eval_result
@@ -935,7 +948,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
 
@@ -971,7 +984,7 @@ def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
         labels=labels, params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
     )
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "ESRetriever" in eval_result
     assert "DPRRetriever" in eval_result
@@ -999,7 +1012,7 @@ def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
 
@@ -1034,7 +1047,7 @@ def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
         labels=labels, params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
     )
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "ESRetriever" in eval_result
     assert "DPRRetriever" in eval_result
@@ -1058,7 +1071,7 @@ def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_docs, reader):
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
 
@@ -1094,7 +1107,7 @@ def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_do
         labels=labels, params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
     )
 
-    metrics = eval_result.calculate_metrics()
+    metrics = eval_result.calculate_metrics(doc_relevance_col="gold_id_match")
 
     assert "ESRetriever" in eval_result
     assert "DPRRetriever" in eval_result

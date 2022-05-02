@@ -1,37 +1,38 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Optional, Dict, List, Union, Optional
-from dataclasses import asdict
+from typing import Any, Optional, Dict, List, Union
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-# We are using Pydantic dataclasses instead of vanilla Python's
-# See #1598 for the reasons behind this choice & performance considerations
-from pydantic.dataclasses import dataclass
-
-if typing.TYPE_CHECKING:
-    from dataclasses import dataclass  # type: ignore
-
-from pydantic.json import pydantic_encoder
 from pathlib import Path
 from uuid import uuid4
-import mmh3
-import numpy as np
 import logging
 import time
 import json
-import pandas as pd
 import ast
+from dataclasses import asdict
+
+import mmh3
+import numpy as np
+import pandas as pd
+
+from pydantic import BaseConfig
+from pydantic.json import pydantic_encoder
+
+if not typing.TYPE_CHECKING:
+    # We are using Pydantic dataclasses instead of vanilla Python's
+    # See #1598 for the reasons behind this choice & performance considerations
+    from pydantic.dataclasses import dataclass
+else:
+    from dataclasses import dataclass  # type: ignore  # pylint: disable=ungrouped-imports
 
 
 logger = logging.getLogger(__name__)
 
-
-from pydantic import BaseConfig
 
 BaseConfig.arbitrary_types_allowed = True
 
@@ -78,7 +79,7 @@ class Document:
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
         :param score: The relevance score of the Document determined by a model (e.g. Retriever or Re-Ranker).
-                      In the range of [0,1], where 1 means extremely relevant.
+                      If model's `scale_score` was set to True (default) score is in the unit interval (range of [0,1]), where 1 means extremely relevant.
         :param meta: Meta fields for a document like name, url, or author in the form of a custom dict (any keys and values allowed).
         :param embedding: Vector encoding of the text
         :param id_hash_keys: Generate the document id from a custom list of strings that refere to the documents attributes.
@@ -700,7 +701,7 @@ class EvaluationResult:
         self,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_match",
+        doc_relevance_col: str = "gold_id_or_answer_match",
         eval_mode: str = "integrated",
     ) -> Dict[str, Dict[str, float]]:
         """
@@ -729,7 +730,8 @@ class EvaluationResult:
         :param simulated_top_k_retriever: simulates top_k param of retriever.
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
         :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
-            values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+            Values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'.
+            Default value is 'gold_id_or_answer_match'.
         :param eval_mode: the input on which the node was evaluated on.
             Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
@@ -989,8 +991,8 @@ class EvaluationResult:
             ]
 
             avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 0.0
-            recall_single_hit = min(num_retrieved_relevants, 1)
+            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 1.0
+            recall_single_hit = min(num_retrieved_relevants, 1) if num_relevants > 0 else 1.0
             precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
             rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
             dcg = (

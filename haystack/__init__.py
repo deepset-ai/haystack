@@ -1,3 +1,5 @@
+# pylint: disable=wrong-import-position,wrong-import-order
+
 from typing import Union
 from types import ModuleType
 
@@ -18,12 +20,12 @@ logging.basicConfig(
 )
 logging.getLogger("haystack").setLevel(logging.INFO)
 
-from haystack import pipelines
-from haystack.schema import Document, Answer, Label, MultiLabel, Span
-from haystack.nodes import BaseComponent
-from haystack.pipelines import Pipeline
-
 import pandas as pd
+
+from haystack.schema import Document, Answer, Label, MultiLabel, Span, EvaluationResult
+from haystack.nodes.base import BaseComponent
+from haystack.pipelines.base import Pipeline
+
 
 pd.options.display.max_colwidth = 80
 
@@ -63,6 +65,7 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
 
 # This self-import is used to monkey-patch, keep for now
 import haystack  # pylint: disable=import-self
+from haystack import pipelines
 from haystack.nodes import (
     connector,
     document_classifier,
@@ -101,7 +104,6 @@ except ImportError:
     pass
 
 from haystack.modeling.evaluation import eval
-from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogger
 from haystack.nodes.other import JoinDocuments, Docs2Answers, JoinAnswers, RouteDocuments
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.file_classifier import FileTypeClassifier
@@ -175,9 +177,6 @@ if graph_retriever:
 # Adding them to sys.modules would enable `import haystack.pipelines.JoinDocuments`,
 # which I believe it's a very rare import style.
 setattr(file_converter, "FileTypeClassifier", FileTypeClassifier)
-setattr(modeling_utils, "MLFlowLogger", MLFlowLogger)
-setattr(modeling_utils, "StdoutLogger", StdoutLogger)
-setattr(modeling_utils, "TensorBoardLogger", TensorBoardLogger)
 setattr(pipelines, "JoinDocuments", JoinDocuments)
 setattr(pipelines, "Docs2Answers", Docs2Answers)
 setattr(pipelines, "SklearnQueryClassifier", SklearnQueryClassifier)

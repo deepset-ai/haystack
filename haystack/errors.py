@@ -1,8 +1,8 @@
-# coding: utf8
 """Custom Errors for Haystack"""
 
-from haystack.telemetry import send_custom_event
 from typing import Optional
+
+from haystack.telemetry import send_custom_event
 
 
 class HaystackError(Exception):

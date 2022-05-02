@@ -29,6 +29,7 @@ jobs:
 
   build-cache:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
@@ -59,6 +60,7 @@ jobs:
 
   type-check:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -95,6 +97,7 @@ jobs:
 
   linter:
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
 
       - uses: actions/checkout@v2
@@ -132,6 +135,7 @@ jobs:
   code-and-docs-check:
     needs: build-cache
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: ${{ github.event_name }} != "push"
 
     steps:
@@ -217,6 +221,7 @@ jobs:
   prepare-matrix:
     needs: build-cache
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
@@ -230,6 +235,7 @@ jobs:
   tests:
     needs: prepare-matrix
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
     strategy:
       matrix:
         test-path: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
@@ -273,10 +279,12 @@ jobs:
       run: docker run -d -p 3001:3001 axarev/parsr:v1.2.2
 
     - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
+      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install tesseract
-      run: sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
+      run: |
+        sudo apt update
+        sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Install Dependencies (on cache miss only)
       # The cache might miss during the execution of an action: there should always be a fallback step to
@@ -304,6 +312,7 @@ jobs:
   test-milvus1:
     needs: build-cache
     runs-on: ubuntu-20.04
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@v2
@@ -324,7 +333,7 @@ jobs:
       run: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
 
     - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
+      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Dependencies (on cache miss only)
       # The cache might miss during the execution of an action: there should always be a fallback step to
@@ -350,6 +359,8 @@ jobs:
   test-pinecone:
     needs: build-cache
     runs-on: ubuntu-20.04
+    # we have to recreate indexes multiple times: that takes a significant amount of time on pinecone
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v2
@@ -367,7 +378,7 @@ jobs:
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Install pdftotext
-        run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && tar -xvf xpdf-tools-linux-4.03.tar.gz && sudo cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
+        run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
       # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
       # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.

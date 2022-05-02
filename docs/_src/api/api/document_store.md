@@ -305,7 +305,7 @@ Base class for implementing Document Stores that support keyword searches.
 
 ```python
 @abstractmethod
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -386,6 +386,9 @@ operation.
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to False.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="base.get_batches_from_generator"></a>
 
@@ -414,7 +417,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity="dot_product", timeout=30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
+def __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -434,7 +437,7 @@ A DocumentStore using Elasticsearch to store and query the documents for our sea
 - `aws4auth`: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
 - `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
 - `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
-- `search_fields`: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+- `search_fields`: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
 If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
@@ -766,7 +769,7 @@ Return all labels in the document store
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -911,13 +914,16 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to false.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="elasticsearch.ElasticsearchDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -993,6 +999,9 @@ operation.
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="elasticsearch.ElasticsearchDocumentStore.describe_documents"></a>
 
@@ -1231,7 +1240,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(verify_certs=False, scheme="https", username="admin", password="admin", port=9200, **kwargs)
+def __init__(scheme: str = "https", username: str = "admin", password: str = "admin", host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", ca_certs: Optional[str] = None, verify_certs: bool = False, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
 ```
 
 Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -1250,7 +1259,7 @@ the KNN plugin that can scale to a large number of documents.
 - `aws4auth`: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
 - `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
 - `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
-- `search_fields`: Name of fields used by ElasticsearchRetriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+- `search_fields`: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
 If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
@@ -1309,7 +1318,7 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1385,6 +1394,9 @@ operation.
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="elasticsearch.OpenDistroElasticsearchDocumentStore"></a>
 
@@ -1537,7 +1549,7 @@ Calculate similarity scores between query embedding and a list of documents usin
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1608,6 +1620,9 @@ Example:
 - `top_k`: How many documents to return
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="memory.InMemoryDocumentStore.update_embeddings"></a>
 
@@ -2235,7 +2250,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, **kwargs, ,)
+def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, n_links: int = 64, ef_search: int = 20, ef_construction: int = 80)
 ```
 
 **Arguments**:
@@ -2282,6 +2297,9 @@ If specified no other params besides faiss_config_path must be specified.
 - `faiss_config_path`: Stored FAISS initial configuration parameters.
 Can be created via calling `save()`
 - `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+- `n_links`: used only if index_factory == "HNSW"
+- `ef_search`: used only if index_factory == "HNSW"
+- `ef_construction`: used only if index_factory == "HNSW"
 
 <a id="faiss.FAISSDocumentStore.write_documents"></a>
 
@@ -2455,7 +2473,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -2468,6 +2486,9 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: Index name to query the document from.
 - `return_embedding`: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="faiss.FAISSDocumentStore.save"></a>
 
@@ -2545,7 +2566,7 @@ Usage:
 #### \_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, **kwargs, ,)
+def __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None)
 ```
 
 **Arguments**:
@@ -2657,7 +2678,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -2670,6 +2691,9 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: (SQL) index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 **Returns**:
 
@@ -2885,7 +2909,7 @@ does not allow these data types (yet).
 #### \_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: str = "IVF_FLAT", index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", id_field: str = "id", custom_fields: Optional[List[Any]] = None, progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, consistency_level: int = 0)
+def __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: str = "IVF_FLAT", index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", id_field: str = "id", custom_fields: Optional[List[Any]] = None, progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, consistency_level: int = 0, recreate_index: bool = False)
 ```
 
 **Arguments**:
@@ -2934,6 +2958,10 @@ overwrite: Update any existing documents with the same ID when adding documents.
 fail: an error is raised if the document ID of the document being added already
 exists.
 - `isolation_level`: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+- `recreate_index`: If set to True, an existing Milvus index will be deleted and a new one will be
+created using the config you are using for initialization. Be aware that all data in the old index will be
+lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+be recreated.
 
 <a id="milvus2.Milvus2DocumentStore.write_documents"></a>
 
@@ -2995,7 +3023,7 @@ None
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3008,6 +3036,9 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `top_k`: How many documents to return
 - `index`: (SQL) index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="milvus2.Milvus2DocumentStore.delete_documents"></a>
 
@@ -3168,7 +3199,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
-def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", **kwargs, ,)
+def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False)
 ```
 
 **Arguments**:
@@ -3202,6 +3233,9 @@ Parameter options : ( 'skip','overwrite','fail')
 skip: Ignore the duplicates documents
 overwrite: Update any existing documents with the same ID when adding documents.
 fail: an error is raised if the document ID of the document being added already exists.
+- `recreate_index`: If set to True, an existing Weaviate index will be deleted and a new one will be
+created using the config you are using for initialization. Be aware that all data in the old index will be
+lost if you choose to recreate the index.
 
 <a id="weaviate.WeaviateDocumentStore.get_document_by_id"></a>
 
@@ -3411,7 +3445,7 @@ operation.
 #### query
 
 ```python
-def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None) -> List[Document]
+def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -3488,13 +3522,16 @@ operation.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
 https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="weaviate.WeaviateDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3568,6 +3605,9 @@ operation.
 - `top_k`: How many documents to return
 - `index`: index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="weaviate.WeaviateDocumentStore.update_embeddings"></a>
 
@@ -3984,8 +4024,10 @@ See https://haystack.deepset.ai/components/document-store for more information.
 
 - `api_key`: Secret value of the API key.
 If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-- `workspace`: workspace in Deepset Cloud
-- `index`: index to access within the Deepset Cloud workspace
+See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
+- `workspace`: workspace name in Deepset Cloud
+- `index`: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline.
+You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
 - `duplicate_documents`: Handle duplicates document based on parameter options.
 Parameter options : ( 'skip','overwrite','fail')
 skip: Ignore the duplicates documents
@@ -3994,8 +4036,9 @@ fail: an error is raised if the document ID of the document being added already
 exists.
 - `api_endpoint`: The URL of the Deepset Cloud API.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defaults to "https://api.cloud.deepset.ai/api/v1".
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
 - `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
 
@@ -4095,7 +4138,7 @@ operation.
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -4170,13 +4213,16 @@ operation.
 - `index`: Index name for storing the docs and metadata
 - `return_embedding`: To return document embedding
 - `headers`: Custom HTTP headers to pass to requests
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.query"></a>
 
 #### query
 
 ```python
-def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -4257,6 +4303,9 @@ operation.
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
 Defaults to False.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.write_documents"></a>
 
@@ -4373,7 +4422,7 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### \_\_init\_\_
 
 ```python
-def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite")
+def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False)
 ```
 
 **Arguments**:
@@ -4404,6 +4453,10 @@ Parameter options:
     - `"skip"`: Ignore the duplicate documents.
     - `"overwrite"`: Update any existing documents with the same ID when adding documents.
     - `"fail"`: An error is raised if the document ID of the document being added already exists.
+- `recreate_index`: If set to True, an existing Pinecone index will be deleted and a new one will be
+created using the config you are using for initialization. Be aware that all data in the old index will be
+lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+be recreated.
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>
 
@@ -4587,12 +4640,30 @@ operation.
     ```
 - `headers`: PineconeDocumentStore does not support headers.
 
+<a id="pinecone.PineconeDocumentStore.delete_index"></a>
+
+#### delete\_index
+
+```python
+def delete_index(index: str)
+```
+
+Delete an existing index. The index including all data will be removed.
+
+**Arguments**:
+
+- `index`: The name of the index to delete.
+
+**Returns**:
+
+None
+
 <a id="pinecone.PineconeDocumentStore.query_by_embedding"></a>
 
 #### query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -4664,6 +4735,9 @@ operation.
 - `index`: The name of the index from which to retrieve documents.
 - `return_embedding`: Whether to return document embedding.
 - `headers`: PineconeDocumentStore does not support headers.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="pinecone.PineconeDocumentStore.load"></a>
 
@@ -4751,116 +4825,4 @@ and UTC as default time zone.
 
 This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
 and filter_utils.py.
-
-<a id="utils.open_search_index_to_document_store"></a>
-
-#### open\_search\_index\_to\_document\_store
-
-```python
-def open_search_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, id_hash_keys: Optional[List[str]] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "admin", password: str = "admin", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "https", ca_certs: Optional[str] = None, verify_certs: bool = False, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
-```
-
-This function provides brownfield support of existing OpenSearch indexes by converting each of the records in
-
-the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
-on a regular basis in order to add new records of the OpenSearch index to the `DocumentStore`.
-
-**Arguments**:
-
-- `document_store`: The haystack `DocumentStore` to write the converted `Document` objects to.
-- `original_index_name`: OpenSearch index containing the records to be converted.
-- `original_content_field`: OpenSearch field containing the text to be put in the `content` field of the
-resulting haystack `Document` objects.
-- `original_name_field`: Optional OpenSearch field containing the title of the Document.
-- `included_metadata_fields`: List of OpenSearch fields that shall be stored in the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `excluded_metadata_fields`: List of OpenSearch fields that shall be excluded from the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the OpenSearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `store_original_ids`: Whether to store the ID a record had in the original OpenSearch index at the
-`"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
-if you want to continuously update the `DocumentStore` with new records inside your OpenSearch index. If this
-parameter was set to `False` on the first call of `open_search_index_to_document_store`,
-all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
-- `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
-- `preprocessor`: Optional PreProcessor that will be applied on the content field of the original OpenSearch
-record.
-- `id_hash_keys`: Generate the document id from a custom list of strings that refer to the document's
-attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
-not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
-In this case the id will be generated by using the content and the defined metadata.
-- `batch_size`: Number of records to process at once.
-- `host`: URL(s) of OpenSearch nodes.
-- `port`: Ports(s) of OpenSearch nodes.
-- `username`: Username (standard authentication via http_auth).
-- `password`: Password (standard authentication via http_auth).
-- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth).
-- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth).
-- `aws4auth`: Authentication for usage with AWS OpenSearch
-(can be generated with the requests-aws4auth package).
-- `scheme`: `"https"` or `"http"`, protocol used to connect to your OpenSearch instance.
-- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
-You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
-- `verify_certs`: Whether to be strict about ca certificates.
-- `timeout`: Number of seconds after which an OpenSearch request times out.
-- `use_system_proxy`: Whether to use system proxy.
-
-<a id="utils.elasticsearch_index_to_document_store"></a>
-
-#### elasticsearch\_index\_to\_document\_store
-
-```python
-def elasticsearch_index_to_document_store(document_store: "BaseDocumentStore", original_index_name: str, original_content_field: str, original_name_field: Optional[str] = None, included_metadata_fields: Optional[List[str]] = None, excluded_metadata_fields: Optional[List[str]] = None, store_original_ids: bool = True, index: Optional[str] = None, preprocessor: Optional[PreProcessor] = None, id_hash_keys: Optional[List[str]] = None, batch_size: int = 10_000, host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, timeout: int = 30, use_system_proxy: bool = False) -> "BaseDocumentStore"
-```
-
-This function provides brownfield support of existing Elasticsearch indexes by converting each of the records in
-
-the provided index to haystack `Document` objects and writing them to the specified `DocumentStore`. It can be used
-on a regular basis in order to add new records of the Elasticsearch index to the `DocumentStore`.
-
-**Arguments**:
-
-- `document_store`: The haystack `DocumentStore` to write the converted `Document` objects to.
-- `original_index_name`: Elasticsearch index containing the records to be converted.
-- `original_content_field`: Elasticsearch field containing the text to be put in the `content` field of the
-resulting haystack `Document` objects.
-- `original_name_field`: Optional Elasticsearch field containing the title of the Document.
-- `included_metadata_fields`: List of Elasticsearch fields that shall be stored in the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `excluded_metadata_fields`: List of Elasticsearch fields that shall be excluded from the `meta` field of the
-resulting haystack `Document` objects. If `included_metadata_fields` and `excluded_metadata_fields` are `None`,
-all the fields found in the Elasticsearch records will be kept as metadata. You can specify only one of the
-`included_metadata_fields` and `excluded_metadata_fields` parameters.
-- `store_original_ids`: Whether to store the ID a record had in the original Elasticsearch index at the
-`"_original_es_id"` metadata field of the resulting haystack `Document` objects. This should be set to `True`
-if you want to continuously update the `DocumentStore` with new records inside your Elasticsearch index. If this
-parameter was set to `False` on the first call of `elasticsearch_index_to_document_store`,
-all the indexed Documents in the `DocumentStore` will be overwritten in the second call.
-- `index`: Name of index in `document_store` to use to store the resulting haystack `Document` objects.
-- `preprocessor`: Optional PreProcessor that will be applied on the content field of the original Elasticsearch
-record.
-- `id_hash_keys`: Generate the document id from a custom list of strings that refer to the document's
-attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
-not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
-In this case the id will be generated by using the content and the defined metadata.
-- `batch_size`: Number of records to process at once.
-- `host`: URL(s) of Elasticsearch nodes.
-- `port`: Ports(s) of Elasticsearch nodes.
-- `username`: Username (standard authentication via http_auth).
-- `password`: Password (standard authentication via http_auth).
-- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth).
-- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth).
-- `aws4auth`: Authentication for usage with AWS Elasticsearch
-(can be generated with the requests-aws4auth package).
-- `scheme`: `"https"` or `"http"`, protocol used to connect to your Elasticsearch instance.
-- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk.
-You can use certifi package with `certifi.where()` to find where the CA certs file is located in your machine.
-- `verify_certs`: Whether to be strict about ca certificates.
-- `timeout`: Number of seconds after which an Elasticsearch request times out.
-- `use_system_proxy`: Whether to use system proxy.
 

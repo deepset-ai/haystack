@@ -1,8 +1,5 @@
 from typing import TYPE_CHECKING, Callable, List, Union, Dict
 
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import EmbeddingRetriever
-
 import logging
 from abc import abstractmethod
 import numpy as np
@@ -15,6 +12,9 @@ from haystack.schema import Document
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import EmbeddingRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -99,7 +99,9 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
             _optional_component_not_installed(__name__, "sentence", ie)
 
-        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=str(retriever.devices[0]))
+        self.embedding_model = SentenceTransformer(
+            retriever.embedding_model, device=str(retriever.devices[0]), use_auth_token=retriever.use_auth_token
+        )
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len
         self.show_progress_bar = retriever.progress_bar

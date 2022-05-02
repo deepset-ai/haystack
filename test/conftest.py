@@ -54,7 +54,7 @@ from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
+from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
@@ -652,9 +652,9 @@ def get_retriever(retriever_type, document_store):
             embed_title=True,
         )
     elif retriever_type == "elasticsearch":
-        retriever = ElasticsearchRetriever(document_store=document_store)
+        retriever = BM25Retriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
-        retriever = ElasticsearchFilterOnlyRetriever(document_store=document_store)
+        retriever = FilterRetriever(document_store=document_store)
     elif retriever_type == "table_text_retriever":
         retriever = TableTextRetriever(
             document_store=document_store,
@@ -684,7 +684,7 @@ def document_store_with_docs(request, test_docs_xs, tmp_path):
     )
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture
@@ -694,16 +694,7 @@ def document_store(request, tmp_path):
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path
     )
     yield document_store
-    document_store.delete_documents()
-
-    # Make sure to drop Milvus2 collection, required for tests using different embedding dimensions
-    if isinstance(document_store, MilvusDocumentStore) and not milvus1:
-        document_store.collection.drop()
-
-    # Make sure to delete Pinecone indexes, required for tests using different embedding dimensions
-    if isinstance(document_store, PineconeDocumentStore):
-        for index in document_store.pinecone_indexes:
-            pinecone.delete_index(index)
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
@@ -716,7 +707,7 @@ def document_store_dot_product(request, tmp_path):
         tmp_path=tmp_path,
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
@@ -730,7 +721,7 @@ def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     )
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "pinecone"])
@@ -743,7 +734,7 @@ def document_store_dot_product_small(request, tmp_path):
         tmp_path=tmp_path,
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
@@ -753,7 +744,7 @@ def document_store_small(request, tmp_path):
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -824,14 +815,13 @@ def get_document_store(
 
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
-        client = Elasticsearch()
-        client.indices.delete(index=index + "*", ignore=[404])
         document_store = ElasticsearchDocumentStore(
             index=index,
             return_embedding=True,
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             similarity=similarity,
+            recreate_index=True,
         )
 
     elif document_store_type == "faiss":
@@ -855,10 +845,6 @@ def get_document_store(
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
         )
-        _, collections = document_store.milvus_server.list_collections()
-        for collection in collections:
-            if collection.startswith(index):
-                document_store.milvus_server.drop_collection(collection)
 
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
@@ -869,14 +855,13 @@ def get_document_store(
             index=index,
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
+            recreate_index=True,
         )
 
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
-            weaviate_url="http://localhost:8080", index=index, similarity=similarity, embedding_dim=embedding_dim
+            index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=True
         )
-        document_store.weaviate_client.schema.delete_all()
-        document_store._create_schema_and_index_if_not_exist()
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(
@@ -885,6 +870,7 @@ def get_document_store(
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
+            recreate_index=True,
         )
 
     else:

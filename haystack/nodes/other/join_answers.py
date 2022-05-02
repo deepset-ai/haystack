@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict, Tuple
 
 from haystack.schema import Answer
-from haystack.nodes import BaseComponent
+from haystack.nodes.base import BaseComponent
 
 
 class JoinAnswers(BaseComponent):

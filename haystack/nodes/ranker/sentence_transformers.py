@@ -8,7 +8,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
-from haystack.nodes.ranker import BaseRanker
+from haystack.nodes.ranker.base import BaseRanker
 from haystack.modeling.utils import initialize_device_settings
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ class SentenceTransformersRanker(BaseRanker):
 
     Usage example:
     ...
-    retriever = ElasticsearchRetriever(document_store=document_store)
+    retriever = BM25Retriever(document_store=document_store)
     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
     p = Pipeline()
     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])

@@ -1,7 +1,8 @@
+from typing import Type, NewType
+
 import inspect
 from contextlib import contextmanager
 from threading import Semaphore
-from typing import Type, NewType
 
 from fastapi import Form, HTTPException
 from pydantic import BaseModel

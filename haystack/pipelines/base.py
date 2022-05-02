@@ -1,42 +1,28 @@
 from __future__ import annotations
-from os import pipe
-import tempfile
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import copy
 import json
 import inspect
 import logging
+import tempfile
 import traceback
+from pathlib import Path
+from abc import ABC, abstractmethod
+
+import yaml
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import networkx as nx
-from abc import ABC, abstractmethod
-from jsonschema import Draft7Validator
-from jsonschema.exceptions import ValidationError
-from jsonschema import _utils as jsonschema_utils
 from pandas.core.frame import DataFrame
 from tqdm import tqdm
-from transformers import pipelines
-import yaml
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-from haystack.nodes.evaluator.evaluator import (
-    calculate_em_str_multi,
-    calculate_f1_str_multi,
-    semantic_answer_similarity,
-)
-from haystack.pipelines.config import (
-    JSON_SCHEMAS_PATH,
-    get_component_definitions,
-    get_pipeline_definition,
-    read_pipeline_config_from_yaml,
-    validate_config_strings,
-    validate_config,
-)
-from haystack.pipelines.utils import generate_code, print_eval_report
-from haystack.utils import DeepsetCloud
 
 try:
     from ray import serve
@@ -46,17 +32,34 @@ except:
     serve = None  # type: ignore
 
 from haystack import __version__
+from haystack.nodes.evaluator.evaluator import (
+    calculate_em_str_multi,
+    calculate_f1_str_multi,
+    semantic_answer_similarity,
+)
+from haystack.pipelines.config import (
+    get_component_definitions,
+    get_pipeline_definition,
+    read_pipeline_config_from_yaml,
+    validate_config,
+)
+from haystack.pipelines.utils import generate_code, print_eval_report
+from haystack.utils import DeepsetCloud
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event
+from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
+
 
 logger = logging.getLogger(__name__)
 
+
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
 CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
+TRACKING_TOOL_TO_HEAD = {"mlflow": MLflowTrackingHead}
 
 
 class RootNode(BaseComponent):
@@ -97,7 +100,7 @@ class BasePipeline(ABC):
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
     def to_code(
-            self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
+        self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
     ) -> str:
         """
         Returns the code to create this pipeline as string.
@@ -119,7 +122,7 @@ class BasePipeline(ABC):
         return code
 
     def to_notebook_cell(
-            self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True
+        self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True
     ):
         """
         Creates a new notebook cell with the code to create this pipeline.
@@ -147,7 +150,11 @@ class BasePipeline(ABC):
     @classmethod
     @abstractmethod
     def load_from_config(
-            cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -167,7 +174,7 @@ class BasePipeline(ABC):
             |           },
             |           {
             |               "name": "MyESRetriever",
-            |               "type": "ElasticsearchRetriever",
+            |               "type": "BM25Retriever",
             |               "params": {
             |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
             |                   "custom_query": None,
@@ -193,6 +200,7 @@ class BasePipeline(ABC):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
@@ -216,7 +224,7 @@ class BasePipeline(ABC):
             |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
+            |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
             |        custom_query: null
@@ -248,13 +256,13 @@ class BasePipeline(ABC):
 
     @classmethod
     def load_from_deepset_cloud(
-            cls,
-            pipeline_config_name: str,
-            pipeline_name: str = "query",
-            workspace: str = "default",
-            api_key: Optional[str] = None,
-            api_endpoint: Optional[str] = None,
-            overwrite_with_env_variables: bool = False,
+        cls,
+        pipeline_config_name: str,
+        pipeline_name: str = "query",
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        overwrite_with_env_variables: bool = False,
     ):
         """
         Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
@@ -307,7 +315,7 @@ class BasePipeline(ABC):
 
     @classmethod
     def list_pipelines_on_deepset_cloud(
-            cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
+        cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
     ) -> List[dict]:
         """
         Lists all pipeline configs available on Deepset Cloud.
@@ -341,14 +349,14 @@ class BasePipeline(ABC):
 
     @classmethod
     def save_to_deepset_cloud(
-            cls,
-            query_pipeline: BasePipeline,
-            index_pipeline: BasePipeline,
-            pipeline_config_name: str,
-            workspace: str = "default",
-            api_key: Optional[str] = None,
-            api_endpoint: Optional[str] = None,
-            overwrite: bool = False,
+        cls,
+        query_pipeline: BasePipeline,
+        index_pipeline: BasePipeline,
+        pipeline_config_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        overwrite: bool = False,
     ):
         """
         Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
@@ -402,12 +410,12 @@ class BasePipeline(ABC):
 
     @classmethod
     def deploy_on_deepset_cloud(
-            cls,
-            pipeline_config_name: str,
-            workspace: str = "default",
-            api_key: Optional[str] = None,
-            api_endpoint: Optional[str] = None,
-            timeout: int = 60,
+        cls,
+        pipeline_config_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        timeout: int = 60,
     ):
         """
         Deploys the pipelines of a pipeline config on Deepset Cloud.
@@ -432,12 +440,12 @@ class BasePipeline(ABC):
 
     @classmethod
     def undeploy_on_deepset_cloud(
-            cls,
-            pipeline_config_name: str,
-            workspace: str = "default",
-            api_key: Optional[str] = None,
-            api_endpoint: Optional[str] = None,
-            timeout: int = 60,
+        cls,
+        pipeline_config_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        timeout: int = 60,
     ):
         """
         Undeploys the pipelines of a pipeline config on Deepset Cloud.
@@ -491,8 +499,8 @@ class Pipeline(BasePipeline):
                           method to process incoming data from predecessor node.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+                       of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["BM25Retriever"].
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
@@ -578,14 +586,14 @@ class Pipeline(BasePipeline):
         self.graph.nodes[name]["component"] = component
 
     def run(  # type: ignore
-            self,
-            query: Optional[str] = None,
-            file_paths: Optional[List[str]] = None,
-            labels: Optional[MultiLabel] = None,
-            documents: Optional[List[Document]] = None,
-            meta: Optional[Union[dict, List[dict]]] = None,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None,
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[Union[dict, List[dict]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
     ):
         """
         Runs the pipeline, one node at a time.
@@ -631,7 +639,12 @@ class Pipeline(BasePipeline):
             # Apply debug attributes to the node input params
             # NOTE: global debug attributes will override the value specified
             # in each node's params dictionary.
+            if debug is None and node_input:
+                if node_input.get("params", {}):
+                    debug = params.get("debug", None)  # type: ignore
             if debug is not None:
+                if not node_input.get("params", None):
+                    node_input["params"] = {}
                 if node_id not in node_input["params"].keys():
                     node_input["params"][node_id] = {}
                 node_input["params"][node_id]["debug"] = debug
@@ -725,7 +738,12 @@ class Pipeline(BasePipeline):
 
             # Apply debug attributes to the node input params
             # NOTE: global debug attributes will override the value specified in each node's params dictionary.
+            if debug is None and node_input:
+                if node_input.get("params", {}):
+                    debug = params.get("debug", None)  # type: ignore
             if debug is not None:
+                if not node_input.get("params", None):
+                    node_input["params"] = {}
                 if node_id not in node_input["params"].keys():
                     node_input["params"][node_id] = {}
                 node_input["params"][node_id]["debug"] = debug
@@ -782,15 +800,15 @@ class Pipeline(BasePipeline):
 
     @classmethod
     def eval_beir(
-            cls,
-            index_pipeline: Pipeline,
-            query_pipeline: Pipeline,
-            index_params: dict = {},
-            query_params: dict = {},
-            dataset: str = "scifact",
-            dataset_dir: Path = Path("."),
-            top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
-            keep_index: bool = False,
+        cls,
+        index_pipeline: Pipeline,
+        query_pipeline: Pipeline,
+        index_params: dict = {},
+        query_params: dict = {},
+        dataset: str = "scifact",
+        dataset_dir: Path = Path("."),
+        top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+        keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
         """
         Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
@@ -857,16 +875,211 @@ class Pipeline(BasePipeline):
         ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
         return ndcg, map_, recall, precision
 
+    @classmethod
+    def execute_eval_run(
+        cls,
+        index_pipeline: Pipeline,
+        query_pipeline: Pipeline,
+        evaluation_set_labels: List[MultiLabel],
+        corpus_file_paths: List[str],
+        experiment_name: str,
+        experiment_run_name: str,
+        experiment_tracking_tool: Literal["mlflow", None] = None,
+        experiment_tracking_uri: Optional[str] = None,
+        corpus_file_metas: List[Dict[str, Any]] = None,
+        corpus_meta: Dict[str, Any] = {},
+        evaluation_set_meta: Dict[str, Any] = {},
+        pipeline_meta: Dict[str, Any] = {},
+        index_params: dict = {},
+        query_params: dict = {},
+        sas_model_name_or_path: str = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
+        add_isolated_node_eval: bool = False,
+        reuse_index: bool = False,
+    ) -> EvaluationResult:
+        """
+        Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
+        and subsequently evaluates the query pipeline on the provided labels (forming an evaluation set) using pipeline.eval().
+        Parameters and results (metrics and predictions) of the run are tracked by an experiment tracking tool for further analysis.
+        You can specify the experiment tracking tool by setting the params `experiment_tracking_tool` and `experiment_tracking_uri`
+        or by passing a (custom) tracking head to Tracker.set_tracking_head().
+        Note, that `experiment_tracking_tool` only supports `mlflow` currently.
+
+        For easier comparison you can pass additional metadata regarding corpus (corpus_meta), evaluation set (evaluation_set_meta) and pipelines (pipeline_meta).
+        E.g. you can give them names or ids to identify them across experiment runs.
+
+        This method executes an experiment run. Each experiment run is part of at least one experiment.
+        An experiment typically consists of multiple runs to be compared (e.g. using different retrievers in query pipeline).
+        Experiment tracking tools usually share the same concepts of experiments and provide additional functionality to easily compare runs across experiments.
+
+        E.g. you can call execute_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
+
+        ```python
+            |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
+            |       eval_result = Pipeline.execute_eval_run(
+            |           index_pipeline=index_pipeline,
+            |           query_pipeline=query_pipeline,
+            |           evaluation_set_labels=labels,
+            |           corpus_file_paths=file_paths,
+            |           corpus_file_metas=file_metas,
+            |           experiment_tracking_tool="mlflow",
+            |           experiment_tracking_uri="http://localhost:5000",
+            |           experiment_name="my-retriever-experiment",
+            |           experiment_run_name=f"run_{retriever_type}",
+            |           pipeline_meta={"name": f"my-pipeline-{retriever_type}"},
+            |           evaluation_set_meta={"name": "my-evalset"},
+            |           corpus_meta={"name": "my-corpus"}.
+            |           reuse_index=False
+            |       )
+        ```
+
+        :param index_pipeline: The indexing pipeline to use.
+        :param query_pipeline: The query pipeline to evaluate.
+        :param evaluation_set_labels: The labels to evaluate on forming an evalution set.
+        :param corpus_file_paths: The files to be indexed and searched during evaluation forming a corpus.
+        :param experiment_name: The name of the experiment
+        :param experiment_run_name: The name of the experiment run
+        :param experiment_tracking_tool: The experiment tracking tool to be used. Currently we only support "mlflow".
+                                         If left unset the current TrackingHead specified by Tracker.set_tracking_head() will be used.
+        :param experiment_tracking_uri: The uri of the experiment tracking server to be used. Must be specified if experiment_tracking_tool is set.
+                                        You can use deepset's public mlflow server via https://public-mlflow.deepset.ai/.
+                                        Note, that artifact logging (e.g. Pipeline YAML or evaluation result CSVs) are currently not allowed on deepset's public mlflow server as this might expose sensitive data.
+        :param corpus_file_metas: The optional metadata to be stored for each corpus file (e.g. title).
+        :param corpus_meta: Metadata about the corpus to track (e.g. name, date, author, version).
+        :param evaluation_set_meta: Metadata about the evalset to track (e.g. name, date, author, version).
+        :param pipeline_meta: Metadata about the pipelines to track (e.g. name, author, version).
+        :param index_params: The params to use during indexing (see pipeline.run's params).
+        :param query_params: The params to use during querying (see pipeline.run's params).
+        :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+                    The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                    More info in the paper: https://arxiv.org/abs/2108.06130
+                    Models:
+                    - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+                    Not all cross encoders can be used because of different return types.
+                    If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+                    - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+                    - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+                    - Large model for German only: "deepset/gbert-large-sts"
+        :param sas_batch_size: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+        :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+                            Falls back to CPU if no GPU is available.
+        :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+                    This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+                    If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+                    If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+                    The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+                    To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+                    The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+                    values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+        :param reuse_index: Whether to reuse existing non-empty index and to keep the index after evaluation.
+                           If True the index will be kept after evaluation and no indexing will take place if index has already documents. Otherwise it will be deleted immediately afterwards.
+                           Defaults to False.
+        """
+        if experiment_tracking_tool is not None:
+            tracking_head_cls = TRACKING_TOOL_TO_HEAD.get(experiment_tracking_tool, None)
+            if tracking_head_cls is None:
+                raise HaystackError(
+                    f"Please specify a valid experiment_tracking_tool. Possible values are: {TRACKING_TOOL_TO_HEAD.keys()}"
+                )
+            if experiment_tracking_uri is None:
+                raise HaystackError(f"experiment_tracking_uri must be specified if experiment_tracking_tool is set.")
+            tracking_head = tracking_head_cls(tracking_uri=experiment_tracking_uri)
+            tracker.set_tracking_head(tracking_head)
+
+        try:
+            tracker.init_experiment(
+                experiment_name=experiment_name, run_name=experiment_run_name, tags={experiment_name: "True"}
+            )
+            tracker.track_params(
+                {
+                    "evaluation_set_label_count": len(evaluation_set_labels),
+                    "evaluation_set": evaluation_set_meta,
+                    "sas_model_name_or_path": sas_model_name_or_path,
+                    "sas_batch_size": sas_batch_size,
+                    "sas_use_gpu": sas_use_gpu,
+                    "pipeline_index_params": index_params,
+                    "pipeline_query_params": query_params,
+                    "pipeline": pipeline_meta,
+                    "corpus_file_count": len(corpus_file_paths),
+                    "corpus": corpus_meta,
+                    "type": "offline/evaluation",
+                }
+            )
+
+            # check index before eval
+            document_store = index_pipeline.get_document_store()
+            if document_store is None:
+                raise HaystackError(f"Document store not found. Please provide pipelines with proper document store.")
+            document_count = document_store.get_document_count()
+
+            if document_count > 0:
+                if not reuse_index:
+                    raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
+            else:
+                logger.info(f"indexing {len(corpus_file_paths)} documents...")
+                index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
+                document_count = document_store.get_document_count()
+                logger.info(f"indexing {len(evaluation_set_labels)} files to {document_count} documents finished.")
+
+            tracker.track_params({"pipeline_index_document_count": document_count})
+
+            eval_result = query_pipeline.eval(
+                labels=evaluation_set_labels,
+                params=query_params,
+                sas_model_name_or_path=sas_model_name_or_path,
+                sas_batch_size=sas_batch_size,
+                sas_use_gpu=sas_use_gpu,
+                add_isolated_node_eval=add_isolated_node_eval,
+            )
+
+            integrated_metrics = eval_result.calculate_metrics()
+            integrated_top_1_metrics = eval_result.calculate_metrics(simulated_top_k_reader=1)
+            metrics = {"integrated": integrated_metrics, "integrated_top_1": integrated_top_1_metrics}
+            if add_isolated_node_eval:
+                isolated_metrics = eval_result.calculate_metrics(eval_mode="isolated")
+                isolated_top_1_metrics = eval_result.calculate_metrics(eval_mode="isolated", simulated_top_k_reader=1)
+                metrics["isolated"] = isolated_metrics
+                metrics["isolated_top_1"] = isolated_top_1_metrics
+            tracker.track_metrics(metrics, step=0)
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                eval_result_dir = Path(temp_dir) / "eval_result"
+                eval_result_dir.mkdir(exist_ok=True)
+                eval_result.save(out_dir=eval_result_dir)
+                tracker.track_artifacts(eval_result_dir, artifact_path="eval_result")
+                with open(Path(temp_dir) / "pipelines.yaml", "w") as outfile:
+                    index_config = index_pipeline.get_config()
+                    query_config = query_pipeline.get_config()
+                    components = list(
+                        {c["name"]: c for c in (index_config["components"] + query_config["components"])}.values()
+                    )
+                    pipelines = index_config["pipelines"] + query_config["pipelines"]
+                    config = {"version": index_config["version"], "components": components, "pipelines": pipelines}
+                    yaml.dump(config, outfile, default_flow_style=False)
+                tracker.track_artifacts(temp_dir)
+
+            # Clean up document store
+            if not reuse_index and document_store.index is not None:
+                logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+                document_store.delete_index(document_store.index)
+
+        finally:
+            tracker.end_run()
+
+        return eval_result
+
     @send_event
     def eval(
-            self,
-            labels: List[MultiLabel],
-            documents: Optional[List[List[Document]]] = None,
-            params: Optional[dict] = None,
-            sas_model_name_or_path: str = None,
-            sas_batch_size: int = 32,
-            sas_use_gpu: bool = True,
-            add_isolated_node_eval: bool = False,
+        self,
+        labels: List[MultiLabel],
+        documents: Optional[List[List[Document]]] = None,
+        params: Optional[dict] = None,
+        sas_model_name_or_path: str = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
+        add_isolated_node_eval: bool = False,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -980,7 +1193,7 @@ class Pipeline(BasePipeline):
         return df.reindex(columns=reordered_columns)
 
     def _build_eval_dataframe(
-            self, query: str, query_labels: MultiLabel, node_name: str, node_output: dict
+        self, query: str, query_labels: MultiLabel, node_name: str, node_output: dict
     ) -> DataFrame:
         """
         Builds a Dataframe for each query from which evaluation metrics can be calculated.
@@ -1071,7 +1284,7 @@ class Pipeline(BasePipeline):
                     df_docs["answer_match"] = df_docs.apply(
                         lambda row: 1.0
                         if not query_labels.no_answer
-                           and any(gold_answer in row["content"] for gold_answer in gold_answers)
+                        and any(gold_answer in row["content"] for gold_answer in gold_answers)
                         else 0.0,
                         axis=1,
                     )
@@ -1089,7 +1302,7 @@ class Pipeline(BasePipeline):
             df["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df)
 
-        return pd.concat(partial_dfs, ignore_index=True)
+        return pd.concat(partial_dfs, ignore_index=True).reset_index()
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
@@ -1145,7 +1358,7 @@ class Pipeline(BasePipeline):
         :param path: the path to save the image.
         """
         try:
-            import pygraphviz
+            import pygraphviz  # pylint: disable=unused-import
         except ImportError:
             raise ImportError(
                 f"Could not import `pygraphviz`. Please install via: \n"
@@ -1158,7 +1371,13 @@ class Pipeline(BasePipeline):
         graphviz.draw(path)
 
     @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
+    def load_from_yaml(
+        cls,
+        path: Path,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
+    ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
         a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
@@ -1176,7 +1395,7 @@ class Pipeline(BasePipeline):
             |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
+            |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
             |        custom_query: null
@@ -1203,6 +1422,7 @@ class Pipeline(BasePipeline):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
 
         pipeline_config = read_pipeline_config_from_yaml(path)
@@ -1210,11 +1430,16 @@ class Pipeline(BasePipeline):
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
+            strict_version_check=strict_version_check,
         )
 
     @classmethod
     def load_from_config(
-            cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -1234,7 +1459,7 @@ class Pipeline(BasePipeline):
             |           },
             |           {
             |               "name": "MyESRetriever",
-            |               "type": "ElasticsearchRetriever",
+            |               "type": "BM25Retriever",
             |               "params": {
             |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
             |                   "custom_query": None,
@@ -1260,8 +1485,9 @@ class Pipeline(BasePipeline):
                                              to change index name param for an ElasticsearchDocumentStore, an env
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
+        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise).
         """
-        validate_config(pipeline_config)
+        validate_config(pipeline_config, strict_version_check=strict_version_check)
 
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
@@ -1299,7 +1525,7 @@ class Pipeline(BasePipeline):
                 # Component params can reference to other components. For instance, a Retriever can reference a
                 # DocumentStore defined in the YAML. All references should be recursively resolved.
                 if (
-                        isinstance(value, str) and value in definitions.keys()
+                    isinstance(value, str) and value in definitions.keys()
                 ):  # check if the param value is a reference to another component.
                     if value not in components.keys():  # check if the referenced component is already loaded.
                         cls._load_or_get_component(name=value, definitions=definitions, components=components)
@@ -1367,7 +1593,7 @@ class Pipeline(BasePipeline):
         return config
 
     def _add_component_to_definitions(
-            self, component: BaseComponent, component_definitions: Dict[str, Dict], return_defaults: bool = False
+        self, component: BaseComponent, component_definitions: Dict[str, Dict], return_defaults: bool = False
     ):
         """
         Add the definition of the component and all its dependencies (components too) to the component_definitions dict.
@@ -1416,7 +1642,7 @@ class Pipeline(BasePipeline):
         while component_name in existing_component_names:
             occupied_num = 1
             if len(component_name) > len(type_name):
-                occupied_num = int(component_name[len(type_name) + 1:])
+                occupied_num = int(component_name[len(type_name) + 1 :])
             new_num = occupied_num + 1
             component_name = f"{type_name}_{new_num}"
         return component_name
@@ -1442,10 +1668,10 @@ class Pipeline(BasePipeline):
                     )
 
     def print_eval_report(
-            self,
-            eval_result: EvaluationResult,
-            n_wrong_examples: int = 3,
-            metrics_filter: Optional[Dict[str, List[str]]] = None,
+        self,
+        eval_result: EvaluationResult,
+        n_wrong_examples: int = 3,
+        metrics_filter: Optional[Dict[str, List[str]]] = None,
     ):
         """
         Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -1504,12 +1730,13 @@ class RayPipeline(Pipeline):
 
     @classmethod
     def load_from_config(
-            cls,
-            pipeline_config: Dict,
-            pipeline_name: Optional[str] = None,
-            overwrite_with_env_variables: bool = True,
-            address: Optional[str] = None,
-            **kwargs,
+        cls,
+        pipeline_config: Dict,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        strict_version_check: bool = False,
+        address: Optional[str] = None,
+        **kwargs,
     ):
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
@@ -1542,13 +1769,14 @@ class RayPipeline(Pipeline):
         return pipeline
 
     @classmethod
-    def load_from_yaml(
-            cls,
-            path: Path,
-            pipeline_name: Optional[str] = None,
-            overwrite_with_env_variables: bool = True,
-            address: Optional[str] = None,
-            **kwargs,
+    def load_from_yaml(  # type: ignore
+        cls,
+        path: Path,
+        pipeline_name: Optional[str] = None,
+        overwrite_with_env_variables: bool = True,
+        address: Optional[str] = None,
+        strict_version_check: bool = False,
+        **kwargs,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -1567,7 +1795,7 @@ class RayPipeline(Pipeline):
             |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
+            |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
             |        custom_query: null
@@ -1618,20 +1846,19 @@ class RayPipeline(Pipeline):
         :param replicas: By default, a single replica of the component is created. It can be
                          configured by setting `replicas` parameter in the Pipeline YAML.
         """
-        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name,
-                                         num_replicas=replicas)  # type: ignore
+        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)  # type: ignore
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
         return handle
 
     def run(  # type: ignore
-            self,
-            query: Optional[str] = None,
-            file_paths: Optional[List[str]] = None,
-            labels: Optional[MultiLabel] = None,
-            documents: Optional[List[Document]] = None,
-            meta: Optional[dict] = None,
-            params: Optional[dict] = None,
+        self,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        params: Optional[dict] = None,
     ):
         has_next_node = True
         current_node_id = self.root_node
@@ -1686,8 +1913,8 @@ class RayPipeline(Pipeline):
                        from Python: https://docs.ray.io/en/master/serve/package-ref.html#servehandle-api.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+                       of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["BM25Retriever"].
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
@@ -1768,7 +1995,7 @@ class _HaystackBeirRetrieverAdapter:
         self.query_params = query_params
 
     def search(
-            self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, score_function: str, **kwargs
+        self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, score_function: str, **kwargs
     ) -> Dict[str, Dict[str, float]]:
         with tempfile.TemporaryDirectory() as temp_dir:
             file_paths = []

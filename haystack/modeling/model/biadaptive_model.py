@@ -2,14 +2,15 @@ from typing import List, Optional, Callable, Union, Dict
 
 import os
 import logging
+from pathlib import Path
+
 import torch
 from torch import nn
-from pathlib import Path
 
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead, TextSimilarityHead
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 
 logger = logging.getLogger(__name__)
@@ -334,7 +335,7 @@ class BiAdaptiveModel(nn.Module):
             "prediction_heads": ",".join([head.__class__.__name__ for head in self.prediction_heads]),
         }
         try:
-            MlLogger.log_params(params)
+            tracker.track_params(params)
         except Exception as e:
             logger.warning(f"ML logging didn't work: {e}")
 

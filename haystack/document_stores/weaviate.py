@@ -1,16 +1,16 @@
 from typing import Any, Dict, Generator, List, Optional, Union
+
 import re
 import uuid
 import json
 import hashlib
 import logging
-from datetime import datetime
 
 import numpy as np
 from tqdm import tqdm
-import weaviate
 
 try:
+    import weaviate
     from weaviate import client, AuthClientPassword
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -70,7 +70,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
-        **kwargs,
+        recreate_index: bool = False,
     ):
         """
         :param host: Weaviate server connection URL for storing and processing documents and vectors.
@@ -102,6 +102,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                     skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already exists.
+        :param recreate_index: If set to True, an existing Weaviate index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index.
         """
         if similarity != "cosine":
             raise ValueError(f"Weaviate only supports cosine similarity, but you provided {similarity}")
@@ -143,7 +146,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.progress_bar = progress_bar
         self.duplicate_documents = duplicate_documents
 
-        self._create_schema_and_index_if_not_exist(self.index)
+        self._create_schema_and_index(self.index, recreate_index=recreate_index)
         self.uuid_format_warning_raised = False
 
     def _sanitize_index_name(self, index: Optional[str]) -> Optional[str]:
@@ -154,7 +157,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         else:
             return index[0].upper() + index[1:]
 
-    def _create_schema_and_index_if_not_exist(self, index: Optional[str] = None):
+    def _create_schema_and_index(self, index: Optional[str] = None, recreate_index: bool = False):
         """
         Create a new index (schema/class in Weaviate) for storing documents in case if an
         index (schema) with the name doesn't exist already.
@@ -184,8 +187,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
             }
         if not self.weaviate_client.schema.contains(schema):
             self.weaviate_client.schema.create(schema)
+        elif recreate_index and index is not None:
+            self._delete_index(index)
+            self.weaviate_client.schema.create(schema)
 
-    def _convert_weaviate_result_to_document(self, result: dict, return_embedding: bool) -> Document:
+    def _convert_weaviate_result_to_document(
+        self, result: dict, return_embedding: bool, scale_score: bool = True
+    ) -> Document:
         """
         Convert weaviate result dict into haystack document object. This is more involved because
         weaviate search result dict varies between get and query interfaces.
@@ -227,6 +235,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if "_additional" in props:
             if "certainty" in props["_additional"]:
                 score = props["_additional"]["certainty"]
+                # weaviate returns already scaled values
+                if score and not scale_score:
+                    score = score * 2 - 1
             if "id" in props["_additional"]:
                 id = props["_additional"]["id"]
             if "vector" in props["_additional"]:
@@ -419,7 +430,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         index = self._sanitize_index_name(index) or self.index
-        self._create_schema_and_index_if_not_exist(index)
+        self._create_schema_and_index(index, recreate_index=False)
         field_map = self._create_document_field_map()
 
         duplicate_documents = duplicate_documents or self.duplicate_documents
@@ -780,6 +791,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -853,6 +865,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
                             https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         index = self._sanitize_index_name(index) or self.index
 
@@ -884,7 +899,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=True)
+            doc = self._convert_weaviate_result_to_document(result, return_embedding=True, scale_score=scale_score)
             documents.append(doc)
 
         return documents
@@ -897,6 +912,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -968,6 +984,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -1011,7 +1030,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
+            doc = self._convert_weaviate_result_to_document(
+                result, return_embedding=return_embedding, scale_score=scale_score
+            )
             documents.append(doc)
 
         return documents
@@ -1191,13 +1212,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         index = self._sanitize_index_name(index) or self.index
 
-        # create index if it doesn't exist yet
-        self._create_schema_and_index_if_not_exist(index)
-
         if not filters and not ids:
-            self.weaviate_client.schema.delete_class(index)
-            self._create_schema_and_index_if_not_exist(index)
+            self._create_schema_and_index(index, recreate_index=True)
         else:
+            # create index if it doesn't exist yet
+            self._create_schema_and_index(index, recreate_index=False)
             docs_to_delete = self.get_all_documents(index, filters=filters)
             if ids:
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
@@ -1216,7 +1235,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        self.weaviate_client.schema.delete_class(index)
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
+        index = self._sanitize_index_name(index) or index
+        if any(c for c in self.weaviate_client.schema.get()["classes"] if c["class"] == index):
+            self.weaviate_client.schema.delete_class(index)
+            logger.info(f"Index '{index}' deleted.")
 
     def delete_labels(self):
         """
