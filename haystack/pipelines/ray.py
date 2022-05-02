@@ -195,7 +195,7 @@ class RayPipeline(Pipeline):
     ):
         has_next_node = True
         current_node_id = self.root_node
-        input_dict = {"root_node": self.root_node, "params": params}
+        input_dict: Dict[str, Any] = {"root_node": self.root_node, "params": params}
         if query:
             input_dict["query"] = query
         if file_paths:
