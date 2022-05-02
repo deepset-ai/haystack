@@ -18,9 +18,7 @@ def tutorial15_tableqa():
     launch_es()
 
     ## Connect to Elasticsearch
-    document_store = ElasticsearchDocumentStore(
-        host="localhost", username="", password="", index="document"
-    )
+    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
 
     ## Add Tables to DocumentStore
 
@@ -59,7 +57,7 @@ def tutorial15_tableqa():
     retriever = EmbeddingRetriever(
         document_store=document_store,
         embedding_model="deepset/all-mpnet-base-v2-table",
-        model_format="sentence_transformers"
+        model_format="sentence_transformers",
     )
 
     # Add table embeddings to the tables in DocumentStore
