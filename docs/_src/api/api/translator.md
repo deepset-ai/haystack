@@ -73,7 +73,7 @@ def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_
 
 Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
 
-models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
+models from Hugging Face's model hub, we recommend using the OPUS models from Helsinki NLP. They provide plenty
 of different models, usually one model per language pair and translation direction.
 They have a pretty standardized naming that should help you find the right model:
 - "Helsinki-NLP/opus-mt-en-de" => translating from English to German

@@ -41,9 +41,14 @@ class BaseRanker(BaseComponent):
 
         return output, "output_1"
 
-    def run_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],  # type: ignore
-                  top_k: Optional[int] = None, batch_size: Optional[int] = None):
-        self.query_count =+ len(queries)
+    def run_batch(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
+        self.query_count = +len(queries)
         predict_batch = self.timing(self.predict_batch, "query_time")
         results = predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
 

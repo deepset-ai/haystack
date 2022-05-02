@@ -25,8 +25,12 @@ class BaseReader(BaseComponent):
         pass
 
     @abstractmethod
-    def predict_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
-                      top_k: Optional[int] = None):
+    def predict_batch(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+    ):
         pass
 
     @staticmethod
@@ -111,7 +115,7 @@ class BaseReader(BaseComponent):
         queries: Union[str, List[str]],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
-        batch_size: Optional[int] = None
+        batch_size: Optional[int] = None,
     ):
         self.query_count += len(queries) if isinstance(queries, list) else 1
         predict_batch = self.timing(self.predict_batch, "query_time")

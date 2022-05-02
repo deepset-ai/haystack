@@ -377,13 +377,13 @@ class TfidfRetriever(BaseRetriever):
         return documents
 
     def retrieve_batch(
-            self,
-            queries: Union[str, List[str]],
-            filters: dict = None,
-            top_k: Optional[int] = None,
-            index: str = None,
-            headers: Optional[Dict[str, str]] = None,
-            batch_size: Optional[int] = None,
+        self,
+        queries: Union[str, List[str]],
+        filters: dict = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
     ) -> Union[List[Document], List[List[Document]]]:
 
         if self.auto_fit:

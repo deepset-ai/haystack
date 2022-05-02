@@ -700,14 +700,14 @@ class Pipeline(BasePipeline):
         return node_output
 
     def run_batch(  # type: ignore
-            self,
-            queries: Optional[Union[str, List[str]]] = None,
-            file_paths: Optional[List[str]] = None,
-            labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
-            documents: Optional[Union[List[Document], List[List[Document]]]] = None,
-            meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
     ):
         if file_paths is not None or meta is not None:
             logger.info("It seems that an indexing Pipeline is run, "

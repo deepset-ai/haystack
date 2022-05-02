@@ -102,8 +102,10 @@ class QuestionGenerator(BaseComponent):
             split_overlap=self.split_overlap,
             split_length=self.split_length,
         )
-        split_texts = [f"{self.prompt} {text.content}" if self.prompt not in text.content else text.content
-                       for text in split_texts_docs]
+        split_texts = [
+            f"{self.prompt} {text.content}" if self.prompt not in text.content else text.content
+            for text in split_texts_docs
+        ]
         tokenized = self.tokenizer(split_texts, return_tensors="pt", padding=True)
         input_ids = tokenized["input_ids"].to(self.devices[0])
         # Necessary if padding is enabled so the model won't attend pad tokens
@@ -130,8 +132,9 @@ class QuestionGenerator(BaseComponent):
 
         return ret
 
-    def generate_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None
-                       ) -> Union[List[List[str]], List[List[List[str]]]]:
+    def generate_batch(
+        self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None
+    ) -> Union[List[List[str]], List[List[List[str]]]]:
 
         if isinstance(texts[0], str):
             single_doc_list = True

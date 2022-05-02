@@ -195,14 +195,15 @@ class TransformersReader(BaseReader):
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
             for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i:i + answers_per_query]
+                answer_group = results["answers"][i : i + answers_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
         return results
 
-    def _extract_answers_of_predictions(self, predictions: List[Dict[str, Any]], docs: Dict[str, Document],
-                                        top_k: int) -> Tuple[List[Answer], float]:
+    def _extract_answers_of_predictions(
+        self, predictions: List[Dict[str, Any]], docs: Dict[str, Document], top_k: int
+    ) -> Tuple[List[Answer], float]:
         answers = []
         no_ans_gaps = []
         best_overall_score = 0
@@ -238,7 +239,7 @@ class TransformersReader(BaseReader):
                         offsets_in_document=[Span(start=pred["start"], end=pred["end"])],
                         offsets_in_context=[Span(start=pred["start"] - context_start, end=pred["end"] - context_start)],
                         document_id=cur_doc.id,
-                        meta=cur_doc.meta
+                        meta=cur_doc.meta,
                     )
                 )
             # "no answer" prediction
@@ -263,9 +264,7 @@ class TransformersReader(BaseReader):
         return answers, max_no_ans_gap
 
     def _preprocess_batch_queries_and_docs(
-        self,
-        queries: Union[str, List[str]],
-        documents: Union[List[Document], List[List[Document]]]
+        self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]
     ) -> Tuple[List[SquadExample], List[int], Dict[str, Document], bool, bool]:
         # Convert input to transformers format
         inputs = []

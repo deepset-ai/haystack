@@ -96,8 +96,7 @@ class Docs2Answers(BaseComponent):
         else:
             # Regular docs
             answer = Answer(
-                answer="", type="other", score=doc.score, context=doc.content, document_id=doc.id,
-                meta=doc.meta
+                answer="", type="other", score=doc.score, context=doc.content, document_id=doc.id, meta=doc.meta
             )
 
         return answer

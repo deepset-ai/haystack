@@ -400,11 +400,11 @@ class TableReader(BaseReader):
         return answer_offsets
 
     def predict_batch(
-            self,
-            queries: Union[str, List[str]],
-            documents: Union[List[Document], List[List[Document]]],
-            top_k: Optional[int] = None,
-            batch_size: Optional[int] = None,
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
     ):
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 
@@ -462,7 +462,7 @@ class TableReader(BaseReader):
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
             for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i:i + answers_per_query]
+                answer_group = results["answers"][i : i + answers_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
@@ -695,11 +695,11 @@ class RCIReader(BaseReader):
         return Span(start=answer_cell_offset, end=answer_cell_offset + 1)
 
     def predict_batch(
-            self,
-            queries: Union[str, List[str]],
-            documents: Union[List[Document], List[List[Document]]],
-            top_k: Optional[int] = None,
-            batch_size: Optional[int] = None,
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
     ):
         # TODO: Currently, just calls naively predict method, so there is room for improvement.
 
@@ -757,7 +757,7 @@ class RCIReader(BaseReader):
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
             for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i:i + answers_per_query]
+                answer_group = results["answers"][i : i + answers_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 

@@ -89,4 +89,3 @@ class BaseTranslator(BaseComponent):
             translation_results["answers"] = self.translate_batch(documents=answers)
 
         return translation_results, "output_1"
-

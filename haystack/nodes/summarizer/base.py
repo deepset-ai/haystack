@@ -49,10 +49,12 @@ class BaseSummarizer(BaseComponent):
     def run_batch(  # type: ignore
         self,
         documents: Union[List[Document], List[List[Document]]],
-        generate_single_summary: Optional[bool] = None, batch_size: Optional[int] = None
+        generate_single_summary: Optional[bool] = None,
+        batch_size: Optional[int] = None,
     ):
 
-        results = self.predict_batch(documents=documents, generate_single_summary=generate_single_summary,
-                                     batch_size=batch_size)
+        results = self.predict_batch(
+            documents=documents, generate_single_summary=generate_single_summary, batch_size=batch_size
+        )
 
         return {"documents": results}, "output_1"

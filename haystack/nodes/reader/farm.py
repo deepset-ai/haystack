@@ -702,7 +702,7 @@ class FARMReader(BaseReader):
             top_k = self.top_k
 
         inputs, number_of_docs, single_query, single_doc_list = self._preprocess_batch_queries_and_docs(
-            queries=queries,documents=documents
+            queries=queries, documents=documents
         )
 
         if batch_size is not None:
@@ -732,7 +732,7 @@ class FARMReader(BaseReader):
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
             for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i:i+answers_per_query]
+                answer_group = results["answers"][i : i + answers_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
@@ -1059,9 +1059,7 @@ class FARMReader(BaseReader):
         return answers, max_no_ans_gap
 
     def _preprocess_batch_queries_and_docs(
-        self,
-        queries: Union[str, List[str]],
-        documents: Union[List[Document], List[List[Document]]]
+        self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]
     ) -> Tuple[List[QAInput], List[int], bool, bool]:
         # Convert input to FARM format
         inputs = []

@@ -95,7 +95,6 @@ class JoinDocuments(BaseComponent):
 
             return output, "output_1"
 
-
     def _concatenate_results(self, results):
         """
         Concatenates multiple document result lists.

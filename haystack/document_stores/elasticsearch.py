@@ -1034,14 +1034,21 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
 
-        body = self._construct_query_body(query=query, filters=filters, top_k=top_k, custom_query=custom_query,
-                                          all_terms_must_match=all_terms_must_match)
+        body = self._construct_query_body(
+            query=query,
+            filters=filters,
+            top_k=top_k,
+            custom_query=custom_query,
+            all_terms_must_match=all_terms_must_match,
+        )
 
         logger.debug(f"Retriever query: {body}")
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
-        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding,
-                                                      scale_score=scale_score) for hit in result]
+        documents = [
+            self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding, scale_score=scale_score)
+            for hit in result
+        ]
         return documents
 
     def query_batch(
@@ -1068,9 +1075,13 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         body = []
         for query in queries:
-            cur_query_body = self._construct_query_body(query=query, filters=filters, top_k=top_k,
-                                                        custom_query=custom_query,
-                                                        all_terms_must_match=all_terms_must_match)
+            cur_query_body = self._construct_query_body(
+                query=query,
+                filters=filters,
+                top_k=top_k,
+                custom_query=custom_query,
+                all_terms_must_match=all_terms_must_match,
+            )
             body.append(headers)
             body.append(cur_query_body)
 
@@ -1081,8 +1092,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         cur_documents = []
         for response in responses["responses"]:
             cur_result = response["hits"]["hits"]
-            cur_documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding,
-                             scale_score=scale_score) for hit in cur_result]
+            cur_documents = [
+                self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding, scale_score=scale_score)
+                for hit in cur_result
+            ]
             all_documents.append(cur_documents)
 
         if single_query:

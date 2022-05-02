@@ -66,8 +66,6 @@ class JoinAnswers(BaseComponent):
 
         return output, "output_1"
 
-
-
     def _merge_answers(self, reader_results: List[List[Answer]]) -> List[Answer]:
         weights = self.weights if self.weights else [1 / len(reader_results)] * len(reader_results)
 

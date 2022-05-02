@@ -415,6 +415,16 @@ that are most relevant to the query.
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
+<a id="dense.DensePassageRetriever.retrieve_batch"></a>
+
+#### retrieve\_batch
+
+```python
+def retrieve_batch(queries: Optional[Union[str, List[str]]] = None, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+.
+
 <a id="dense.DensePassageRetriever.embed_queries"></a>
 
 #### embed\_queries
@@ -595,6 +605,16 @@ Additional information can be found here https://huggingface.co/transformers/mai
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+<a id="dense.TableTextRetriever.retrieve_batch"></a>
+
+#### retrieve\_batch
+
+```python
+def retrieve_batch(queries: Optional[Union[str, List[str]]] = None, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+.
 
 <a id="dense.TableTextRetriever.embed_queries"></a>
 
@@ -788,6 +808,16 @@ that are most relevant to the query.
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+<a id="dense.EmbeddingRetriever.retrieve_batch"></a>
+
+#### retrieve\_batch
+
+```python
+def retrieve_batch(queries: Optional[Union[str, List[str]]] = None, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+.
 
 <a id="dense.EmbeddingRetriever.embed_queries"></a>
 

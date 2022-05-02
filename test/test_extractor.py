@@ -61,7 +61,7 @@ def test_extractor_batch_multiple_queries(document_store_with_docs):
 
     prediction = pipeline.run_batch(
         queries=["Who lives in Berlin?", "Who lives in New York?"],
-        params={"ESRetriever": {"top_k": 1}, "Reader": {"top_k": 1}}
+        params={"ESRetriever": {"top_k": 1}, "Reader": {"top_k": 1}},
     )
     entities_carla = [entity["word"] for entity in prediction["answers"][0][0].meta["entities"]]
     entities_paul = [entity["word"] for entity in prediction["answers"][1][0].meta["entities"]]
