@@ -16,6 +16,7 @@ from haystack.pipelines.config import get_component_definitions, get_pipeline_de
 from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
+from haystack.errors import PipelineError
 
 
 class RayPipeline(Pipeline):
@@ -195,6 +196,9 @@ class RayPipeline(Pipeline):
     ):
         has_next_node = True
         current_node_id = self.root_node
+        if not current_node_id:
+            raise PipelineError("Cannot run a pipeline with no nodes.")
+
         input_dict: Dict[str, Any] = {"root_node": self.root_node, "params": params}
         if query:
             input_dict["query"] = query
