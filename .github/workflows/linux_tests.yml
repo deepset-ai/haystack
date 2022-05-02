@@ -28,7 +28,6 @@ on:
 jobs:
 
   unit-tests:
-    needs: build-cache
     runs-on: ubuntu-20.04
     timeout-minutes: 45
 
