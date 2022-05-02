@@ -1163,7 +1163,8 @@ class Pipeline(BasePipeline):
                     df_answers["f1"] = df_answers.apply(lambda row: max(row["gold_answers_f1"] + [0.0]), axis=1)
                     df_answers["gold_answers_context_similarity"] = df_answers.apply(
                         lambda row: [
-                            calculate_context_similarity(gold_answer, row["context"] or "") for gold_answer in gold_answers
+                            calculate_context_similarity(gold_answer, row["context"] or "")
+                            for gold_answer in gold_answers
                         ],
                         axis=1,
                     )
@@ -1232,7 +1233,8 @@ class Pipeline(BasePipeline):
                     )
                     df_docs["gold_context_similarity"] = df_docs.apply(
                         lambda row: [
-                            calculate_context_similarity(gold_content, row["content"] or "") for gold_content in gold_contexts
+                            calculate_context_similarity(gold_content, row["content"] or "")
+                            for gold_content in gold_contexts
                         ],
                         axis=1,
                     )
