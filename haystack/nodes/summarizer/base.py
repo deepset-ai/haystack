@@ -28,6 +28,15 @@ class BaseSummarizer(BaseComponent):
         """
         pass
 
+    @abstractmethod
+    def predict_batch(
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        generate_single_summary: Optional[bool] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        pass
+
     def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None):  # type: ignore
 
         results: Dict = {"documents": []}
@@ -37,8 +46,11 @@ class BaseSummarizer(BaseComponent):
 
         return results, "output_1"
 
-    def run_batch(self, documents: Union[List[Document], List[List[Document]]],
-                  generate_single_summary: Optional[bool] = None, batch_size: Optional[int] = None):
+    def run_batch(  # type: ignore
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        generate_single_summary: Optional[bool] = None, batch_size: Optional[int] = None
+    ):
 
         results = self.predict_batch(documents=documents, generate_single_summary=generate_single_summary,
                                      batch_size=batch_size)

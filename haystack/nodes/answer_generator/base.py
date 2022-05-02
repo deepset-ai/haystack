@@ -34,7 +34,7 @@ class BaseGenerator(BaseComponent):
 
         return results, "output_1"
 
-    def run_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
+    def run_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],  # type: ignore
                   top_k: Optional[int] = None, batch_size: Optional[int] = None):
         results = self.predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
         return results, "output_1"
@@ -73,19 +73,23 @@ class BaseGenerator(BaseComponent):
         """
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 
-        results = {"queries": queries, "answers": []}
+        results: Dict = {"queries": queries, "answers": []}
         # Query case 1: single query
         if isinstance(queries, str):
             query = queries
             # Docs case 1: single list of Documents -> apply single query to all Documents
             if len(documents) > 0 and isinstance(documents[0], Document):
                 for doc in documents:
+                    if not isinstance(doc, Document):
+                        raise HaystackError("Expected a Document.")
                     preds = self.predict(query=query, documents=[doc], top_k=top_k)
                     results["answers"].append(preds["answers"])
 
             # Docs case 2: list of lists of Documents -> apply single query to each list of Documents
             elif len(documents) > 0 and isinstance(documents[0], list):
                 for docs in documents:
+                    if not isinstance(docs, list):
+                        raise HaystackError("Expected a list of Documents.")
                     preds = self.predict(query=query, documents=docs, top_k=top_k)
                     results["answers"].append(preds["answers"])
 
@@ -95,6 +99,8 @@ class BaseGenerator(BaseComponent):
             if len(documents) > 0 and isinstance(documents[0], Document):
                 for query in queries:
                     for doc in documents:
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         preds = self.predict(query=query, documents=[doc], top_k=top_k)
                         results["answers"].append(preds["answers"])
 
@@ -102,8 +108,10 @@ class BaseGenerator(BaseComponent):
             elif len(documents) > 0 and isinstance(documents[0], list):
                 if len(queries) != len(documents):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, docs in zip(queries, documents):
-                    preds = self.predict(query=query, documents=docs, top_k=top_k)
+                for query, cur_docs in zip(queries, documents):
+                    if not isinstance(cur_docs, list):
+                        raise HaystackError("Expected a list of Documents.")
+                    preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
                     results["answers"].append(preds["answers"])
 
         return results

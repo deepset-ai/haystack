@@ -172,7 +172,8 @@ class TransformersSummarizer(BaseSummarizer):
         if self.min_length > self.max_length:
             raise AttributeError("min_length cannot be greater than max_length")
 
-        if len(documents) == 0 or (isinstance(documents[0], list) and all(len(docs) == 0 for docs in documents)):
+        if len(documents) == 0 or (isinstance(documents[0], list) and all(len(docs) == 0 for docs in documents
+                                                                          if isinstance(docs, list))):
             raise AttributeError("Summarizer needs at least one document to produce a summary.")
 
         if generate_single_summary is None:
@@ -183,9 +184,9 @@ class TransformersSummarizer(BaseSummarizer):
             single_doc_list = True
 
         if single_doc_list:
-            contexts = [doc.content for doc in documents]
+            contexts = [doc.content for doc in documents if isinstance(doc, Document)]
         else:
-            contexts = [[doc.content for doc in docs] for docs in documents]
+            contexts = [[doc.content for doc in docs] for docs in documents if isinstance(docs, list)]
 
         if generate_single_summary:
             if single_doc_list:
@@ -241,6 +242,6 @@ class TransformersSummarizer(BaseSummarizer):
             if single_doc_list:
                 result.append(cur_summaries[0])
             else:
-                result.append(cur_summaries)
+                result.append(cur_summaries)  # type: ignore
 
         return result

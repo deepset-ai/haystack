@@ -1,4 +1,4 @@
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, cast
 
 import logging
 from pathlib import Path
@@ -250,7 +250,7 @@ class DensePassageRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: Union[str, List[str]],
         filters: dict = None,
         top_k: Optional[int] = None,
         index: str = None,
@@ -271,7 +271,10 @@ class DensePassageRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
             )
-            return [[] * len(queries)]
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []
@@ -799,7 +802,7 @@ class TableTextRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: Union[str, List[str]],
         filters: dict = None,
         top_k: Optional[int] = None,
         index: str = None,
@@ -820,7 +823,10 @@ class TableTextRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
             )
-            return [[] * len(queries)]
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []
@@ -1295,7 +1301,7 @@ class EmbeddingRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: Union[str, List[str]],
         filters: dict = None,
         top_k: Optional[int] = None,
         index: str = None,
@@ -1316,7 +1322,10 @@ class EmbeddingRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
             )
-            return [[] * len(queries)]
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []

@@ -4,6 +4,7 @@ import itertools
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
 
+from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.modeling.utils import initialize_device_settings
@@ -43,19 +44,27 @@ class EntityExtractor(BaseComponent):
         """
         if documents:
             for doc in documents:
-                doc.meta["entities"] = self.extract(doc.content)
+                # In a querying pipeline, doc is a haystack.schema.Document object
+                try:
+                    doc.meta["entities"] = self.extract(doc.content)  # type: ignore
+                # In an indexing pipeline, doc is a dictionary
+                except AttributeError:
+                    doc["meta"]["entities"] = self.extract(doc["content"])  # type: ignore
         output = {"documents": documents}
         return output, "output_1"
 
-    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
         if isinstance(documents[0], Document):
             flattened_documents = documents
         else:
-            flattened_documents = list(itertools.chain.from_iterable(documents))
+            flattened_documents = list(itertools.chain.from_iterable(documents))  # type: ignore
 
-        all_entities = self.extract_batch([doc.content for doc in flattened_documents], batch_size=batch_size)
+        all_entities = self.extract_batch([doc.content for doc in flattened_documents if isinstance(doc, Document)],
+                                          batch_size=batch_size)
 
         for entities_per_doc, doc in zip(all_entities, flattened_documents):
+            if not isinstance(doc, Document):
+                raise HaystackError("Expected a Document.")
             doc.meta["entities"] = entities_per_doc
         output = {"documents": documents}
 

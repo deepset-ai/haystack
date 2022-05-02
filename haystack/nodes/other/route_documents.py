@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Optional, Union
+from typing import List, Tuple, Dict, Optional, Union, Sequence
 from collections import defaultdict
 
 from numpy.lib.shape_base import split
@@ -73,13 +73,13 @@ class RouteDocuments(BaseComponent):
 
         return split_documents, "split"
 
-    def run_batch(self, documents: [Union[List[Document], List[List[Document]]]]):
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]]):  # type: ignore
         if isinstance(documents[0], Document):
-            return self.run(documents)
+            return self.run(documents)  # type: ignore
         else:
             split_documents = defaultdict(list)
             for doc_list in documents:
-                results, _ = self.run(documents=doc_list)
+                results, _ = self.run(documents=doc_list)  # type: ignore
                 for key in results:
                     split_documents[key].append(results[key])
 

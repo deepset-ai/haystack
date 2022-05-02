@@ -177,11 +177,11 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         .
         """
         if isinstance(documents[0], Document):
-            documents = self.predict(documents=documents, batch_size=batch_size)
+            documents = self.predict(documents=documents, batch_size=batch_size)  # type: ignore
             return documents
         else:
-            number_of_documents = [len(doc_list) for doc_list in documents]
-            flattened_documents = list(itertools.chain.from_iterable(documents))
+            number_of_documents = [len(doc_list) for doc_list in documents if isinstance(doc_list, list)]
+            flattened_documents = list(itertools.chain.from_iterable(documents))  # type: ignore
             docs_with_preds = self.predict(flattened_documents, batch_size=batch_size)
 
             # Group documents together

@@ -177,7 +177,7 @@ class TransformersReader(BaseReader):
             grouped_inputs.append(inputs[left_idx:right_idx])
             left_idx = right_idx
 
-        results = {"queries": queries, "answers": [], "no_ans_gaps": []}
+        results: Dict = {"queries": queries, "answers": [], "no_ans_gaps": []}
         for grouped_pred, grouped_inp in zip(grouped_predictions, grouped_inputs):
             # Add Document ID to predictions to be able to construct Answer objects
             for preds_for_single_doc, inp in zip(grouped_pred, grouped_inp):
@@ -281,6 +281,8 @@ class TransformersReader(BaseReader):
                 single_doc_list = True
                 for doc in documents:
                     number_of_docs.append(1)
+                    if not isinstance(doc, Document):
+                        raise HaystackError("Expected a Document.")
                     cur = self.model.create_sample(question=query, context=doc.content)
                     cur.doc_id = doc.id
                     all_docs[doc.id] = doc
@@ -290,6 +292,8 @@ class TransformersReader(BaseReader):
             elif len(documents) > 0 and isinstance(documents[0], list):
                 single_doc_list = False
                 for docs in documents:
+                    if not isinstance(docs, list):
+                        raise HaystackError("Expected a list of Documents.")
                     number_of_docs.append(len(docs))
                     for doc in docs:
                         cur = self.model.create_sample(question=query, context=doc.content)
@@ -306,6 +310,8 @@ class TransformersReader(BaseReader):
                 for query in queries:
                     for doc in documents:
                         number_of_docs.append(1)
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         cur = self.model.create_sample(question=query, context=doc.content)
                         cur.doc_id = doc.id
                         all_docs[doc.id] = doc
@@ -316,9 +322,13 @@ class TransformersReader(BaseReader):
                 single_doc_list = False
                 if len(queries) != len(documents):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, docs in zip(queries, documents):
-                    number_of_docs.append(len(docs))
-                    for doc in docs:
+                for query, cur_docs in zip(queries, documents):
+                    if not isinstance(cur_docs, list):
+                        raise HaystackError("Expected a list of Documents.")
+                    number_of_docs.append(len(cur_docs))
+                    for doc in cur_docs:
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         cur = self.model.create_sample(question=query, context=doc.content)
                         cur.doc_id = doc.id
                         all_docs[doc.id] = doc

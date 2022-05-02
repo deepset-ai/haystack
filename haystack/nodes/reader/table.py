@@ -408,7 +408,7 @@ class TableReader(BaseReader):
     ):
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 
-        results = {"queries": queries, "answer": []}
+        results: Dict = {"queries": queries, "answer": []}
         # Query case 1: single query
         if isinstance(queries, str):
             single_query = True
@@ -417,12 +417,16 @@ class TableReader(BaseReader):
             if len(documents) > 0 and isinstance(documents[0], Document):
                 single_doc_list = True
                 for doc in documents:
+                    if not isinstance(doc, Document):
+                        raise HaystackError("Expected a Document.")
                     pred = self.predict(query=query, documents=[doc])
                     results["answers"].append(pred["answers"])
             # Docs case 2: list of lists of Documents -> apply single query to each list of Documents
             elif len(documents) > 0 and isinstance(documents[0], list):
                 single_doc_list = False
                 for docs in documents:
+                    if not isinstance(docs, list):
+                        raise HaystackError("Expected a list of Documents.")
                     pred = self.predict(query=query, documents=docs)
                     results["answers"].append(pred["answers"])
 
@@ -434,6 +438,8 @@ class TableReader(BaseReader):
                 single_doc_list = True
                 for query in queries:
                     for doc in documents:
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         pred = self.predict(query=query, documents=[doc])
                         results["answers"].append(pred["answers"])
 
@@ -442,8 +448,10 @@ class TableReader(BaseReader):
                 single_doc_list = False
                 if len(queries) != len(documents):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, docs in zip(queries, documents):
-                    pred = self.predict(query=query, documents=docs)
+                for query, cur_docs in zip(queries, documents):
+                    if not isinstance(cur_docs, list):
+                        raise HaystackError("Expected a list of Documents.")
+                    pred = self.predict(query=query, documents=cur_docs)
                     results["answers"].append(pred["answers"])
 
         else:
@@ -695,7 +703,7 @@ class RCIReader(BaseReader):
     ):
         # TODO: Currently, just calls naively predict method, so there is room for improvement.
 
-        results = {"queries": queries, "answers": []}
+        results: Dict = {"queries": queries, "answers": []}
         # Query case 1: single query
         if isinstance(queries, str):
             single_query = True
@@ -704,12 +712,16 @@ class RCIReader(BaseReader):
             if len(documents) > 0 and isinstance(documents[0], Document):
                 single_doc_list = True
                 for doc in documents:
+                    if not isinstance(doc, Document):
+                        raise HaystackError("Expected a Document.")
                     pred = self.predict(query=query, documents=[doc])
                     results["answers"].append(pred["answers"])
             # Docs case 2: list of lists of Documents -> apply single query to each list of Documents
             elif len(documents) > 0 and isinstance(documents[0], list):
                 single_doc_list = False
                 for docs in documents:
+                    if not isinstance(docs, list):
+                        raise HaystackError("Expected a list of Documents.")
                     pred = self.predict(query=query, documents=docs)
                     results["answers"].append(pred["answers"])
 
@@ -721,6 +733,8 @@ class RCIReader(BaseReader):
                 single_doc_list = True
                 for query in queries:
                     for doc in documents:
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         pred = self.predict(query=query, documents=[doc])
                         results["answers"].append(pred["answers"])
 
@@ -729,8 +743,10 @@ class RCIReader(BaseReader):
                 single_doc_list = False
                 if len(queries) != len(documents):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, docs in zip(queries, documents):
-                    pred = self.predict(query=query, documents=docs)
+                for query, cur_docs in zip(queries, documents):
+                    if not isinstance(cur_docs, list):
+                        raise HaystackError("Expected a list of Documents.")
+                    pred = self.predict(query=query, documents=cur_docs)
                     results["answers"].append(pred["answers"])
 
         else:

@@ -9,6 +9,7 @@ from time import perf_counter
 import numpy as np
 from scipy.special import expit
 
+from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, Span, MultiLabel
 from haystack.nodes.base import BaseComponent
 
@@ -105,10 +106,10 @@ class BaseReader(BaseComponent):
 
         return results, "output_1"
 
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
-        queries: Union[str, List[str]] = None,
-        documents: Union[List[Document], List[List[Document]]] = None,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None
     ):
@@ -124,10 +125,14 @@ class BaseReader(BaseComponent):
         if isinstance(documents[0], Document):
             if isinstance(queries, list):
                 answer_iterator = itertools.chain.from_iterable(itertools.chain.from_iterable(results["answers"]))
-        else:
-            documents = list(itertools.chain.from_iterable(documents))
+        flattened_documents = []
+        for doc_list in documents:
+            if isinstance(doc_list, list):
+                flattened_documents.extend(doc_list)
+            else:
+                flattened_documents.append(doc_list)
         for answer in answer_iterator:
-            BaseReader.add_doc_meta_data_to_answer(documents=documents, answer=answer)
+            BaseReader.add_doc_meta_data_to_answer(documents=flattened_documents, answer=answer)
 
         return results, "output_1"
 

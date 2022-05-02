@@ -16,5 +16,5 @@ class BaseQueryClassifier(BaseComponent):
         pass
 
     @abstractmethod
-    def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):
+    def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):  # type: ignore
         pass

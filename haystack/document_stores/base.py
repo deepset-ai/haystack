@@ -565,7 +565,7 @@ class BaseDocumentStore(BaseComponent):
         self.write_documents(documents=doc_objects, index=index, headers=headers)
         return {}, "output_1"
 
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
         documents: List[Union[dict, Document]],
         index: Optional[str] = None,
@@ -777,6 +777,7 @@ class KeywordDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
+        scale_score: bool = True,
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 

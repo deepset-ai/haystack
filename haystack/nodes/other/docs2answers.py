@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Dict
 
 from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, Span
@@ -25,8 +25,8 @@ class Docs2Answers(BaseComponent):
 
         return output, "output_1"
 
-    def run_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]):
-        output = {"queries": queries, "answers": []}
+    def run_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]):  # type: ignore
+        output: Dict = {"queries": queries, "answers": []}
 
         # Query case 1: single query
         if isinstance(queries, str):
@@ -34,11 +34,15 @@ class Docs2Answers(BaseComponent):
             # Docs case 1: single list of Documents
             if len(documents) > 0 and isinstance(documents[0], Document):
                 for doc in documents:
+                    if not isinstance(doc, Document):
+                        raise HaystackError("Expected a Document object.")
                     answers = [self._convert_doc_to_answer(doc)]
                     output["answers"].append(answers)
             # Docs case 2: list of lists of Documents
             elif len(documents) > 0 and isinstance(documents[0], list):
                 for docs in documents:
+                    if not isinstance(docs, list):
+                        raise HaystackError("Expected a list of Documents.")
                     answers = []
                     for doc in docs:
                         cur_answer = self._convert_doc_to_answer(doc)
@@ -51,15 +55,21 @@ class Docs2Answers(BaseComponent):
             if len(documents) > 0 and isinstance(documents[0], Document):
                 for query in queries:
                     for doc in documents:
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         answers = [self._convert_doc_to_answer(doc)]
                         output["answers"].append(answers)
             # Docs case 2: list of lists of Documents
             elif len(documents) > 0 and isinstance(documents[0], list):
                 if len(queries) != len(documents):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, docs in zip(queries, documents):
+                for query, docs_ in zip(queries, documents):
                     answers = []
-                    for doc in docs:
+                    if not isinstance(docs_, list):
+                        raise HaystackError("Expected a list of Documents.")
+                    for doc in docs_:
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         cur_answer = self._convert_doc_to_answer(doc)
                         answers.append(cur_answer)
                     output["answers"].append(answers)

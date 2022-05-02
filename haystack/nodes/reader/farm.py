@@ -721,7 +721,7 @@ class FARMReader(BaseReader):
             grouped_predictions.append(predictions[left_idx:right_idx])
             left_idx = right_idx
 
-        results = {"queries": queries, "answers": [], "no_ans_gaps": []}
+        results: Dict = {"queries": queries, "answers": [], "no_ans_gaps": []}
         for group in grouped_predictions:
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k)
             results["answers"].append(answers)
@@ -1076,6 +1076,8 @@ class FARMReader(BaseReader):
                 single_doc_list = True
                 for doc in documents:
                     number_of_docs.append(1)
+                    if not isinstance(doc, Document):
+                        raise HaystackError("Expected a Document.")
                     cur = QAInput(doc_text=doc.content, questions=Question(text=query, uid=doc.id))
                     inputs.append(cur)
 
@@ -1083,6 +1085,8 @@ class FARMReader(BaseReader):
             elif len(documents) > 0 and isinstance(documents[0], list):
                 single_doc_list = False
                 for docs in documents:
+                    if not isinstance(docs, list):
+                        raise HaystackError("Expected a list of Documents.")
                     number_of_docs.append(len(docs))
                     for doc in docs:
                         cur = QAInput(doc_text=doc.content, questions=Question(text=query, uid=doc.id))
@@ -1097,6 +1101,8 @@ class FARMReader(BaseReader):
                 for query in queries:
                     for doc in documents:
                         number_of_docs.append(1)
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         cur = QAInput(doc_text=doc.content, questions=Question(text=query, uid=doc.id))
                         inputs.append(cur)
 
@@ -1105,9 +1111,13 @@ class FARMReader(BaseReader):
                 single_doc_list = False
                 if len(queries) != len(documents):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, docs in zip(queries, documents):
-                    number_of_docs.append(len(docs))
-                    for doc in docs:
+                for query, cur_docs in zip(queries, documents):
+                    if not isinstance(cur_docs, list):
+                        raise HaystackError("Expected a list of Documents.")
+                    number_of_docs.append(len(cur_docs))
+                    for doc in cur_docs:
+                        if not isinstance(doc, Document):
+                            raise HaystackError("Expected a Document.")
                         cur = QAInput(doc_text=doc.content, questions=Question(text=query, uid=doc.id))
                         inputs.append(cur)
 

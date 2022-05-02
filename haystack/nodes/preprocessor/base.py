@@ -73,7 +73,7 @@ class BasePreProcessor(BaseComponent):
         result = {"documents": processed_documents}
         return result, "output_1"
 
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
         documents: Union[dict, Document, List[Union[dict, Document]]],
         clean_whitespace: Optional[bool] = None,

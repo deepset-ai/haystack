@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 import logging
 from collections import OrderedDict, namedtuple
@@ -301,13 +301,13 @@ class TfidfRetriever(BaseRetriever):
 
         scores = self.tfidf_matrix.dot(question_vector.T).toarray()
         # Create one OrderedDict per query
-        idx_scores = [[] for query in scores[0]]
+        idx_scores: List[List[Tuple[int, float]]] = [[] for query in scores[0]]
         for idx_doc, cur_doc_scores in enumerate(scores):
             for idx_query, score in enumerate(cur_doc_scores):
                 idx_scores[idx_query].append((idx_doc, score))
 
-        indices_and_scores = [OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
-                              for query_idx_scores in idx_scores]
+        indices_and_scores: List[Dict] = [OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
+                                          for query_idx_scores in idx_scores]
         return indices_and_scores
 
     def retrieve(

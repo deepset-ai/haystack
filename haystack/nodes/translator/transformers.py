@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
+from haystack.errors import HaystackError
 from haystack.schema import Document, Answer
 from haystack.nodes.translator.base import BaseTranslator
 from haystack.modeling.utils import initialize_device_settings
@@ -163,25 +164,26 @@ class TransformersTranslator(BaseTranslator):
         # Translate queries
         if queries:
             if isinstance(queries, str):
-                translated_query = self.run(query=queries)
-                return translated_query
+                translated = self.run(query=queries)
             else:
-                translated_queries = []
+                translated = []
                 for query in queries:
                     cur_translation = self.run(query=query)
-                    translated_queries.append(cur_translation)
-                return translated_queries
+                    translated.append(cur_translation)
 
         # Translate docs / answers
-        else:
+        elif documents:
             # Single list of documents / answers
             if not isinstance(documents[0], list):
-                translated = self.translate(documents=documents)
-                return translated
+                translated = self.translate(documents=documents)  # type: ignore
             # Multiple lists of document / answer lists
             else:
                 translated = []
                 for cur_list in documents:
-                    cur_translation = self.translate(documents=documents)
+                    if not isinstance(cur_list, list):
+                        raise HaystackError("Expexted a list of Documents / Answers.")
+                    cur_translation = self.translate(documents=cur_list)
                     translated.append(cur_translation)
-                return translated
+
+        return translated
+

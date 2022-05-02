@@ -52,7 +52,7 @@ class JoinAnswers(BaseComponent):
         else:
             raise ValueError(f"Invalid join_mode: {self.join_mode}")
 
-    def run_batch(self, inputs: List[Dict], top_k_join: Optional[int] = None):
+    def run_batch(self, inputs: List[Dict], top_k_join: Optional[int] = None):  # type: ignore
         output_ans = []
         incoming_edges = [inp["answers"] for inp in inputs]
         for idx in range(len(incoming_edges[0])):

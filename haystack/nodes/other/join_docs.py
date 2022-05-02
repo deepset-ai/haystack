@@ -76,7 +76,7 @@ class JoinDocuments(BaseComponent):
 
         return output, "output_1"
 
-    def run_batch(self, inputs: List[dict], top_k_join: Optional[int] = None):
+    def run_batch(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
         # Join single document lists
         if isinstance(inputs[0]["documents"][0], Document):
             return self.run(inputs=inputs, top_k_join=top_k_join)

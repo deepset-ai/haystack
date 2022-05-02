@@ -86,7 +86,7 @@ class BaseRetriever(BaseComponent):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-    ) -> List[List[Document]]:
+    ) -> Union[List[Document], List[List[Document]]]:
         pass
 
     def timing(self, fn, attr_name):
@@ -277,7 +277,7 @@ class BaseRetriever(BaseComponent):
             raise PipelineError(f"Invalid root_node '{root_node}'.")
         return output, stream
 
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
         root_node: str,
         queries: Optional[Union[str, List[str]]] = None,
@@ -325,7 +325,7 @@ class BaseRetriever(BaseComponent):
 
     def run_query_batch(
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: Union[str, List[str]],
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
@@ -335,10 +335,16 @@ class BaseRetriever(BaseComponent):
         documents = self.retrieve_batch(queries=queries, filters=filters, top_k=top_k, index=index, headers=headers,
                                         batch_size=batch_size)
         if isinstance(queries, str):
-            document_ids = [doc.id for doc in documents]
+            document_ids = []
+            for doc in documents:
+                if not isinstance(doc, Document):
+                    raise HaystackError(f"Expected a Document object.")
+                document_ids.append(doc.id)
             logger.debug(f"Retrieved documents with IDs: {document_ids}")
         else:
             for doc_list in documents:
+                if not isinstance(doc_list, list):
+                    raise HaystackError("Expected a list of Documents.")
                 document_ids = [doc.id for doc in doc_list]
                 logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {"documents": documents}

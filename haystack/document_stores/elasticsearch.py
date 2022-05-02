@@ -1041,12 +1041,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding,
-                     scale_score=scale_score) for hit in result]
+                                                      scale_score=scale_score) for hit in result]
         return documents
 
     def query_batch(
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: Union[str, List[str]],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,

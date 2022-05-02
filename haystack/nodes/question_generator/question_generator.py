@@ -1,9 +1,10 @@
-from typing import List, Union, Optional, Iterator
+from typing import List, Union, Optional, Iterator, Sequence, Iterable
 import itertools
 
 from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
 
+from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.preprocessor import PreProcessor
@@ -72,18 +73,21 @@ class QuestionGenerator(BaseComponent):
         output = {"generated_questions": generated_questions, "documents": documents}
         return output, "output_1"
 
-    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
         generated_questions = []
         if isinstance(documents[0], Document):
-            questions = self.generate_batch(texts=[d.content for d in documents])
-            questions_iterator = questions
+            questions = self.generate_batch(texts=[d.content for d in documents if isinstance(d, Document)])
+            questions_iterator = questions  # type: ignore
             documents_iterator = documents
         else:
-            questions = self.generate_batch(texts=[[d.content for d in doc_list] for doc_list in documents])
-            questions_iterator = itertools.chain.from_iterable(questions)
-            documents_iterator = itertools.chain.from_iterable(documents)
-        for questions, doc in zip(questions_iterator, documents_iterator):
-            curr_dict = {"document_id": doc.id, "document_sample": doc.content[:200], "questions": questions}
+            questions = self.generate_batch(texts=[[d.content for d in doc_list]
+                                                   for doc_list in documents if isinstance(doc_list, list)])
+            questions_iterator = itertools.chain.from_iterable(questions)  # type: ignore
+            documents_iterator = itertools.chain.from_iterable(documents)  # type: ignore
+        for cur_questions, doc in zip(questions_iterator, documents_iterator):
+            if not isinstance(doc, Document):
+                raise HaystackError("Expected a Document.")
+            curr_dict = {"document_id": doc.id, "document_sample": doc.content[:200], "questions": cur_questions}
             generated_questions.append(curr_dict)
         output = {"generated_questions": generated_questions, "documents": documents}
         return output, "output_1"
@@ -136,7 +140,7 @@ class QuestionGenerator(BaseComponent):
         else:
             single_doc_list = False
             number_of_docs = [len(text_list) for text_list in texts]
-            text_iterator = itertools.chain.from_iterable(texts)
+            text_iterator = itertools.chain.from_iterable(texts)  # type: ignore
 
         split_texts_docs = [self.preprocessor.split(
             document={"content": text},
@@ -145,12 +149,12 @@ class QuestionGenerator(BaseComponent):
             split_overlap=self.split_overlap,
             split_length=self.split_length,
         ) for text in text_iterator]
-        split_texts = [[doc.content for doc in split] for split in split_texts_docs]
+        split_texts = [[doc.content for doc in split if isinstance(doc.content, str)] for split in split_texts_docs]
         number_of_splits = [len(split) for split in split_texts]
-        split_texts = [f"{self.prompt} {text}" if self.prompt not in text else text
-                       for text in itertools.chain.from_iterable(split_texts)]
+        flat_split_texts = [f"{self.prompt} {text}" if self.prompt not in text else text
+                            for text in itertools.chain.from_iterable(split_texts)]
 
-        batches = self._get_batches(texts, batch_size=batch_size)
+        batches = self._get_batches(flat_split_texts, batch_size=batch_size)
         all_string_outputs = []
         for batch in batches:
             tokenized = self.tokenizer(batch, return_tensors="pt", padding=True)

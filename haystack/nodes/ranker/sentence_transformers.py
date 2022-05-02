@@ -157,8 +157,8 @@ class SentenceTransformersRanker(BaseRanker):
             )
 
             # rank documents according to scores
-            sorted_documents = [doc for _, doc in sorted_scores_and_documents]
-            result = sorted_documents[:top_k]
+            sorted_documents = [doc for _, doc in sorted_scores_and_documents if isinstance(doc, Document)]
+            return sorted_documents[:top_k]
         else:
             # Group predictions together
             grouped_predictions = []
@@ -172,7 +172,7 @@ class SentenceTransformersRanker(BaseRanker):
             result = []
             for pred_group, doc_group in zip(grouped_predictions, documents):
                 sorted_scores_and_documents = sorted(
-                    zip(pred_group, doc_group),
+                    zip(pred_group, doc_group),  # type: ignore
                     key=lambda similarity_document_tuple:
                     # assume the last element in logits represents the `has_answer` label
                     similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
@@ -180,10 +180,10 @@ class SentenceTransformersRanker(BaseRanker):
                 )
 
                 # rank documents according to scores
-                sorted_documents = [doc for _, doc in sorted_scores_and_documents][:top_k]
+                sorted_documents = [doc for _, doc in sorted_scores_and_documents if isinstance(doc, Document)][:top_k]
                 result.append(sorted_documents)
 
-        return result
+            return result
 
     def _preprocess_batch_queries_and_docs(
         self,
@@ -192,7 +192,7 @@ class SentenceTransformersRanker(BaseRanker):
     ) -> Tuple[List[int], List[str], List[Document], bool]:
         number_of_docs = []
         all_queries = []
-        all_docs = []
+        all_docs: List[Document] = []
         single_list_of_docs = False
 
         # Query case 1: single query
@@ -202,12 +202,14 @@ class SentenceTransformersRanker(BaseRanker):
             if len(documents) > 0 and isinstance(documents[0], Document):
                 number_of_docs = [len(documents)]
                 all_queries = [query] * len(documents)
-                all_docs = documents
+                all_docs = documents  # type: ignore
                 single_list_of_docs = True
 
             # Docs case 2: list of lists of Documents -> rerank each list of Documents based on single query
             elif len(documents) > 0 and isinstance(documents[0], list):
                 for docs in documents:
+                    if not isinstance(docs, list):
+                        raise HaystackError("Expected a list of Documents.")
                     number_of_docs.append(len(docs))
                     all_queries.extend([query] * len(docs))
                     all_docs.extend(docs)
@@ -223,10 +225,12 @@ class SentenceTransformersRanker(BaseRanker):
             elif len(documents) > 0 and isinstance(documents[0], list):
                 if len(queries) != len(documents):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, docs in zip(queries, documents):
-                    number_of_docs.append(len(docs))
-                    all_queries.extend([query] * len(docs))
-                    all_docs.extend(docs)
+                for query, cur_docs in zip(queries, documents):
+                    if not isinstance(cur_docs, list):
+                        raise HaystackError("Expected a list of Documents.")
+                    number_of_docs.append(len(cur_docs))
+                    all_queries.extend([query] * len(cur_docs))
+                    all_docs.extend(cur_docs)
 
         return number_of_docs, all_queries, all_docs, single_list_of_docs
 

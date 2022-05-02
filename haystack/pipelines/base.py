@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import itertools
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
@@ -72,7 +74,7 @@ class RootNode(BaseComponent):
     def run(self, root_node: str):  # type: ignore
         return {}, "output_1"
 
-    def run_batch(self, root_node: str):
+    def run_batch(self, root_node: str):  # type: ignore
         return {}, "output_1"
 
 
@@ -697,7 +699,7 @@ class Pipeline(BasePipeline):
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
 
-    def run_batch(
+    def run_batch(  # type: ignore
             self,
             queries: Optional[Union[str, List[str]]] = None,
             file_paths: Optional[List[str]] = None,
@@ -710,8 +712,17 @@ class Pipeline(BasePipeline):
         if file_paths is not None or meta is not None:
             logger.info("It seems that an indexing Pipeline is run, "
                         "so using the nodes' run method instead of run_batch.")
-            return self.run(query=queries, file_paths=file_paths, labels=labels, documents=documents, meta=meta,
-                            params=params, debug=debug)
+            if isinstance(queries, list):
+                raise PipelineError("For indexing, only a single query can be provided.")
+            if isinstance(labels, list):
+                raise PipelineError("For indexing, only one MultiLabel object can be provided as labels.")
+            if documents and isinstance(documents[0], list):
+                flattened_documents: List[Document] = []
+                for doc_list in documents:
+                    assert isinstance(doc_list, list)
+                    flattened_documents.extend(doc_list)
+            return self.run(query=queries, file_paths=file_paths, labels=labels, documents=flattened_documents,
+                            meta=meta, params=params, debug=debug)
         # Validate node names
         self._validate_node_names_in_params(params=params)
 
@@ -775,7 +786,7 @@ class Pipeline(BasePipeline):
                         if queue.get(n):  # concatenate inputs if it's a join node
                             existing_input = queue[n]
                             if "inputs" not in existing_input.keys():
-                                updated_input = {"inputs": [existing_input, node_output], "params": params}
+                                updated_input: Dict = {"inputs": [existing_input, node_output], "params": params}
                                 if queries:
                                     updated_input["queries"] = queries
                                 if file_paths:

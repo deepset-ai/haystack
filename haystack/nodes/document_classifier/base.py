@@ -21,6 +21,14 @@ class BaseDocumentClassifier(BaseComponent):
     def predict(self, documents: List[Document]):
         pass
 
+    @abstractmethod
+    def predict_batch(
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        pass
+
     def run(self, documents: Union[List[dict], List[Document]], root_node: str):  # type: ignore
         self.query_count += 1
         if documents:
@@ -41,7 +49,7 @@ class BaseDocumentClassifier(BaseComponent):
 
         return output, "output_1"
 
-    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
         predict_batch = self.timing(self.predict_batch, "query_time")
         results = predict_batch(documents=documents, batch_size=batch_size)
         output = {"documents": results}

@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, Any, List, Optional, Iterator
+from typing import Union, Any, List, Optional, Iterator, Dict
 import pickle
 import urllib
 
@@ -94,11 +94,11 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         else:
             return {}, "output_2"
 
-    def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):
+    def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):  # type: ignore
         if isinstance(queries, str):
             return self.run(queries)
 
-        split = {"output_1": {"queries": []}, "output_2": {"queries": []}}
+        split: Dict[str, Dict[str, List]] = {"output_1": {"queries": []}, "output_2": {"queries": []}}
 
         batches = self._get_batches(queries=queries, batch_size=batch_size)
         predictions = []
