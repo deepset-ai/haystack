@@ -13,6 +13,7 @@ from haystack.nodes import (
     BM25Retriever,
     SklearnQueryClassifier,
     TransformersQueryClassifier,
+    EmbeddingRetriever,
     JoinDocuments,
 )
 from haystack.schema import Document

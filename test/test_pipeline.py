@@ -1627,10 +1627,11 @@ def test_pipeline_get_document_store_from_dual_retriever():
     doc_store = MockDocumentStore()
     retriever_a = DummyRetriever(document_store=doc_store)
     retriever_b = DummyRetriever(document_store=doc_store)
+    join_node = JoinNode()
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=retriever_a, inputs=["Query"])
     pipeline.add_node(name="B", component=retriever_b, inputs=["Query"])
-    pipeline.add_node(name="C", component=JoinNode(), inputs=["A", "B"])
+    pipeline.add_node(name="C", component=join_node, inputs=["A", "B"])
 
     assert doc_store == pipeline.get_document_store()
 
@@ -1640,18 +1641,19 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
     doc_store_b = MockDocumentStore()
     retriever_a = DummyRetriever(document_store=doc_store_a)
     retriever_b = DummyRetriever(document_store=doc_store_b)
+    join_node = JoinNode()
     pipeline = Pipeline()
     pipeline.add_node(name="A", component=retriever_a, inputs=["Query"])
     pipeline.add_node(name="B", component=retriever_b, inputs=["Query"])
-    pipeline.add_node(name="C", component=JoinNode(), inputs=["A", "B"])
+    pipeline.add_node(name="C", component=join_node, inputs=["A", "B"])
 
     with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
         pipeline.get_document_store()
 
-
 #
 # RouteDocuments tests
 #
+
 
 def test_routedocuments_by_content_type():
     docs = [
