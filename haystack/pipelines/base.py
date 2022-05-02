@@ -34,7 +34,7 @@ from haystack.pipelines.config import (
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
     validate_config,
-    _add_node_to_pipeline_graph,
+    _add_node_to_pipeline_graph
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
@@ -66,7 +66,15 @@ class Pipeline:
 
     def __init__(self):
         self.graph = DiGraph()
-        self.root_node = None
+
+    @property
+    def root_node(self) -> str:
+        """
+        Returns the root node of the pipeline's graph.
+        """
+        if len(self.graph.nodes) < 1:
+            return None
+        return list(self.graph.nodes)[0]  # List conversion is required, see networkx docs
 
     @property
     def components(self) -> Dict[str, BaseComponent]:
@@ -355,13 +363,20 @@ class Pipeline:
         """
         component_definitions = get_component_definitions(pipeline_config=self.get_config())
 
+        # Check for duplicates before adding the definition
+        if name in component_definitions.keys():
+            raise PipelineConfigError(
+                f"A node named '{name}' is already in the pipeline. Choose another name."
+            )
+        component_definitions[name] = component._component_config
+
         # Name any nested component before adding them
         component.name = name
         component_names = self._get_all_component_names()
         component_names.add(name)
         self._set_sub_component_names(component, component_names=component_names)
-
-        self.graph, self.root_node = _add_node_to_pipeline_graph(
+        
+        self.graph = _add_node_to_pipeline_graph(
             graph=self.graph,
             root_node_name=self.root_node,
             components=component_definitions,
@@ -379,6 +394,7 @@ class Pipeline:
         component = graph_node["component"] if graph_node else None
         return component
 
+    # FIXME unused and untested. In which cases do we need to set nodes? Can this be removed?
     def set_node(self, name: str, component):
         """
         Set the component for a node in the Pipeline.
@@ -1022,7 +1038,6 @@ class Pipeline:
 
     def get_next_nodes(self, node_id: str, stream_id: str):
         current_node_edges = self.graph.edges(node_id, data=True)
-        print(current_node_edges)
         next_nodes = [
             next_node
             for _, next_node, data in current_node_edges

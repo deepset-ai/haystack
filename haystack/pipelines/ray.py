@@ -301,10 +301,30 @@ class _RayDeploymentWrapper:
         if component_name in ["Query", "File"]:
             self.node = RootNode()
         else:
-            self.node = BaseComponent.load_from_pipeline_config(pipeline_config, component_name)
+            self.node = self.load_from_pipeline_config(pipeline_config, component_name)
 
     def __call__(self, *args, **kwargs):
         """
         Ray calls this method which is then re-directed to the corresponding component's run().
         """
         return self.node._dispatch_run(*args, **kwargs)
+
+    @staticmethod
+    def load_from_pipeline_config(pipeline_config: dict, component_name: str):
+        """
+        Load an individual component from a YAML config for Pipelines.
+
+        :param pipeline_config: the Pipelines YAML config parsed as a dict.
+        :param component_name: the name of the component to load.
+        """
+        all_component_configs = pipeline_config["components"]
+        all_component_names = [comp["name"] for comp in all_component_configs]
+        component_config = next(comp for comp in all_component_configs if comp["name"] == component_name)
+        component_params = component_config["params"]
+
+        for key, value in component_params.items():
+            if value in all_component_names:  # check if the param value is a reference to another component
+                component_params[key] = _RayDeploymentWrapper.load_from_pipeline_config(pipeline_config, value)
+
+        component_instance = BaseComponent.load(component_config["type"])
+        return component_instance

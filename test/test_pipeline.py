@@ -1399,6 +1399,15 @@ def test_graph_validation_duplicate_node_instance():
         pipeline.add_node(name="node_b", component=node, inputs=["node_a"])
 
 
+def test_graph_validation_duplicate_node():
+    node = MockNode()
+    other_node = MockNode()
+    pipeline = Pipeline()
+    pipeline.add_node(name="node", component=node, inputs=["Query"])
+    with pytest.raises(PipelineConfigError, match="'node' is already in the pipeline"):
+        pipeline.add_node(name="node", component=other_node, inputs=["Query"])
+
+
 def test_parallel_paths_in_pipeline_graph():
     class A(RootNode):
         def run(self):
