@@ -46,7 +46,7 @@ class BaseRanker(BaseComponent):
 
         return output, "output_1"
 
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
         queries: Union[str, List[str]],
         documents: Union[List[Document], List[List[Document]]],
