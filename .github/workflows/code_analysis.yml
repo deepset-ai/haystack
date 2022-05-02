@@ -54,6 +54,12 @@ jobs:
     timeout-minutes: 45
     steps:
     - uses: actions/checkout@v2
+
+    - name: DEBUG, REMOVE
+      run: |
+        sudo apt install tree
+        tree -L 5 ~
+
     - uses: ./../.github/actions/linux_cache
 
     - name: Linter
