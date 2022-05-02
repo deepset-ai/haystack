@@ -1,9 +1,6 @@
 name: Python Cache (Linux)
 description: Caches a full installation of Haystack dependencies
 
-inputs: []
-outputs: []
-
 runs:
   using: "composite"
   steps:

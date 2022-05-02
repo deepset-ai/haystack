@@ -23,6 +23,7 @@ jobs:
           - "modeling_tests"
           - "other_tests"
     steps:
+    - uses: actions/checkout@v2
     - uses: ./../.github/actions/linux_cache
 
     # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
@@ -59,6 +60,7 @@ jobs:
           command: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
     steps:
+    - uses: actions/checkout@v2
     - uses: ./../.github/actions/linux_cache
 
     - name: Setup Docstore
@@ -81,6 +83,7 @@ jobs:
     timeout-minutes: 45
 
     steps:
+    - uses: actions/checkout@v2
     - uses: ./../.github/actions/linux_cache
 
     - name: Run Elasticsearch
@@ -128,6 +131,7 @@ jobs:
     timeout-minutes: 45
     
     steps:
+    - uses: actions/checkout@v2
     - uses: ./../.github/actions/linux_cache
 
     - name: Run Elasticsearch
