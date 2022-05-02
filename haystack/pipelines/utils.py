@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import re
 import sys
@@ -161,7 +161,15 @@ def print_eval_report(
     graph: DiGraph,
     n_wrong_examples: int = 3,
     metrics_filter: Optional[Dict[str, List[str]]] = None,
-    doc_relevance_col: str = "gold_id_or_answer_match",
+    doc_relevance_col: Literal[
+        "gold_id_match",
+        "context_match",
+        "answer_match",
+        "gold_id_or_context_match",
+        "gold_id_or_answer_match",
+        "gold_id_or_context_or_answer_match",
+        "context_and_answer_match",
+    ] = "gold_id_or_answer_match",
 ):
     """
     Prints a report for a given EvaluationResult visualizing metrics per node specified by the pipeline graph.
@@ -172,7 +180,7 @@ def print_eval_report(
                              Defaults to 3.
     :param metrics_filter: Specifies which metrics of eval_result to show in the report.
     :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
-            Values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'.
+            Values can be: 'gold_id_match', 'context_match', 'answer_match', 'gold_id_or_context_match', 'gold_id_or_answer_match', 'gold_id_or_context_or_answer_match', 'context_and_answer_match'.
             Default value is 'gold_id_or_answer_match'.
     """
     if any(degree > 1 for node, degree in graph.out_degree):
