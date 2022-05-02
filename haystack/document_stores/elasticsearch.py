@@ -1021,6 +1021,69 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
 
+        body = self._construct_query_body(query=query, filters=filters, top_k=top_k, custom_query=custom_query,
+                                          all_terms_must_match=all_terms_must_match)
+
+        logger.debug(f"Retriever query: {body}")
+        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
+
+        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
+        return documents
+
+    def query_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+    ) -> Union[List[Document], List[List[Document]]]:
+
+        if index is None:
+            index = self.index
+        if headers is None:
+            headers = {}
+
+        single_query = False
+        if not isinstance(queries, list):
+            single_query = True
+            queries = [queries]
+
+        body = []
+        for query in queries:
+            cur_query_body = self._construct_query_body(query=query, filters=filters, top_k=top_k,
+                                                        custom_query=custom_query,
+                                                        all_terms_must_match=all_terms_must_match)
+            body.append(headers)
+            body.append(cur_query_body)
+
+        logger.debug(f"Retriever query: {body}")
+        responses = self.client.msearch(index=index, body=body)
+
+        all_documents = []
+        cur_documents = []
+        for response in responses["responses"]:
+            cur_result = response["hits"]["hits"]
+            cur_documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding)
+                             for hit in cur_result]
+            all_documents.append(cur_documents)
+
+        if single_query:
+            return cur_documents
+        else:
+            return all_documents
+
+    def _construct_query_body(
+        self,
+        query: Optional[str],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]],
+        top_k: int,
+        custom_query: Optional[str],
+        all_terms_must_match: bool,
+    ) -> Dict[str, Any]:
+
         # Naive retrieval without BM25, only filtering
         if query is None:
             body = {"query": {"bool": {"must": {"match_all": {}}}}}  # type: Dict[str, Any]
@@ -1075,11 +1138,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if self.excluded_meta_data:
             body["_source"] = {"excludes": self.excluded_meta_data}
 
-        logger.debug(f"Retriever query: {body}")
-        result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
-
-        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
-        return documents
+        return body
 
     def query_by_embedding(
         self,

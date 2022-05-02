@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple, Iterator
 import logging
 from pathlib import Path
 
@@ -6,6 +6,7 @@ import torch
 from torch.nn import DataParallel
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.ranker import BaseRanker
 from haystack.modeling.utils import initialize_device_settings
@@ -76,19 +77,6 @@ class SentenceTransformersRanker(BaseRanker):
         if len(self.devices) > 1:
             self.model = DataParallel(self.transformer_model, device_ids=self.devices)
 
-    def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
-        """
-        Use loaded Ranker model to, for a list of queries, rank each query's supplied list of Document.
-
-        Returns list of dictionary of query and list of document sorted by (desc.) similarity with query
-
-        :param query_doc_list: List of dictionaries containing queries with their retrieved documents
-        :param top_k: The maximum number of answers to return for each query
-        :param batch_size: Number of samples the model receives in one batch for inference
-        :return: List of dictionaries containing query and ranked list of Document
-        """
-        raise NotImplementedError
-
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
         """
         Use loaded ranker model to re-rank the supplied list of Document.
@@ -130,3 +118,123 @@ class SentenceTransformersRanker(BaseRanker):
         # rank documents according to scores
         sorted_documents = [doc for _, doc in sorted_scores_and_documents]
         return sorted_documents[:top_k]
+
+    def predict_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
+                      top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]:
+        """
+        .
+        """
+        if top_k is None:
+            top_k = self.top_k
+
+        number_of_docs, all_queries, all_docs, single_list_of_docs = self._preprocess_batch_queries_and_docs(
+            queries=queries, documents=documents
+        )
+
+        batches = self._get_batches(all_queries=all_queries, all_docs=all_docs, batch_size=batch_size)
+        preds = []
+        for cur_queries, cur_docs in batches:
+            features = self.transformer_tokenizer(
+                cur_queries,
+                [doc.content for doc in cur_docs],
+                padding=True,
+                truncation=True,
+                return_tensors="pt",
+            ).to(self.devices[0])
+
+            with torch.no_grad():
+                similarity_scores = self.transformer_model(**features).logits
+                preds.extend(similarity_scores)
+
+        logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
+        if single_list_of_docs:
+            sorted_scores_and_documents = sorted(
+                zip(similarity_scores, documents),
+                key=lambda similarity_document_tuple:
+                # assume the last element in logits represents the `has_answer` label
+                similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
+                reverse=True,
+            )
+
+            # rank documents according to scores
+            sorted_documents = [doc for _, doc in sorted_scores_and_documents]
+            result = sorted_documents[:top_k]
+        else:
+            # Group predictions together
+            grouped_predictions = []
+            left_idx = 0
+            right_idx = 0
+            for number in number_of_docs:
+                right_idx = left_idx + number
+                grouped_predictions.append(similarity_scores[left_idx:right_idx])
+                left_idx = right_idx
+
+            result = []
+            for pred_group, doc_group in zip(grouped_predictions, documents):
+                sorted_scores_and_documents = sorted(
+                    zip(pred_group, doc_group),
+                    key=lambda similarity_document_tuple:
+                    # assume the last element in logits represents the `has_answer` label
+                    similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
+                    reverse=True,
+                )
+
+                # rank documents according to scores
+                sorted_documents = [doc for _, doc in sorted_scores_and_documents][:top_k]
+                result.append(sorted_documents)
+
+        return result
+
+    def _preprocess_batch_queries_and_docs(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]]
+    ) -> Tuple[List[int], List[str], List[Document], bool]:
+        number_of_docs = []
+        all_queries = []
+        all_docs = []
+        single_list_of_docs = False
+
+        # Query case 1: single query
+        if isinstance(queries, str):
+            query = queries
+            # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
+            if len(documents) > 0 and isinstance(documents[0], Document):
+                number_of_docs = [len(documents)]
+                all_queries = [query] * len(documents)
+                all_docs = documents
+                single_list_of_docs = True
+
+            # Docs case 2: list of lists of Documents -> rerank each list of Documents based on single query
+            elif len(documents) > 0 and isinstance(documents[0], list):
+                for docs in documents:
+                    number_of_docs.append(len(docs))
+                    all_queries.extend([query] * len(docs))
+                    all_docs.extend(docs)
+
+        # Query case 2: list of queries
+        elif isinstance(queries, list) and len(queries) > 0 and isinstance(queries[0], str):
+            # Docs case 1: single list of Documents -> Not applicable
+            if len(documents) > 0 and isinstance(documents[0], Document):
+                raise HaystackError(
+                    "A list of lists of Documents needs to be provided if a list of queries is provided.")
+
+            # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
+            elif len(documents) > 0 and isinstance(documents[0], list):
+                if len(queries) != len(documents):
+                    raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+                for query, docs in zip(queries, documents):
+                    number_of_docs.append(len(docs))
+                    all_queries.extend([query] * len(docs))
+                    all_docs.extend(docs)
+
+        return number_of_docs, all_queries, all_docs, single_list_of_docs
+
+    @staticmethod
+    def _get_batches(all_queries: List[str], all_docs: List[Document], batch_size: Optional[int]) -> Iterator[Tuple[List[str], List[Document]]]:
+        if batch_size is None:
+            yield all_queries, all_docs
+            return
+        else:
+            for index in range(0, len(all_queries), batch_size):
+                yield all_queries[index : index + batch_size], all_docs[index : index + batch_size]

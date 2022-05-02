@@ -52,6 +52,22 @@ class JoinAnswers(BaseComponent):
         else:
             raise ValueError(f"Invalid join_mode: {self.join_mode}")
 
+    def run_batch(self, inputs: List[Dict], top_k_join: Optional[int] = None):
+        output_ans = []
+        incoming_edges = [inp["answers"] for inp in inputs]
+        for idx in range(len(incoming_edges[0])):
+            cur_ans_to_join = []
+            for edge in incoming_edges:
+                cur_ans_to_join.append({"answers": edge[idx]})
+            cur, _ = self.run(inputs=cur_ans_to_join, top_k_join=top_k_join)
+            output_ans.append(cur["answers"])
+
+        output = {"answers": output_ans, "labels": inputs[0].get("labels", None)}
+
+        return output, "output_1"
+
+
+
     def _merge_answers(self, reader_results: List[List[Answer]]) -> List[Answer]:
         weights = self.weights if self.weights else [1 / len(reader_results)] * len(reader_results)
 

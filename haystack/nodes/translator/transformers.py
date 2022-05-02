@@ -41,7 +41,7 @@ class TransformersTranslator(BaseTranslator):
         use_gpu: bool = True,
     ):
         """Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
-        models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
+        models from Hugging Face's model hub, we recommend using the OPUS models from Helsinki NLP. They provide plenty
         of different models, usually one model per language pair and translation direction.
         They have a pretty standardized naming that should help you find the right model:
         - "Helsinki-NLP/opus-mt-en-de" => translating from English to German
@@ -90,10 +90,10 @@ class TransformersTranslator(BaseTranslator):
             queries_for_translator = [result["query"] for result in results]
             answers_for_translator = [result["answers"][0].answer for result in results]
         if not query and not documents and results is None:
-            raise AttributeError("Translator need query or documents to perform translation")
+            raise AttributeError("Translator needs query or documents to perform translation.")
 
         if query and documents:
-            raise AttributeError("Translator need either query or documents but not both")
+            raise AttributeError("Translator needs either query or documents but not both.")
 
         if documents and len(documents) == 0:
             logger.warning("Empty documents list is passed")
@@ -145,3 +145,43 @@ class TransformersTranslator(BaseTranslator):
             return documents
 
         raise AttributeError("Translator need query or documents to perform translation")
+
+    def translate_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]:
+        # TODO: This method currently just calls the translate method multiple times, so there is room for improvement.
+
+        if queries and documents:
+            raise AttributeError("Translator needs either query or documents but not both.")
+
+        if not queries and not documents:
+            raise AttributeError("Translator needs query or documents to perform translation.")
+
+        # Translate queries
+        if queries:
+            if isinstance(queries, str):
+                translated_query = self.run(query=queries)
+                return translated_query
+            else:
+                translated_queries = []
+                for query in queries:
+                    cur_translation = self.run(query=query)
+                    translated_queries.append(cur_translation)
+                return translated_queries
+
+        # Translate docs / answers
+        else:
+            # Single list of documents / answers
+            if not isinstance(documents[0], list):
+                translated = self.translate(documents=documents)
+                return translated
+            # Multiple lists of document / answer lists
+            else:
+                translated = []
+                for cur_list in documents:
+                    cur_translation = self.translate(documents=documents)
+                    translated.append(cur_translation)
+                return translated

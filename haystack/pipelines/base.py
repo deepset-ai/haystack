@@ -53,9 +53,7 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event
 
-
 logger = logging.getLogger(__name__)
-
 
 ROOT_NODE_TO_PIPELINE_NAME = {"query": "query", "file": "indexing"}
 CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
@@ -71,6 +69,9 @@ class RootNode(BaseComponent):
     def run(self, root_node: str):  # type: ignore
         return {}, "output_1"
 
+    def run_batch(self, root_node: str):
+        return {}, "output_1"
+
 
 class BasePipeline(ABC):
     """
@@ -83,6 +84,10 @@ class BasePipeline(ABC):
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
     @abstractmethod
+    def run_batch(self, **kwargs):
+        raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
+
+    @abstractmethod
     def get_config(self, return_defaults: bool = False) -> dict:
         """
         Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
@@ -92,7 +97,7 @@ class BasePipeline(ABC):
         raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
     def to_code(
-        self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
+            self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
     ) -> str:
         """
         Returns the code to create this pipeline as string.
@@ -114,7 +119,7 @@ class BasePipeline(ABC):
         return code
 
     def to_notebook_cell(
-        self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True
+            self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True
     ):
         """
         Creates a new notebook cell with the code to create this pipeline.
@@ -142,7 +147,7 @@ class BasePipeline(ABC):
     @classmethod
     @abstractmethod
     def load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+            cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -243,13 +248,13 @@ class BasePipeline(ABC):
 
     @classmethod
     def load_from_deepset_cloud(
-        cls,
-        pipeline_config_name: str,
-        pipeline_name: str = "query",
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        overwrite_with_env_variables: bool = False,
+            cls,
+            pipeline_config_name: str,
+            pipeline_name: str = "query",
+            workspace: str = "default",
+            api_key: Optional[str] = None,
+            api_endpoint: Optional[str] = None,
+            overwrite_with_env_variables: bool = False,
     ):
         """
         Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
@@ -302,7 +307,7 @@ class BasePipeline(ABC):
 
     @classmethod
     def list_pipelines_on_deepset_cloud(
-        cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
+            cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
     ) -> List[dict]:
         """
         Lists all pipeline configs available on Deepset Cloud.
@@ -336,14 +341,14 @@ class BasePipeline(ABC):
 
     @classmethod
     def save_to_deepset_cloud(
-        cls,
-        query_pipeline: BasePipeline,
-        index_pipeline: BasePipeline,
-        pipeline_config_name: str,
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        overwrite: bool = False,
+            cls,
+            query_pipeline: BasePipeline,
+            index_pipeline: BasePipeline,
+            pipeline_config_name: str,
+            workspace: str = "default",
+            api_key: Optional[str] = None,
+            api_endpoint: Optional[str] = None,
+            overwrite: bool = False,
     ):
         """
         Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
@@ -397,12 +402,12 @@ class BasePipeline(ABC):
 
     @classmethod
     def deploy_on_deepset_cloud(
-        cls,
-        pipeline_config_name: str,
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        timeout: int = 60,
+            cls,
+            pipeline_config_name: str,
+            workspace: str = "default",
+            api_key: Optional[str] = None,
+            api_endpoint: Optional[str] = None,
+            timeout: int = 60,
     ):
         """
         Deploys the pipelines of a pipeline config on Deepset Cloud.
@@ -427,12 +432,12 @@ class BasePipeline(ABC):
 
     @classmethod
     def undeploy_on_deepset_cloud(
-        cls,
-        pipeline_config_name: str,
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        timeout: int = 60,
+            cls,
+            pipeline_config_name: str,
+            workspace: str = "default",
+            api_key: Optional[str] = None,
+            api_endpoint: Optional[str] = None,
+            timeout: int = 60,
     ):
         """
         Undeploys the pipelines of a pipeline config on Deepset Cloud.
@@ -573,14 +578,14 @@ class Pipeline(BasePipeline):
         self.graph.nodes[name]["component"] = component
 
     def run(  # type: ignore
-        self,
-        query: Optional[str] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[MultiLabel] = None,
-        documents: Optional[List[Document]] = None,
-        meta: Optional[Union[dict, List[dict]]] = None,
-        params: Optional[dict] = None,
-        debug: Optional[bool] = None,
+            self,
+            query: Optional[str] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[MultiLabel] = None,
+            documents: Optional[List[Document]] = None,
+            meta: Optional[Union[dict, List[dict]]] = None,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None,
     ):
         """
         Runs the pipeline, one node at a time.
@@ -600,21 +605,7 @@ class Pipeline(BasePipeline):
                       then be found in the dict returned by this method under the key "_debug"
         """
         # validate the node names
-        if params:
-            if not all(node_id in self.graph.nodes for node_id in params.keys()):
-
-                # Might be a non-targeted param. Verify that too
-                not_a_node = set(params.keys()) - set(self.graph.nodes)
-                valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
-                for node_id in self.graph.nodes:
-                    run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
-                    valid_global_params |= set(run_signature_args)
-                invalid_keys = [key for key in not_a_node if key not in valid_global_params]
-
-                if invalid_keys:
-                    raise ValueError(
-                        f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
-                    )
+        self._validate_node_names_in_params(params=params)
 
         node_output = None
         queue = {
@@ -657,7 +648,7 @@ class Pipeline(BasePipeline):
                     )
                 queue.pop(node_id)
                 #
-                if stream_id == "split_documents":
+                if stream_id == "split":
                     for stream_id in [key for key in node_output.keys() if key.startswith("output_")]:
                         current_node_output = {k: v for k, v in node_output.items() if not k.startswith("output_")}
                         current_docs = node_output.pop(stream_id)
@@ -693,17 +684,113 @@ class Pipeline(BasePipeline):
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
         return node_output
 
+    def run_batch(
+            self,
+            queries: Optional[Union[str, List[str]]] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+            documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+            meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+            params: Optional[dict] = None,
+            debug: Optional[bool] = None
+    ):
+        if file_paths is not None or meta is not None:
+            logger.info("It seems that an indexing Pipeline is run, "
+                        "so using the nodes' run method instead of run_batch.")
+            return self.run(query=queries, file_paths=file_paths, labels=labels, documents=documents, meta=meta,
+                            params=params, debug=debug)
+        # Validate node names
+        self._validate_node_names_in_params(params=params)
+
+        node_output = None
+        queue = {
+            self.root_node: {"root_node": self.root_node, "params": params}
+        }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
+        if queries:
+            queue[self.root_node]["queries"] = queries
+        if file_paths:
+            queue[self.root_node]["file_paths"] = file_paths
+        if labels:
+            queue[self.root_node]["labels"] = labels
+        if documents:
+            queue[self.root_node]["documents"] = documents
+        if meta:
+            queue[self.root_node]["meta"] = meta
+
+        i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
+        while queue:
+            node_id = list(queue.keys())[i]
+            node_input = queue[node_id]
+            node_input["node_id"] = node_id
+
+            # Apply debug attributes to the node input params
+            # NOTE: global debug attributes will override the value specified in each node's params dictionary.
+            if debug is not None:
+                if node_id not in node_input["params"].keys():
+                    node_input["params"][node_id] = {}
+                node_input["params"][node_id]["debug"] = debug
+
+            predecessors = set(nx.ancestors(self.graph, node_id))
+            if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
+                try:
+                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run_batch(**node_input)
+                except Exception as e:
+                    tb = traceback.format_exc()
+                    raise Exception(
+                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, "
+                        f"full stack trace: {tb}"
+                    )
+                queue.pop(node_id)
+
+                if stream_id == "split":
+                    for stream_id in [key for key in node_output.keys() if key.startswith("output_")]:
+                        current_node_output = {k: v for k, v in node_output.items() if not k.startswith("output_")}
+                        current_docs = node_output.pop(stream_id)
+                        current_node_output["documents"] = current_docs
+                        next_nodes = self.get_next_nodes(node_id, stream_id)
+                        for n in next_nodes:
+                            queue[n] = current_node_output
+                else:
+                    next_nodes = self.get_next_nodes(node_id, stream_id)
+                    for n in next_nodes:
+                        if queue.get(n):  # concatenate inputs if it's a join node
+                            existing_input = queue[n]
+                            if "inputs" not in existing_input.keys():
+                                updated_input = {"inputs": [existing_input, node_output], "params": params}
+                                if queries:
+                                    updated_input["queries"] = queries
+                                if file_paths:
+                                    updated_input["file_paths"] = file_paths
+                                if labels:
+                                    updated_input["labels"] = labels
+                                if documents:
+                                    updated_input["documents"] = documents
+                                if meta:
+                                    updated_input["meta"] = meta
+                            else:
+                                existing_input["inputs"].append(node_output)
+                                updated_input = existing_input
+                            queue[n] = updated_input
+                        else:
+                            queue[n] = node_output
+                i = 0
+            else:
+                i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+
+        return node_output
+
     @classmethod
     def eval_beir(
-        cls,
-        index_pipeline: Pipeline,
-        query_pipeline: Pipeline,
-        index_params: dict = {},
-        query_params: dict = {},
-        dataset: str = "scifact",
-        dataset_dir: Path = Path("."),
-        top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
-        keep_index: bool = False,
+            cls,
+            index_pipeline: Pipeline,
+            query_pipeline: Pipeline,
+            index_params: dict = {},
+            query_params: dict = {},
+            dataset: str = "scifact",
+            dataset_dir: Path = Path("."),
+            top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+            keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
         """
         Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
@@ -772,14 +859,14 @@ class Pipeline(BasePipeline):
 
     @send_event
     def eval(
-        self,
-        labels: List[MultiLabel],
-        documents: Optional[List[List[Document]]] = None,
-        params: Optional[dict] = None,
-        sas_model_name_or_path: str = None,
-        sas_batch_size: int = 32,
-        sas_use_gpu: bool = True,
-        add_isolated_node_eval: bool = False,
+            self,
+            labels: List[MultiLabel],
+            documents: Optional[List[List[Document]]] = None,
+            params: Optional[dict] = None,
+            sas_model_name_or_path: str = None,
+            sas_batch_size: int = 32,
+            sas_use_gpu: bool = True,
+            add_isolated_node_eval: bool = False,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -893,7 +980,7 @@ class Pipeline(BasePipeline):
         return df.reindex(columns=reordered_columns)
 
     def _build_eval_dataframe(
-        self, query: str, query_labels: MultiLabel, node_name: str, node_output: dict
+            self, query: str, query_labels: MultiLabel, node_name: str, node_output: dict
     ) -> DataFrame:
         """
         Builds a Dataframe for each query from which evaluation metrics can be calculated.
@@ -984,7 +1071,7 @@ class Pipeline(BasePipeline):
                     df_docs["answer_match"] = df_docs.apply(
                         lambda row: 1.0
                         if not query_labels.no_answer
-                        and any(gold_answer in row["content"] for gold_answer in gold_answers)
+                           and any(gold_answer in row["content"] for gold_answer in gold_answers)
                         else 0.0,
                         axis=1,
                     )
@@ -1127,7 +1214,7 @@ class Pipeline(BasePipeline):
 
     @classmethod
     def load_from_config(
-        cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
+            cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True
     ):
         """
         Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -1212,7 +1299,7 @@ class Pipeline(BasePipeline):
                 # Component params can reference to other components. For instance, a Retriever can reference a
                 # DocumentStore defined in the YAML. All references should be recursively resolved.
                 if (
-                    isinstance(value, str) and value in definitions.keys()
+                        isinstance(value, str) and value in definitions.keys()
                 ):  # check if the param value is a reference to another component.
                     if value not in components.keys():  # check if the referenced component is already loaded.
                         cls._load_or_get_component(name=value, definitions=definitions, components=components)
@@ -1280,7 +1367,7 @@ class Pipeline(BasePipeline):
         return config
 
     def _add_component_to_definitions(
-        self, component: BaseComponent, component_definitions: Dict[str, Dict], return_defaults: bool = False
+            self, component: BaseComponent, component_definitions: Dict[str, Dict], return_defaults: bool = False
     ):
         """
         Add the definition of the component and all its dependencies (components too) to the component_definitions dict.
@@ -1329,16 +1416,36 @@ class Pipeline(BasePipeline):
         while component_name in existing_component_names:
             occupied_num = 1
             if len(component_name) > len(type_name):
-                occupied_num = int(component_name[len(type_name) + 1 :])
+                occupied_num = int(component_name[len(type_name) + 1:])
             new_num = occupied_num + 1
             component_name = f"{type_name}_{new_num}"
         return component_name
 
+    def _validate_node_names_in_params(self, params: Optional[Dict]):
+        """
+        Validates the node names provided in the 'params' arg of run/run_batch method.
+        """
+        if params:
+            if not all(node_id in self.graph.nodes for node_id in params.keys()):
+
+                # Might be a non-targeted param. Verify that too
+                not_a_node = set(params.keys()) - set(self.graph.nodes)
+                valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
+                for node_id in self.graph.nodes:
+                    run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
+                    valid_global_params |= set(run_signature_args)
+                invalid_keys = [key for key in not_a_node if key not in valid_global_params]
+
+                if invalid_keys:
+                    raise ValueError(
+                        f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
+                    )
+
     def print_eval_report(
-        self,
-        eval_result: EvaluationResult,
-        n_wrong_examples: int = 3,
-        metrics_filter: Optional[Dict[str, List[str]]] = None,
+            self,
+            eval_result: EvaluationResult,
+            n_wrong_examples: int = 3,
+            metrics_filter: Optional[Dict[str, List[str]]] = None,
     ):
         """
         Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -1397,12 +1504,12 @@ class RayPipeline(Pipeline):
 
     @classmethod
     def load_from_config(
-        cls,
-        pipeline_config: Dict,
-        pipeline_name: Optional[str] = None,
-        overwrite_with_env_variables: bool = True,
-        address: Optional[str] = None,
-        **kwargs,
+            cls,
+            pipeline_config: Dict,
+            pipeline_name: Optional[str] = None,
+            overwrite_with_env_variables: bool = True,
+            address: Optional[str] = None,
+            **kwargs,
     ):
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
@@ -1436,12 +1543,12 @@ class RayPipeline(Pipeline):
 
     @classmethod
     def load_from_yaml(
-        cls,
-        path: Path,
-        pipeline_name: Optional[str] = None,
-        overwrite_with_env_variables: bool = True,
-        address: Optional[str] = None,
-        **kwargs,
+            cls,
+            path: Path,
+            pipeline_name: Optional[str] = None,
+            overwrite_with_env_variables: bool = True,
+            address: Optional[str] = None,
+            **kwargs,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -1511,19 +1618,20 @@ class RayPipeline(Pipeline):
         :param replicas: By default, a single replica of the component is created. It can be
                          configured by setting `replicas` parameter in the Pipeline YAML.
         """
-        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)  # type: ignore
+        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name,
+                                         num_replicas=replicas)  # type: ignore
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
         return handle
 
     def run(  # type: ignore
-        self,
-        query: Optional[str] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[MultiLabel] = None,
-        documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
-        params: Optional[dict] = None,
+            self,
+            query: Optional[str] = None,
+            file_paths: Optional[List[str]] = None,
+            labels: Optional[MultiLabel] = None,
+            documents: Optional[List[Document]] = None,
+            meta: Optional[dict] = None,
+            params: Optional[dict] = None,
     ):
         has_next_node = True
         current_node_id = self.root_node
@@ -1660,7 +1768,7 @@ class _HaystackBeirRetrieverAdapter:
         self.query_params = query_params
 
     def search(
-        self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, score_function: str, **kwargs
+            self, corpus: Dict[str, Dict[str, str]], queries: Dict[str, str], top_k: int, score_function: str, **kwargs
     ) -> Dict[str, Dict[str, float]]:
         with tempfile.TemporaryDirectory() as temp_dir:
             file_paths = []

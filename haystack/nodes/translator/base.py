@@ -63,3 +63,21 @@ class BaseTranslator(BaseComponent):
                 translation_results["answers"] = self.translate(documents=answers, dict_key=_dict_key)  # type: ignore
 
         return translation_results, "output_1"
+
+    def run_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
+        answers: Optional[Union[List[Answer], List[List[Answer]]]] = None,
+        batch_size: Optional[int] = None,
+    ):
+        translation_results = {}
+        if queries:
+            translation_results["queries"] = self.translate_batch(queries=queries)
+        if documents:
+            translation_results["documents"] = self.translate_batch(documents=documents)
+        if answers:
+            translation_results["answers"] = self.translate_batch(documents=answers)
+
+        return translation_results, "output_1"
+

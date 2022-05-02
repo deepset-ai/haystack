@@ -1,5 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 import logging
+import itertools
 
 from transformers import pipeline
 
@@ -70,7 +71,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         return_all_scores: bool = False,
         task: str = "text-classification",
         labels: Optional[List[str]] = None,
-        batch_size: int = -1,
+        batch_size: Optional[int] = None,
         classification_field: str = None,
     ):
         """
@@ -133,19 +134,23 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         self.batch_size = batch_size
         self.classification_field = classification_field
 
-    def predict(self, documents: List[Document]) -> List[Document]:
+    def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         """
         Returns documents containing classification result in meta field.
         Documents are updated in place.
 
         :param documents: List of Document to classify
+        :param batch_size: Number of Documents to classify at a time.
         :return: List of Document enriched with meta information
         """
+        if batch_size is None:
+            batch_size = self.batch_size
+
         texts = [
             doc.content if self.classification_field is None else doc.meta[self.classification_field]
             for doc in documents
         ]
-        batches = self.get_batches(texts, batch_size=self.batch_size)
+        batches = self.get_batches(texts, batch_size=batch_size)
         if self.task == "zero-shot-classification":
             batched_predictions = [
                 self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches
@@ -163,8 +168,35 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
 
         return documents
 
+    def predict_batch(
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        .
+        """
+        if isinstance(documents[0], Document):
+            documents = self.predict(documents=documents, batch_size=batch_size)
+            return documents
+        else:
+            number_of_documents = [len(doc_list) for doc_list in documents]
+            flattened_documents = list(itertools.chain.from_iterable(documents))
+            docs_with_preds = self.predict(flattened_documents, batch_size=batch_size)
+
+            # Group documents together
+            grouped_documents = []
+            left_idx = 0
+            right_idx = 0
+            for number in number_of_documents:
+                right_idx = left_idx + number
+                grouped_documents.append(docs_with_preds[left_idx:right_idx])
+                left_idx = right_idx
+
+            return grouped_documents
+
     def get_batches(self, items, batch_size):
-        if batch_size == -1:
+        if batch_size is None:
             yield items
             return
         for index in range(0, len(items), batch_size):

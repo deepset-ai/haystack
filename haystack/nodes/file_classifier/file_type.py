@@ -74,3 +74,6 @@ class FileTypeClassifier(BaseComponent):
                 "change the types accepted by this node."
             )
         return output, f"output_{index}"
+
+    def run_batch(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):
+        return self.run(file_paths=file_paths)

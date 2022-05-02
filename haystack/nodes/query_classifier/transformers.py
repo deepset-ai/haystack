@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, List, Optional
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from haystack.nodes.query_classifier import BaseQueryClassifier
@@ -80,3 +80,18 @@ class TransformersQueryClassifier(BaseQueryClassifier):
             return {}, "output_1"
         else:
             return {}, "output_2"
+
+    def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):
+        if isinstance(queries, str):
+            return self.run(queries)
+
+        split = {"output_1": {"queries": []}, "output_2": {"queries": []}}
+
+        predictions = self.query_classification_pipeline(queries, batch_size=batch_size)
+        for query, pred in zip(queries, predictions):
+            if pred["label"] == "LABEL_1":
+                split["output_1"]["queries"].append(query)
+            else:
+                split["output_2"]["queries"].append(query)
+
+        return split, "split"

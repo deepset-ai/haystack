@@ -1,4 +1,5 @@
-from typing import List, Optional, Sequence, Dict, Tuple
+import itertools
+from typing import List, Optional, Sequence, Dict, Tuple, Union
 
 import numpy as np
 from scipy.special import expit
@@ -22,7 +23,8 @@ class BaseReader(BaseComponent):
         pass
 
     @abstractmethod
-    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
+    def predict_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
+                      top_k: Optional[int] = None):
         pass
 
     @staticmethod
@@ -102,20 +104,31 @@ class BaseReader(BaseComponent):
 
         return results, "output_1"
 
-    def run_batch(self, query_doc_list: List[Dict], top_k: Optional[int] = None):
-        """A unoptimized implementation of running Reader queries in batch"""
-        self.query_count += len(query_doc_list)
-        results = []
-        if query_doc_list:
-            for qd in query_doc_list:
-                q = qd["queries"]
-                docs = qd["docs"]
-                predict = self.timing(self.predict, "query_time")
-                result = predict(query=q, documents=docs, top_k=top_k)
-                results.append(result)
+    def run_batch(
+        self,
+        queries: Union[str, List[str]] = None,
+        documents: Union[List[Document], List[List[Document]]] = None,
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None
+    ):
+        self.query_count += len(queries) if isinstance(queries, list) else 1
+        predict_batch = self.timing(self.predict_batch, "query_time")
+        if documents:
+            results = predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
         else:
-            results = [{"answers": [], "query": ""}]
-        return {"results": results}, "output_1"
+            results = {"answers": []}
+
+        # Add corresponding document_name and more meta data, if an answer contains the document_id
+        answer_iterator = itertools.chain.from_iterable(results["answers"])
+        if isinstance(documents[0], Document):
+            if isinstance(queries, list):
+                answer_iterator = itertools.chain.from_iterable(itertools.chain.from_iterable(results["answers"]))
+        else:
+            documents = list(itertools.chain.from_iterable(documents))
+        for answer in answer_iterator:
+            BaseReader.add_doc_meta_data_to_answer(documents=documents, answer=answer)
+
+        return results, "output_1"
 
     def timing(self, fn, attr_name):
         """Wrapper method used to time functions."""

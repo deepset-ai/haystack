@@ -234,6 +234,47 @@ class DensePassageRetriever(BaseRetriever):
         )
         return documents
 
+    def retrieve_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        filters: dict = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        .
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
+            )
+            return [[] * len(queries)]
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb in query_embs:
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
+
+
     def _get_predictions(self, dicts):
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
@@ -724,7 +765,7 @@ class TableTextRetriever(BaseRetriever):
         if top_k is None:
             top_k = self.top_k
         if not self.document_store:
-            logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
+            logger.error("Cannot perform retrieve() since TableTextRetriever initialized with document_store=None")
             return []
         if index is None:
             index = self.document_store.index
@@ -733,6 +774,46 @@ class TableTextRetriever(BaseRetriever):
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers
         )
         return documents
+
+    def retrieve_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        filters: dict = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        .
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
+            )
+            return [[] * len(queries)]
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb in query_embs:
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
 
     def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
         """
@@ -1171,6 +1252,46 @@ class EmbeddingRetriever(BaseRetriever):
             query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers
         )
         return documents
+
+    def retrieve_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        filters: dict = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        .
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
+            )
+            return [[] * len(queries)]
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb in query_embs:
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """

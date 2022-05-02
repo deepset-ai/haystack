@@ -1,6 +1,7 @@
 from abc import abstractmethod
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional, Dict, Union
 
+from haystack.errors import HaystackError
 from haystack.schema import Answer, Document
 from haystack.nodes.base import BaseComponent
 
@@ -33,6 +34,11 @@ class BaseGenerator(BaseComponent):
 
         return results, "output_1"
 
+    def run_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
+                  top_k: Optional[int] = None, batch_size: Optional[int] = None):
+        results = self.predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
+        return results, "output_1"
+
     def _flatten_docs(self, documents: List[Document]):
         flat_docs_dict: Dict[str, Any] = {}
         for document in documents:
@@ -59,3 +65,45 @@ class BaseGenerator(BaseComponent):
                 )
             )
         return answers
+
+    def predict_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
+                      top_k: Optional[int] = None, batch_size: Optional[int] = None):
+        """
+        .
+        """
+        # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
+
+        results = {"queries": queries, "answers": []}
+        # Query case 1: single query
+        if isinstance(queries, str):
+            query = queries
+            # Docs case 1: single list of Documents -> apply single query to all Documents
+            if len(documents) > 0 and isinstance(documents[0], Document):
+                for doc in documents:
+                    preds = self.predict(query=query, documents=[doc], top_k=top_k)
+                    results["answers"].append(preds["answers"])
+
+            # Docs case 2: list of lists of Documents -> apply single query to each list of Documents
+            elif len(documents) > 0 and isinstance(documents[0], list):
+                for docs in documents:
+                    preds = self.predict(query=query, documents=docs, top_k=top_k)
+                    results["answers"].append(preds["answers"])
+
+        # Query case 2: list of queries
+        elif isinstance(queries, list) and len(queries) > 0 and isinstance(queries[0], str):
+            # Docs case 1: single list of Documents -> apply each query to all Documents
+            if len(documents) > 0 and isinstance(documents[0], Document):
+                for query in queries:
+                    for doc in documents:
+                        preds = self.predict(query=query, documents=[doc], top_k=top_k)
+                        results["answers"].append(preds["answers"])
+
+            # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents
+            elif len(documents) > 0 and isinstance(documents[0], list):
+                if len(queries) != len(documents):
+                    raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+                for query, docs in zip(queries, documents):
+                    preds = self.predict(query=query, documents=docs, top_k=top_k)
+                    results["answers"].append(preds["answers"])
+
+        return results

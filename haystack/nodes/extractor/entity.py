@@ -1,4 +1,5 @@
 from typing import List, Union, Dict, Optional, Tuple
+import itertools
 
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
@@ -42,13 +43,22 @@ class EntityExtractor(BaseComponent):
         """
         if documents:
             for doc in documents:
-                # In a querying pipeline, doc is a haystack.schema.Document object
-                try:
-                    doc.meta["entities"] = self.extract(doc.content)  # type: ignore
-                # In an indexing pipeline, doc is a dictionary
-                except AttributeError:
-                    doc["meta"]["entities"] = self.extract(doc["content"])  # type: ignore
+                doc.meta["entities"] = self.extract(doc.content)
         output = {"documents": documents}
+        return output, "output_1"
+
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):
+        if isinstance(documents[0], Document):
+            flattened_documents = documents
+        else:
+            flattened_documents = list(itertools.chain.from_iterable(documents))
+
+        all_entities = self.extract_batch([doc.content for doc in flattened_documents], batch_size=batch_size)
+
+        for entities_per_doc, doc in zip(all_entities, flattened_documents):
+            doc.meta["entities"] = entities_per_doc
+        output = {"documents": documents}
+
         return output, "output_1"
 
     def extract(self, text):
@@ -57,6 +67,30 @@ class EntityExtractor(BaseComponent):
         """
         entities = self.model(text)
         return entities
+
+    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
+        if isinstance(texts[0], str):
+            single_list_of_texts = True
+            number_of_texts = [len(texts)]
+        else:
+            single_list_of_texts = False
+            number_of_texts = [len(text_list) for text_list in texts]
+            texts = list(itertools.chain.from_iterable(texts))
+
+        entities = self.model(texts, batch_size=batch_size)
+
+        if single_list_of_texts:
+            return entities
+        else:
+            # Group entities together
+            grouped_entities = []
+            left_idx = 0
+            right_idx = 0
+            for number in number_of_texts:
+                right_idx = left_idx + number
+                grouped_entities.append(entities[left_idx:right_idx])
+                left_idx = right_idx
+            return grouped_entities
 
 
 def simplify_ner_for_qa(output):

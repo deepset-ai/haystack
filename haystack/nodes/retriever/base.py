@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional, Union
+import itertools
+from typing import Dict, List, Optional, Union, Iterator
 
 import logging
 from abc import abstractmethod
@@ -8,7 +9,7 @@ from tqdm import tqdm
 from copy import deepcopy
 
 from haystack.schema import Document, MultiLabel
-from haystack.errors import HaystackError
+from haystack.errors import HaystackError, PipelineError
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
 
@@ -69,6 +70,18 @@ class BaseRetriever(BaseComponent):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
+        pass
+
+    @abstractmethod
+    def retrieve_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: dict = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+    ) -> List[List[Document]]:
         pass
 
     def timing(self, fn, attr_name):
@@ -253,7 +266,35 @@ class BaseRetriever(BaseComponent):
             run_indexing = self.timing(self.run_indexing, "index_time")
             output, stream = run_indexing(documents=documents)
         else:
-            raise Exception(f"Invalid root_node '{root_node}'.")
+            raise PipelineError(f"Invalid root_node '{root_node}'.")
+        return output, stream
+
+    def run_batch(
+        self,
+        root_node: str,
+        queries: Optional[Union[str, List[str]]] = None,
+        filters: Optional[dict] = None,
+        top_k: Optional[int] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
+        if root_node == "Query":
+            if not queries:
+                raise HaystackError(
+                    "Must provide a 'queries' parameter for retrievers in pipelines where Query is the root node."
+                )
+            self.query_count += len(queries) if isinstance(queries, list) else 1
+            run_query_batch_timed = self.timing(self.run_query_batch, "query_time")
+            output, stream = run_query_batch_timed(queries=queries, filters=filters, top_k=top_k, index=index,
+                                                   headers=headers)
+
+        elif root_node == "File":
+            self.index_count += len(documents)  # type: ignore
+            run_indexing = self.timing(self.run_indexing, "index_time")
+            output, stream = run_indexing(documents=documents)
+        else:
+            raise PipelineError(f"Invalid root_node '{root_node}'.")
         return output, stream
 
     def run_query(
@@ -267,6 +308,28 @@ class BaseRetriever(BaseComponent):
         documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        output = {"documents": documents}
+
+        return output, "output_1"
+
+    def run_query_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        filters: Optional[dict] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+    ):
+        documents = self.retrieve_batch(queries=queries, filters=filters, top_k=top_k, index=index, headers=headers,
+                                        batch_size=batch_size)
+        if isinstance(queries, str):
+            document_ids = [doc.id for doc in documents]
+            logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        else:
+            for doc_list in documents:
+                document_ids = [doc.id for doc in doc_list]
+                logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {"documents": documents}
 
         return output, "output_1"
@@ -296,3 +359,12 @@ class BaseRetriever(BaseComponent):
             print(f"Queries Performed: {self.query_count}")
             print(f"Query time: {self.query_time}s")
             print(f"{self.query_time / self.query_count} seconds per query")
+
+    @staticmethod
+    def _get_batches(queries: List[str], batch_size: Optional[int]) -> Iterator[List[str]]:
+        if batch_size is None:
+            yield queries
+            return
+        else:
+            for index in range(0, len(queries), batch_size):
+                yield queries[index : index + batch_size]

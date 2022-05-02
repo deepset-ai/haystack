@@ -564,6 +564,15 @@ class BaseDocumentStore(BaseComponent):
         self.write_documents(documents=doc_objects, index=index, headers=headers)
         return {}, "output_1"
 
+    def run_batch(
+        self,
+        documents: List[Union[dict, Document]],
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        id_hash_keys: Optional[List[str]] = None,
+    ):
+        return self.run(documents=documents, index=index, headers=headers, id_hash_keys=id_hash_keys)
+
     @abstractmethod
     def get_documents_by_id(
         self,
@@ -751,6 +760,20 @@ class KeywordDocumentStore(BaseDocumentStore):
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to False.
         """
+        pass
+
+    @abstractmethod
+    def query_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+    ) -> Union[List[Document], List[List[Document]]]:
+        pass
 
 
 def get_batches_from_generator(iterable, n):
