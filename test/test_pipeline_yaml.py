@@ -881,7 +881,7 @@ def test_load_yaml_wrong_root(tmp_path):
         assert "root" in str(e).lower()
 
 
-def test_load_yaml_two_roots(tmp_path):
+def test_load_yaml_two_roots_invalid(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -906,6 +906,63 @@ def test_load_yaml_two_roots(tmp_path):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert "File" in str(e) or "Query" in str(e)
 
+
+def test_load_yaml_two_roots_valid(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: retriever
+              type: MockRetriever
+            - name: retriever_2
+              type: MockRetriever
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: retriever
+                inputs:
+                - Query
+              - name: retriever_2
+                inputs:
+                - Query
+        """
+        )
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_two_roots_in_separate_pipelines(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: node_1
+              type: MockNode
+            - name: node_2
+              type: MockNode
+            pipelines:
+            - name: pipeline_1
+              nodes:
+              - name: node_1
+                inputs:
+                - Query
+              - name: node_2
+                inputs:
+                - Query
+            - name: pipeline_2
+              nodes:
+              - name: node_1
+                inputs:
+                - File
+              - name: node_2
+                inputs:
+                - File
+        """
+        )
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="pipeline_1")
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="pipeline_2")
+    
 
 def test_load_yaml_disconnected_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:

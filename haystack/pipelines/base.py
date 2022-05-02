@@ -34,7 +34,9 @@ from haystack.pipelines.config import (
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
     validate_config,
-    _add_node_to_pipeline_graph
+    _add_node_to_pipeline_graph,
+    _init_pipeline_graph,
+    VALID_ROOT_NODES
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
@@ -68,7 +70,7 @@ class Pipeline:
         self.graph = DiGraph()
 
     @property
-    def root_node(self) -> str:
+    def root_node(self) -> Optional[str]:
         """
         Returns the root node of the pipeline's graph.
         """
@@ -361,6 +363,15 @@ class Pipeline:
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
         """
+        if len(self.graph.nodes) < 1:
+            candidate_roots = [input_node for input_node in inputs if input_node in VALID_ROOT_NODES]
+            if len(candidate_roots) != 1:
+                raise PipelineConfigError(
+                    "The first node of a pipeline must have one single root node "
+                    f"as input ({' or '.join(VALID_ROOT_NODES)})."
+                )
+            self.graph = _init_pipeline_graph(root_node_name=candidate_roots[0])
+
         component_definitions = get_component_definitions(pipeline_config=self.get_config())
 
         # Check for duplicates before adding the definition
@@ -378,7 +389,7 @@ class Pipeline:
         
         self.graph = _add_node_to_pipeline_graph(
             graph=self.graph,
-            root_node_name=self.root_node,
+            #root_node_name=self.root_node,
             components=component_definitions,
             node={"name": name, "inputs": inputs},
             instance=component,
@@ -447,21 +458,24 @@ class Pipeline:
                     raise ValueError(
                         f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
                     )
+        root_node = self.root_node
+        if not root_node:
+            raise PipelineError("Cannot run a pipeline with no nodes.")
 
         node_output = None
         queue = {
-            self.root_node: {"root_node": self.root_node, "params": params}
+            root_node: {"root_node": root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
         if query:
-            queue[self.root_node]["query"] = query
+            queue[root_node]["query"] = query
         if file_paths:
-            queue[self.root_node]["file_paths"] = file_paths
+            queue[root_node]["file_paths"] = file_paths
         if labels:
-            queue[self.root_node]["labels"] = labels
+            queue[root_node]["labels"] = labels
         if documents:
-            queue[self.root_node]["documents"] = documents
+            queue[root_node]["documents"] = documents
         if meta:
-            queue[self.root_node]["meta"] = meta
+            queue[root_node]["meta"] = meta
 
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:

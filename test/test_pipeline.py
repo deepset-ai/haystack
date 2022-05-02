@@ -106,6 +106,10 @@ class JoinNode(RootNode):
         return {"output": output}, "output_1"
 
 
+#
+# Integration tests
+#
+
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_to_code_creates_same_pipelines():
@@ -894,6 +898,7 @@ def test_save_to_deepset_cloud():
         )
 
 
+@pytest.mark.integration
 @pytest.mark.elasticsearch
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
@@ -1390,8 +1395,27 @@ def test_graph_validation_invalid_root_node():
     docstore = MockDocumentStore()
     pipeline = Pipeline()
 
-    with pytest.raises(PipelineConfigError, match="Root node 'InvalidNode' is invalid"):
+    with pytest.raises(PipelineConfigError, match="one single root node"):
         pipeline.add_node(name="DocStore", component=docstore, inputs=["InvalidNode"])
+
+
+def test_graph_validation_no_root_node():
+    docstore = MockNode()
+    pipeline = Pipeline()
+
+    with pytest.raises(PipelineConfigError, match="one single root node"):
+        pipeline.add_node(name="Node", component=docstore, inputs=[])
+
+
+def test_graph_validation_two_root_nodes():
+    docstore = MockNode()
+    pipeline = Pipeline()
+
+    with pytest.raises(PipelineConfigError, match="one single root node"):
+        pipeline.add_node(name="Node", component=docstore, inputs=["Query", "File"])
+
+    with pytest.raises(PipelineConfigError, match="one single root node"):
+        pipeline.add_node(name="Node", component=docstore, inputs=["Query", "Query"])
 
 
 def test_graph_validation_duplicate_node_instance():
@@ -1624,10 +1648,10 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
     with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
         pipeline.get_document_store()
 
+
 #
 # RouteDocuments tests
 #
-
 
 def test_routedocuments_by_content_type():
     docs = [

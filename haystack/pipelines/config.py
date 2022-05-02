@@ -306,18 +306,50 @@ def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_defin
     :param pipeline_definition: from get_pipeline_definition()
     :param component_definitions: from get_component_definitions()
     """
-    graph = nx.DiGraph()
-    root_node_name = None
+    root_node_name = _find_root_in_pipeline_definition(pipeline_definition)
+    graph = _init_pipeline_graph(root_node_name=root_node_name)
     for node in pipeline_definition["nodes"]:
-        graph, root_node_name = _add_node_to_pipeline_graph(
-            graph=graph, root_node_name=root_node_name, node=node, components=component_definitions
+        graph = _add_node_to_pipeline_graph(
+            graph=graph, node=node, components=component_definitions
         )
     logging.debug(f"The graph for pipeline '{pipeline_definition['name']}' is valid.")
 
 
+def _find_root_in_pipeline_definition(pipeline_definition: Dict[str, Any]):
+    """
+    Returns the first input node that could be a root node for the pipeline.
+    Does not validate for multiple root nodes in the same pipeline.
+
+    Raises PipelineConfigError of no root node is found.
+    """
+    for node in pipeline_definition['nodes']:
+        for input_node in node["inputs"]:
+            if input_node in VALID_ROOT_NODES:
+                return input_node
+    raise PipelineConfigError(
+        "This pipeline seems to have no root nodes. "
+        f"Please add a root node ({VALID_ROOT_NODES}) as input for the first node of your pipeline."
+    )
+
+
+def _init_pipeline_graph(root_node_name: Optional[str]) -> nx.DiGraph:
+    """
+    Inits a pipeline graph with a root node. Validates the root node name.
+    """
+    graph = nx.DiGraph()
+
+    if root_node_name not in VALID_ROOT_NODES:
+        raise PipelineConfigError(f"Root node '{root_node_name}' is invalid. Available options are {VALID_ROOT_NODES}.")
+
+    root_node = RootNode()
+    root_node.name = root_node_name
+    graph.add_node(root_node_name, inputs=[], component=root_node)
+    return graph
+
+
 def _add_node_to_pipeline_graph(
     graph: nx.DiGraph,
-    root_node_name: Optional[str],
+    #root_node_name: Optional[str],
     components: Dict[str, Dict[str, str]],
     node: Dict[str, Any],
     instance: BaseComponent = None,
@@ -336,7 +368,7 @@ def _add_node_to_pipeline_graph(
     """
     # Validate node definition
     node_class = _get_defined_node_class(node_name=node["name"], components=components)
-    if instance and not type(instance) == node_class:  # to exclude subclasses from matching
+    if instance and not isinstance(instance, node_class):
         raise PipelineConfigError(
                 f"You are trying to load a node instance ({instance}) along with "
                 "the definition for a node of a different class "
@@ -347,24 +379,7 @@ def _add_node_to_pipeline_graph(
     
     # If the graph is empty, let's first add a root node
     if len(graph) == 0:
-        if root_node_name:
-            raise PipelineConfigError(
-                f"The root node name was given ({root_node_name}), but the graph is still empty. "
-                "Please pass None as the root node name for an empty graph."
-            )
-
-        if not len(node["inputs"]) == 1:
-            raise PipelineConfigError(
-                f"The '{node['name']}' node is the first of the pipeline, so it can only take "
-                f"one root node as input ([{'] or ['.join(VALID_ROOT_NODES)}], not {node['inputs']})."
-            )
-        root_node_name = node["inputs"][0]
-        root_node = RootNode()
-        root_node.name = root_node_name
-        graph.add_node(root_node_name, inputs=[], component=root_node)
-
-    if root_node_name not in VALID_ROOT_NODES:
-        raise PipelineConfigError(f"Root node '{root_node_name}' is invalid. Available options are {VALID_ROOT_NODES}.")
+        raise PipelineConfigError("Please initialize the graph with `_init_pipeline_graph()` before calling this function.")
 
     if instance is not None and not isinstance(instance, BaseComponent):
         raise PipelineError(
@@ -395,6 +410,7 @@ def _add_node_to_pipeline_graph(
         if "." in input_node:
             input_node_name, input_edge_name = input_node.split(".")
 
+        root_node_name = list(graph.nodes)[0]
         if input_node == root_node_name:
             input_edge_name = "output_1"
 
