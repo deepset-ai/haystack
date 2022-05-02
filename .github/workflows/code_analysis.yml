@@ -58,7 +58,7 @@ jobs:
     - name: DEBUG, REMOVE
       run: |
         sudo apt install tree
-        tree -L 5 ~
+        tree -a -L 5 ~
 
     - uses: ./../.github/actions/linux_cache
 
