@@ -309,9 +309,7 @@ def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_defin
     root_node_name = _find_root_in_pipeline_definition(pipeline_definition)
     graph = _init_pipeline_graph(root_node_name=root_node_name)
     for node in pipeline_definition["nodes"]:
-        graph = _add_node_to_pipeline_graph(
-            graph=graph, node=node, components=component_definitions
-        )
+        graph = _add_node_to_pipeline_graph(graph=graph, node=node, components=component_definitions)
     logging.debug(f"The graph for pipeline '{pipeline_definition['name']}' is valid.")
 
 
@@ -322,7 +320,7 @@ def _find_root_in_pipeline_definition(pipeline_definition: Dict[str, Any]):
 
     Raises PipelineConfigError of no root node is found.
     """
-    for node in pipeline_definition['nodes']:
+    for node in pipeline_definition["nodes"]:
         for input_node in node["inputs"]:
             if input_node in VALID_ROOT_NODES:
                 return input_node
@@ -349,7 +347,7 @@ def _init_pipeline_graph(root_node_name: Optional[str]) -> nx.DiGraph:
 
 def _add_node_to_pipeline_graph(
     graph: nx.DiGraph,
-    #root_node_name: Optional[str],
+    # root_node_name: Optional[str],
     components: Dict[str, Dict[str, str]],
     node: Dict[str, Any],
     instance: BaseComponent = None,
@@ -379,7 +377,9 @@ def _add_node_to_pipeline_graph(
 
     # If the graph is empty, let's first add a root node
     if len(graph) == 0:
-        raise PipelineConfigError("Please initialize the graph with `_init_pipeline_graph()` before calling this function.")
+        raise PipelineConfigError(
+            "Please initialize the graph with `_init_pipeline_graph()` before calling this function."
+        )
 
     if instance is not None and not isinstance(instance, BaseComponent):
         raise PipelineError(

@@ -962,7 +962,7 @@ def test_load_yaml_two_roots_in_separate_pipelines(tmp_path):
         )
     Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="pipeline_1")
     Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="pipeline_2")
-    
+
 
 def test_load_yaml_disconnected_component(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:

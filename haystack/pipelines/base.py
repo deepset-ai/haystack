@@ -36,7 +36,7 @@ from haystack.pipelines.config import (
     validate_config,
     _add_node_to_pipeline_graph,
     _init_pipeline_graph,
-    VALID_ROOT_NODES
+    VALID_ROOT_NODES,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
@@ -387,7 +387,7 @@ class Pipeline:
 
         self.graph = _add_node_to_pipeline_graph(
             graph=self.graph,
-            #root_node_name=self.root_node,
+            # root_node_name=self.root_node,
             components=component_definitions,
             node={"name": name, "inputs": inputs},
             instance=component,

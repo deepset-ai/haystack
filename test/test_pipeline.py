@@ -110,6 +110,7 @@ class JoinNode(RootNode):
 # Integration tests
 #
 
+
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_to_code_creates_same_pipelines():
