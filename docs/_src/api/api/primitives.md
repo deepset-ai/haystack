@@ -326,7 +326,15 @@ The DataFrames have the following schema:
 #### calculate\_metrics
 
 ```python
-def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_or_answer_match", eval_mode: str = "integrated") -> Dict[str, Dict[str, float]]
+def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: Literal[
+            "gold_id_match",
+            "context_match",
+            "answer_match",
+            "gold_id_or_context_match",
+            "gold_id_or_answer_match",
+            "gold_id_or_context_or_answer_match",
+            "context_and_answer_match",
+        ] = "gold_id_or_answer_match", eval_mode: str = "integrated") -> Dict[str, Dict[str, float]]
 ```
 
 Calculates proper metrics for each node.
