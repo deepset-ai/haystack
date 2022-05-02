@@ -15,7 +15,13 @@ jobs:
   unit-tests:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
-
+    strategy:
+      matrix: 
+        folder:
+          - "node_tests"
+          - "pipeline_tests"
+          - "modeling_tests"
+          - "other_tests"
     steps:
     - uses: ./.github/actions/linux_cache
 
@@ -25,8 +31,7 @@ jobs:
       run: pip install .
 
     - name: Run tests
-      run: pytest -s -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/ --document_store_type=memory,sql  --durations=10
-
+      run: pytest -s -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql  --durations=10
 
   document-store-tests:
     needs: unit-tests
@@ -67,7 +72,7 @@ jobs:
     - name: Run document store tests
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}  # FIXME set only for Pinecone!
-      run: pytest -s -m "${{ matrix.marker }} and not integration" test/ --document_store_type=${{ matrix.marker }}
+      run: pytest -s -m "${{ matrix.marker }} and not integration" test/document_store_tests/ --document_store_type=${{ matrix.marker }}
 
 
   integration-tests:
