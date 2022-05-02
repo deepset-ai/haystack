@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:
-    - uses: .github/workflows/linux_cache_action.yml
+    - uses: ./.github/actions/linux_cache
 
     - name: Linter
       run: |
