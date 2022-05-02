@@ -37,6 +37,7 @@ jobs:
         # Mypy can't run properly on 3.7 as it misses support for Literal types.
         # FIXME once we drop support for 3.7, use the cache.
         python-version: 3.8
+        
     - name: Setup mypy
       run: |
         # FIXME installing the packages before running mypy raises
@@ -66,10 +67,11 @@ jobs:
 
   linter:
     runs-on: ubuntu-20.04
-    uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
-      with:
-        python_version: 3.7
     timeout-minutes: 45
+    uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
+    with:
+      python_version: 3.7
+
 
     steps:
     - name: Linter

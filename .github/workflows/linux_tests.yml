@@ -31,10 +31,9 @@ jobs:
     needs: build-cache
     runs-on: ubuntu-20.04
     timeout-minutes: 45
-    uses:
-    - name: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
-      with:
-        python_version: 3.7
+    uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
+    with:
+      python_version: 3.7
 
     steps:
     # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
@@ -50,10 +49,9 @@ jobs:
     needs: unit-tests
     runs-on: ubuntu-20.04
     timeout-minutes: 45
-    uses:
-    - name: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
-      with:
-        python_version: 3.7
+    uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
+    with:
+      python_version: 3.7
 
     strategy:
       matrix:
@@ -94,10 +92,9 @@ jobs:
     needs: unit-tests
     runs-on: ubuntu-20.04
     timeout-minutes: 45
-    uses:
-    - name: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
-      with:
-        python_version: 3.7
+    uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
+    with:
+      python_version: 3.7
 
     steps:
     - name: Run Elasticsearch
@@ -143,10 +140,9 @@ jobs:
     needs: unit-tests
     runs-on: ubuntu-20.04
     timeout-minutes: 45
-    uses:
-    - name: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
-      with:
-        python_version: 3.7
+    uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
+    with:
+      python_version: 3.7
 
     steps:
     - name: Run Elasticsearch
