@@ -70,7 +70,7 @@ jobs:
           command: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
     steps:
-    - uses: .github/workflows/linux_cache_action.yml
+    - uses: ./.github/actions/linux_cache
 
     - name: Setup Docstore
       run: ${{ matrix.command }}
