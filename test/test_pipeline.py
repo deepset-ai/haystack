@@ -386,21 +386,17 @@ def test_get_config_custom_node_with_params():
     assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
 
-def test_get_config_custom_node_with_positional_params(caplog):
+def test_get_config_custom_node_with_positional_params():
     class CustomNode(MockNode):
         def __init__(self, param: int = 1):
             super().__init__()
             self.param = param
 
     pipeline = Pipeline()
-    with caplog.at_level(logging.WARNING):
-        pipeline.add_node(CustomNode(10), name="custom_node", inputs=["Query"])
-        assert (
-            "Unnamed __init__ parameters will not be saved to YAML "
-            "if Pipeline.save_to_yaml() is called" in caplog.text
-        )
+    pipeline.add_node(CustomNode(10), name="custom_node", inputs=["Query"])
+
     assert len(pipeline.get_config()["components"]) == 1
-    assert pipeline.get_config()["components"][0]["params"] == {}
+    assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
 
 def test_generate_code_simple_pipeline():
