@@ -4,7 +4,7 @@ from haystack.schema import Document
 from haystack.nodes.document_classifier.base import BaseDocumentClassifier
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 def test_document_classifier(document_classifier):
     assert isinstance(document_classifier, BaseDocumentClassifier)
 
@@ -22,7 +22,7 @@ def test_document_classifier(document_classifier):
         assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 def test_zero_shot_document_classifier(zero_shot_document_classifier):
     assert isinstance(zero_shot_document_classifier, BaseDocumentClassifier)
 
@@ -40,7 +40,7 @@ def test_zero_shot_document_classifier(zero_shot_document_classifier):
         assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 def test_document_classifier_batch_size(batched_document_classifier):
     assert isinstance(batched_document_classifier, BaseDocumentClassifier)
 
@@ -58,7 +58,7 @@ def test_document_classifier_batch_size(batched_document_classifier):
         assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 def test_document_classifier_as_index_node(indexing_document_classifier):
     assert isinstance(indexing_document_classifier, BaseDocumentClassifier)
 
@@ -77,7 +77,7 @@ def test_document_classifier_as_index_node(indexing_document_classifier):
         assert doc["meta"]["classification"]["label"] == expected_labels[i]
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 def test_document_classifier_as_query_node(document_classifier):
     assert isinstance(document_classifier, BaseDocumentClassifier)
 

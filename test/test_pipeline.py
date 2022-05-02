@@ -1619,7 +1619,7 @@ def test_existing_faiss_document_store():
     clean_faiss_document_store()
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["elasticsearch", "dpr", "embedding"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_documentsearch_es_authentication(retriever_with_docs, document_store_with_docs: ElasticsearchDocumentStore):
@@ -1640,7 +1640,7 @@ def test_documentsearch_es_authentication(retriever_with_docs, document_store_wi
     assert kwargs["headers"] == auth_headers
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_documentsearch_document_store_authentication(retriever_with_docs, document_store_with_docs):
     mock_client = None

@@ -121,7 +121,7 @@ def pytest_collection_modifyitems(config, items):
         elif "pipeline" in item.nodeid:
             item.add_marker(pytest.mark.pipeline)
         elif "slow" in item.nodeid:
-            item.add_marker(pytest.mark.slow)
+            item.add_marker(pytest.mark.integration)
         elif "elasticsearch" in item.nodeid:
             item.add_marker(pytest.mark.elasticsearch)
         elif "graphdb" in item.nodeid:
