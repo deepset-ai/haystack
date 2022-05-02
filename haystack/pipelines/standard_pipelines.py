@@ -178,7 +178,7 @@ class BaseStandardPipeline(ABC):
             params=params,
             sas_model_name_or_path=sas_model_name_or_path,
             add_isolated_node_eval=add_isolated_node_eval,
-            custom_document_id_field=custom_document_id_field
+            custom_document_id_field=custom_document_id_field,
         )
         return output
 
