@@ -66,12 +66,12 @@ jobs:
 
   linter:
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
-    steps:
-    - uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
+    uses: deepset-ai/haystack/.github/workflows/linux_cache.yml@main
       with:
         python_version: 3.7
+    timeout-minutes: 45
 
+    steps:
     - name: Linter
       run: |
         pylint -ry haystack/
