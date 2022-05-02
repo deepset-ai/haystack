@@ -22,7 +22,7 @@ Reader from multiple Retrievers, or re-ranking of candidate documents.
 
 ```python
 @property
-def root_node() -> str
+def root_node() -> Optional[str]
 ```
 
 Returns the root node of the pipeline's graph.

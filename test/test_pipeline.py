@@ -110,6 +110,7 @@ class JoinNode(RootNode):
 # Integration tests
 #
 
+
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_to_code_creates_same_pipelines():
@@ -1652,6 +1653,7 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
 #
 # RouteDocuments tests
 #
+
 
 def test_routedocuments_by_content_type():
     docs = [
