@@ -461,7 +461,7 @@ class Pipeline:
             raise PipelineError("Cannot run a pipeline with no nodes.")
 
         node_output = None
-        queue = {
+        queue: Dict[str, Any] = {
             root_node: {"root_node": root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
         if query:

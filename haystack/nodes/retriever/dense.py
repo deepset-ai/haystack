@@ -486,7 +486,7 @@ class DensePassageRetriever(BaseRetriever):
         self.passage_tokenizer.save_pretrained(save_dir + f"/{passage_encoder_dir}")
 
     @classmethod
-    def load(
+    def load_from_directory(
         cls,
         load_dir: Union[Path, str],
         document_store: BaseDocumentStore,
@@ -1025,7 +1025,7 @@ class TableTextRetriever(BaseRetriever):
         self.table_tokenizer.save_pretrained(save_dir + f"/{table_encoder_dir}")
 
     @classmethod
-    def load(
+    def load_from_directory(
         cls,
         load_dir: Union[Path, str],
         document_store: BaseDocumentStore,

@@ -665,7 +665,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         return init_params
 
     @classmethod
-    def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
+    def load_index(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
         Load a saved FAISS index from a file and connect to the SQL database.
         Note: In order to have a correct mapping from FAISS to SQL,
