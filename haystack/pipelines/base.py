@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
+from haystack.utils.context_matching import calculate_context_similarity
+
 try:
     from typing import Literal
 except ImportError:
@@ -32,11 +34,9 @@ except:
     serve = None  # type: ignore
 
 from haystack import __version__
-from haystack.nodes.evaluator.evaluator import (
-    calculate_em_str_multi,
-    calculate_f1_str_multi,
-    semantic_answer_similarity,
-)
+from haystack.nodes.evaluator.evaluator import semantic_answer_similarity
+from haystack.modeling.evaluation.squad import compute_f1 as calculate_f1_str
+from haystack.modeling.evaluation.squad import compute_exact as calculate_em_str
 from haystack.pipelines.config import (
     get_component_definitions,
     get_pipeline_definition,
@@ -1120,9 +1120,9 @@ class Pipeline(BasePipeline):
         # Single 'no_answer'-labels are not contained in MultiLabel aggregates.
         # If all labels are no_answers, MultiLabel.answers will be [""] and the other aggregates []
         gold_answers = query_labels.answers
-        gold_offsets_in_documents = query_labels.gold_offsets_in_documents
+        gold_offsets_in_documents = query_labels.offsets_in_documents
         gold_document_ids = query_labels.document_ids
-        gold_document_contents = query_labels.document_contents
+        gold_contexts = query_labels.contexts
 
         # if node returned answers, include answer specific info:
         # - the answer returned itself
@@ -1149,11 +1149,43 @@ class Pipeline(BasePipeline):
                     df_answers["gold_answers"] = [gold_answers] * len(df_answers)
                     df_answers["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
-                    df_answers["exact_match"] = df_answers.apply(
-                        lambda row: calculate_em_str_multi(gold_answers, row["answer"]), axis=1
+                    df_answers["gold_answers_exact_match"] = df_answers.apply(
+                        lambda row: [calculate_em_str(gold_answer, row["answer"]) for gold_answer in gold_answers],
+                        axis=1,
                     )
-                    df_answers["f1"] = df_answers.apply(
-                        lambda row: calculate_f1_str_multi(gold_answers, row["answer"]), axis=1
+                    df_answers["gold_answers_f1"] = df_answers.apply(
+                        lambda row: [calculate_f1_str(gold_answer, row["answer"]) for gold_answer in gold_answers],
+                        axis=1,
+                    )
+                    df_answers["exact_match"] = df_answers.apply(
+                        lambda row: max(row["gold_answers_exact_match"] + [0.0]), axis=1
+                    )
+                    df_answers["f1"] = df_answers.apply(lambda row: max(row["gold_answers_f1"] + [0.0]), axis=1)
+                    df_answers["gold_answers_context_similarity"] = df_answers.apply(
+                        lambda row: [
+                            calculate_context_similarity(gold_answer, row["context"] or "") for gold_answer in gold_answers
+                        ],
+                        axis=1,
+                    )
+                    df_answers["exact_match_context_matched"] = df_answers.apply(
+                        lambda row: max(
+                            f1
+                            for f1, sim in zip(
+                                row["gold_answers_exact_match"] + [0.0], row["gold_answers_context_similarity"] + [100]
+                            )
+                            if sim > 65
+                        ),
+                        axis=1,
+                    )
+                    df_answers["f1_context_matched"] = df_answers.apply(
+                        lambda row: max(
+                            f1
+                            for f1, sim in zip(
+                                row["gold_answers_f1"] + [0.0], row["gold_answers_context_similarity"] + [100]
+                            )
+                            if sim > 65
+                        ),
+                        axis=1,
                     )
                     df_answers["rank"] = np.arange(1, len(df_answers) + 1)
                     df = pd.concat([df, df_answers])
@@ -1184,7 +1216,7 @@ class Pipeline(BasePipeline):
                     df_docs = df_docs.rename(columns={"id": "document_id"})
                     df_docs["type"] = "document"
                     df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
-                    df_docs["gold_document_contents"] = [gold_document_contents] * len(df_docs)
+                    df_docs["gold_contexts"] = [gold_contexts] * len(df_docs)
                     df_docs["gold_id_match"] = df_docs.apply(
                         lambda row: 1.0 if row["document_id"] in gold_document_ids else 0.0, axis=1
                     )
@@ -1197,6 +1229,25 @@ class Pipeline(BasePipeline):
                     )
                     df_docs["gold_id_or_answer_match"] = df_docs.apply(
                         lambda row: max(row["gold_id_match"], row["answer_match"]), axis=1
+                    )
+                    df_docs["gold_context_similarity"] = df_docs.apply(
+                        lambda row: [
+                            calculate_context_similarity(gold_content, row["content"] or "") for gold_content in gold_contexts
+                        ],
+                        axis=1,
+                    )
+                    df_docs["context_match"] = df_docs.apply(
+                        lambda row: 1.0 if any(sim for sim in row["gold_context_similarity"] if sim > 0.65) else 0.0,
+                        axis=1,
+                    )
+                    df_docs["gold_id_or_context_match"] = df_docs.apply(
+                        lambda row: max(row["gold_id_match"], row["context_match"]), axis=1
+                    )
+                    df_docs["gold_id_or_context_or_answer_match"] = df_docs.apply(
+                        lambda row: max(row["gold_id_match"], row["context_match"], row["answer_match"]), axis=1
+                    )
+                    df_docs["context_and_answer_match"] = df_docs.apply(
+                        lambda row: min(row["context_match"], row["answer_match"]), axis=1
                     )
                     df_docs["rank"] = np.arange(1, len(df_docs) + 1)
                     df = pd.concat([df, df_docs])

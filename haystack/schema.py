@@ -490,9 +490,9 @@ class MultiLabel:
     answers: List[str]
     no_answer: bool
     document_ids: List[str]
-    document_contents: List[str]
-    gold_offsets_in_contexts: List[Dict]
-    gold_offsets_in_documents: List[Dict]
+    contexts: List[str]
+    offsets_in_contexts: List[Dict]
+    offsets_in_documents: List[Dict]
 
     def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
@@ -533,20 +533,20 @@ class MultiLabel:
         # which equals the no_answers representation of reader nodes.
         if self.no_answer:
             self.answers = [""]
-            self.gold_offsets_in_documents: List[dict] = []
-            self.gold_offsets_in_contexts: List[dict] = []
+            self.offsets_in_documents: List[dict] = []
+            self.offsets_in_contexts: List[dict] = []
         else:
             answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
             self.answers = [answer.answer for answer in answered]
-            self.gold_offsets_in_documents = []
-            self.gold_offsets_in_contexts = []
+            self.offsets_in_documents = []
+            self.offsets_in_contexts = []
             for answer in answered:
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
-                        self.gold_offsets_in_documents.append({"start": span.start, "end": span.end})
+                        self.offsets_in_documents.append({"start": span.start, "end": span.end})
                 if answer.offsets_in_context is not None:
                     for span in answer.offsets_in_context:
-                        self.gold_offsets_in_contexts.append({"start": span.start, "end": span.end})
+                        self.offsets_in_contexts.append({"start": span.start, "end": span.end})
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.
@@ -557,7 +557,7 @@ class MultiLabel:
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
         self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.document_contents = [l.document.content for l in self.labels if not l.no_answer]
+        self.contexts = [l.document.content for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         if any(isinstance(getattr(l, key), dict) for l in self.labels):
