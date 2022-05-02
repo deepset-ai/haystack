@@ -238,6 +238,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -310,6 +311,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to requests
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if return_embedding is None:
@@ -322,6 +326,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             top_k=top_k,
             return_embedding=return_embedding,
             index=index,
+            scale_score=scale_score,
             headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
@@ -336,6 +341,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -413,6 +419,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to False.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         doc_dicts = self.client.query(
             query=query,
@@ -421,6 +430,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             custom_query=custom_query,
             index=index,
             all_terms_must_match=all_terms_must_match,
+            scale_score=scale_score,
             headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]

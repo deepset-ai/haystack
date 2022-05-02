@@ -72,6 +72,7 @@ class MockRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score=True,
     ) -> List[Document]:
         if filters and not isinstance(filters, dict):
             raise ValueError("You can't do this!")

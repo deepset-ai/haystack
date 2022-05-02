@@ -59,6 +59,7 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -69,6 +70,9 @@ class BaseRetriever(BaseComponent):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         pass
 
@@ -240,6 +244,7 @@ class BaseRetriever(BaseComponent):
         documents: Optional[List[dict]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ):
         if root_node == "Query":
             if not query:
@@ -248,7 +253,9 @@ class BaseRetriever(BaseComponent):
                 )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
-            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
+            output, stream = run_query_timed(
+                query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
+            )
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
             run_indexing = self.timing(self.run_indexing, "index_time")
@@ -264,8 +271,11 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ):
-        documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
+        documents = self.retrieve(
+            query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
+        )
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {"documents": documents}

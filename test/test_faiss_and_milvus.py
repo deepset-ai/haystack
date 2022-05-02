@@ -546,13 +546,23 @@ def test_cosine_sanity_check(document_store_small):
 
     # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
     # The score is normalized to yield a value between 0 and 1.
-    KNOWN_COSINE = (0.9746317 + 1) / 2
+    KNOWN_COSINE = 0.9746317
+    KNOWN_SCALED_COSINE = (KNOWN_COSINE + 1) / 2
 
     docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
     ensure_ids_are_correct_uuids(docs=docs, document_store=document_store_small)
     document_store_small.write_documents(documents=docs)
 
-    query_results = document_store_small.query_by_embedding(query_emb=VEC_2, top_k=1, return_embedding=True)
+    query_results = document_store_small.query_by_embedding(
+        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=True
+    )
+
+    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
+    assert math.isclose(query_results[0].score, KNOWN_SCALED_COSINE, abs_tol=0.00002)
+
+    query_results = document_store_small.query_by_embedding(
+        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=False
+    )
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
     assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.00002)
