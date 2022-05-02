@@ -73,7 +73,7 @@ def test_faiss_index_save_and_load(tmp_path, sql_url):
     assert document_store.faiss_indexes[document_store.index].ntotal == 0
 
     # test loading the index
-    new_document_store = FAISSDocumentStore.load(tmp_path / "haystack_test_faiss")
+    new_document_store = FAISSDocumentstore.load_index(tmp_path / "haystack_test_faiss")
 
     # check faiss index is restored
     assert new_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
@@ -84,7 +84,7 @@ def test_faiss_index_save_and_load(tmp_path, sql_url):
 
     # test saving and loading the loaded faiss index
     new_document_store.save(tmp_path / "haystack_test_faiss")
-    reloaded_document_store = FAISSDocumentStore.load(tmp_path / "haystack_test_faiss")
+    reloaded_document_store = FAISSDocumentstore.load_index(tmp_path / "haystack_test_faiss")
 
     # check faiss index is restored
     assert reloaded_document_store.faiss_indexes[document_store.index].ntotal == len(DOCUMENTS)
@@ -124,7 +124,7 @@ def test_faiss_index_save_and_load_custom_path(tmp_path, sql_url):
     assert document_store.faiss_indexes[document_store.index].ntotal == 0
 
     # test loading the index
-    new_document_store = FAISSDocumentStore.load(
+    new_document_store = FAISSDocumentstore.load_index(
         index_path=tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json"
     )
 
@@ -137,7 +137,7 @@ def test_faiss_index_save_and_load_custom_path(tmp_path, sql_url):
 
     # test saving and loading the loaded faiss index
     new_document_store.save(tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
-    reloaded_document_store = FAISSDocumentStore.load(
+    reloaded_document_store = FAISSDocumentstore.load_index(
         tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json"
     )
 
