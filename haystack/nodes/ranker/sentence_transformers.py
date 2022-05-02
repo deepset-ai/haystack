@@ -119,8 +119,13 @@ class SentenceTransformersRanker(BaseRanker):
         sorted_documents = [doc for _, doc in sorted_scores_and_documents]
         return sorted_documents[:top_k]
 
-    def predict_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
-                      top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]:
+    def predict_batch(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
         """
         .
         """
@@ -135,11 +140,7 @@ class SentenceTransformersRanker(BaseRanker):
         preds = []
         for cur_queries, cur_docs in batches:
             features = self.transformer_tokenizer(
-                cur_queries,
-                [doc.content for doc in cur_docs],
-                padding=True,
-                truncation=True,
-                return_tensors="pt",
+                cur_queries, [doc.content for doc in cur_docs], padding=True, truncation=True, return_tensors="pt"
             ).to(self.devices[0])
 
             with torch.no_grad():
@@ -186,9 +187,7 @@ class SentenceTransformersRanker(BaseRanker):
         return result
 
     def _preprocess_batch_queries_and_docs(
-        self,
-        queries: Union[str, List[str]],
-        documents: Union[List[Document], List[List[Document]]]
+        self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]
     ) -> Tuple[List[int], List[str], List[Document], bool]:
         number_of_docs = []
         all_queries = []
@@ -217,7 +216,8 @@ class SentenceTransformersRanker(BaseRanker):
             # Docs case 1: single list of Documents -> Not applicable
             if len(documents) > 0 and isinstance(documents[0], Document):
                 raise HaystackError(
-                    "A list of lists of Documents needs to be provided if a list of queries is provided.")
+                    "A list of lists of Documents needs to be provided if a list of queries is provided."
+                )
 
             # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
             elif len(documents) > 0 and isinstance(documents[0], list):
@@ -231,7 +231,9 @@ class SentenceTransformersRanker(BaseRanker):
         return number_of_docs, all_queries, all_docs, single_list_of_docs
 
     @staticmethod
-    def _get_batches(all_queries: List[str], all_docs: List[Document], batch_size: Optional[int]) -> Iterator[Tuple[List[str], List[Document]]]:
+    def _get_batches(
+        all_queries: List[str], all_docs: List[Document], batch_size: Optional[int]
+    ) -> Iterator[Tuple[List[str], List[Document]]]:
         if batch_size is None:
             yield all_queries, all_docs
             return

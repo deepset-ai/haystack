@@ -130,5 +130,9 @@ class BaseConverter(BaseComponent):
         remove_numeric_tables: Optional[bool] = None,  # type: ignore
         valid_languages: Optional[List[str]] = None,  # type: ignore
     ):
-        return self.run(file_paths=file_paths, meta=meta, remove_numeric_tables=remove_numeric_tables,
-                        valid_languages=valid_languages)
+        return self.run(
+            file_paths=file_paths,
+            meta=meta,
+            remove_numeric_tables=remove_numeric_tables,
+            valid_languages=valid_languages,
+        )

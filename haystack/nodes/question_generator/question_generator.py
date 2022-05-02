@@ -98,8 +98,10 @@ class QuestionGenerator(BaseComponent):
             split_overlap=self.split_overlap,
             split_length=self.split_length,
         )
-        split_texts = [f"{self.prompt} {text.content}" if self.prompt not in text.content else text.content
-                       for text in split_texts_docs]
+        split_texts = [
+            f"{self.prompt} {text.content}" if self.prompt not in text.content else text.content
+            for text in split_texts_docs
+        ]
         tokenized = self.tokenizer(split_texts, return_tensors="pt", padding=True)
         input_ids = tokenized["input_ids"].to(self.devices[0])
         # Necessary if padding is enabled so the model won't attend pad tokens
@@ -126,8 +128,9 @@ class QuestionGenerator(BaseComponent):
 
         return ret
 
-    def generate_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None
-                       ) -> Union[List[List[str]], List[List[List[str]]]]:
+    def generate_batch(
+        self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None
+    ) -> Union[List[List[str]], List[List[List[str]]]]:
 
         if isinstance(texts[0], str):
             single_doc_list = True
@@ -138,17 +141,22 @@ class QuestionGenerator(BaseComponent):
             number_of_docs = [len(text_list) for text_list in texts]
             text_iterator = itertools.chain.from_iterable(texts)
 
-        split_texts_docs = [self.preprocessor.split(
-            document={"content": text},
-            split_by="word",
-            split_respect_sentence_boundary=False,
-            split_overlap=self.split_overlap,
-            split_length=self.split_length,
-        ) for text in text_iterator]
+        split_texts_docs = [
+            self.preprocessor.split(
+                document={"content": text},
+                split_by="word",
+                split_respect_sentence_boundary=False,
+                split_overlap=self.split_overlap,
+                split_length=self.split_length,
+            )
+            for text in text_iterator
+        ]
         split_texts = [[doc.content for doc in split] for split in split_texts_docs]
         number_of_splits = [len(split) for split in split_texts]
-        split_texts = [f"{self.prompt} {text}" if self.prompt not in text else text
-                       for text in itertools.chain.from_iterable(split_texts)]
+        split_texts = [
+            f"{self.prompt} {text}" if self.prompt not in text else text
+            for text in itertools.chain.from_iterable(split_texts)
+        ]
 
         batches = self._get_batches(texts, batch_size=batch_size)
         all_string_outputs = []

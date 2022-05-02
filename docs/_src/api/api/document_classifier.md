@@ -84,7 +84,7 @@ With this document_classifier, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
+def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: Optional[int] = None, classification_field: str = None)
 ```
 
 Load a text classification model from Transformers.
@@ -122,7 +122,7 @@ or an entailment.
 #### predict
 
 ```python
-def predict(documents: List[Document]) -> List[Document]
+def predict(documents: List[Document], batch_size: Optional[int] = None) -> List[Document]
 ```
 
 Returns documents containing classification result in meta field.
@@ -132,8 +132,19 @@ Documents are updated in place.
 **Arguments**:
 
 - `documents`: List of Document to classify
+- `batch_size`: Number of Documents to classify at a time.
 
 **Returns**:
 
 List of Document enriched with meta information
+
+<a id="transformers.TransformersDocumentClassifier.predict_batch"></a>
+
+#### predict\_batch
+
+```python
+def predict_batch(documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+.
 

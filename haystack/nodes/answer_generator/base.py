@@ -34,8 +34,13 @@ class BaseGenerator(BaseComponent):
 
         return results, "output_1"
 
-    def run_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
-                  top_k: Optional[int] = None, batch_size: Optional[int] = None):
+    def run_batch(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
         results = self.predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
         return results, "output_1"
 
@@ -66,8 +71,13 @@ class BaseGenerator(BaseComponent):
             )
         return answers
 
-    def predict_batch(self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]],
-                      top_k: Optional[int] = None, batch_size: Optional[int] = None):
+    def predict_batch(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
         """
         .
         """

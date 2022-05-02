@@ -288,7 +288,6 @@ class DensePassageRetriever(BaseRetriever):
         else:
             return documents
 
-
     def _get_predictions(self, dicts):
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).

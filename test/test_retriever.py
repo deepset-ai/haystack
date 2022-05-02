@@ -138,6 +138,7 @@ def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_wi
     assert len(res[1]) == 5
     assert res[1][0].meta["name"] == "filename2"
 
+
 @pytest.mark.elasticsearch
 def test_elasticsearch_custom_query():
     client = Elasticsearch()

@@ -698,20 +698,28 @@ class Pipeline(BasePipeline):
         return node_output
 
     def run_batch(
-            self,
-            queries: Optional[Union[str, List[str]]] = None,
-            file_paths: Optional[List[str]] = None,
-            labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
-            documents: Optional[Union[List[Document], List[List[Document]]]] = None,
-            meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-            params: Optional[dict] = None,
-            debug: Optional[bool] = None
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
     ):
         if file_paths is not None or meta is not None:
-            logger.info("It seems that an indexing Pipeline is run, "
-                        "so using the nodes' run method instead of run_batch.")
-            return self.run(query=queries, file_paths=file_paths, labels=labels, documents=documents, meta=meta,
-                            params=params, debug=debug)
+            logger.info(
+                "It seems that an indexing Pipeline is run, " "so using the nodes' run method instead of run_batch."
+            )
+            return self.run(
+                query=queries,
+                file_paths=file_paths,
+                labels=labels,
+                documents=documents,
+                meta=meta,
+                params=params,
+                debug=debug,
+            )
         # Validate node names
         self._validate_node_names_in_params(params=params)
 

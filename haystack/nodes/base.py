@@ -183,7 +183,7 @@ class BaseComponent(ABC):
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         params: Optional[dict] = None,
-        debug: Optional[bool] = None
+        debug: Optional[bool] = None,
     ):
         pass
 

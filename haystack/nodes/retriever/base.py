@@ -294,8 +294,9 @@ class BaseRetriever(BaseComponent):
                 )
             self.query_count += len(queries) if isinstance(queries, list) else 1
             run_query_batch_timed = self.timing(self.run_query_batch, "query_time")
-            output, stream = run_query_batch_timed(queries=queries, filters=filters, top_k=top_k, index=index,
-                                                   headers=headers)
+            output, stream = run_query_batch_timed(
+                queries=queries, filters=filters, top_k=top_k, index=index, headers=headers
+            )
 
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
@@ -332,8 +333,9 @@ class BaseRetriever(BaseComponent):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
     ):
-        documents = self.retrieve_batch(queries=queries, filters=filters, top_k=top_k, index=index, headers=headers,
-                                        batch_size=batch_size)
+        documents = self.retrieve_batch(
+            queries=queries, filters=filters, top_k=top_k, index=index, headers=headers, batch_size=batch_size
+        )
         if isinstance(queries, str):
             document_ids = [doc.id for doc in documents]
             logger.debug(f"Retrieved documents with IDs: {document_ids}")

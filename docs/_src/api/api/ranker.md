@@ -108,28 +108,6 @@ The strings will be converted into pytorch devices, so use the string notation d
 https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
 (e.g. ["cuda:0"]).
 
-<a id="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
-
-#### predict\_batch
-
-```python
-def predict_batch(query_doc_list: List[dict], top_k: int = None, batch_size: int = None)
-```
-
-Use loaded Ranker model to, for a list of queries, rank each query's supplied list of Document.
-
-Returns list of dictionary of query and list of document sorted by (desc.) similarity with query
-
-**Arguments**:
-
-- `query_doc_list`: List of dictionaries containing queries with their retrieved documents
-- `top_k`: The maximum number of answers to return for each query
-- `batch_size`: Number of samples the model receives in one batch for inference
-
-**Returns**:
-
-List of dictionaries containing query and ranked list of Document
-
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 
 #### predict
@@ -151,4 +129,14 @@ Returns list of Document sorted by (desc.) similarity with the query.
 **Returns**:
 
 List of Document
+
+<a id="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
+
+#### predict\_batch
+
+```python
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+.
 

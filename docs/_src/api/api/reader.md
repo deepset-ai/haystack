@@ -10,16 +10,6 @@
 class BaseReader(BaseComponent)
 ```
 
-<a id="base.BaseReader.run_batch"></a>
-
-#### run\_batch
-
-```python
-def run_batch(query_doc_list: List[Dict], top_k: Optional[int] = None)
-```
-
-A unoptimized implementation of running Reader queries in batch
-
 <a id="base.BaseReader.timing"></a>
 
 #### timing
@@ -348,22 +338,10 @@ Saves the Reader model so that it can be reused at a later point in time.
 #### predict\_batch
 
 ```python
-def predict_batch(query_doc_list: List[dict], top_k: int = None, batch_size: int = None)
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
 ```
 
-Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
-
-Returns list of dictionaries containing answers sorted by (desc.) score
-
-**Arguments**:
-
-- `query_doc_list`: List of dictionaries containing queries with their retrieved documents
-- `top_k`: The maximum number of answers to return for each query
-- `batch_size`: Number of samples the model receives in one batch for inference
-
-**Returns**:
-
-List of dictionaries containing query and answers
+DOC STRING
 
 <a id="farm.FARMReader.predict"></a>
 

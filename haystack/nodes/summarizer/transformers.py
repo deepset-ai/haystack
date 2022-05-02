@@ -101,9 +101,7 @@ class TransformersSummarizer(BaseSummarizer):
         self.generate_single_summary = generate_single_summary
         self.print_log: Set[str] = set()
 
-    def predict(
-        self, documents: List[Document], generate_single_summary: Optional[bool] = None,
-    ) -> List[Document]:
+    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
         """
         Produce the summarization from the supplied documents.
         These document can for example be retrieved via the Retriever.
@@ -220,7 +218,7 @@ class TransformersSummarizer(BaseSummarizer):
             return_text=True,
             clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
             truncation=True,
-            batch_size=batch_size
+            batch_size=batch_size,
         )
 
         # Group summaries together
@@ -236,8 +234,10 @@ class TransformersSummarizer(BaseSummarizer):
 
         result = []
         for summary_group, context_group in zip(grouped_summaries, grouped_contexts):
-            cur_summaries = [Document(content=summary["summary_text"], meta={"context": context})
-                             for summary, context in zip(summary_group, context_group)]
+            cur_summaries = [
+                Document(content=summary["summary_text"], meta={"context": context})
+                for summary, context in zip(summary_group, context_group)
+            ]
             if single_doc_list:
                 result.append(cur_summaries[0])
             else:

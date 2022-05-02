@@ -306,8 +306,10 @@ class TfidfRetriever(BaseRetriever):
             for idx_query, score in enumerate(cur_doc_scores):
                 idx_scores[idx_query].append((idx_doc, score))
 
-        indices_and_scores = [OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
-                              for query_idx_scores in idx_scores]
+        indices_and_scores = [
+            OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
+            for query_idx_scores in idx_scores
+        ]
         return indices_and_scores
 
     def retrieve(
@@ -377,13 +379,13 @@ class TfidfRetriever(BaseRetriever):
         return documents
 
     def retrieve_batch(
-            self,
-            queries: Union[str, List[str]],
-            filters: dict = None,
-            top_k: Optional[int] = None,
-            index: str = None,
-            headers: Optional[Dict[str, str]] = None,
-            batch_size: Optional[int] = None,
+        self,
+        queries: Union[str, List[str]],
+        filters: dict = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
     ) -> Union[List[Document], List[List[Document]]]:
 
         if self.auto_fit:
