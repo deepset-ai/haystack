@@ -5,7 +5,6 @@ inputs:
  pythonPath:
     description: 'Python path to cache/restore'
     required: true
-    default: '${{ env.pythonLocation }}'
  pythonVersion:
     description: 'Python version to use'
     required: true
