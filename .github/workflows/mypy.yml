@@ -3,12 +3,12 @@ name: Static Analysis
 on:
   # Activate this workflow manually
   workflow_dispatch:
-  push:
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.png'
-      - '**/*.gif'
+  # push:
+  #   paths-ignore:
+  #     - '**/*.md'
+  #     - '**/*.txt'
+  #     - '**/*.png'
+  #     - '**/*.gif'
 
 jobs:
 
