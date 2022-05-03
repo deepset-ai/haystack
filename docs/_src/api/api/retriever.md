@@ -420,7 +420,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
 ```
 
 .
@@ -611,7 +611,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
 ```
 
 .
@@ -814,7 +814,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
 ```
 
 .
