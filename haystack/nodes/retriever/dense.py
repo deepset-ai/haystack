@@ -256,6 +256,7 @@ class DensePassageRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
+        scale_score: bool = None,
     ) -> Union[List[Document], List[List[Document]]]:
         """
         .
@@ -267,6 +268,10 @@ class DensePassageRetriever(BaseRetriever):
         if isinstance(queries, str):
             queries = [queries]
             single_query = True
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         if not self.document_store:
             logger.error(
                 "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
@@ -282,7 +287,7 @@ class DensePassageRetriever(BaseRetriever):
             query_embs.extend(self.embed_queries(texts=batch))
         for query_emb in query_embs:
             cur_docs = self.document_store.query_by_embedding(
-                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers
+                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
             )
             documents.append(cur_docs)
 
@@ -807,6 +812,7 @@ class TableTextRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
+        scale_score: bool = None,
     ) -> Union[List[Document], List[List[Document]]]:
         """
         .
@@ -818,6 +824,10 @@ class TableTextRetriever(BaseRetriever):
         if isinstance(queries, str):
             queries = [queries]
             single_query = True
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         if not self.document_store:
             logger.error(
                 "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
@@ -833,7 +843,7 @@ class TableTextRetriever(BaseRetriever):
             query_embs.extend(self.embed_queries(texts=batch))
         for query_emb in query_embs:
             cur_docs = self.document_store.query_by_embedding(
-                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers
+                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
             )
             documents.append(cur_docs)
 
@@ -1306,6 +1316,7 @@ class EmbeddingRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
+        scale_score: bool = None,
     ) -> Union[List[Document], List[List[Document]]]:
         """
         .
@@ -1317,6 +1328,10 @@ class EmbeddingRetriever(BaseRetriever):
         if isinstance(queries, str):
             queries = [queries]
             single_query = True
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         if not self.document_store:
             logger.error(
                 "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
@@ -1332,7 +1347,7 @@ class EmbeddingRetriever(BaseRetriever):
             query_embs.extend(self.embed_queries(texts=batch))
         for query_emb in query_embs:
             cur_docs = self.document_store.query_by_embedding(
-                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers
+                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
             )
             documents.append(cur_docs)
 

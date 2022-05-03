@@ -26,13 +26,17 @@ class BaseGraphRetriever(BaseComponent):
     outgoing_edges = 1
 
     @abstractmethod
-    def retrieve(self, query: str, top_k: int):
+    def retrieve(self, query: str, top_k: Optional[int] = None):
+        pass
+
+    @abstractmethod
+    def retrieve_batch(self, queries: Union[str, List[str]], top_k: Optional[int] = None):
         pass
 
     def eval(self):
         raise NotImplementedError
 
-    def run(self, query: str, top_k: int):  # type: ignore
+    def run(self, query: str, top_k: Optional[int] = None):  # type: ignore
         answers = self.retrieve(query=query, top_k=top_k)
         results = {"answers": answers}
         return results, "output_1"

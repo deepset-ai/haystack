@@ -386,6 +386,7 @@ class TfidfRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
+        scale_score: bool = None,
     ) -> Union[List[Document], List[List[Document]]]:
 
         if self.auto_fit:
@@ -404,6 +405,8 @@ class TfidfRetriever(BaseRetriever):
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
         if index:
             raise NotImplementedError("Switching index is not supported in TfidfRetriever.")
+        if scale_score:
+            raise NotImplementedError("Scaling score to the unit interval is not supported in TfidfRetriever.")
 
         if top_k is None:
             top_k = self.top_k
