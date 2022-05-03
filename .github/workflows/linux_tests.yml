@@ -28,10 +28,16 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/linux_cache/
 
+      # TODO Let's try to remove this one from the unit tests
+    - name: Install pdftotext
+      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+
     - name: Install Haystack
       run: pip install .
 
     - name: Run tests
+      env:
+        TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: pytest -s -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql  --durations=10
 
   document-store-tests:
@@ -67,6 +73,10 @@ jobs:
 
     - name: Setup Docstore
       run: ${{ matrix.command }}
+
+      # TODO Let's try to remove this one from the unit tests
+    - name: Install pdftotext
+      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Haystack
       run: pip install .[ ${{ matrix.marker }} ]
