@@ -597,6 +597,9 @@ The isolated evaluation calculates the upper bound of each node's evaluation met
 To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
 The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
 values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+- `custom_document_id_field`: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
 
 <a id="base.Pipeline.get_nodes_by_class"></a>
 
