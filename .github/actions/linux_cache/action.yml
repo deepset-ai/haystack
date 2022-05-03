@@ -4,7 +4,10 @@ description: Caches a full installation of Haystack dependencies
 runs:
   using: "composite"
   steps:
-  - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+  - name: Print date
+    shell: bash
+    run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
   - uses: actions/checkout@v2
   - uses: actions/setup-python@v2
@@ -21,6 +24,7 @@ runs:
 
   - name: Install dependencies
     if: steps.cache-python-env.outputs.cache-hit != 'true'
+    shell: bash
     run: |
       pip install --upgrade pip
       pip install .[test]
