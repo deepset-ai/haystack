@@ -60,7 +60,7 @@ jobs:
         sudo apt install tree
         tree -a -L 5 ~
 
-    - uses: /home/runner/haystack/haystack/.github/actions/linux_cache/
+    - uses: ./.github/actions/linux_cache/
 
     - name: Linter
       run: |
