@@ -161,6 +161,25 @@ class BM25Retriever(BaseRetriever):
         batch_size: Optional[int] = None,
         scale_score: bool = None,
     ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+        lists of Documents (one per query) is returned.
+
+        :param queries: Single query string or list of queries.
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param batch_size: Not applicable.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
 
         if top_k is None:
             top_k = self.top_k
@@ -388,6 +407,23 @@ class TfidfRetriever(BaseRetriever):
         batch_size: Optional[int] = None,
         scale_score: bool = None,
     ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+        lists of Documents (one per query) is returned.
+
+        :param queries: Single query string or list of queries.
+        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param batch_size: Not applicable.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
 
         if self.auto_fit:
             if self.document_store.get_document_count(headers=headers) != self.document_count:

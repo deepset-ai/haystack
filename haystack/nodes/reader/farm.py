@@ -696,7 +696,25 @@ class FARMReader(BaseReader):
         batch_size: Optional[int] = None,
     ):
         """
-        DOC STRING
+        Use loaded QA model to find answers for the queries in the Documents.
+
+        - If you provide a single query...
+
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of queries...
+
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query or list of queries.
+        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+                          Can be a single list of Documents or a list of lists of Documents.
+        :param top_k: Number of returned answers per query.
+        :param batch_size: Number of query-document pairs to be processed at a time.
         """
         if top_k is None:
             top_k = self.top_k

@@ -79,6 +79,12 @@ class EntityExtractor(BaseComponent):
         return entities
 
     def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
+        """
+        This function allows to extract entities out of a list of strings or a list of lists of strings.
+
+        :param texts: List of str or list of lists of str to extract entities from.
+        :param batch_size: Number of texts to make predictions on at a time.
+        """
         if isinstance(texts[0], str):
             single_list_of_texts = True
             number_of_texts = [len(texts)]

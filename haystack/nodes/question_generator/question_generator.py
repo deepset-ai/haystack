@@ -136,6 +136,12 @@ class QuestionGenerator(BaseComponent):
     def generate_batch(
         self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None
     ) -> Union[List[List[str]], List[List[List[str]]]]:
+        """
+        Generates questions for a list of strings or a list of lists of strings.
+
+        :param texts: List of str or list of list of str.
+        :param batch_size: Number of texts to process at a time.
+        """
 
         if isinstance(texts[0], str):
             single_doc_list = True

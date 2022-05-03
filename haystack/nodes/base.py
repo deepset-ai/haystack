@@ -189,21 +189,27 @@ class BaseComponent(ABC):
 
     def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
-        The Pipelines call this method which in turn executes the run() method of Component.
-
-        It takes care of the following:
-          - inspect run() signature to validate if all necessary arguments are available
-          - pop `debug` and sets them on the instance to control debug output
-          - call run() with the corresponding arguments and gather output
-          - collate `_debug` information if present
-          - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
+        The Pipelines call this method when run() is executed. This method in turn executes the _dispatch_run_general()
+        method with the correct run method.
         """
         return self._dispatch_run_general(self.run, **kwargs)
 
     def _dispatch_run_batch(self, **kwargs):
+        """
+        The Pipelines call this method when run_batch() is executed. This method in turn executes the
+        _dispatch_run_general() method with the correct run method.
+        """
         return self._dispatch_run_general(self.run_batch, **kwargs)
 
     def _dispatch_run_general(self, run_method: Callable, **kwargs):
+        """
+        This method takes care of the following:
+          - inspect run_method's signature to validate if all necessary arguments are available
+          - pop `debug` and sets them on the instance to control debug output
+          - call run_method with the corresponding arguments and gather output
+          - collate `_debug` information if present
+          - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
+        """
         arguments = deepcopy(kwargs)
         params = arguments.get("params") or {}
 

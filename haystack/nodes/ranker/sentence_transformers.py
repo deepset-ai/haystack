@@ -127,7 +127,28 @@ class SentenceTransformersRanker(BaseRanker):
         batch_size: Optional[int] = None,
     ) -> Union[List[Document], List[List[Document]]]:
         """
-        .
+        Use loaded ranker model to re-rank the supplied lists of Documents.
+
+        Returns lists of Documents sorted by (desc.) similarity with the corresponding queries.
+
+
+        - If you provide a single query...
+
+            - ... and a single list of Documents, the single list of Documents will be re-ranked based on the
+              supplied query.
+            - ... and a list of lists of Documents, each list of Documents will be re-ranked individually based on the
+              supplied query.
+
+
+        - If you provide a list of queries...
+
+            - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
+              its corresponding query.
+
+        :param queries: Single query string or list of queries
+        :param documents: Single list of Documents or list of lists of Documents to be reranked.
+        :param top_k: The maximum number of documents to return per Document list.
+        :param batch_size: Number of Documents to process at a time.
         """
         if top_k is None:
             top_k = self.top_k

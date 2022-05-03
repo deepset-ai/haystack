@@ -406,6 +406,33 @@ class TableReader(BaseReader):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
     ):
+        """
+        Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+        a question cannot be answered by a given table.
+
+        - If you provide a single query...
+
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of queries...
+
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query string or list of queries.
+        :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
+                          Documents should be of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return per query.
+        :param batch_size: Not applicable.
+        """
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 
         results: Dict = {"queries": queries, "answers": []}

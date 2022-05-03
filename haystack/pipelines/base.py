@@ -708,6 +708,24 @@ class Pipeline(BasePipeline):
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
     ):
+        """
+        Runs the pipeline in batch mode, one node at a time.
+
+        :param queries: Single search query or list of search queries (for query pipelines only)
+        :param file_paths: The files to index (for indexing pipelines only). Providing file_paths will result in
+                           calling the Pipeline's run method instead of run_batch
+        :param labels:
+        :param documents:
+        :param meta:
+        :param params: Dictionary of parameters to be dispatched to the nodes.
+                       If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                       If you want to pass it to targeted nodes, you can do:
+                       {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+                      about their execution. By default these include the input parameters
+                      they received and the output they generated. All debug information can
+                      then be found in the dict returned by this method under the key "_debug"
+        """
         if file_paths is not None or meta is not None:
             logger.info(
                 "It seems that an indexing Pipeline is run, " "so using the nodes' run method instead of run_batch."

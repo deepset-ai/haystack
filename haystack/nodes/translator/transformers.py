@@ -153,6 +153,13 @@ class TransformersTranslator(BaseTranslator):
         documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
         batch_size: Optional[int] = None,
     ) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]:
+        """
+        Run the actual translation. You can supply a single query, a list of queries or a list (of lists) of documents.
+
+        :param queries: Single query or list of queries.
+        :param documents: List of documents or list of lists of documets.
+        :param batch_size: Not applicable.
+        """
         # TODO: This method currently just calls the translate method multiple times, so there is room for improvement.
 
         if queries and documents:
@@ -181,7 +188,7 @@ class TransformersTranslator(BaseTranslator):
                 translated = []
                 for cur_list in documents:
                     if not isinstance(cur_list, list):
-                        raise HaystackError("Expexted a list of Documents / Answers.")
+                        raise HaystackError("Expected a list of Documents / Answers.")
                     cur_translation = self.translate(documents=cur_list)
                     translated.append(cur_translation)
 

@@ -79,7 +79,40 @@ class BaseGenerator(BaseComponent):
         batch_size: Optional[int] = None,
     ):
         """
-        .
+        Generate the answer to the input queries. The generation will be conditioned on the supplied documents.
+        These documents can for example be retrieved via the Retriever.
+
+        - If you provide a single query...
+
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of queries...
+
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query or list of queries.
+        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+                          Can be a single list of Documents or a list of lists of Documents.
+        :param top_k: Number of returned answers per query.
+        :param batch_size: Not applicable.
+        :return: Generated answers plus additional infos in a dict like this:
+
+        ```python
+        |     {'queries': 'who got the first nobel prize in physics',
+        |      'answers':
+        |          [{'query': 'who got the first nobel prize in physics',
+        |            'answer': ' albert einstein',
+        |            'meta': { 'doc_ids': [...],
+        |                      'doc_scores': [80.42758 ...],
+        |                      'doc_probabilities': [40.71379089355469, ...
+        |                      'content': ['Albert Einstein was a ...]
+        |                      'titles': ['"Albert Einstein"', ...]
+        |      }}]}
+        ```
         """
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 

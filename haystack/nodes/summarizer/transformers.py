@@ -166,6 +166,19 @@ class TransformersSummarizer(BaseSummarizer):
         generate_single_summary: Optional[bool] = None,
         batch_size: Optional[int] = None,
     ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Produce the summarization from the supplied documents.
+        These documents can for example be retrieved via the Retriever.
+
+        :param documents: Single list of related documents or list of lists of related documents
+                          (e.g. coming from a retriever) that the answer shall be conditioned on.
+        :param generate_single_summary: Whether to generate a single summary for each provided document list or
+                                        one summary per document.
+                                        If set to "True", all docs of a document list will be joined to a single string
+                                        that will then be summarized.
+                                        Important: The summary will depend on the order of the supplied documents!
+        :param batch_size: Number of Documents to process at a time.
+        """
 
         if self.min_length > self.max_length:
             raise AttributeError("min_length cannot be greater than max_length")

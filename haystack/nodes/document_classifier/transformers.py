@@ -172,7 +172,12 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
     ) -> Union[List[Document], List[List[Document]]]:
         """
-        .
+        Returns documents containing classification result in meta field.
+        Documents are updated in place.
+
+        :param documents: List of Documents or list of lists of Documents to classify.
+        :param batch_size: Number of Documents to classify at a time.
+        :return: List of Documents or list of lists of Documents enriched with meta information.
         """
         if isinstance(documents[0], Document):
             documents = self.predict(documents=documents, batch_size=batch_size)  # type: ignore
