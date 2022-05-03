@@ -87,6 +87,7 @@ class ParentComponent2(BaseComponent):
     def run_batch(*args, **kwargs):
         pass
 
+
 class ChildComponent(BaseComponent):
     def __init__(self, some_key: str = None) -> None:
         super().__init__()
