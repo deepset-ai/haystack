@@ -69,7 +69,7 @@ def test_crawler_content(tmp_path):
                 "Recent advances in NLP have enabled the application of ",
                 "question answering, retrieval and summarization ",
                 "to real world settings and Haystack is designed to be ",
-                "the bridge between research and industry."
+                "the bridge between research and industry.",
             ],
         },
         {
@@ -79,7 +79,7 @@ def test_crawler_content(tmp_path):
                 "the very sentence that contains the answer to your question.",
                 "Thanks to the power of Transformer based language models,",
                 "results are chosen based on compatibility in meaning",
-                "rather than lexical overlap."
+                "rather than lexical overlap.",
             ],
         },
     ]
