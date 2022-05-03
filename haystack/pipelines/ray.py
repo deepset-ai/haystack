@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 import networkx as nx
-from pydantic import root_validator
 
 try:
     from ray import serve
