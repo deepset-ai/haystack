@@ -1,4 +1,4 @@
-name: Static Analysis (mypy)
+name: Static Analysis
 
 on:
   # Activate this workflow manually
@@ -12,7 +12,7 @@ on:
 
 jobs:
 
-  build:
+  mypy:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:

@@ -1,4 +1,4 @@
-name: Code Formatting & API Docs
+name: Code Format & API Docs
 
 on:
   # Activate this workflow manually
