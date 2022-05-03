@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 import networkx as nx
+from pydantic import root_validator
 
 try:
     from ray import serve
@@ -195,11 +196,14 @@ class RayPipeline(Pipeline):
         params: Optional[dict] = None,
     ):
         has_next_node = True
-        current_node_id = self.root_node
-        if not current_node_id:
+
+        root_node = self.root_node
+        if not root_node:
             raise PipelineError("Cannot run a pipeline with no nodes.")
 
-        input_dict: Dict[str, Any] = {"root_node": self.root_node, "params": params}
+        current_node_id: str = root_node
+
+        input_dict: Dict[str, Any] = {"root_node": root_node, "params": params}
         if query:
             input_dict["query"] = query
         if file_paths:
