@@ -17,7 +17,7 @@ from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaEr
 from haystack.nodes.base import BaseComponent
 
 from ..conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
-from . import conftest
+from .. import conftest
 
 
 #
@@ -54,7 +54,6 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 #
 # Integration
 #
-
 
 @pytest.mark.integration
 @pytest.mark.elasticsearch
@@ -111,7 +110,6 @@ def test_load_and_save_from_yaml(tmp_path):
 #
 # Unit
 #
-
 
 def test_load_yaml(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
