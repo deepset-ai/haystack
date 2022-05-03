@@ -365,7 +365,7 @@ def _add_node_to_pipeline_graph(
                      component's name before calling this method if that's not the case (see `Pipeline.add_node()`).
     """
     # Validate node definition
-    # NOTE: In here we compare class names instead of classes to avoid issues with locals(). 
+    # NOTE: In here we compare class names instead of classes to avoid issues with locals().
     # Nodes added to the pipeline like `pipeline.add_node(name="node", instance=MyNode(), inputs=['Query'])`
     # would fail this check otherwise.
     node_class = _get_defined_node_class(node_name=node["name"], components=components)
