@@ -1,6 +1,11 @@
 name: Python Cache (Linux)
 description: Caches a full installation of Haystack dependencies
 
+inputs:
+ pythonPath:
+    description: 'Python path to cache/restore'
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -12,13 +17,13 @@ runs:
   - uses: actions/checkout@v2
   - uses: actions/setup-python@v2
     with:
-      python-version: ${{ inputs.python_version }}
+      python-version: 3.7
 
   - name: Cache
     id: cache-python-env
     uses: actions/cache@v2
     with:
-      path: ${{ env.pythonLocation }}
+      path: ${{ inputs.pythonPath }}
       # The cache will be rebuild every day and at every change of the dependency files
       key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
