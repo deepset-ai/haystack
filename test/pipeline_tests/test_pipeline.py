@@ -30,7 +30,7 @@ from haystack.errors import PipelineConfigError
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, RouteDocuments, PreProcessor, TextConverter
 from haystack.utils.deepsetcloud import DeepsetCloudError
 
-from .conftest import (
+from ..conftest import (
     MOCK_DC,
     DC_API_ENDPOINT,
     DC_API_KEY,

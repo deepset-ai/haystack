@@ -6,7 +6,7 @@ from haystack.modeling.model.tokenization import Tokenizer
 from haystack.modeling.utils import set_all_seeds
 import torch
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 
 def test_processor_saving_loading(tmp_path, caplog):
