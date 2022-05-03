@@ -79,7 +79,7 @@ class MockRetriever(BaseRetriever):
             raise ValueError("You can't do this!")
         return self.document_store.get_all_documents(filters=filters)
 
-    def retrive_batch(
+    def retrieve_batch(
         self,
         queries: Union[str, List[str]],
         filters: dict = None,
