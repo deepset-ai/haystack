@@ -21,6 +21,13 @@ from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
 
+torch_scatter_available = True
+try:
+    import torch_scatter
+except ImportError:
+    torch_scatter_available = False
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +102,8 @@ class TableReader(BaseReader):
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
         """
+        if not torch_scatter_available:
+            raise ImportError("Please install torch_scatter to use TableReader. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter.")
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
