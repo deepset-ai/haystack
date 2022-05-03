@@ -62,8 +62,8 @@ jobs:
 
     - name: Setup Python
       uses: ./.github/actions/linux_cache/
-      with:
-        pythonPath: '${{ env.pythonLocation }}'
+      # with:
+      #   pythonPath: '${{ env.pythonLocation }}'
 
     - name: Linter
       run: |

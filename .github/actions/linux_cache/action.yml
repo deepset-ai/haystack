@@ -14,12 +14,15 @@ runs:
   using: "composite"
   steps:
 
-  - name: Print date
+  - name: Get date
     shell: bash
     run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-  - uses: actions/checkout@v2
-  - uses: actions/setup-python@v2
+  - name: Checkout
+    uses: actions/checkout@v2
+
+  - name: Setup Python
+    uses: actions/setup-python@v2
     with:
       python-version: ${{ inputs.pythonVersion }}
 
@@ -27,7 +30,7 @@ runs:
     id: cache-python-env
     uses: actions/cache@v2
     with:
-      path: '${{ inputs.pythonPath }}'
+      path: ${{ env.pythonLocation }}
       # The cache will be rebuild every day and at every change of the dependency files
       key: linux-py${{ inputs.pythonVersion }}-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
