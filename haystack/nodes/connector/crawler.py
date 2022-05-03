@@ -261,7 +261,7 @@ class Crawler(BaseComponent):
             filter_urls=filter_urls,
             overwrite_existing_files=overwrite_existing_files,
             return_documents=return_documents,
-            id_hash_keys=id_hash_keys
+            id_hash_keys=id_hash_keys,
         )
 
     @staticmethod

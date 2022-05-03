@@ -289,6 +289,16 @@ is therefore only an interim solution until the run function also accepts docume
 If None, the DocumentStore's default index (self.index) will be used.
 - `id_hash_keys`: List of the fields that the hashes of the ids are generated from.
 
+<a id="base.BaseDocumentStore.describe_documents"></a>
+
+#### describe\_documents
+
+```python
+def describe_documents(index=None)
+```
+
+Return a summary of the documents in the document store
+
 <a id="base.KeywordDocumentStore"></a>
 
 ## KeywordDocumentStore
@@ -1002,16 +1012,6 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
-
-<a id="elasticsearch.ElasticsearchDocumentStore.describe_documents"></a>
-
-#### describe\_documents
-
-```python
-def describe_documents(index=None)
-```
-
-Return a summary of the documents in the document store
 
 <a id="elasticsearch.ElasticsearchDocumentStore.update_embeddings"></a>
 

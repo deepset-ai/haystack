@@ -18,10 +18,16 @@
       "items": {
         "anyOf": [
           {
+            "$ref": "#/definitions/DeepsetCloudDocumentStoreComponent"
+          },
+          {
             "$ref": "#/definitions/ElasticsearchDocumentStoreComponent"
           },
           {
             "$ref": "#/definitions/FAISSDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/GraphDBKnowledgeGraphComponent"
           },
           {
             "$ref": "#/definitions/InMemoryDocumentStoreComponent"
@@ -51,6 +57,9 @@
             "$ref": "#/definitions/BM25RetrieverComponent"
           },
           {
+            "$ref": "#/definitions/CrawlerComponent"
+          },
+          {
             "$ref": "#/definitions/DensePassageRetrieverComponent"
           },
           {
@@ -70,6 +79,12 @@
           },
           {
             "$ref": "#/definitions/EntityExtractorComponent"
+          },
+          {
+            "$ref": "#/definitions/EvalAnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/EvalDocumentsComponent"
           },
           {
             "$ref": "#/definitions/FARMReaderComponent"
@@ -221,6 +236,73 @@
   ],
   "additionalProperties": false,
   "definitions": {
+    "DeepsetCloudDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "DeepsetCloudDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "workspace": {
+              "title": "Workspace",
+              "default": "default",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "default",
+              "type": "string"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "api_endpoint": {
+              "title": "Api Endpoint",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "default",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "ElasticsearchDocumentStoreComponent": {
       "type": "object",
       "properties": {
@@ -551,6 +633,64 @@
               "title": "Ef Construction",
               "default": 80,
               "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "GraphDBKnowledgeGraphComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "GraphDBKnowledgeGraph"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "type": "string"
+            },
+            "port": {
+              "title": "Port",
+              "default": 7200,
+              "type": "integer"
+            },
+            "username": {
+              "title": "Username",
+              "default": "",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "default": "",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "type": "string"
+            },
+            "prefixes": {
+              "title": "Prefixes",
+              "default": "",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -1633,6 +1773,70 @@
       ],
       "additionalProperties": false
     },
+    "CrawlerComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Crawler"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "output_dir": {
+              "title": "Output Dir",
+              "type": "string"
+            },
+            "urls": {
+              "title": "Urls",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "crawler_depth": {
+              "title": "Crawler Depth",
+              "default": 1,
+              "type": "integer"
+            },
+            "filter_urls": {
+              "title": "Filter Urls",
+              "type": "array",
+              "items": {}
+            },
+            "overwrite_existing_files": {
+              "title": "Overwrite Existing Files",
+              "default": true
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "output_dir"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "DensePassageRetrieverComponent": {
       "type": "object",
       "properties": {
@@ -2102,6 +2306,98 @@
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "EvalAnswersComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "EvalAnswers"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "skip_incorrect_retrieval": {
+              "title": "Skip Incorrect Retrieval",
+              "default": true,
+              "type": "boolean"
+            },
+            "open_domain": {
+              "title": "Open Domain",
+              "default": true,
+              "type": "boolean"
+            },
+            "sas_model": {
+              "title": "Sas Model",
+              "type": "string"
+            },
+            "debug": {
+              "title": "Debug",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "EvalDocumentsComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "EvalDocuments"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "debug": {
+              "title": "Debug",
+              "default": false,
+              "type": "boolean"
+            },
+            "open_domain": {
+              "title": "Open Domain",
+              "default": true,
+              "type": "boolean"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
             }
           },
           "additionalProperties": false,
