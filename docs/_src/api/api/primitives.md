@@ -334,7 +334,7 @@ def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retrieve
             "gold_id_or_answer_match",
             "gold_id_or_context_or_answer_match",
             "context_and_answer_match",
-        ] = "gold_id_or_answer_match", eval_mode: str = "integrated") -> Dict[str, Dict[str, float]]
+        ] = "gold_id_or_answer_match", eval_mode: str = "integrated", answer_scope: Literal[None, "context", "document", "document_and_context"] = None) -> Dict[str, Dict[str, float]]
 ```
 
 Calculates proper metrics for each node.
@@ -373,13 +373,19 @@ you might want to simulate a perfect predecessor in order to get an independent 
 For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
 Values can be 'integrated', 'isolated'.
 Default value is 'integrated'.
+- `answer_scope`: scope in which a matching answer is considered as correct.
+You can select between :
+- `None` (default): answer is always considered as correct (given that it matches a label)
+- 'context': answer is only considered as correct if its context matches as well
+- 'document': answer is only considered as correct if its document (id) matches as well
+- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well
 
 <a id="schema.EvaluationResult.wrong_examples"></a>
 
 #### wrong\_examples
 
 ```python
-def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: str = "integrated") -> List[Dict]
+def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: str = "integrated", answer_scope: Literal[None, "context", "document", "document_and_context"] = None) -> List[Dict]
 ```
 
 Returns the worst performing queries.
@@ -408,6 +414,12 @@ you might want to simulate a perfect predecessor in order to get an independent 
 For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
 Values can be 'integrated', 'isolated'.
 Default value is 'integrated'.
+- `answer_scope`: scope in which a matching answer is considered as correct.
+You can select between :
+- `None` (default): answer is always considered as correct (given that it matches a label)
+- 'context': answer is only considered as correct if its context matches as well
+- 'document': answer is only considered as correct if its document (id) matches as well
+- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well
 
 <a id="schema.EvaluationResult.save"></a>
 

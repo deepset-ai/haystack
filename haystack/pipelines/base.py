@@ -1071,9 +1071,7 @@ class Pipeline(BasePipeline):
                     df["sas_context_scope"] = df.apply(
                         lambda row: max(
                             sas
-                            for sas, sim in zip(
-                                row["gold_answers_sas"] + [0.0], row["gold_context_similarity"] + [100]
-                            )
+                            for sas, sim in zip(row["gold_answers_sas"] + [0.0], row["gold_context_similarity"] + [100])
                             if sim > 65
                         ),
                         axis=1,
@@ -1255,9 +1253,7 @@ class Pipeline(BasePipeline):
                     df_answers["f1_context_scope"] = df_answers.apply(
                         lambda row: max(
                             f1
-                            for f1, sim in zip(
-                                row["gold_answers_f1"] + [0.0], row["gold_context_similarity"] + [100]
-                            )
+                            for f1, sim in zip(row["gold_answers_f1"] + [0.0], row["gold_context_similarity"] + [100])
                             if sim > 65
                         ),
                         axis=1,

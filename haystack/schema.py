@@ -711,7 +711,7 @@ class EvaluationResult:
             "context_and_answer_match",
         ] = "gold_id_or_answer_match",
         eval_mode: str = "integrated",
-        answer_scope: Literal[None, "context", "document", "document_and_context"] = None
+        answer_scope: Literal[None, "context", "document", "document_and_context"] = None,
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
@@ -748,7 +748,7 @@ class EvaluationResult:
             For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
             Values can be 'integrated', 'isolated'.
             Default value is 'integrated'.
-        :param answer_scope: scope in which a matching answer is considered as correct. 
+        :param answer_scope: scope in which a matching answer is considered as correct.
                              You can select between :
                              - `None` (default): answer is always considered as correct (given that it matches a label)
                              - 'context': answer is only considered as correct if its context matches as well
@@ -762,7 +762,7 @@ class EvaluationResult:
                 simulated_top_k_retriever=simulated_top_k_retriever,
                 doc_relevance_col=doc_relevance_col,
                 eval_mode=eval_mode,
-                answer_scope=answer_scope
+                answer_scope=answer_scope,
             )
             for node, df in self.node_results.items()
         }
@@ -777,7 +777,7 @@ class EvaluationResult:
         document_metric: str = "recall_single_hit",
         answer_metric: str = "f1",
         eval_mode: str = "integrated",
-        answer_scope: Literal[None, "context", "document", "document_and_context"] = None
+        answer_scope: Literal[None, "context", "document", "document_and_context"] = None,
     ) -> List[Dict]:
         """
         Returns the worst performing queries.
@@ -803,7 +803,7 @@ class EvaluationResult:
             For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
             Values can be 'integrated', 'isolated'.
             Default value is 'integrated'.
-        :param answer_scope: scope in which a matching answer is considered as correct. 
+        :param answer_scope: scope in which a matching answer is considered as correct.
                              You can select between :
                              - `None` (default): answer is always considered as correct (given that it matches a label)
                              - 'context': answer is only considered as correct if its context matches as well
@@ -819,7 +819,7 @@ class EvaluationResult:
                 answers,
                 simulated_top_k_reader=simulated_top_k_reader,
                 simulated_top_k_retriever=simulated_top_k_retriever,
-                answer_scope=answer_scope
+                answer_scope=answer_scope,
             )
             worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
             wrong_examples = []
@@ -872,12 +872,15 @@ class EvaluationResult:
         simulated_top_k_retriever: int = -1,
         doc_relevance_col: str = "gold_id_match",
         eval_mode: str = "integrated",
-        answer_scope: Literal[None, "context", "document", "document_and_context"] = None
+        answer_scope: Literal[None, "context", "document", "document_and_context"] = None,
     ) -> Dict[str, float]:
         df = self._filter_eval_mode(df, eval_mode)
 
         answer_metrics = self._calculate_answer_metrics(
-            df, simulated_top_k_reader=simulated_top_k_reader, simulated_top_k_retriever=simulated_top_k_retriever, answer_scope=answer_scope
+            df,
+            simulated_top_k_reader=simulated_top_k_reader,
+            simulated_top_k_retriever=simulated_top_k_retriever,
+            answer_scope=answer_scope,
         )
 
         document_metrics = self._calculate_document_metrics(
@@ -894,20 +897,31 @@ class EvaluationResult:
         return df
 
     def _calculate_answer_metrics(
-        self, df: pd.DataFrame, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, answer_scope: Literal[None, "context", "document", "document_and_context"] = None
+        self,
+        df: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1,
+        answer_scope: Literal[None, "context", "document", "document_and_context"] = None,
     ) -> Dict[str, float]:
         answers = df[df["type"] == "answer"]
         if len(answers) == 0:
             return {}
 
         metrics_df = self._build_answer_metrics_df(
-            answers, simulated_top_k_reader=simulated_top_k_reader, simulated_top_k_retriever=simulated_top_k_retriever, answer_scope=answer_scope
+            answers,
+            simulated_top_k_reader=simulated_top_k_reader,
+            simulated_top_k_retriever=simulated_top_k_retriever,
+            answer_scope=answer_scope,
         )
 
         return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
 
     def _build_answer_metrics_df(
-        self, answers: pd.DataFrame, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, answer_scope: Literal[None, "context", "document", "document_and_context"] = None
+        self,
+        answers: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1,
+        answer_scope: Literal[None, "context", "document", "document_and_context"] = None,
     ) -> pd.DataFrame:
         """
         Builds a dataframe containing answer metrics (columns) per multilabel (index).
@@ -947,8 +961,14 @@ class EvaluationResult:
 
         for multilabel_id in multilabel_ids:
             query_df = answers[answers["multilabel_id"] == multilabel_id]
-            metric_to_scoped_col = {metric: f"{metric}_{answer_scope}_scope" if answer_scope else metric for metric in answer_metrics if metric in query_df.columns}
-            query_metrics = {metric: query_df[col].max() if any(query_df) else 0.0 for metric, col in metric_to_scoped_col.items()}
+            metric_to_scoped_col = {
+                metric: f"{metric}_{answer_scope}_scope" if answer_scope else metric
+                for metric in answer_metrics
+                if metric in query_df.columns
+            }
+            query_metrics = {
+                metric: query_df[col].max() if any(query_df) else 0.0 for metric, col in metric_to_scoped_col.items()
+            }
             df_records.append(query_metrics)
 
         metrics_df = pd.DataFrame.from_records(df_records, index=multilabel_ids)
