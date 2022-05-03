@@ -55,8 +55,19 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Checkout
+      uses: actions/checkout@v2
+
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+
+    - name: Install Haystack
+      run: |
+        pip install .[test]
+        pip install rest_api/
+        pip install ui/
 
     - name: Linter
       run: |
