@@ -82,7 +82,6 @@ class RayPipeline(Pipeline):
             if pipeline.root_node is None:
                 root_node = node_config["inputs"][0]
                 if root_node in ["Query", "File"]:
-                    pipeline.graph.add_node(root_node, component=RootNode(), inputs=[])
                     handle = cls._create_ray_deployment(component_name=root_node, pipeline_config=pipeline_config)
                     pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1, inputs=[])
                 else:
