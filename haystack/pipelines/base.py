@@ -1057,7 +1057,7 @@ class Pipeline(BasePipeline):
                 if len(df[df["type"] == "answer"]) > 0:
                     gold_labels = df["gold_answers"].values
                     predictions = [[a] for a in df["answer"].values]
-                    sas, _ = semantic_answer_similarity(
+                    sas, _, pred_label_sas_grid = semantic_answer_similarity(
                         predictions=predictions,
                         gold_labels=gold_labels,
                         sas_model_name_or_path=sas_model_name_or_path,
@@ -1065,6 +1065,39 @@ class Pipeline(BasePipeline):
                         use_gpu=sas_use_gpu,
                     )
                     df["sas"] = sas
+                    df["gold_answers_sas"] = [gold_answers_sas_per_pred[0] for gold_answers_sas_per_pred in pred_label_sas_grid]
+                    df["sas_context_matched"] = df.apply(
+                        lambda row: max(
+                            sas
+                            for sas, sim in zip(
+                                row["gold_answers_sas"] + [0.0], row["gold_answers_context_similarity"] + [100]
+                            )
+                            if sim > 65
+                        ),
+                        axis=1,
+                    )
+                    df["sas_document_matched"] = df.apply(
+                        lambda row: max(
+                            sas
+                            for sas, doc_match in zip(
+                                row["gold_answers_sas"] + [0.0], row["gold_answers_document_id_match"] + [1.0]
+                            )
+                            if doc_match == 1.0
+                        ),
+                        axis=1,
+                    )
+                    df["sas_document_and_context_matched"] = df.apply(
+                        lambda row: max(
+                            sas
+                            for sas, sim, doc_match in zip(
+                                row["gold_answers_sas"] + [0.0],
+                                row["gold_answers_context_similarity"] + [100],
+                                row["gold_answers_document_id_match"] + [1.0],
+                            )
+                            if sim > 65 and doc_match == 1.0
+                        ),
+                        axis=1,
+                    )
 
         # reorder columns for better qualitative evaluation
         for key, df in eval_result.node_results.items():
@@ -1100,6 +1133,9 @@ class Pipeline(BasePipeline):
                 "gold_document_ids",
                 "offsets_in_document",  # answer-specific
                 "gold_offsets_in_documents",
+                "gold_answers_exact_match",
+                "gold_answers_f1",
+                "gold_answers_sas",
                 "type",  # generic
                 "node",
                 "eval_mode",
