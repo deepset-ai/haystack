@@ -147,6 +147,9 @@
             "$ref": "#/definitions/TableTextRetrieverComponent"
           },
           {
+            "$ref": "#/definitions/Text2SparqlRetrieverComponent"
+          },
+          {
             "$ref": "#/definitions/TextConverterComponent"
           },
           {
@@ -3802,6 +3805,50 @@
           },
           "required": [
             "document_store"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Text2SparqlRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Text2SparqlRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "knowledge_graph": {
+              "title": "Knowledge Graph"
+            },
+            "model_name_or_path": {
+              "title": "Model Name Or Path"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "knowledge_graph",
+            "model_name_or_path"
           ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
