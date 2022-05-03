@@ -138,3 +138,26 @@ Important: The summary will depend on the order of the supplied documents!
 List of Documents, where Document.text contains the summarization and Document.meta["context"]
 the original, not summarized text
 
+<a id="transformers.TransformersSummarizer.predict_batch"></a>
+
+#### predict\_batch
+
+```python
+def predict_batch(documents: Union[List[Document], List[List[Document]]], generate_single_summary: Optional[bool] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Produce the summarization from the supplied documents.
+
+These documents can for example be retrieved via the Retriever.
+
+**Arguments**:
+
+- `documents`: Single list of related documents or list of lists of related documents
+(e.g. coming from a retriever) that the answer shall be conditioned on.
+- `generate_single_summary`: Whether to generate a single summary for each provided document list or
+one summary per document.
+If set to "True", all docs of a document list will be joined to a single string
+that will then be summarized.
+Important: The summary will depend on the order of the supplied documents!
+- `batch_size`: Number of Documents to process at a time.
+

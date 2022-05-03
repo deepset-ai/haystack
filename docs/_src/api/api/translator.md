@@ -111,3 +111,19 @@ Run the actual translation. You can supply a query or a list of documents. Whate
 - `documents`: The documents to translate
 - `dict_key`: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
 
+<a id="transformers.TransformersTranslator.translate_batch"></a>
+
+#### translate\_batch
+
+```python
+def translate_batch(queries: Optional[Union[str, List[str]]] = None, documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None, batch_size: Optional[int] = None) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]
+```
+
+Run the actual translation. You can supply a single query, a list of queries or a list (of lists) of documents.
+
+**Arguments**:
+
+- `queries`: Single query or list of queries.
+- `documents`: List of documents or list of lists of documets.
+- `batch_size`: Not applicable.
+

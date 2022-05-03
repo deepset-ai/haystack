@@ -138,5 +138,28 @@ List of Document
 def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
 ```
 
-.
+Use loaded ranker model to re-rank the supplied lists of Documents.
+
+Returns lists of Documents sorted by (desc.) similarity with the corresponding queries.
+
+
+- If you provide a single query...
+
+    - ... and a single list of Documents, the single list of Documents will be re-ranked based on the
+      supplied query.
+    - ... and a list of lists of Documents, each list of Documents will be re-ranked individually based on the
+      supplied query.
+
+
+- If you provide a list of queries...
+
+    - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
+      its corresponding query.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries
+- `documents`: Single list of Documents or list of lists of Documents to be reranked.
+- `top_k`: The maximum number of documents to return per Document list.
+- `batch_size`: Number of Documents to process at a time.
 

@@ -39,3 +39,18 @@ See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
 
+<a id="question_generator.QuestionGenerator.generate_batch"></a>
+
+#### generate\_batch
+
+```python
+def generate_batch(texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None) -> Union[List[List[str]], List[List[List[str]]]]
+```
+
+Generates questions for a list of strings or a list of lists of strings.
+
+**Arguments**:
+
+- `texts`: List of str or list of list of str.
+- `batch_size`: Number of texts to process at a time.
+

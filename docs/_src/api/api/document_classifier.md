@@ -146,5 +146,16 @@ List of Document enriched with meta information
 def predict_batch(documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
 ```
 
-.
+Returns documents containing classification result in meta field.
+
+Documents are updated in place.
+
+**Arguments**:
+
+- `documents`: List of Documents or list of lists of Documents to classify.
+- `batch_size`: Number of Documents to classify at a time.
+
+**Returns**:
+
+List of Documents or list of lists of Documents enriched with meta information.
 

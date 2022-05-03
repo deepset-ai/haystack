@@ -213,6 +213,35 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
+<a id="sparse.BM25Retriever.retrieve_batch"></a>
+
+#### retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `batch_size`: Not applicable.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
 <a id="sparse.FilterRetriever"></a>
 
 ## FilterRetriever
@@ -297,6 +326,33 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+<a id="sparse.TfidfRetriever.retrieve_batch"></a>
+
+#### retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `batch_size`: Not applicable.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="sparse.TfidfRetriever.fit"></a>
@@ -423,7 +479,24 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
 ```
 
-.
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `batch_size`: Number of queries to embed at a time.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.DensePassageRetriever.embed_queries"></a>
 
@@ -614,7 +687,24 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
 ```
 
-.
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `batch_size`: Number of queries to embed at a time.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.TableTextRetriever.embed_queries"></a>
 
@@ -817,7 +907,24 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 def retrieve_batch(queries: Union[str, List[str]], filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
 ```
 
-.
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `batch_size`: Number of queries to embed at a time.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.EmbeddingRetriever.embed_queries"></a>
 
@@ -900,6 +1007,24 @@ Translate a text query to SPARQL and execute it on the knowledge graph to retrie
 **Arguments**:
 
 - `query`: Text query that shall be translated to SPARQL and then executed on the knowledge graph
+- `top_k`: How many SPARQL queries to generate per text query.
+
+<a id="text2sparql.Text2SparqlRetriever.retrieve_batch"></a>
+
+#### retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], top_k: Optional[int] = None)
+```
+
+Translate a single query or a list of queries to SPARQL and execute it on the knowledge graph to retrieve
+
+a list of answers / list of lists of answers.
+
+**Arguments**:
+
+- `query`: Single text query or list of queries that shall be translated to SPARQL and then executed on the
+knowledge graph.
 - `top_k`: How many SPARQL queries to generate per text query.
 
 <a id="text2sparql.Text2SparqlRetriever.format_result"></a>
