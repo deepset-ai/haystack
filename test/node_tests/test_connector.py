@@ -65,7 +65,7 @@ def mock_webdriver(request, monkeypatch):
     # Do not patch integration tests
     if "integration" in request.keywords:
         return
-    
+
     def mock_get(self, url: str) -> None:
         if url == TEST_BASE_URL:
             return TEST_HOME_PAGE
@@ -82,6 +82,7 @@ def mock_webdriver(request, monkeypatch):
 #
 # Integration
 #
+
 
 @pytest.mark.integration
 def test_crawler(tmp_path):
@@ -107,6 +108,7 @@ def test_crawler(tmp_path):
 # Unit tests
 #
 
+
 def test_crawler_url_none_exception(tmp_path):
     crawler = Crawler(tmp_path)
     with pytest.raises(ValueError):
@@ -121,11 +123,7 @@ def test_crawler_depth_0_single_url(tmp_path):
 
 def test_crawler_depth_0_many_urls(tmp_path):
     crawler = Crawler(output_dir=tmp_path)
-    _urls = [
-        TEST_BASE_URL,
-        TEST_BASE_URL+"/page1",
-        TEST_BASE_URL+"/page2",
-    ]
+    _urls = [TEST_BASE_URL, TEST_BASE_URL + "/page1", TEST_BASE_URL + "/page2"]
     paths = crawler.crawl(urls=_urls, crawler_depth=0)
     assert len(paths) == 3
 
