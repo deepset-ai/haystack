@@ -20,6 +20,7 @@ disable = [
 
   # Info
   "c-extension-no-member",
+  "too-many-public-methods",
 
 
   # To review:

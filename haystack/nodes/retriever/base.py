@@ -37,6 +37,11 @@ class BaseGraphRetriever(BaseComponent):
         results = {"answers": answers}
         return results, "output_1"
 
+    def run_batch(self, queries: Union[str, List[str]], top_k: Optional[int] = None):  # type: ignore
+        answers = self.retrieve_batch(queries=queries, top_k=top_k)
+        results = {"answers": answers}
+        return results, "output_1"
+
 
 class BaseRetriever(BaseComponent):
     """
@@ -85,6 +90,7 @@ class BaseRetriever(BaseComponent):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
+        scale_score: bool = None,
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 

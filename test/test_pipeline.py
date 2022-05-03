@@ -71,6 +71,9 @@ class ParentComponent(BaseComponent):
     def run(*args, **kwargs):
         logging.info("ParentComponent run() was called")
 
+    def run_batch(*args, **kwargs):
+        pass
+
 
 class ParentComponent2(BaseComponent):
     outgoing_edges = 1
@@ -81,6 +84,8 @@ class ParentComponent2(BaseComponent):
     def run(*args, **kwargs):
         logging.info("ParentComponent2 run() was called")
 
+    def run_batch(*args, **kwargs):
+        pass
 
 class ChildComponent(BaseComponent):
     def __init__(self, some_key: str = None) -> None:
@@ -88,6 +93,9 @@ class ChildComponent(BaseComponent):
 
     def run(*args, **kwargs):
         logging.info("ChildComponent run() was called")
+
+    def run_batch(*args, **kwargs):
+        pass
 
 
 class DummyRetriever(MockRetriever):
@@ -1517,6 +1525,9 @@ def test_pipeline_components():
         def run(self):
             test = "test"
             return {"test": test}, "output_1"
+
+        def run_batch(self):
+            return
 
     a = Node()
     b = Node()
