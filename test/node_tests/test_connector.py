@@ -61,6 +61,7 @@ TEST_UNWANTED = """
 </html>
 """
 
+
 class MockWebDriver(Chrome):
     def get(link):
         if link == TEST_BASE_URL:
@@ -75,7 +76,7 @@ class MockWebDriver(Chrome):
 
 @pytest.fixture(autouse=True)
 def mock_webdriver(request, monkeypatch):
-     # Do not patch integration tests
+    # Do not patch integration tests
     if "integration" in request.keywords:
         return
 
@@ -85,6 +86,7 @@ def mock_webdriver(request, monkeypatch):
 #
 # Integration
 #
+
 
 @pytest.mark.integration
 def test_crawler(tmp_path):
@@ -109,6 +111,7 @@ def test_crawler(tmp_path):
 #
 # Unit tests
 #
+
 
 def test_crawler_url_none_exception(tmp_path):
     crawler = Crawler(tmp_path / "crawled_files")
@@ -138,11 +141,7 @@ def test_crawler_depth_0_single_url(tmp_path):
 
 def test_crawler_depth_0_many_urls(tmp_path):
     crawler = Crawler(output_dir=tmp_path / "crawled_files")
-    _urls = [
-        TEST_BASE_URL,
-        TEST_BASE_URL+"/page1",
-        TEST_BASE_URL+"/page2",
-    ]
+    _urls = [TEST_BASE_URL, TEST_BASE_URL + "/page1", TEST_BASE_URL + "/page2"]
     doc_path = crawler.crawl(urls=_urls, crawler_depth=0)
     assert len(doc_path) == 3
 
@@ -163,24 +162,9 @@ def test_crawler_filter_urls(tmp_path):
 
 def test_crawler_content(tmp_path):
     expected_results = [
-        {
-            "url": TEST_BASE_URL,
-            "partial_content": [
-                "test page content"
-            ]
-        },
-        {
-            "url": TEST_BASE_URL+"/page1",
-            "partial_content": [
-                "test page 1 content"
-            ]
-        },
-        {
-            "url": TEST_BASE_URL+"/page2",
-            "partial_content": [
-                "test page 2 content"
-            ]
-        }
+        {"url": TEST_BASE_URL, "partial_content": ["test page content"]},
+        {"url": TEST_BASE_URL + "/page1", "partial_content": ["test page 1 content"]},
+        {"url": TEST_BASE_URL + "/page2", "partial_content": ["test page 2 content"]},
     ]
 
     crawler = Crawler(output_dir=tmp_path / "crawled_files")
