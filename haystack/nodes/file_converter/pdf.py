@@ -77,6 +77,7 @@ class PDFToTextConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -95,6 +96,8 @@ class PDFToTextConverter(BaseConverter):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
+        :param encoding: Encoding that overwrites self.encoding and will be passed as `-enc` parameter to `pdftotext`.
+                         (See list of available encodings by running `pdftotext -listenc` in the terminal)
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -107,7 +110,7 @@ class PDFToTextConverter(BaseConverter):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        pages = self._read_pdf(file_path, layout=False)
+        pages = self._read_pdf(file_path, layout=False, encoding=encoding)
 
         cleaned_pages = []
         for page in pages:
@@ -149,20 +152,24 @@ class PDFToTextConverter(BaseConverter):
         document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
         return [document]
 
-    def _read_pdf(self, file_path: Path, layout: bool) -> List[str]:
+    def _read_pdf(self, file_path: Path, layout: bool, encoding: Optional[str] = None) -> List[str]:
         """
         Extract pages from the pdf file at file_path.
 
         :param file_path: path of the pdf file
         :param layout: whether to retain the original physical layout for a page. If disabled, PDF pages are read in
                        the content stream order.
+        :param encoding: Encoding that overwrites self.encoding and will be passed as `-enc` parameter to `pdftotext`.
+                         (See list of available encodings by running `pdftotext -listenc` in the terminal)
         """
         # if layout:
         #     command = ["pdftotext", "-enc", encoding, "-layout", str(file_path), "-"]
         # else:
         #     command = ["pdftotext", "-enc", encoding, str(file_path), "-"]
+        if not encoding:
+            encoding = self.encoding
 
-        command = f"pdftotext -enc {self.encoding} {'-layout ' if layout else ''}{str(file_path)} -".split()
+        command = f"pdftotext -enc {encoding} {'-layout ' if layout else ''}{str(file_path)} -".split()
         output = subprocess.run(command, stdout=subprocess.PIPE, shell=False)
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")

@@ -132,7 +132,7 @@ class BaseConverter(BaseComponent):
     def run(  # type: ignore
         self,
         file_paths: Union[Path, List[Path]],
-        meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None,
+        meta: Optional[Union[Dict[str, str], List[Optional[Dict[str, str]]]]] = None,
         remove_numeric_tables: Optional[bool] = None,
         known_ligatures: Dict[str, str] = KNOWN_LIGATURES,
         valid_languages: Optional[List[str]] = None,
@@ -165,8 +165,8 @@ class BaseConverter(BaseComponent):
         if isinstance(file_paths, Path):
             file_paths = [file_paths]
 
-        if not isinstance(meta, list):
-            meta: List[Optional[Dict[str, str]]] = [meta] * len(file_paths)
+        if isinstance(meta, dict) or meta is None:
+            meta = [meta] * len(file_paths)
 
         documents: list = []
         for file_path, file_meta in zip(file_paths, meta):
