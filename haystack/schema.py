@@ -839,15 +839,7 @@ class EvaluationResult:
                     "filters": query_documents["filters"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "documents": query_documents.drop(
-                        [
-                            "node",
-                            "query",
-                            "multilabel_id",
-                            "filters",
-                            "type",
-                            "gold_document_ids",
-                            "gold_contexts",
-                        ],
+                        ["node", "query", "multilabel_id", "filters", "type", "gold_document_ids", "gold_contexts"],
                         axis=1,
                     ).to_dict(orient="records"),
                     "gold_document_ids": query_documents["gold_document_ids"].iloc[0],
@@ -1048,7 +1040,17 @@ class EvaluationResult:
         """
         load_dir = load_dir if isinstance(load_dir, Path) else Path(load_dir)
         csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
-        cols_to_convert = ["gold_document_ids", "gold_contexts", "gold_answers", "gold_offsets_in_documents", "gold_answers_exact_match", "gold_answers_f1", "gold_answers_context_similarity", "gold_answers_document_id_match", "gold_context_similarity"]
+        cols_to_convert = [
+            "gold_document_ids",
+            "gold_contexts",
+            "gold_answers",
+            "gold_offsets_in_documents",
+            "gold_answers_exact_match",
+            "gold_answers_f1",
+            "gold_answers_context_similarity",
+            "gold_answers_document_id_match",
+            "gold_context_similarity",
+        ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
         node_results = {file.stem: pd.read_csv(file, header=0, converters=converters) for file in csv_files}
         result = cls(node_results)

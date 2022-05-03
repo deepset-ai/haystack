@@ -302,7 +302,7 @@ The DataFrames have the following schema:
 - exact_match (answers only): metric depicting if the answer exactly matches the gold label
 - f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
 - sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
-- gold_document_contents (documents only): the contents of the gold documents
+- gold_contexts (documents only): the contents of the gold documents
 - content (documents only): the content of the document
 - gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
 - answer_match (documents only): metric depicting whether the document contains the answer

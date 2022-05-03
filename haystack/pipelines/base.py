@@ -1066,15 +1066,15 @@ class Pipeline(BasePipeline):
         # reorder columns for better qualitative evaluation
         for key, df in eval_result.node_results.items():
             desired_col_order = [
-                "multilabel_id", # generic
+                "multilabel_id",  # generic
                 "query",
-                "filters", 
-                "gold_answers", # answer-specific 
+                "filters",
+                "gold_answers",  # answer-specific
                 "answer",
                 "context",
                 "exact_match",
                 "f1",
-                "sas",  
+                "sas",
                 "exact_match_context_matched",
                 "f1_context_matched",
                 "sas_context_matched",
@@ -1084,24 +1084,24 @@ class Pipeline(BasePipeline):
                 "exact_match_document_and_context_matched",
                 "f1_document_and_context_matched",
                 "sas_document_and_context_matched",
-                "gold_contexts", # doc-specific
+                "gold_contexts",  # doc-specific
                 "content",
                 "gold_id_match",
                 "context_match",
                 "answer_match",
                 "gold_id_or_context_match",
-                "gold_id_or_answer_match",  
+                "gold_id_or_answer_match",
                 "gold_id_or_context_or_answer_match",
                 "context_and_answer_match",
-                "rank", # generic
+                "rank",  # generic
                 "document_id",
-                "gold_document_ids",  
-                "offsets_in_document", # answer-specific
-                "gold_offsets_in_documents",  
-                "type", # generic
+                "gold_document_ids",
+                "offsets_in_document",  # answer-specific
+                "gold_offsets_in_documents",
+                "type",  # generic
                 "node",
                 "eval_mode",
-            ]  
+            ]
             eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
 
         return eval_result
