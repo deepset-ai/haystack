@@ -1,4 +1,4 @@
-name: Code Analysis
+name: Static Analysis (mypy)
 
 on:
   # Activate this workflow manually
@@ -12,17 +12,21 @@ on:
 
 jobs:
 
-  type-check:
+  build:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:
+
     - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
       with:
         # Mypy can't run properly on 3.7 as it misses support for Literal types.
         # FIXME once we drop support for 3.7, use the cache.
         python-version: 3.8
-    - name: Setup mypy
+
+    - name: Install dependencies
       run: |
         # FIXME installing the packages before running mypy raises
         # a lot of errors which were never detected before!
@@ -37,7 +41,7 @@ jobs:
 
         pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
 
-    - name: Test with mypy
+    - name: Mypy
       run: |
         echo "=== haystack/ ==="
         mypy haystack
@@ -47,30 +51,3 @@ jobs:
 
         echo "=== ui/ ==="
         mypy ui --exclude=ui/build/ --exclude=ui/test/
-
-
-  linter:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 45
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Checkout
-      uses: actions/checkout@v2
-
-    - name: Setup Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.7
-
-    - name: Install Haystack
-      run: |
-        pip install .[test]
-        pip install rest_api/
-        pip install ui/
-
-    - name: Linter
-      run: |
-        pylint -ry haystack/
-        pylint -ry rest_api/
-        pylint -ry ui/

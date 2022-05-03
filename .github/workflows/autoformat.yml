@@ -1,4 +1,4 @@
-name: Code & Documentation Updates
+name: Code Formatting & API Docs
 
 on:
   # Activate this workflow manually
@@ -9,13 +9,13 @@ on:
   # This is necessary for permission issues: Haystack's CI runners 
   # cannot push changes back to the source fork.
   # TODO make sure this is still necessary later on.
-  # push:
-  #   branches-ignore:    
-  #     - 'master'
+  push:
+    branches-ignore:    
+      - 'master'
 
 jobs:
 
-  code-and-docs-updates:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -28,14 +28,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.7
-
-      - name: Cache
-        id: cache-python-env
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          # The cache will be rebuild every day and at every change of the dependency files
-          key: haystack-ci-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
       - name: Install Dependencies
         run: |
