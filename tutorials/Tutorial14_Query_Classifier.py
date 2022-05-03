@@ -55,7 +55,9 @@ def tutorial14_query_classifier():
     sklearn_keyword_classifier.add_node(
         component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_1"]
     )
-    sklearn_keyword_classifier.add_node(component=bm25_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
+    sklearn_keyword_classifier.add_node(
+        component=bm25_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
+    )
     sklearn_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"])
     sklearn_keyword_classifier.draw("pipeline_classifier.png")
 
