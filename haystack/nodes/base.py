@@ -116,15 +116,16 @@ class BaseComponent(ABC):
         return subclass
 
     @classmethod
-    def load(cls, component_type: str, **kwargs):
+    def load(cls, component_type: str, component_params: Dict[str, Any]):
         """
         Load a component instance of the given type using the kwargs.
 
         :param component_type: name of the component class to load.
-        :param kwargs: parameters to pass to the __init__() for the component.
+        :param component_params: parameters to pass to the __init__() for the component.
         """
+        print("======> LOADING COMPONENT", component_type, component_params)
         subclass = cls.get_subclass(component_type)
-        instance = subclass(**kwargs)
+        instance = subclass(**component_params)
         return instance
 
     @abstractmethod
