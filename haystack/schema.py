@@ -711,6 +711,7 @@ class EvaluationResult:
             "context_and_answer_match",
         ] = "gold_id_or_answer_match",
         eval_mode: str = "integrated",
+        answer_scope: Literal[None, "context", "document", "document_and_context"] = None
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
@@ -747,6 +748,12 @@ class EvaluationResult:
             For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
             Values can be 'integrated', 'isolated'.
             Default value is 'integrated'.
+        :param answer_scope: scope in which a matching answer is considered as correct. 
+                             You can select between :
+                             - `None` (default): answer is always considered as correct (given that it matches a label)
+                             - 'context': answer is only considered as correct if its context matches as well
+                             - 'document': answer is only considered as correct if its document (id) matches as well
+                             - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well
         """
         return {
             node: self._calculate_node_metrics(
@@ -755,6 +762,7 @@ class EvaluationResult:
                 simulated_top_k_retriever=simulated_top_k_retriever,
                 doc_relevance_col=doc_relevance_col,
                 eval_mode=eval_mode,
+                answer_scope=answer_scope
             )
             for node, df in self.node_results.items()
         }
@@ -769,6 +777,7 @@ class EvaluationResult:
         document_metric: str = "recall_single_hit",
         answer_metric: str = "f1",
         eval_mode: str = "integrated",
+        answer_scope: Literal[None, "context", "document", "document_and_context"] = None
     ) -> List[Dict]:
         """
         Returns the worst performing queries.
@@ -794,6 +803,12 @@ class EvaluationResult:
             For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
             Values can be 'integrated', 'isolated'.
             Default value is 'integrated'.
+        :param answer_scope: scope in which a matching answer is considered as correct. 
+                             You can select between :
+                             - `None` (default): answer is always considered as correct (given that it matches a label)
+                             - 'context': answer is only considered as correct if its context matches as well
+                             - 'document': answer is only considered as correct if its document (id) matches as well
+                             - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well
         """
         node_df = self.node_results[node]
         node_df = self._filter_eval_mode(node_df, eval_mode)
@@ -804,6 +819,7 @@ class EvaluationResult:
                 answers,
                 simulated_top_k_reader=simulated_top_k_reader,
                 simulated_top_k_retriever=simulated_top_k_retriever,
+                answer_scope=answer_scope
             )
             worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
             wrong_examples = []
@@ -856,11 +872,12 @@ class EvaluationResult:
         simulated_top_k_retriever: int = -1,
         doc_relevance_col: str = "gold_id_match",
         eval_mode: str = "integrated",
+        answer_scope: Literal[None, "context", "document", "document_and_context"] = None
     ) -> Dict[str, float]:
         df = self._filter_eval_mode(df, eval_mode)
 
         answer_metrics = self._calculate_answer_metrics(
-            df, simulated_top_k_reader=simulated_top_k_reader, simulated_top_k_retriever=simulated_top_k_retriever
+            df, simulated_top_k_reader=simulated_top_k_reader, simulated_top_k_retriever=simulated_top_k_retriever, answer_scope=answer_scope
         )
 
         document_metrics = self._calculate_document_metrics(
@@ -877,35 +894,36 @@ class EvaluationResult:
         return df
 
     def _calculate_answer_metrics(
-        self, df: pd.DataFrame, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1
+        self, df: pd.DataFrame, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, answer_scope: Literal[None, "context", "document", "document_and_context"] = None
     ) -> Dict[str, float]:
         answers = df[df["type"] == "answer"]
         if len(answers) == 0:
             return {}
 
         metrics_df = self._build_answer_metrics_df(
-            answers, simulated_top_k_reader=simulated_top_k_reader, simulated_top_k_retriever=simulated_top_k_retriever
+            answers, simulated_top_k_reader=simulated_top_k_reader, simulated_top_k_retriever=simulated_top_k_retriever, answer_scope=answer_scope
         )
 
         return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
 
     def _build_answer_metrics_df(
-        self, answers: pd.DataFrame, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1
+        self, answers: pd.DataFrame, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, answer_scope: Literal[None, "context", "document", "document_and_context"] = None
     ) -> pd.DataFrame:
         """
-        Builds a dataframe containing answer metrics (columns) per query (index).
+        Builds a dataframe containing answer metrics (columns) per multilabel (index).
         Answer metrics are:
         - exact_match (Did the query exactly return any gold answer? -> 1.0 or 0.0)
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
         - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
+        multilabel_ids = answers["multilabel_id"].unique()
         # simulate top k retriever
         if simulated_top_k_retriever != -1:
             documents = self._get_documents_df()
 
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
-            for multilabel_id in answers["multilabel_id"].unique():
+            for multilabel_id in multilabel_ids:
                 top_k_document_ids = top_k_documents[top_k_documents["multilabel_id"] == multilabel_id][
                     "document_id"
                 ].unique()
@@ -924,17 +942,16 @@ class EvaluationResult:
             answers = answers[answers["rank"] <= simulated_top_k_reader]
 
         # build metrics df
-        metrics = []
+        answer_metrics = ["exact_match", "f1", "sas"]
+        df_records = []
 
-        for multilabel_id in answers["multilabel_id"].unique():
+        for multilabel_id in multilabel_ids:
             query_df = answers[answers["multilabel_id"] == multilabel_id]
+            metric_to_scoped_col = {metric: f"{metric}_{answer_scope}_scope" if answer_scope else metric for metric in answer_metrics if metric in query_df.columns}
+            query_metrics = {metric: query_df[col].max() if any(query_df) else 0.0 for metric, col in metric_to_scoped_col.items()}
+            df_records.append(query_metrics)
 
-            metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
-
-            query_metrics = {metric: query_df[metric].max() if len(query_df) > 0 else 0.0 for metric in metrics_cols}
-            metrics.append(query_metrics)
-
-        metrics_df = pd.DataFrame.from_records(metrics, index=answers["multilabel_id"].unique())
+        metrics_df = pd.DataFrame.from_records(df_records, index=multilabel_ids)
         return metrics_df
 
     def _get_documents_df(self):
@@ -1047,7 +1064,6 @@ class EvaluationResult:
             "gold_offsets_in_documents",
             "gold_answers_exact_match",
             "gold_answers_f1",
-            "gold_answers_context_similarity",
             "gold_answers_document_id_match",
             "gold_context_similarity",
         ]
