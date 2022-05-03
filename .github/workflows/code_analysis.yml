@@ -60,9 +60,10 @@ jobs:
         sudo apt install tree
         tree -a -L 5 ~
 
-    - uses: ./.github/actions/linux_cache/
+    - name: Setup Python
+      uses: ./.github/actions/linux_cache/
       with:
-        pythonPath: ${{ env.pythonLocation }}
+        pythonPath: '${{ env.pythonLocation }}'
 
     - name: Linter
       run: |
