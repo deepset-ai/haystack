@@ -1069,10 +1069,10 @@ class Pipeline(BasePipeline):
                 "multilabel_id",  # generic
                 "query",
                 "filters",
-                "gold_answers", # answer-specific 
+                "gold_answers",  # answer-specific
                 "answer",
-                "context", # generic
-                "exact_match", # answer-specific
+                "context",  # generic
+                "exact_match",  # answer-specific
                 "f1",
                 "sas",
                 "exact_match_context_matched",
@@ -1084,7 +1084,7 @@ class Pipeline(BasePipeline):
                 "exact_match_document_and_context_matched",
                 "f1_document_and_context_matched",
                 "sas_document_and_context_matched",
-                "gold_contexts", # doc-specific
+                "gold_contexts",  # doc-specific
                 "gold_id_match",
                 "context_match",
                 "answer_match",
