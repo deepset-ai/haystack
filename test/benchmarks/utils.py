@@ -4,7 +4,7 @@ from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores.milvus import MilvusDocumentStore
-from haystack.nodes.retriever.sparse import ElasticsearchRetriever, TfidfRetriever
+from haystack.nodes.retriever.sparse import BM25Retriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
@@ -104,7 +104,7 @@ def get_document_store(document_store_type, similarity="dot_product", index="doc
 
 def get_retriever(retriever_name, doc_store, devices):
     if retriever_name == "elastic":
-        return ElasticsearchRetriever(doc_store)
+        return BM25Retriever(doc_store)
     if retriever_name == "tfidf":
         return TfidfRetriever(doc_store)
     if retriever_name == "dpr":

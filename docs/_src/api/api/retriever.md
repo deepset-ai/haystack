@@ -28,7 +28,7 @@ Base class for regular retrievers.
 
 ```python
 @abstractmethod
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -42,6 +42,9 @@ that are most relevant to the query.
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="base.BaseRetriever.timing"></a>
 
@@ -94,25 +97,25 @@ contains the keys "predictions" and "metrics".
 
 # Module sparse
 
-<a id="sparse.ElasticsearchRetriever"></a>
+<a id="sparse.BM25Retriever"></a>
 
-## ElasticsearchRetriever
+## BM25Retriever
 
 ```python
-class ElasticsearchRetriever(BaseRetriever)
+class BM25Retriever(BaseRetriever)
 ```
 
-<a id="sparse.ElasticsearchRetriever.__init__"></a>
+<a id="sparse.BM25Retriever.__init__"></a>
 
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: KeywordDocumentStore, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None)
+def __init__(document_store: KeywordDocumentStore, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None, scale_score: bool = True)
 ```
 
 **Arguments**:
 
-- `document_store`: an instance of an ElasticsearchDocumentStore to retrieve documents from.
+- `document_store`: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore
 - `all_terms_must_match`: Whether all terms of the query must match the document.
 If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
 Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
@@ -182,13 +185,16 @@ Defaults to False.
     |    highlighted_title = docs[0].meta["highlighted"]["title"]
     ```
 - `top_k`: How many documents to return per query.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="sparse.ElasticsearchRetriever.retrieve"></a>
+<a id="sparse.BM25Retriever.retrieve"></a>
 
 #### retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -203,24 +209,27 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="sparse.ElasticsearchFilterOnlyRetriever"></a>
+<a id="sparse.FilterRetriever"></a>
 
-## ElasticsearchFilterOnlyRetriever
+## FilterRetriever
 
 ```python
-class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever)
+class FilterRetriever(BM25Retriever)
 ```
 
 Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
 Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
 
-<a id="sparse.ElasticsearchFilterOnlyRetriever.retrieve"></a>
+<a id="sparse.FilterRetriever.retrieve"></a>
 
 #### retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -229,12 +238,15 @@ that are most relevant to the query.
 
 **Arguments**:
 
-- `query`: The query
+- `query`: Has no effect, can pass in empty string
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-- `top_k`: How many documents to return per query.
+- `top_k`: Has no effect, pass in any int or None
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="sparse.TfidfRetriever"></a>
 
@@ -270,7 +282,7 @@ def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
 #### retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -283,6 +295,9 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="sparse.TfidfRetriever.fit"></a>
 
@@ -316,7 +331,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -374,13 +389,16 @@ will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
 the local token will be used, which must be previously created via `transformer-cli login`.
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.DensePassageRetriever.retrieve"></a>
 
 #### retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -393,6 +411,9 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.DensePassageRetriever.embed_queries"></a>
 
@@ -527,7 +548,7 @@ Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -571,6 +592,9 @@ training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
 the local token will be used, which must be previously created via `transformer-cli login`.
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.TableTextRetriever.embed_queries"></a>
 
@@ -705,7 +729,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### \_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
 ```
 
 **Arguments**:
@@ -739,13 +763,16 @@ training will only use the first device provided in this list.
 - `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
 the local token will be used, which must be previously created via `transformer-cli login`.
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.EmbeddingRetriever.retrieve"></a>
 
 #### retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -758,6 +785,9 @@ that are most relevant to the query.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.EmbeddingRetriever.embed_queries"></a>
 

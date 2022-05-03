@@ -1,7 +1,10 @@
+from copy import deepcopy
 from pathlib import Path
 
 import os
 import json
+import platform
+import sys
 from typing import Tuple
 from unittest.mock import Mock
 
@@ -19,7 +22,7 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.retriever.sparse import ElasticsearchRetriever
+from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.pipelines import Pipeline, DocumentSearchPipeline, RootNode
 from haystack.pipelines.config import validate_config_strings
 from haystack.pipelines.utils import generate_code
@@ -38,6 +41,25 @@ from .conftest import (
     MockNode,
     deepset_cloud_fixture,
 )
+
+logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(scope="function")
+def reduce_windows_recursion_limit():
+    """
+    Prevents Windows CI from crashing with Stackoverflow in situations we want to provoke a RecursionError
+    """
+    is_windows = platform.system() == "Windows"
+    default_recursion_limit = sys.getrecursionlimit()
+    if is_windows:
+        reduced_recursion_limit = default_recursion_limit // 2
+        logger.warning(f"Reducing recursion limit to {reduced_recursion_limit}")
+        sys.setrecursionlimit(reduced_recursion_limit)
+    yield
+    if is_windows:
+        logger.warning(f"Resetting recursion limit to {default_recursion_limit}")
+        sys.setrecursionlimit(default_recursion_limit)
 
 
 class ParentComponent(BaseComponent):
@@ -364,30 +386,26 @@ def test_get_config_custom_node_with_params():
     assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
 
-def test_get_config_custom_node_with_positional_params(caplog):
+def test_get_config_custom_node_with_positional_params():
     class CustomNode(MockNode):
         def __init__(self, param: int = 1):
             super().__init__()
             self.param = param
 
     pipeline = Pipeline()
-    with caplog.at_level(logging.WARNING):
-        pipeline.add_node(CustomNode(10), name="custom_node", inputs=["Query"])
-        assert (
-            "Unnamed __init__ parameters will not be saved to YAML "
-            "if Pipeline.save_to_yaml() is called" in caplog.text
-        )
+    pipeline.add_node(CustomNode(10), name="custom_node", inputs=["Query"])
+
     assert len(pipeline.get_config()["components"]) == 1
-    assert pipeline.get_config()["components"][0]["params"] == {}
+    assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
 
 def test_generate_code_simple_pipeline():
     config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {
                 "name": "retri",
-                "type": "ElasticsearchRetriever",
+                "type": "BM25Retriever",
                 "params": {"document_store": "ElasticsearchDocumentStore", "top_k": 20},
             },
             {
@@ -402,7 +420,7 @@ def test_generate_code_simple_pipeline():
     code = generate_code(pipeline_config=config, pipeline_variable_name="p", generate_imports=False)
     assert code == (
         'elasticsearch_document_store = ElasticsearchDocumentStore(index="my-index")\n'
-        "retri = ElasticsearchRetriever(document_store=elasticsearch_document_store, top_k=20)\n"
+        "retri = BM25Retriever(document_store=elasticsearch_document_store, top_k=20)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])'
@@ -411,10 +429,10 @@ def test_generate_code_simple_pipeline():
 
 def test_generate_code_imports():
     pipeline_config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
-            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri", "type": "BM25Retriever", "params": {"document_store": "DocumentStore"}},
             {"name": "retri2", "type": "TfidfRetriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [
@@ -428,11 +446,11 @@ def test_generate_code_imports():
     code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=True)
     assert code == (
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
-        "from haystack.nodes import ElasticsearchRetriever, TfidfRetriever\n"
+        "from haystack.nodes import BM25Retriever, TfidfRetriever\n"
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
-        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "retri = BM25Retriever(document_store=document_store)\n"
         "retri_2 = TfidfRetriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -443,10 +461,10 @@ def test_generate_code_imports():
 
 def test_generate_code_imports_no_pipeline_cls():
     pipeline_config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
-            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri", "type": "BM25Retriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
@@ -459,10 +477,10 @@ def test_generate_code_imports_no_pipeline_cls():
     )
     assert code == (
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
-        "from haystack.nodes import ElasticsearchRetriever\n"
+        "from haystack.nodes import BM25Retriever\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
-        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])'
@@ -471,10 +489,10 @@ def test_generate_code_imports_no_pipeline_cls():
 
 def test_generate_code_comment():
     pipeline_config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {"name": "DocumentStore", "type": "ElasticsearchDocumentStore"},
-            {"name": "retri", "type": "ElasticsearchRetriever", "params": {"document_store": "DocumentStore"}},
+            {"name": "retri", "type": "BM25Retriever", "params": {"document_store": "DocumentStore"}},
         ],
         "pipelines": [{"name": "Query", "nodes": [{"name": "retri", "inputs": ["Query"]}]}],
     }
@@ -485,11 +503,11 @@ def test_generate_code_comment():
         "# This is my comment\n"
         "# ...and here is a new line\n"
         "from haystack.document_stores import ElasticsearchDocumentStore\n"
-        "from haystack.nodes import ElasticsearchRetriever\n"
+        "from haystack.nodes import BM25Retriever\n"
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
-        "retri = ElasticsearchRetriever(document_store=document_store)\n"
+        "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
         'p.add_node(component=retri, name="retri", inputs=["Query"])'
@@ -498,7 +516,7 @@ def test_generate_code_comment():
 
 def test_generate_code_is_component_order_invariant():
     pipeline_config = {
-        "version": "unstable",
+        "version": "master",
         "pipelines": [
             {
                 "name": "Query",
@@ -514,7 +532,7 @@ def test_generate_code_is_component_order_invariant():
     doc_store = {"name": "ElasticsearchDocumentStore", "type": "ElasticsearchDocumentStore"}
     es_retriever = {
         "name": "EsRetriever",
-        "type": "ElasticsearchRetriever",
+        "type": "BM25Retriever",
         "params": {"document_store": "ElasticsearchDocumentStore"},
     }
     emb_retriever = {
@@ -535,7 +553,7 @@ def test_generate_code_is_component_order_invariant():
 
     expected_code = (
         "elasticsearch_document_store = ElasticsearchDocumentStore()\n"
-        "es_retriever = ElasticsearchRetriever(document_store=elasticsearch_document_store)\n"
+        "es_retriever = BM25Retriever(document_store=elasticsearch_document_store)\n"
         'embedding_retriever = EmbeddingRetriever(document_store=elasticsearch_document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2")\n'
         "join_results = JoinDocuments()\n"
         "\n"
@@ -547,13 +565,14 @@ def test_generate_code_is_component_order_invariant():
 
     for components in component_orders:
         pipeline_config["components"] = components
+
         code = generate_code(pipeline_config=pipeline_config, pipeline_variable_name="p", generate_imports=False)
         assert code == expected_code
 
 
 def test_generate_code_can_handle_weak_cyclic_pipelines():
     config = {
-        "version": "unstable",
+        "version": "master",
         "components": [
             {"name": "parent", "type": "ParentComponent", "params": {"dependent": "child"}},
             {"name": "child", "type": "ChildComponent", "params": {}},
@@ -634,7 +653,7 @@ def test_validate_pipeline_config_invalid_pipeline_node_inputs():
         )
 
 
-def test_validate_pipeline_config_recursive_config():
+def test_validate_pipeline_config_recursive_config(reduce_windows_recursion_limit):
     pipeline_config = {}
     node = {"config": pipeline_config}
     pipeline_config["node"] = node
@@ -669,7 +688,7 @@ def test_load_from_deepset_cloud_query():
     )
     retriever = query_pipeline.get_node("Retriever")
     document_store = retriever.document_store
-    assert isinstance(retriever, ElasticsearchRetriever)
+    assert isinstance(retriever, BM25Retriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
     assert document_store == query_pipeline.get_document_store()
 
@@ -897,7 +916,7 @@ def test_save_nonexisting_pipeline_to_deepset_cloud():
         )
 
     es_document_store = ElasticsearchDocumentStore()
-    es_retriever = ElasticsearchRetriever(document_store=es_document_store)
+    es_retriever = BM25Retriever(document_store=es_document_store)
     file_converter = TextConverter()
     preprocessor = PreProcessor()
 

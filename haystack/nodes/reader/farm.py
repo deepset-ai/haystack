@@ -62,7 +62,6 @@ class FARMReader(BaseReader):
         local_files_only=False,
         force_download=False,
         use_auth_token: Optional[Union[str, bool]] = None,
-        **kwargs,
     ):
 
         """
@@ -140,19 +139,13 @@ class FARMReader(BaseReader):
             force_download=force_download,
             devices=self.devices,
             use_auth_token=use_auth_token,
-            **kwargs,
         )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
         self.inferencer.model.prediction_heads[0].n_best = top_k_per_candidate + 1  # including possible no_answer
-        try:
-            self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
-        except:
-            logger.warning("Could not set `top_k_per_sample` in FARM. Please update FARM version.")
-        try:
-            self.inferencer.model.prediction_heads[0].duplicate_filtering = duplicate_filtering
-        except:
-            logger.warning("Could not set `duplicate_filtering` in FARM. Please update FARM version.")
+        self.inferencer.model.prediction_heads[0].n_best_per_sample = top_k_per_sample
+        self.inferencer.model.prediction_heads[0].duplicate_filtering = duplicate_filtering
+        self.inferencer.model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores
         self.max_seq_len = max_seq_len
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
@@ -834,9 +827,20 @@ class FARMReader(BaseReader):
 
         eval_results = evaluator.eval(self.inferencer.model)
         results = {
-            "EM": eval_results[0]["EM"],
-            "f1": eval_results[0]["f1"],
-            "top_n_accuracy": eval_results[0]["top_n_accuracy"],
+            "EM": eval_results[0]["EM"] * 100,
+            "f1": eval_results[0]["f1"] * 100,
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"] * 100,
+            "top_n": self.inferencer.model.prediction_heads[0].n_best,
+            "EM_text_answer": eval_results[0]["EM_text_answer"] * 100,
+            "f1_text_answer": eval_results[0]["f1_text_answer"] * 100,
+            "top_n_accuracy_text_answer": eval_results[0]["top_n_accuracy_text_answer"] * 100,
+            "top_n_EM_text_answer": eval_results[0]["top_n_EM_text_answer"] * 100,
+            "top_n_f1_text_answer": eval_results[0]["top_n_f1_text_answer"] * 100,
+            "Total_text_answer": eval_results[0]["Total_text_answer"],
+            "EM_no_answer": eval_results[0]["EM_no_answer"] * 100,
+            "f1_no_answer": eval_results[0]["f1_no_answer"] * 100,
+            "top_n_accuracy_no_answer": eval_results[0]["top_n_accuracy_no_answer"] * 100,
+            "Total_no_answer": eval_results[0]["Total_no_answer"],
         }
         return results
 
@@ -848,6 +852,7 @@ class FARMReader(BaseReader):
         doc_index: str = "eval_document",
         label_origin: str = "gold-label",
         calibrate_conf_scores: bool = False,
+        use_no_answer_legacy_confidence=False,
     ):
         """
         Performs evaluation on evaluation documents in the DocumentStore.
@@ -864,6 +869,8 @@ class FARMReader(BaseReader):
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
         :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
+        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
+                                                Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
         """
         if device is None:
             device = self.devices[0]
@@ -970,7 +977,12 @@ class FARMReader(BaseReader):
 
         evaluator = Evaluator(data_loader=data_loader, tasks=self.inferencer.processor.tasks, device=device)
 
-        eval_results = evaluator.eval(self.inferencer.model, calibrate_conf_scores=calibrate_conf_scores)
+        eval_results = evaluator.eval(
+            self.inferencer.model,
+            calibrate_conf_scores=calibrate_conf_scores,
+            use_confidence_scores_for_ranking=self.use_confidence_scores,
+            use_no_answer_legacy_confidence=use_no_answer_legacy_confidence,
+        )
         toc = perf_counter()
         reader_time = toc - tic
         results = {
@@ -985,7 +997,7 @@ class FARMReader(BaseReader):
             "top_n_accuracy_text_answer": eval_results[0]["top_n_accuracy_text_answer"] * 100,
             "top_n_EM_text_answer": eval_results[0]["top_n_EM_text_answer"] * 100,
             "top_n_f1_text_answer": eval_results[0]["top_n_f1_text_answer"] * 100,
-            "Total_text_answer": eval_results[0]["Total_text_answer"] * 100,
+            "Total_text_answer": eval_results[0]["Total_text_answer"],
             "EM_no_answer": eval_results[0]["EM_no_answer"] * 100,
             "f1_no_answer": eval_results[0]["f1_no_answer"] * 100,
             "top_n_accuracy_no_answer": eval_results[0]["top_n_accuracy_no_answer"] * 100,

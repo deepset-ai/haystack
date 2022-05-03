@@ -27,11 +27,6 @@ def exportable_to_yaml(init_func):
         # Call the actuall __init__ function with all the arguments
         init_func(self, *args, **kwargs)
 
-        # Warn for unnamed input params - should be rare
-        if args:
-            logger.warning(
-                "Unnamed __init__ parameters will not be saved to YAML if Pipeline.save_to_yaml() is called!"
-            )
         # Create the configuration dictionary if it doesn't exist yet
         if not self._component_config:
             self._component_config = {"params": {}, "type": type(self).__name__}
@@ -45,6 +40,14 @@ def exportable_to_yaml(init_func):
             # Store all the named input parameters in self._component_config
             for k, v in kwargs.items():
                 self._component_config["params"][k] = v
+
+            # Store unnamed input parameters in self._component_config too by inferring their names
+            sig = inspect.signature(init_func)
+            parameter_names = list(sig.parameters.keys())
+            # we can be sure that the first one is always "self"
+            arg_names = parameter_names[1 : 1 + len(args)]
+            for arg, arg_name in zip(args, arg_names):
+                self._component_config["params"][arg_name] = arg
 
     return wrapper_exportable_to_yaml
 

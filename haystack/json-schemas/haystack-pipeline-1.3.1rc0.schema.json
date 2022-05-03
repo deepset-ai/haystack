@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://haystack.deepset.ai/json-schemas/haystack-pipeline-1.0.0.schema.json",
+  "$id": "https://haystack.deepset.ai/haystack/json-schemas/haystack-pipeline-1.3.1rc0.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -9,7 +9,20 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "const": "1.0.0"
+      "oneOf": [
+        {
+          "const": "unstable"
+        },
+        {
+          "const": "1.2.1rc0"
+        },
+        {
+          "const": "1.3.0"
+        },
+        {
+          "const": "1.3.1rc0"
+        }
+      ]
     },
     "components": {
       "title": "Components",
@@ -40,6 +53,9 @@
           },
           {
             "$ref": "#/definitions/OpenSearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/PineconeDocumentStoreComponent"
           },
           {
             "$ref": "#/definitions/SQLDocumentStoreComponent"
@@ -280,6 +296,11 @@
               "title": "Return Embedding",
               "default": false,
               "type": "boolean"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "default",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -897,10 +918,6 @@
           "title": "Parameters",
           "type": "object",
           "properties": {
-            "host": {
-              "title": "Host",
-              "default": "https://admin:admin@localhost:9200/"
-            },
             "similarity": {
               "title": "Similarity",
               "default": "cosine"
@@ -955,6 +972,102 @@
               "default": 9200
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PineconeDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PineconeDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "environment": {
+              "title": "Environment",
+              "default": "us-west1-gcp",
+              "type": "string"
+            },
+            "sql_url": {
+              "title": "Sql Url",
+              "default": "sqlite:///pinecone_document_store.db",
+              "type": "string"
+            },
+            "pinecone_index": {
+              "title": "Pinecone Index",
+              "type": "string",
+              "default": null
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "cosine",
+              "type": "string"
+            },
+            "replicas": {
+              "title": "Replicas",
+              "default": 1,
+              "type": "integer"
+            },
+            "shards": {
+              "title": "Shards",
+              "default": 1,
+              "type": "integer"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            }
+          },
+          "required": [
+            "api_key"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -1210,6 +1323,13 @@
               "title": "Merge Multiple Column Headers",
               "default": true,
               "type": "boolean"
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
@@ -1268,6 +1388,13 @@
             "overwrite_existing_files": {
               "title": "Overwrite Existing Files",
               "default": true
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
@@ -1396,9 +1523,6 @@
               "items": {
                 "anyOf": [
                   {
-                    "type": "integer"
-                  },
-                  {
                     "type": "string"
                   },
                   {
@@ -1489,6 +1613,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -1527,6 +1658,11 @@
               "title": "Top K",
               "default": 10,
               "type": "integer"
+            },
+            "all_terms_must_match": {
+              "title": "All Terms Must Match",
+              "default": false,
+              "type": "boolean"
             },
             "custom_query": {
               "title": "Custom Query",
@@ -1572,6 +1708,11 @@
               "title": "Top K",
               "default": 10,
               "type": "integer"
+            },
+            "all_terms_must_match": {
+              "title": "All Terms Must Match",
+              "default": false,
+              "type": "boolean"
             },
             "custom_query": {
               "title": "Custom Query",
@@ -1666,9 +1807,6 @@
               "type": "array",
               "items": {
                 "anyOf": [
-                  {
-                    "type": "integer"
-                  },
                   {
                     "type": "string"
                   },
@@ -1876,6 +2014,14 @@
               "default": true,
               "type": "boolean"
             },
+            "devices": {
+              "title": "Devices",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "no_ans_boost": {
               "title": "No Ans Boost",
               "default": 0.0,
@@ -1929,6 +2075,10 @@
               "title": "Use Confidence Scores",
               "default": true,
               "type": "boolean"
+            },
+            "confidence_threshold": {
+              "title": "Confidence Threshold",
+              "type": "number"
             },
             "proxies": {
               "title": "Proxies",
@@ -2041,6 +2191,13 @@
               "default": [
                 "eng"
               ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -2176,6 +2333,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -2217,6 +2381,18 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "encoding": {
+              "title": "Encoding",
+              "default": "UTF-8",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -2257,6 +2433,13 @@
               "default": [
                 "eng"
               ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -2345,6 +2528,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -2422,6 +2612,13 @@
               "title": "Language",
               "default": "en",
               "type": "string"
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -2539,14 +2736,9 @@
               "default": null
             },
             "generator_type": {
-              "default": [
-                1
-              ],
-              "allOf": [
-                {
-                  "$ref": "#/definitions/RAGeneratorType"
-                }
-              ]
+              "title": "Generator Type",
+              "default": "token",
+              "type": "string"
             },
             "top_k": {
               "title": "Top K",
@@ -2592,16 +2784,6 @@
         "name"
       ],
       "additionalProperties": false
-    },
-    "RAGeneratorType": {
-      "title": "RAGeneratorType",
-      "description": "An enumeration.",
-      "enum": [
-        [
-          1
-        ],
-        2
-      ]
     },
     "RCIReaderComponent": {
       "type": "object",
@@ -2763,9 +2945,6 @@
               "type": "array",
               "items": {
                 "anyOf": [
-                  {
-                    "type": "integer"
-                  },
                   {
                     "type": "string"
                   },
@@ -3109,9 +3288,6 @@
               "items": {
                 "anyOf": [
                   {
-                    "type": "integer"
-                  },
-                  {
                     "type": "string"
                   },
                   {
@@ -3218,6 +3394,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -3305,6 +3488,13 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"

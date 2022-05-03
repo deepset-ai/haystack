@@ -15,16 +15,17 @@ from haystack.nodes.retriever import BaseRetriever
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchRetriever(BaseRetriever):
+class BM25Retriever(BaseRetriever):
     def __init__(
         self,
         document_store: KeywordDocumentStore,
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
+        scale_score: bool = True,
     ):
         """
-        :param document_store: an instance of an ElasticsearchDocumentStore to retrieve documents from.
+        :param document_store: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
@@ -96,12 +97,16 @@ class ElasticsearchRetriever(BaseRetriever):
                                 ```
 
         :param top_k: How many documents to return per query.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
         self.document_store: KeywordDocumentStore = document_store
         self.top_k = top_k
         self.custom_query = custom_query
         self.all_terms_must_match = all_terms_must_match
+        self.scale_score = scale_score
 
     def retrieve(
         self,
@@ -110,6 +115,7 @@ class ElasticsearchRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -121,11 +127,17 @@ class ElasticsearchRetriever(BaseRetriever):
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
+
+        if scale_score is None:
+            scale_score = self.scale_score
 
         documents = self.document_store.query(
             query=query,
@@ -135,11 +147,24 @@ class ElasticsearchRetriever(BaseRetriever):
             custom_query=self.custom_query,
             index=index,
             headers=headers,
+            scale_score=scale_score,
         )
         return documents
 
 
-class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
+class ElasticsearchRetriever(BM25Retriever):
+    def __init__(
+        self,
+        document_store: KeywordDocumentStore,
+        top_k: int = 10,
+        all_terms_must_match: bool = False,
+        custom_query: Optional[str] = None,
+    ):
+        logger.warn("This class is now deprecated. Please use the BM25Retriever instead")
+        super().__init__(document_store, top_k, all_terms_must_match, custom_query)
+
+
+class FilterRetriever(BM25Retriever):
     """
     Naive "Retriever" that returns all documents that match the given filters. No impact of query at all.
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
@@ -152,26 +177,38 @@ class ElasticsearchFilterOnlyRetriever(ElasticsearchRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
 
-        :param query: The query
+        :param query: Has no effect, can pass in empty string
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
-        :param top_k: How many documents to return per query.
+        :param top_k: Has no effect, pass in any int or None
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
-        if top_k is None:
-            top_k = self.top_k
         if index is None:
             index = self.document_store.index
-        documents = self.document_store.query(
-            query=None, filters=filters, top_k=top_k, custom_query=self.custom_query, index=index, headers=headers
-        )
+        documents = self.document_store.get_all_documents(filters=filters, index=index, headers=headers)
         return documents
+
+
+class ElasticsearchFilterOnlyRetriever(FilterRetriever):
+    def __init__(
+        self,
+        document_store: KeywordDocumentStore,
+        top_k: int = 10,
+        all_terms_must_match: bool = False,
+        custom_query: Optional[str] = None,
+    ):
+        logger.warn("This class is now deprecated. Please use the FilterRetriever instead")
+        super().__init__(document_store, top_k, all_terms_must_match, custom_query)
 
 
 # TODO make Paragraph generic for configurable units of text eg, pages, paragraphs, or split by a char_limit
@@ -242,6 +279,7 @@ class TfidfRetriever(BaseRetriever):
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -251,6 +289,9 @@ class TfidfRetriever(BaseRetriever):
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if self.auto_fit:
             if self.document_store.get_document_count(headers=headers) != self.document_count:
@@ -268,6 +309,8 @@ class TfidfRetriever(BaseRetriever):
             raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
         if index:
             raise NotImplementedError("Switching index is not supported in TfidfRetriever.")
+        if scale_score:
+            raise NotImplementedError("Scaling score to the unit interval is not supported in TfidfRetriever.")
 
         if top_k is None:
             top_k = self.top_k

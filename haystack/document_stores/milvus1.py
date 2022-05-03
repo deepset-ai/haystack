@@ -60,7 +60,6 @@ class Milvus1DocumentStore(SQLDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         isolation_level: str = None,
-        **kwargs,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -106,7 +105,9 @@ class Milvus1DocumentStore(SQLDocumentStore):
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
-        super().__init__()
+        super().__init__(
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
+        )
 
         self.milvus_server = Milvus(uri=milvus_url, pool=connection_pool)
 
@@ -140,10 +141,6 @@ class Milvus1DocumentStore(SQLDocumentStore):
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
         self.progress_bar = progress_bar
-
-        super().__init__(
-            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
-        )
 
     def __del__(self):
         return self.milvus_server.close()
@@ -356,6 +353,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -366,6 +364,9 @@ class Milvus1DocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return: list of Documents that are the most similar to `query_emb`
         """
         if headers:
@@ -409,8 +410,10 @@ class Milvus1DocumentStore(SQLDocumentStore):
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = self.finalize_raw_score(raw_score, self.similarity)
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
         return documents
 

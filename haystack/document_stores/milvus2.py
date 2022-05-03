@@ -4,7 +4,6 @@ import logging
 import warnings
 import numpy as np
 
-from scipy.special import expit
 from tqdm import tqdm
 
 try:
@@ -79,6 +78,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         duplicate_documents: str = "overwrite",
         isolation_level: str = None,
         consistency_level: int = 0,
+        recreate_index: bool = False,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -125,8 +125,14 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+        :param recreate_index: If set to True, an existing Milvus index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
         """
-        super().__init__()
+        super().__init__(
+            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
+        )
 
         connections.add_connection(default={"host": host, "port": port})
         connections.connect()
@@ -140,22 +146,20 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self.embedding_dim = embedding_dim
 
         self.index_file_size = index_file_size
+        self.similarity = similarity
         self.cosine = False
 
         if similarity == "dot_product":
             self.metric_type = "IP"
-            self.similarity = similarity
         elif similarity == "l2":
             self.metric_type = "L2"
-            self.similarity = similarity
         elif similarity == "cosine":
             self.metric_type = "IP"
-            self.similarity = "dot_product"
             self.cosine = True
         else:
             raise ValueError(
-                "The Milvus document store can currently only support dot_product and L2 similarity. "
-                'Please set similarity="dot_product" or "l2"'
+                "The Milvus document store can currently only support dot_product, cosine and L2 similarity. "
+                'Please set similarity="dot_product" or "cosine" or "l2"'
             )
 
         self.index_type = index_type
@@ -166,21 +170,27 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self.id_field = id_field
         self.custom_fields = custom_fields
 
-        self.collection = self._create_collection_and_index_if_not_exist(self.index, consistency_level)
+        self.collection = self._create_collection_and_index(
+            self.index, consistency_level, recreate_index=recreate_index
+        )
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
 
-        super().__init__(
-            url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
-        )
-
-    def _create_collection_and_index_if_not_exist(
-        self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None
+    def _create_collection_and_index(
+        self,
+        index: Optional[str] = None,
+        consistency_level: int = 0,
+        index_param: Optional[Dict[str, Any]] = None,
+        recreate_index: bool = False,
     ):
         index = index or self.index
         index_param = index_param or self.index_param
         custom_fields = self.custom_fields or []
+
+        if recreate_index:
+            self._delete_index(index)
+            super().delete_labels()
 
         has_collection = utility.has_collection(collection_name=index)
         if not has_collection:
@@ -383,6 +393,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -393,6 +404,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -429,11 +443,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            if self.cosine:
-                doc.score = float((raw_score + 1) / 2)
-            else:
-                doc.score = float(expit(np.asarray(raw_score / 100)))
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
         return documents
 
@@ -468,8 +481,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             if len(batch) != 0:
                 self._delete_vector_ids_from_milvus(documents=batch, index=index)
         else:
-            self.collection.drop()
-            self.collection = self._create_collection_and_index_if_not_exist(self.index)
+            self.collection = self._create_collection_and_index(self.index, recreate_index=True)
 
         index = index or self.index
         super().delete_documents(index=index, filters=filters, ids=ids)
@@ -486,7 +498,12 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        utility.drop_collection(collection_name=index)
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
+        if utility.has_collection(collection_name=index):
+            utility.drop_collection(collection_name=index)
+            logger.info(f"Index '{index}' deleted.")
         super().delete_index(index)
 
     def get_all_documents_generator(
