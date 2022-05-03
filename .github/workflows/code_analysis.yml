@@ -55,15 +55,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: DEBUG, REMOVE
-      run: |
-        sudo apt install tree
-        tree -a -L 5 ~
-
     - name: Setup Python
       uses: ./.github/actions/linux_cache/
-      # with:
-      #   pythonPath: '${{ env.pythonLocation }}'
 
     - name: Linter
       run: |

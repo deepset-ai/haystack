@@ -35,6 +35,10 @@ runs:
       key: linux-py${{ inputs.pythonVersion }}-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
   - name: Install dependencies
+    # NOTE: this action runs only on cache miss to refresh the dependencies and make sure the next Haystack install will be faster.
+    # Do not rely on this step to install Haystack itself!
+    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over and the tests will run
+    # against the cached code instead of the new changes.
     if: steps.cache-python-env.outputs.cache-hit != 'true'
     shell: bash
     run: |

@@ -3,12 +3,12 @@ name: Tests (Linux)
 on:
   # Activate this workflow manually
   workflow_dispatch:
-  # push:
-  #   paths-ignore:
-  #     - '**/*.md'
-  #     - '**/*.txt'
-  #     - '**/*.png'
-  #     - '**/*.gif'
+  push:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.png'
+      - '**/*.gif'
 
 jobs:
 
@@ -24,10 +24,10 @@ jobs:
           - "other_tests"
     steps:
     - uses: actions/checkout@v2
-    - uses: /home/runner/haystack/haystack/.github/actions/linux_cache/action.yml
 
-    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
-    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
+    - name: Setup Python
+      uses: ./.github/actions/linux_cache/
+
     - name: Install Haystack
       run: pip install .
 
@@ -61,13 +61,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: /home/runner/haystack/haystack/.github/actions/linux_cache/action.yml
+
+    - name: Setup Python
+      uses: ./.github/actions/linux_cache/
 
     - name: Setup Docstore
       run: ${{ matrix.command }}
 
-    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
-    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
     - name: Install Haystack
       run: pip install .[ ${{ matrix.marker }} ]
 
@@ -84,7 +84,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: /home/runner/haystack/haystack/.github/actions/linux_cache/action.yml
+    
+    - name: Setup Python
+      uses: ./.github/actions/linux_cache/
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -116,8 +118,6 @@ jobs:
         sudo apt update
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
-    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
-    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
     - name: Install Haystack
       run: pip install .[all]
 
@@ -132,17 +132,17 @@ jobs:
     
     steps:
     - uses: actions/checkout@v2
-    - uses: /home/runner/haystack/haystack/.github/actions/linux_cache/action.yml
     
+    - name: Setup Python
+      uses: ./.github/actions/linux_cache/
+
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
-    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
-    - name: Reinstall Haystack
+    - name: Install REST API and UI
       run: |
         pip install rest_api/
         pip install ui/
