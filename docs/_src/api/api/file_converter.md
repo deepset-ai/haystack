@@ -86,7 +86,7 @@ Validate if the language of the text is one of valid languages.
 #### run
 
 ```python
-def run(file_paths: Union[Path, List[Path]], meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None, remove_numeric_tables: Optional[bool] = None, known_ligatures: Dict[str, str] = KNOWN_LIGATURES, valid_languages: Optional[List[str]] = None)
+def run(file_paths: Union[Path, List[Path]], meta: Optional[Union[Dict[str, str], List[Optional[Dict[str, str]]]]] = None, remove_numeric_tables: Optional[bool] = None, known_ligatures: Dict[str, str] = KNOWN_LIGATURES, valid_languages: Optional[List[str]] = None)
 ```
 
 Extract text from a file.
@@ -322,7 +322,7 @@ Defaults to "UTF-8" in order to support special characters (e.g. German Umlauts,
 #### convert
 
 ```python
-def convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, id_hash_keys: Optional[List[str]] = None) -> List[Document]
+def convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = None, id_hash_keys: Optional[List[str]] = None) -> List[Document]
 ```
 
 Extract text from a .pdf file using the pdftotext library (https://www.xpdfreader.com/pdftotext-man.html)
@@ -342,6 +342,8 @@ The rows containing strings are thus retained in this option.
 This option can be used to add test for encoding errors. If the extracted text is
 not one of the valid languages, then it might likely be encoding error resulting
 in garbled text.
+- `encoding`: Encoding that overwrites self.encoding and will be passed as `-enc` parameter to `pdftotext`.
+(See list of available encodings by running `pdftotext -listenc` in the terminal)
 - `id_hash_keys`: Generate the document id from a custom list of strings that refer to the document's
 attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
 not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
