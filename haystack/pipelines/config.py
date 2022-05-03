@@ -365,8 +365,11 @@ def _add_node_to_pipeline_graph(
                      component's name before calling this method if that's not the case (see `Pipeline.add_node()`).
     """
     # Validate node definition
+    # NOTE: In here we compare class names instead of classes to avoid issues with locals(). 
+    # Nodes added to the pipeline like `pipeline.add_node(name="node", instance=MyNode(), inputs=['Query'])`
+    # would fail this check otherwise.
     node_class = _get_defined_node_class(node_name=node["name"], components=components)
-    if instance and not isinstance(instance, node_class):
+    if instance and not instance.__class__.__name__ == node_class.__name__:
         raise PipelineConfigError(
             f"You are trying to load a node instance ({instance}) along with "
             "the definition for a node of a different class "
