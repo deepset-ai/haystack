@@ -1065,7 +1065,9 @@ class Pipeline(BasePipeline):
                         use_gpu=sas_use_gpu,
                     )
                     df["sas"] = sas
-                    df["gold_answers_sas"] = [gold_answers_sas_per_pred[0] for gold_answers_sas_per_pred in pred_label_sas_grid]
+                    df["gold_answers_sas"] = [
+                        gold_answers_sas_per_pred[0] for gold_answers_sas_per_pred in pred_label_sas_grid
+                    ]
                     df["sas_context_matched"] = df.apply(
                         lambda row: max(
                             sas
