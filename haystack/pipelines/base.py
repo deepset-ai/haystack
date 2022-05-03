@@ -1068,11 +1068,11 @@ class Pipeline(BasePipeline):
             desired_col_order = [
                 "multilabel_id", # generic
                 "query",
-                "filters", 
+                "filters",
                 "gold_answers", # answer-specific 
                 "answer",
-                "context",
-                "exact_match",
+                "context", # generic
+                "exact_match", # answer-specific
                 "f1",
                 "sas",  
                 "exact_match_context_matched",
@@ -1085,7 +1085,6 @@ class Pipeline(BasePipeline):
                 "f1_document_and_context_matched",
                 "sas_document_and_context_matched",
                 "gold_contexts", # doc-specific
-                "content",
                 "gold_id_match",
                 "context_match",
                 "answer_match",
@@ -1296,7 +1295,7 @@ class Pipeline(BasePipeline):
                 document_cols_to_keep = ["content", "id"]
                 df_docs = pd.DataFrame(documents, columns=document_cols_to_keep)
                 if len(df_docs) > 0:
-                    df_docs = df_docs.rename(columns={"id": "document_id"})
+                    df_docs = df_docs.rename(columns={"id": "document_id", "content": "context"})
                     df_docs["type"] = "document"
                     df_docs["gold_document_ids"] = [gold_document_ids] * len(df_docs)
                     df_docs["gold_contexts"] = [gold_contexts] * len(df_docs)
@@ -1306,7 +1305,7 @@ class Pipeline(BasePipeline):
                     df_docs["answer_match"] = df_docs.apply(
                         lambda row: 1.0
                         if not query_labels.no_answer
-                        and any(gold_answer in row["content"] for gold_answer in gold_answers)
+                        and any(gold_answer in row["context"] for gold_answer in gold_answers)
                         else 0.0,
                         axis=1,
                     )
@@ -1315,7 +1314,7 @@ class Pipeline(BasePipeline):
                     )
                     df_docs["gold_context_similarity"] = df_docs.apply(
                         lambda row: [
-                            calculate_context_similarity(gold_content, row["content"] or "")
+                            calculate_context_similarity(gold_content, row["context"] or "")
                             for gold_content in gold_contexts
                         ],
                         axis=1,
