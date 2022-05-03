@@ -105,7 +105,7 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
 
 
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
-    if not isinstance(retriever_with_docs, (ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever)):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     res = retriever_with_docs.retrieve_batch(queries="Who lives in Berlin?")
@@ -120,7 +120,7 @@ def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_d
 
 
 def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_with_docs):
-    if not isinstance(retriever_with_docs, (ElasticsearchRetriever, ElasticsearchFilterOnlyRetriever, TfidfRetriever)):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     res = retriever_with_docs.retrieve_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])

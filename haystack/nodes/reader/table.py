@@ -408,7 +408,7 @@ class TableReader(BaseReader):
     ):
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 
-        results: Dict = {"queries": queries, "answer": []}
+        results: Dict = {"queries": queries, "answers": []}
         # Query case 1: single query
         if isinstance(queries, str):
             single_query = True

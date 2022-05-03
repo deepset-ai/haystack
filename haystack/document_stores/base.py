@@ -43,6 +43,9 @@ class BaseKnowledgeGraph(BaseComponent):
         output = {"sparql_result": result}
         return output, "output_1"
 
+    def run_batch(self):
+        raise NotImplementedError("run_batch is not implemented for KnowledgeGraphs.")
+
     @abstractmethod
     def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         raise NotImplementedError

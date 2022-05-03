@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union
 
 import subprocess
 import time
@@ -179,6 +179,9 @@ class MockNode(BaseComponent):
     def run(self, *a, **k):
         pass
 
+    def run_batch(self, *a, **k):
+        pass
+
 
 class MockDocumentStore(BaseDocumentStore):
     outgoing_edges = 1
@@ -230,6 +233,9 @@ class MockRetriever(BaseRetriever):
     outgoing_edges = 1
 
     def retrieve(self, query: str, top_k: int):
+        pass
+
+    def retrieve_batch(self, queries: Union[str, List[str]], top_k: int):
         pass
 
 

@@ -30,7 +30,7 @@ def test_extractor(document_store_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_extractor_batch_single_query(document_store_with_docs):
 
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
 
@@ -50,7 +50,7 @@ def test_extractor_batch_single_query(document_store_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_extractor_batch_multiple_queries(document_store_with_docs):
 
-    es_retriever = ElasticsearchRetriever(document_store=document_store_with_docs)
+    es_retriever = BM25Retriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
 

@@ -126,6 +126,8 @@ class TransformersReader(BaseReader):
             max_seq_len=self.max_seq_len,
             doc_stride=self.doc_stride,
         )
+        if isinstance(predictions, dict):
+            predictions = [predictions]
         # Add Document ID to predictions to be able to construct Answer objects
         for preds_for_single_doc, inp in zip(predictions, inputs):
             cur_doc_id = inp.doc_id

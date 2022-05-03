@@ -436,6 +436,19 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         docs = [Document.from_dict(doc) for doc in doc_dicts]
         return docs
 
+    def query_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+        scale_score: bool = True,
+    ) -> Union[List[Document], List[List[Document]]]:
+        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support query_batch method.")
+
     def _create_document_field_map(self) -> Dict:
         return {}
 

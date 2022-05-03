@@ -34,8 +34,9 @@ def test_rqg_pipeline(question_generator, retriever):
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_qag_pipeline(question_generator, reader):
     p = QuestionAnswerGenerationPipeline(question_generator, reader)
-    results = p.run(documents=[document])["results"]
-    assert len(results) > 0
-    assert results[0]["query"]
-    assert len(results[0]["answers"]) > 0
-    assert results[0]["answers"][0].answer is not None
+    results = p.run(documents=[document])
+    assert "queries" in results
+    assert "answers" in results
+    assert len(results["queries"]) == len(results["answers"])
+    assert len(results["answers"]) > 0
+    assert results["answers"][0][0].answer is not None
