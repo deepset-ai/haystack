@@ -62,6 +62,9 @@ class Milvus1DocumentStore(SQLDocumentStore):
         isolation_level: str = None,
     ):
         """
+        **WARNING:** Milvus1DocumentStore is deprecated and will be removed in a future version. Please switch to Milvus2
+        or consider using another DocumentStore.
+
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
                         deployment, Postgres is recommended. If using MySQL then same server can also be used for
                         Milvus metadata. For more details see https://milvus.io/docs/v1.0.0/data_manage.md.
@@ -105,6 +108,12 @@ class Milvus1DocumentStore(SQLDocumentStore):
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
+        deprecation_message = (
+            "Milvus1DocumentStore is deprecated and will be removed in a future version. "
+            "Please consider switching to Milvus2 or to another DocumentStore."
+        )
+        warnings.warn(message=deprecation_message, category=FutureWarning, stacklevel=3)
+
         super().__init__(
             url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
         )
