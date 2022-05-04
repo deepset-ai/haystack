@@ -54,11 +54,15 @@ def test_pdf_ligatures(Converter):
     assert "ﬀ" not in document.content
     assert "ɪ" in document.content
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={})[0]["documents"][0]
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={})[0]["documents"][
+        0
+    ]
     assert "ﬀ" in document.content
     assert "ɪ" in document.content
 
-    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={"ɪ": "i"})[0]["documents"][0]
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={"ɪ": "i"})[0][
+        "documents"
+    ][0]
     assert "ﬀ" in document.content
     assert "ɪ" not in document.content
 
