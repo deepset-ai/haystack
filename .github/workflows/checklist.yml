@@ -1,0 +1,31 @@
+name: Checklist
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+
+jobs:
+
+  pylint:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    steps:
+
+    - name: Comment PR
+      uses: thollander/actions-comment-pull-request@v1
+      with:
+        message: 'Loading ...'
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+    - name: Wait
+      run: sleep 10
+
+
+    - name: Edit PR comment
+      uses: thollander/actions-comment-pull-request@v1
+      with:
+        message: 'Loaded ! (edited)'
+        comment_includes: 'Loading'
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

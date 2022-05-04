@@ -3,12 +3,12 @@ name: Lint
 on:
   # Activate this workflow manually
   workflow_dispatch:
-  push:
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.png'
-      - '**/*.gif'
+  # push:
+  #   paths-ignore:
+  #     - '**/*.md'
+  #     - '**/*.txt'
+  #     - '**/*.png'
+  #     - '**/*.gif'
 
 jobs:
 
@@ -16,13 +16,6 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:
-
-    - name: Comment PR
-      uses: thollander/actions-comment-pull-request@v1
-      with:
-        message: 'Loading ...'
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
     - uses: actions/checkout@v2
 
@@ -46,12 +39,3 @@ jobs:
         pylint -ry haystack/
         pylint -ry rest_api/
         pylint -ry ui/
-
-
-
-    - name: Edit PR comment
-      uses: thollander/actions-comment-pull-request@v1
-      with:
-        message: 'Loaded ! (edited)'
-        comment_includes: 'Loading'
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
