@@ -2883,6 +2883,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "encoding": {
+              "title": "Encoding",
+              "default": "UTF-8",
+              "type": "string"
             }
           },
           "additionalProperties": false,
