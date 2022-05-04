@@ -332,5 +332,7 @@ class _RayDeploymentWrapper:
             if value in all_component_names:  # check if the param value is a reference to another component
                 component_params[key] = _RayDeploymentWrapper.load_from_pipeline_config(pipeline_config, value)
 
-        component_instance = BaseComponent._create_instance(component_type=component_config["type"], component_params=component_params)
+        component_instance = BaseComponent._create_instance(
+            component_type=component_config["type"], component_params=component_params
+        )
         return component_instance

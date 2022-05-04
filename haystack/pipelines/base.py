@@ -1277,8 +1277,7 @@ class Pipeline:
                         value
                     ]  # substitute reference (string) with the component object.
 
-            component_class = BaseComponent.get_subclass(component_type)
-            component_instance = component_class(**component_params)
+            component_instance = BaseComponent.load(component_type, component_params)
             components[name] = component_instance
             return component_instance
 
