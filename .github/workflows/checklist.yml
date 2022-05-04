@@ -25,6 +25,7 @@ jobs:
       
     - name: List workflows
       uses: actions/github-script@v6
+      id: available_workflows
       with:
         script: |
           const opts = github.rest.actions.listRepoWorkflows({
@@ -32,7 +33,7 @@ jobs:
             repo,
           })
           const workflows = await github.paginate(opts)
-          console.log(workflows)
+          return workflows
 
 # github.rest.actions.createWorkflowDispatch({
 #   owner,
@@ -49,6 +50,6 @@ jobs:
     - name: Edit PR comment
       uses: thollander/actions-comment-pull-request@v1
       with:
-        message: 'Loaded!'
-        comment_includes: 'Loaded ! (edited)'
+        message: 'Available workflows: ${{steps.set-result.outputs.available_workflows}}'
+        comment_includes: 'Loaded!'
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
