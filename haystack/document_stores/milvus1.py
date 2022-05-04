@@ -62,6 +62,9 @@ class Milvus1DocumentStore(SQLDocumentStore):
         isolation_level: str = None,
     ):
         """
+        **WARNING:** Milvus1DocumentStore is deprecated and will be removed in a future version. Please switch to Milvus2
+        or consider using another DocumentStore.
+
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
                         deployment, Postgres is recommended. If using MySQL then same server can also be used for
                         Milvus metadata. For more details see https://milvus.io/docs/v1.0.0/data_manage.md.
