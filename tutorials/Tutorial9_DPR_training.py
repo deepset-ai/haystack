@@ -74,7 +74,7 @@ def tutorial9_dpr_training():
 
     ## Loading
 
-    reloaded_retriever = DensePassageRetriever.load_from_directory(load_dir=save_dir, document_store=None)
+    reloaded_retriever = DensePassageRetriever.load(load_dir=save_dir, document_store=None)
 
 
 if __name__ == "__main__":

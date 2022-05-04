@@ -1,3 +1,5 @@
+# pylint: disable=too-many-public-methods
+
 from __future__ import annotations
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
@@ -387,7 +389,6 @@ class Pipeline:
 
         self.graph = _add_node_to_pipeline_graph(
             graph=self.graph,
-            # root_node_name=self.root_node,
             components=component_definitions,
             node={"name": name, "inputs": inputs},
             instance=component,

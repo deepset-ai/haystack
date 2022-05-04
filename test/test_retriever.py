@@ -258,7 +258,7 @@ def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
     original_sum_passage = sum_params(retriever.passage_encoder)
     del retriever
 
-    loaded_retriever = DensePassageRetriever.load_from_directory(f"{tmp_path}/test_dpr_save", document_store)
+    loaded_retriever = DensePassageRetriever.load(f"{tmp_path}/test_dpr_save", document_store)
 
     loaded_sum_query = sum_params(loaded_retriever.query_encoder)
     loaded_sum_passage = sum_params(loaded_retriever.passage_encoder)
@@ -307,7 +307,7 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
     original_sum_table = sum_params(retriever.table_encoder)
     del retriever
 
-    loaded_retriever = TableTextRetriever.load_from_directory(
+    loaded_retriever = TableTextRetriever.load(
         f"{tmp_path}/test_table_text_retriever_save", document_store
     )
 
@@ -360,7 +360,7 @@ def test_table_text_retriever_training(document_store):
     )
 
     # Load trained model
-    retriever = TableTextRetriever.load_from_directory(
+    retriever = TableTextRetriever.load(
         load_dir="test_table_text_retriever_train", document_store=document_store
     )
 

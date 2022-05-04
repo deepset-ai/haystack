@@ -347,7 +347,6 @@ def _init_pipeline_graph(root_node_name: Optional[str]) -> nx.DiGraph:
 
 def _add_node_to_pipeline_graph(
     graph: nx.DiGraph,
-    # root_node_name: Optional[str],
     components: Dict[str, Dict[str, str]],
     node: Dict[str, Any],
     instance: BaseComponent = None,
