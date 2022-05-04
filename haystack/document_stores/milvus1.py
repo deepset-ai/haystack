@@ -105,6 +105,11 @@ class Milvus1DocumentStore(SQLDocumentStore):
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
+        deprecation_message = "Milvus1DocumentStore is deprecated and will be removed in a future version. " \
+                              "Please consider switching to Milvus2 or to another DocumentStore."
+        warnings.simplefilter('always', DeprecationWarning)
+        warnings.warn(message=deprecation_message, category=DeprecationWarning, stacklevel=3)
+
         super().__init__(
             url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
         )
