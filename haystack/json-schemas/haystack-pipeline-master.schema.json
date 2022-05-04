@@ -4174,12 +4174,12 @@
             },
             "top_k_per_candidate": {
               "title": "Top K Per Candidate",
-              "default": 4,
+              "default": 3,
               "type": "integer"
             },
             "return_no_answers": {
               "title": "Return No Answers",
-              "default": true,
+              "default": false,
               "type": "boolean"
             },
             "max_seq_len": {
