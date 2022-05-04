@@ -2569,6 +2569,10 @@ Usage:
 def __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None)
 ```
 
+**WARNING:** Milvus1DocumentStore is deprecated and will be removed in a future version. Please switch to Milvus2
+
+or consider using another DocumentStore.
+
 **Arguments**:
 
 - `sql_url`: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
@@ -4436,9 +4440,9 @@ deployment, Postgres is recommended.
 - `embedding_dim`: The embedding vector size.
 - `return_embedding`: Whether to return document embeddings.
 - `index`: Name of index in document store to use.
-- `similarity`: The similarity function used to compare document vectors. `"dot_product"` is the default
-since it is more performant with DPR embeddings. `"cosine"` is recommended if you are using a
-Sentence-Transformer model.
+- `similarity`: The similarity function used to compare document vectors. `"cosine"` is the default
+and is recommended if you are using a Sentence-Transformer model. `"dot_product"` is more performant
+with DPR embeddings.
 In both cases, the returned values in Document.score are normalized to be in range [0,1]:
     - For `"dot_product"`: `expit(np.asarray(raw_score / 100))`
     - For `"cosine"`: `(raw_score + 1) / 2`
