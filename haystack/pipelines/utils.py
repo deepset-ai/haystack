@@ -12,7 +12,7 @@ from haystack.pipelines.config import (
     build_component_dependency_graph,
     get_component_definitions,
     get_pipeline_definition,
-    validate_config,
+    validate_schema,
 )
 from haystack.schema import EvaluationResult
 
@@ -51,7 +51,7 @@ def generate_code(
     :param add_pipeline_cls_import: Whether to add import statement for Pipeline class if generate_imports is True.
                                     Defaults to True.
     """
-    validate_config(pipeline_config)
+    validate_schema(pipeline_config)
 
     component_definitions = get_component_definitions(
         pipeline_config=pipeline_config, overwrite_with_env_variables=False

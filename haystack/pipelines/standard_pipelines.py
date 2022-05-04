@@ -91,7 +91,7 @@ class BaseStandardPipeline(ABC):
         Here's a sample configuration:
 
             ```yaml
-            |   version: '0.8'
+            |   version: '1.0.0'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging

@@ -20,6 +20,8 @@ components:
     type: PDFToTextConverter
     params:
       remove_numeric_tables: false
+  - name: TextConverter
+    type: TextConverter
   - name: Preprocessor
     type: PreProcessor
     params:

@@ -1,5 +1,6 @@
 from pathlib import Path
 from collections import defaultdict
+from unittest.mock import Mock
 
 import os
 import math
@@ -12,6 +13,7 @@ from haystack.nodes import (
     BM25Retriever,
     SklearnQueryClassifier,
     TransformersQueryClassifier,
+    EmbeddingRetriever,
     JoinDocuments,
 )
 from haystack.schema import Document
@@ -73,6 +75,54 @@ def test_document_search_pipeline(retriever, document_store):
     if isinstance(document_store, ElasticsearchDocumentStore):
         output = pipeline.run(query="How to test this?", params={"filters": {"source": ["wiki2"]}, "top_k": 5})
         assert len(output["documents"]) == 1
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch", "dpr", "embedding"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_documentsearch_es_authentication(retriever_with_docs, document_store_with_docs: ElasticsearchDocumentStore):
+    if isinstance(retriever_with_docs, (DensePassageRetriever, EmbeddingRetriever)):
+        document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
+    mock_client = Mock(wraps=document_store_with_docs.client)
+    document_store_with_docs.client = mock_client
+    auth_headers = {"Authorization": "Basic YWRtaW46cm9vdA=="}
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    prediction = pipeline.run(
+        query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
+    )
+    assert prediction is not None
+    assert len(prediction["documents"]) == 5
+    mock_client.search.assert_called_once()
+    args, kwargs = mock_client.search.call_args
+    assert "headers" in kwargs
+    assert kwargs["headers"] == auth_headers
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+def test_documentsearch_document_store_authentication(retriever_with_docs, document_store_with_docs):
+    mock_client = None
+    if isinstance(document_store_with_docs, ElasticsearchDocumentStore):
+        es_document_store: ElasticsearchDocumentStore = document_store_with_docs
+        mock_client = Mock(wraps=es_document_store.client)
+        es_document_store.client = mock_client
+    auth_headers = {"Authorization": "Basic YWRtaW46cm9vdA=="}
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    if not mock_client:
+        with pytest.raises(Exception):
+            prediction = pipeline.run(
+                query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
+            )
+    else:
+        prediction = pipeline.run(
+            query="Who lives in Berlin?", params={"Retriever": {"top_k": 10, "headers": auth_headers}}
+        )
+        assert prediction is not None
+        assert len(prediction["documents"]) == 5
+        mock_client.count.assert_called_once()
+        args, kwargs = mock_client.count.call_args
+        assert "headers" in kwargs
+        assert kwargs["headers"] == auth_headers
 
 
 @pytest.mark.parametrize(
@@ -313,11 +363,13 @@ def test_query_keyword_statement_classifier():
 def test_indexing_pipeline_with_classifier(document_store):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline_with_classifier"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline_with_classifier"
     )
     pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline")
+    pipeline = Pipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
+    )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
     )
@@ -332,12 +384,13 @@ def test_indexing_pipeline_with_classifier(document_store):
 def test_query_pipeline_with_document_classifier(document_store):
     # test correct load of indexing pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="indexing_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="indexing_pipeline"
     )
     pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
     # test correct load of query pipeline from yaml
     pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline_with_document_classifier"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml",
+        pipeline_name="query_pipeline_with_document_classifier",
     )
     prediction = pipeline.run(
         query="Who made the PDF specification?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
@@ -346,39 +399,3 @@ def test_query_pipeline_with_document_classifier(document_store):
     assert prediction["answers"][0].answer == "Adobe Systems"
     assert prediction["answers"][0].meta["classification"]["label"] == "joy"
     assert "_debug" not in prediction.keys()
-
-
-def test_existing_faiss_document_store():
-    clean_faiss_document_store()
-
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_indexing.yaml", pipeline_name="indexing_pipeline"
-    )
-    pipeline.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-
-    new_document_store = pipeline.get_document_store()
-    new_document_store.save("existing_faiss_document_store")
-
-    # test correct load of query pipeline from yaml
-    pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline_faiss_retrieval.yaml", pipeline_name="query_pipeline"
-    )
-
-    existing_document_store = pipeline.get_document_store()
-    faiss_index = existing_document_store.faiss_indexes["document"]
-    assert faiss_index.ntotal == 2
-
-    prediction = pipeline.run(query="Who made the PDF specification?", params={"DPRRetriever": {"top_k": 10}})
-
-    assert prediction["query"] == "Who made the PDF specification?"
-    assert len(prediction["documents"]) == 2
-    clean_faiss_document_store()
-
-
-def clean_faiss_document_store():
-    if Path("existing_faiss_document_store").exists():
-        os.remove("existing_faiss_document_store")
-    if Path("existing_faiss_document_store.json").exists():
-        os.remove("existing_faiss_document_store.json")
-    if Path("faiss_document_store.db").exists():
-        os.remove("faiss_document_store.db")
