@@ -180,8 +180,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         # used when creating the original FAISS index
         if not self.get_document_count() == self.get_embedding_count():
             raise ValueError(
-                "The number of documents present in the SQL database does not "
-                "match the number of embeddings in FAISS. Make sure your FAISS "
+                f"The number of documents present in the SQL database ({self.get_document_count()}) does not "
+                f"match the number of embeddings in FAISS ({self.get_embedding_count()}). Make sure your FAISS "
                 "configuration file correctly points to the same database that "
                 "was used when creating the original index."
             )

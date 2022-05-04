@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Optional, Dict, List, Tuple
+from typing import Any, Optional, Dict, List, Tuple, Type
 
 from copy import deepcopy
 from abc import ABC, abstractmethod
@@ -112,46 +112,23 @@ class BaseComponent(ABC):
         return params
 
     @classmethod
-    def get_subclass(cls, component_type: str):
+    def get_subclass(cls, component_type: str) -> Type[BaseComponent]:
         if component_type not in cls._subclasses.keys():
             raise PipelineSchemaError(f"Haystack component with the name '{component_type}' not found.")
         subclass = cls._subclasses[component_type]
         return subclass
 
     @classmethod
-    def load_from_args(cls, component_type: str, **kwargs):
+    def _create_instance(cls, component_type: str, component_params: Dict[str, Any]):
         """
-        Load a component instance of the given type using the kwargs.
+        Returns an instance of the given subclass of BaseComponent.
 
         :param component_type: name of the component class to load.
-        :param kwargs: parameters to pass to the __init__() for the component.
+        :param component_params: parameters to pass to the __init__() for the component.
         """
         subclass = cls.get_subclass(component_type)
-        instance = subclass(**kwargs)
+        instance = subclass(**component_params)
         return instance
-
-    @classmethod
-    def load_from_pipeline_config(cls, pipeline_config: dict, component_name: str):
-        """
-        Load an individual component from a YAML config for Pipelines.
-
-        :param pipeline_config: the Pipelines YAML config parsed as a dict.
-        :param component_name: the name of the component to load.
-        """
-        if pipeline_config:
-            all_component_configs = pipeline_config["components"]
-            all_component_names = [comp["name"] for comp in all_component_configs]
-            component_config = next(comp for comp in all_component_configs if comp["name"] == component_name)
-            component_params = component_config["params"]
-
-            for key, value in component_params.items():
-                if value in all_component_names:  # check if the param value is a reference to another component
-                    component_params[key] = cls.load_from_pipeline_config(pipeline_config, value)
-
-            component_instance = cls.load_from_args(component_config["type"], **component_params)
-        else:
-            component_instance = cls.load_from_args(component_name)
-        return component_instance
 
     @abstractmethod
     def run(
@@ -254,3 +231,14 @@ class BaseComponent(ABC):
             for param_key, parameter in inspect.signature(class_).parameters.items()
         }
         return component_signature
+
+
+class RootNode(BaseComponent):
+    """
+    RootNode feeds inputs together with corresponding params to a Pipeline.
+    """
+
+    outgoing_edges = 1
+
+    def run(self):  # type: ignore
+        return {}, "output_1"
