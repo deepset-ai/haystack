@@ -26,8 +26,8 @@ class TransformersReader(BaseReader):
         context_window_size: int = 70,
         use_gpu: bool = True,
         top_k: int = 10,
-        top_k_per_candidate: int = 4,
-        return_no_answers: bool = True,
+        top_k_per_candidate: int = 3,
+        return_no_answers: bool = False,
         max_seq_len: int = 256,
         doc_stride: int = 128,
     ):

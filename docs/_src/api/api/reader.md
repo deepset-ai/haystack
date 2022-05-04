@@ -564,7 +564,7 @@ With this reader, you can directly get predictions via predict()
 #### \_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 4, return_no_answers: bool = True, max_seq_len: int = 256, doc_stride: int = 128)
+def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128)
 ```
 
 Load a QA model from Transformers.

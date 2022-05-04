@@ -34,7 +34,7 @@ def tutorial14_query_classifier():
     document_store.write_documents(got_docs)
 
     # Initialize Sparse retriever
-    es_retriever = BM25Retriever(document_store=document_store)
+    bm25_retriever = BM25Retriever(document_store=document_store)
 
     # Initialize dense retriever
     embedding_retriever = EmbeddingRetriever(
@@ -55,7 +55,9 @@ def tutorial14_query_classifier():
     sklearn_keyword_classifier.add_node(
         component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_1"]
     )
-    sklearn_keyword_classifier.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
+    sklearn_keyword_classifier.add_node(
+        component=bm25_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
+    )
     sklearn_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"])
     sklearn_keyword_classifier.draw("pipeline_classifier.png")
 
@@ -107,7 +109,7 @@ def tutorial14_query_classifier():
         component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_1"]
     )
     transformer_keyword_classifier.add_node(
-        component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
+        component=bm25_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
     )
     transformer_keyword_classifier.add_node(
         component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"]
