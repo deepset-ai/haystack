@@ -16,6 +16,7 @@ from haystack.pipelines.standard_pipelines import (
     RetrieverQuestionGenerationPipeline,
     TranslationWrapperPipeline,
 )
+from haystack.nodes.translator.transformers import TransformersTranslator
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
 
 from .conftest import SAMPLES_PATH
@@ -884,10 +885,16 @@ def test_faq_calculate_metrics(retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_extractive_qa_eval_translation(reader, retriever_with_docs, de_to_en_translator):
+def test_extractive_qa_eval_translation(reader, retriever_with_docs):
+
+    # FIXME it makes no sense to have DE->EN input and DE->EN output, right?
+    #  Yet switching direction breaks the test. TO BE FIXED.
+    input_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
+    output_translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
+
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     pipeline = TranslationWrapperPipeline(
-        input_translator=de_to_en_translator, output_translator=de_to_en_translator, pipeline=pipeline
+        input_translator=input_translator, output_translator=output_translator, pipeline=pipeline
     )
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
 
