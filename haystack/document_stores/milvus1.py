@@ -112,8 +112,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
             "Milvus1DocumentStore is deprecated and will be removed in a future version. "
             "Please consider switching to Milvus2 or to another DocumentStore."
         )
-        warnings.simplefilter("always", DeprecationWarning)
-        warnings.warn(message=deprecation_message, category=DeprecationWarning, stacklevel=3)
+        warnings.warn(message=deprecation_message, category=FutureWarning, stacklevel=3)
 
         super().__init__(
             url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
