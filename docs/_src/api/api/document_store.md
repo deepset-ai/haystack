@@ -2916,10 +2916,10 @@ def __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "
 
 - `sql_url`: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
 deployment, Postgres is recommended. If using MySQL then same server can also be used for
-Milvus metadata. For more details see https://milvus.io/docs/v2.0.x/data_manage.md.
+Milvus metadata. For more details see https://milvus.io/docs/v1.1.0/data_manage.md.
 - `milvus_url`: Milvus server connection URL for storing and processing vectors.
 Protocol, host and port will automatically be inferred from the URL.
-See https://milvus.io/docs/v2.0.x/install_milvus.md for instructions to start a Milvus instance.
+See https://milvus.io/docs/v2.0.x/install_standalone-docker.md for instructions to start a Milvus instance.
 - `connection_pool`: Connection pool type to connect with Milvus server. Default: "SingletonThread".
 - `index`: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
 - `vector_dim`: Deprecated. Use embedding_dim instead.
