@@ -38,7 +38,6 @@ def tutorial8_preprocessing():
     that can be processed by the Haystack pipeline.
     There are file converters for txt, pdf, docx files as well as a converter that is powered by Apache Tika.
     The parameter `valid_langugages` does not convert files to the target language, but checks if the conversion worked as expected.
-    For converting PDFs, try changing the encoding to UTF-8 if the conversion isn't great.
     """
 
     # Here are some examples of how you would use file converters
