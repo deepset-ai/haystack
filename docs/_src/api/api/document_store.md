@@ -2495,13 +2495,13 @@ used by the `load` method to restore the index with the appropriate configuratio
 
 None
 
-<a id="faiss.FAISSDocumentStore.load_index"></a>
+<a id="faiss.FAISSDocumentStore.load"></a>
 
-#### load\_index
+#### load
 
 ```python
 @classmethod
-def load_index(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None)
+def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None)
 ```
 
 Load a saved FAISS index from a file and connect to the SQL database.
