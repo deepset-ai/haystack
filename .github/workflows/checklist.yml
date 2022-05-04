@@ -7,25 +7,48 @@ on:
 
 jobs:
 
-  pylint:
+  check:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:
 
-    - name: Comment PR
-      uses: thollander/actions-comment-pull-request@v1
+    # - name: Comment PR
+    #   uses: thollander/actions-comment-pull-request@v1
+    #   with:
+    #     message: 'Loading ...'
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+    # - name: Wait
+    #   run: sleep 10
+
+      
+    - name: List workflows
+      uses: actions/github-script@v6
       with:
-        message: 'Loading ...'
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const opts = github.rest.actions.listRepoWorkflows({
+            owner,
+            repo,
+          })
+          const workflows = await github.paginate(opts)
+          console.log(workflows)
 
-
-    - name: Wait
-      run: sleep 10
+# github.rest.actions.createWorkflowDispatch({
+#   owner,
+#   repo,
+#   workflow_id,
+#   ref,
+# });
+# https://octokit.github.io/rest.js/v18#actions-list-repo-workflows
+# https://octokit.github.io/rest.js/v18/#actions-list-workflow-runs
+# https://octokit.github.io/rest.js/v18#actions-get-workflow
+# https://octokit.github.io/rest.js/v18#actions-get-workflow-run
 
 
     - name: Edit PR comment
       uses: thollander/actions-comment-pull-request@v1
       with:
-        message: 'Loaded ! (edited)'
-        comment_includes: 'Loading'
+        message: 'Loaded!'
+        comment_includes: 'Loaded ! (edited)'
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
