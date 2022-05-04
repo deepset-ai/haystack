@@ -1762,7 +1762,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             synonym_type=synonym_type,
             use_system_proxy=use_system_proxy,
         )
-                
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
