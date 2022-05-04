@@ -2888,10 +2888,10 @@ Therefore, delete_documents() and update_embeddings() won't work yet.
 Differences to 1.x:
 Besides big architectural changes that impact performance and reliability 2.0 supports the filtering by scalar data types.
 For Haystack users this means you can now run a query using vector similarity and filter for some meta data at the same time!
-(See https://milvus.io/docs/v2.0.0/comparison.md for more details)
+(See https://milvus.io/docs/v2.0.x/comparison.md for more details)
 
 Usage:
-1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
+1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.x/install_standalone-docker.md)
 2. Run pip install farm-haystack[milvus]
 3. Init a MilvusDocumentStore() in Haystack
 
@@ -2920,10 +2920,10 @@ def __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "
 
 - `sql_url`: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
 deployment, Postgres is recommended. If using MySQL then same server can also be used for
-Milvus metadata. For more details see https://milvus.io/docs/v2.0.0/data_manage.md.
+Milvus metadata. For more details see https://milvus.io/docs/v1.1.0/data_manage.md.
 - `milvus_url`: Milvus server connection URL for storing and processing vectors.
 Protocol, host and port will automatically be inferred from the URL.
-See https://milvus.io/docs/v2.0.0/install_milvus.md for instructions to start a Milvus instance.
+See https://milvus.io/docs/v2.0.x/install_standalone-docker.md for instructions to start a Milvus instance.
 - `connection_pool`: Connection pool type to connect with Milvus server. Default: "SingletonThread".
 - `index`: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
 - `vector_dim`: Deprecated. Use embedding_dim instead.
@@ -2933,24 +2933,24 @@ When the size of newly inserted vectors reaches the specified volume, Milvus pac
 Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
 As a rule of thumb, we would see a 30% ~ 50% increase in the search performance after changing the value of index_file_size from 1024 to 2048.
 Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
-(From https://milvus.io/docs/v2.0.0/performance_faq.md)
+(From https://milvus.io/docs/v2.0.x/performance_faq.md)
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
 'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
 However, you can normalize your embeddings and use `dot_product` to get the same results.
-See https://milvus.io/docs/v2.0.0/metric.md.
+See https://milvus.io/docs/v2.0.x/metric.md.
 - `index_type`: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
 Some popular options:
 - FLAT (default): Exact method, slow
 - IVF_FLAT, inverted file based heuristic, fast
 - HSNW: Graph based, fast
 - ANNOY: Tree based, fast
-See: https://milvus.io/docs/v2.0.0/index.md
+See: https://milvus.io/docs/v2.0.x/index.md
 - `index_param`: Configuration parameters for the chose index_type needed at indexing time.
 For example: {"nlist": 16384} as the number of cluster units to create for index_type IVF_FLAT.
-See https://milvus.io/docs/v2.0.0/index.md
+See https://milvus.io/docs/v2.0.x/index.md
 - `search_param`: Configuration parameters for the chose index_type needed at query time
 For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
-See https://milvus.io/docs/v2.0.0/index.md
+See https://milvus.io/docs/v2.0.x/index.md
 - `return_embedding`: To return document embedding.
 - `embedding_field`: Name of field containing an embedding vector.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
