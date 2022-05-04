@@ -83,7 +83,7 @@ class BaseConverter(BaseComponent):
         meta: Optional[Dict[str, str]],
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
-        encoding: Optional[str] = "utf-8",
+        encoding: Optional[str] = "UTF-8",
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -104,7 +104,7 @@ class BaseConverter(BaseComponent):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param encoding: Select the file encoding (default is `utf-8`)
+        :param encoding: Select the file encoding (default is `UTF-8`)
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -136,6 +136,7 @@ class BaseConverter(BaseComponent):
         remove_numeric_tables: Optional[bool] = None,
         known_ligatures: Dict[str, str] = KNOWN_LIGATURES,
         valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = "UTF-8",
     ):
         """
         Extract text from a file.
@@ -160,6 +161,7 @@ class BaseConverter(BaseComponent):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
+        :param encoding: Select the file encoding (default is `UTF-8`)
         """
 
         if isinstance(file_paths, Path):
@@ -175,6 +177,7 @@ class BaseConverter(BaseComponent):
                 meta=file_meta,
                 remove_numeric_tables=remove_numeric_tables,
                 valid_languages=valid_languages,
+                encoding=encoding,
             ):
                 documents.append(doc)
 
