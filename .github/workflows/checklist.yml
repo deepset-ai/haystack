@@ -19,4 +19,4 @@ jobs:
       with:
         script: |
           const script = require('./.github/utils/checklist.js')
-          console.log(script({github, context}))
+          await script({github, context, core})

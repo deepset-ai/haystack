@@ -1,4 +1,10 @@
-module.exports = ({github, context}) => {
+/*
+* Script used in checklist.yml. 
+* Verifies which workflows are available for each PR 
+* and lists which ones have run and with which outcome, 
+* as a checklist for reviewers before approving PRs.
+*/
+module.exports = async ({github, context, core}) => {
 
     const { COMMIT_HASH, ISSUE_NUMBER } = process.env
 
