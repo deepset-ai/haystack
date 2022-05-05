@@ -58,13 +58,13 @@ def test_url():
     base_url = tmpdir / "haystack_test_webpages"
     os.mkdir(base_url)
 
-    with open(base_url/"index.html", 'w') as page:
+    with open(base_url / "index.html", "w") as page:
         page.write(TEST_HOME_PAGE.replace("BASE_URL", str(base_url)))
 
-    with open(base_url/"page1.html", 'w') as page:
+    with open(base_url / "page1.html", "w") as page:
         page.write(TEST_PAGE1.replace("BASE_URL", str(base_url)))
 
-    with open(base_url/"page2.html", 'w') as page:
+    with open(base_url / "page2.html", "w") as page:
         page.write(TEST_PAGE2.replace("BASE_URL", str(base_url)))
 
     yield f"file://{base_url.absolute()}"
@@ -75,6 +75,7 @@ def test_url():
 #
 # Integration
 #
+
 
 @pytest.mark.integration
 def test_crawler(tmp_path):
@@ -99,6 +100,7 @@ def test_crawler(tmp_path):
 #
 # Unit tests
 #
+
 
 def test_crawler_url_none_exception(tmp_path):
     crawler = Crawler(tmp_path)
