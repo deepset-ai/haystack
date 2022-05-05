@@ -155,7 +155,7 @@ class Crawler(BaseComponent):
             if filter_urls:
                 for url in urls:
                     if re.compile("|".join(filter_urls)).search(url):
-                        file_paths += self._write_to_files(url, output_dir=output_dir)
+                        file_paths += self._write_to_files([url], output_dir=output_dir)
             else:
                 file_paths += self._write_to_files(urls, output_dir=output_dir)
             # follow one level of sublinks if requested
