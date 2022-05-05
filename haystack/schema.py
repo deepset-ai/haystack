@@ -701,7 +701,7 @@ class EvaluationResult:
         self,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        document_relevance_criterion: Literal[
+        document_scope: Literal[
             "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
         ] = "id_or_answer",
         eval_mode: Literal["integrated", "isolated"] = "integrated",
@@ -739,7 +739,7 @@ class EvaluationResult:
             For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
             Values can be 'integrated', 'isolated'.
             Default value is 'integrated'.
-        :param document_relevance_criterion: criterion for deciding whether documents are relevant or not.
+        :param document_scope: criterion for deciding whether documents are relevant or not.
             You can select between:
             - 'id': Document's id or custom id must match.
                     Typical use case: Document Retrieval
@@ -759,27 +759,24 @@ class EvaluationResult:
         :param answer_scope: scope in which a matching answer is considered as correct.
             You can select between:
             - 'any' (default): any matching answer is considered as correct.
-                    For QA evalutions document_relevance_criterion should be 'answer' or 'id_or_answer' (default).
-                    Select this for Document Retrieval and Passage Retrieval evaluations in order to use different document_relevance_criterion values.
+                    For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+                    Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
             - 'context': answer is only considered as correct if its context matches as well.
-                    document_relevance_criterion must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
             - 'document': answer is only considered as correct if its document (id) matches as well.
-                    document_relevance_criterion must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
             - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-                    document_relevance_criterion must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
             Default value is 'any'.
         """
-        scoped_relevance_criterion = self._get_scoped_relevance_criterion(
-            document_relevance_criterion=document_relevance_criterion, answer_scope=answer_scope
-        )
         return {
             node: self._calculate_node_metrics(
                 df,
                 simulated_top_k_reader=simulated_top_k_reader,
                 simulated_top_k_retriever=simulated_top_k_retriever,
-                scoped_relevance_criterion=scoped_relevance_criterion,
-                eval_mode=eval_mode,
+                document_scope=document_scope,
                 answer_scope=answer_scope,
+                eval_mode=eval_mode,
             )
             for node, df in self.node_results.items()
         }
@@ -790,7 +787,7 @@ class EvaluationResult:
         n: int = 3,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        document_relevance_criterion: Literal[
+        document_scope: Literal[
             "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
         ] = "id_or_answer",
         document_metric: str = "recall_single_hit",
@@ -820,7 +817,7 @@ class EvaluationResult:
             For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
             Values can be 'integrated', 'isolated'.
             Default value is 'integrated'.
-        :param document_relevance_criterion: criterion for deciding whether documents are relevant or not.
+        :param document_scope: criterion for deciding whether documents are relevant or not.
             You can select between:
             - 'id': Document's id or custom id must match.
                     Typical use case: Document Retrieval
@@ -840,19 +837,16 @@ class EvaluationResult:
         :param answer_scope: scope in which a matching answer is considered as correct.
             You can select between:
             - 'any' (default): any matching answer is considered as correct.
-                    For QA evalutions document_relevance_criterion should be 'answer' or 'id_or_answer' (default).
-                    Select this for Document Retrieval and Passage Retrieval evaluations in order to use different document_relevance_criterion values.
+                    For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+                    Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
             - 'context': answer is only considered as correct if its context matches as well.
-                    document_relevance_criterion must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
             - 'document': answer is only considered as correct if its document (id) matches as well.
-                    document_relevance_criterion must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
             - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-                    document_relevance_criterion must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
             Default value is 'any'.
         """
-        scoped_relevance_criterion = self._get_scoped_relevance_criterion(
-            document_relevance_criterion=document_relevance_criterion, answer_scope=answer_scope
-        )
         node_df = self.node_results[node]
         node_df = self._filter_eval_mode(node_df, eval_mode)
 
@@ -885,10 +879,13 @@ class EvaluationResult:
 
         documents = node_df[node_df["type"] == "document"]
         if len(documents) > 0:
+            document_relevance_criterion = self._get_document_relevance_criterion(
+                document_scope=document_scope, answer_scope=answer_scope
+            )
             metrics_df = self._build_document_metrics_df(
                 documents,
                 simulated_top_k_retriever=simulated_top_k_retriever,
-                scoped_relevance_criterion=scoped_relevance_criterion,
+                document_relevance_criterion=document_relevance_criterion,
             )
             worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
             wrong_examples = []
@@ -910,9 +907,9 @@ class EvaluationResult:
 
         return []
 
-    def _get_scoped_relevance_criterion(
+    def _get_document_relevance_criterion(
         self,
-        document_relevance_criterion: Literal[
+        document_scope: Literal[
             "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
         ] = "id_or_answer",
         answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
@@ -928,7 +925,7 @@ class EvaluationResult:
         "id_or_answer",
     ]:
         """
-        Enriches the document_relevance_criteria according to the selected answer_scope.
+        Combines document_scope and answer_scope to create the document_relevance_criterion.
         """
         answer_scope_to_doc_relevance_crit = {
             "context": "context_and_answer",
@@ -936,31 +933,28 @@ class EvaluationResult:
             "document_and_context": "id_and_context_and_answer",
         }
 
-        if answer_scope in answer_scope_to_doc_relevance_crit.keys() and document_relevance_criterion not in [
+        if answer_scope in answer_scope_to_doc_relevance_crit.keys() and document_scope not in [
             "answer",
             "id_or_answer",
         ]:
             raise ValueError(
-                f"The selected answer_scope '{answer_scope}' is not compatible with document_relevance_criterion '{document_relevance_criterion}'. "
-                f"document_relevance_criterion must be one of {['answer', 'id_or_answer']}"
+                f"The selected answer_scope '{answer_scope}' is not compatible with document_scope '{document_scope}'. "
+                f"document_scope must be one of {['answer', 'id_or_answer']}"
             )
 
-        return answer_scope_to_doc_relevance_crit.get(answer_scope, document_relevance_criterion)
+        return answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)
 
     def _calculate_node_metrics(
         self,
         df: pd.DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        scoped_relevance_criterion: Literal[
+        document_scope: Literal[
             "id",
             "context",
             "id_and_context",
             "id_or_context",
             "answer",
-            "context_and_answer",
-            "id_and_answer",
-            "id_and_context_and_answer",
             "id_or_answer",
         ] = "id_or_answer",
         eval_mode: str = "integrated",
@@ -975,10 +969,13 @@ class EvaluationResult:
             answer_scope=answer_scope,
         )
 
+        document_relevance_criterion = self._get_document_relevance_criterion(
+            document_scope=document_scope, answer_scope=answer_scope
+        )
         document_metrics = self._calculate_document_metrics(
             df,
             simulated_top_k_retriever=simulated_top_k_retriever,
-            scoped_relevance_criterion=scoped_relevance_criterion,
+            document_relevance_criterion=document_relevance_criterion,
         )
 
         return {**answer_metrics, **document_metrics}
@@ -1082,7 +1079,7 @@ class EvaluationResult:
         self,
         df: pd.DataFrame,
         simulated_top_k_retriever: int = -1,
-        scoped_relevance_criterion: Literal[
+        document_relevance_criterion: Literal[
             "id",
             "context",
             "id_and_context",
@@ -1101,7 +1098,7 @@ class EvaluationResult:
         metrics_df = self._build_document_metrics_df(
             documents,
             simulated_top_k_retriever=simulated_top_k_retriever,
-            scoped_relevance_criterion=scoped_relevance_criterion,
+            document_relevance_criterion=document_relevance_criterion,
         )
 
         return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
@@ -1110,7 +1107,7 @@ class EvaluationResult:
         self,
         documents: pd.DataFrame,
         simulated_top_k_retriever: int = -1,
-        scoped_relevance_criterion: Literal[
+        document_relevance_criterion: Literal[
             "id",
             "context",
             "id_and_context",
@@ -1133,7 +1130,7 @@ class EvaluationResult:
 
         :param documents: document eval dataframe
         :param simulated_top_k_retriever: simulates top_k param of retriever.
-        :param scoped_relevance_criterion: criterion for deciding whether documents are relevant or not.
+        :param document_relevance_criterion: criterion for deciding whether documents are relevant or not.
             You can select between:
             - 'id': Document's id or custom id must match.
                     Typical use case: Document Retrieval
@@ -1167,7 +1164,7 @@ class EvaluationResult:
             gold_ids = list(query_df["gold_document_ids"].iloc[0])
             retrieved = len(query_df)
 
-            relevance_criterion_col = f"{scoped_relevance_criterion.replace('id', 'gold_id')}_match"
+            relevance_criterion_col = f"{document_relevance_criterion.replace('id', 'gold_id')}_match"
             relevance_criterion_ids = list(query_df[query_df[relevance_criterion_col] == 1]["document_id"].values)
             num_relevants = len(set(gold_ids + relevance_criterion_ids))
             num_retrieved_relevants = query_df[relevance_criterion_col].values.sum()
