@@ -41,9 +41,12 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
-
-        echo "::set-output name=${{ matrix.folder }}_run::1"
+        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql)
+        
+        # Output successful tests
+        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        echo "::set-output name=${{ matrix.folder }}_run::${BASH_REMATCH}"
+      
       
     outputs:
       tests-run: |
@@ -99,9 +102,11 @@ jobs:
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}  # FIXME set only for Pinecone!
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "${{ matrix.marker }} and not integration" test/document_store_tests/ --document_store_type=${{ matrix.marker }}
+        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "${{ matrix.marker }} and not integration" test/document_store_tests/ --document_store_type=${{ matrix.marker }})
         
-        echo "::set-output name=${{ matrix.marker }}_tests_runs::1"
+        # Output successful tests
+        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        echo "::set-output name=${{ matrix.marker }}_tests_run::${BASH_REMATCH}"
       
     outputs:
       tests-run: |
@@ -159,9 +164,11 @@ jobs:
     - name: Run tests
       id: pytest
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "integration" .
-
-        echo "::set-output name=integration_tests_run::1"
+        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" .)
+        
+        # Output successful tests
+        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        echo "::set-output name=integration_tests_run::${BASH_REMATCH}"
       
     outputs:
       tests-run: ${{ steps.pytest.outputs.integration_tests_run }}
@@ -191,9 +198,11 @@ jobs:
     - name: Run tests
       id: pytest
       run: |
-        pytest rest_api/ ui/
+        export pytest_output=$(pytest rest_api/ ui/)
 
-        echo "::set-output name=rest_tests_run::1"
+        # Output successful tests
+        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        echo "::set-output name=rest_tests_run::${BASH_REMATCH}"
       
     outputs:
       tests-run: ${{ steps.pytest.outputs.rest_tests_run }}
@@ -215,7 +224,9 @@ jobs:
 
     - name: Count tests
       run: |
-        pytest --collect-only 
-        
-        export TESTS_RUN=$(( ${{ needs.unit-tests.outputs.tests-run }} + ${{ needs.document-store-tests.outputs.tests-run }} + ${{ needs.integration-tests.outputs.tests-run }} + ${{ needs.rest-and-ui-tests.outputs.tests-run }} ))
-        echo "Tests run: $TESTS_RUN / all_tests"
+        # Count available tests
+        [[ $(pytest --collect-only .) =~ (([0-9]+) tests collected) ]]
+        export total_tests_count=${BASH_REMATCH}
+
+        export tests_run=$(( ${{ needs.unit-tests.outputs.tests-run }} + ${{ needs.document-store-tests.outputs.tests-run }} + ${{ needs.integration-tests.outputs.tests-run }} + ${{ needs.rest-and-ui-tests.outputs.tests-run }} ))
+        echo "============ Tests run: $tests_run / $total_tests_count =============="
