@@ -802,6 +802,11 @@ class Pipeline(BasePipeline):
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
         reuse_index: bool = False,
+        custom_document_id_field: Optional[str] = None,
+        document_scope: Literal[
+            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
+        ] = "id_or_answer",
+        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
     ) -> EvaluationResult:
         """
         Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
@@ -881,6 +886,38 @@ class Pipeline(BasePipeline):
         :param reuse_index: Whether to reuse existing non-empty index and to keep the index after evaluation.
                            If True the index will be kept after evaluation and no indexing will take place if index has already documents. Otherwise it will be deleted immediately afterwards.
                            Defaults to False.
+        :param custom_document_id_field: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+                                         This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+                                         If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+        :param document_scope: criterion for deciding whether documents are relevant or not.
+            You can select between:
+            - 'id': Document's id or custom id must match.
+                    Typical use case: Document Retrieval
+            - 'context': Document's content must match.
+                    Typical use case: Document-independent Passage Retrieval
+            - 'id_and_context': boolean operation `'id' AND 'context'`.
+                    Typical use case: Document-specific Passage Retrieval
+            - 'id_or_context': boolean operation `'id' OR 'context'`.
+                    Typical use case: Document Retrieval having sparse context labels
+            - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
+                    Typical use case: Question Answering
+            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+                    This is intended to be a proper default value in order to support both main use cases:
+                    - Document Retrieval
+                    - Question Answering
+            Default value is 'id_or_answer'.
+        :param answer_scope: scope in which a matching answer is considered as correct.
+            You can select between:
+            - 'any' (default): any matching answer is considered as correct.
+                    For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+                    Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
+            - 'context': answer is only considered as correct if its context matches as well.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
+            - 'document': answer is only considered as correct if its document (id) matches as well.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
+            - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
+                    `document_scope` must be 'answer' or 'id_or_answer'.
+            Default value is 'any'.
         """
         if experiment_tracking_tool is not None:
             tracking_head_cls = TRACKING_TOOL_TO_HEAD.get(experiment_tracking_tool, None)
@@ -910,6 +947,9 @@ class Pipeline(BasePipeline):
                     "corpus_file_count": len(corpus_file_paths),
                     "corpus": corpus_meta,
                     "type": "offline/evaluation",
+                    "document_scope": document_scope,
+                    "answer_scope": answer_scope,
+                    "custom_document_id_field": custom_document_id_field,
                 }
             )
 
@@ -937,14 +977,15 @@ class Pipeline(BasePipeline):
                 sas_batch_size=sas_batch_size,
                 sas_use_gpu=sas_use_gpu,
                 add_isolated_node_eval=add_isolated_node_eval,
+                custom_document_id_field=custom_document_id_field
             )
 
-            integrated_metrics = eval_result.calculate_metrics()
-            integrated_top_1_metrics = eval_result.calculate_metrics(simulated_top_k_reader=1)
+            integrated_metrics = eval_result.calculate_metrics(document_scope=document_scope, answer_scope=answer_scope)
+            integrated_top_1_metrics = eval_result.calculate_metrics(simulated_top_k_reader=1, document_scope=document_scope, answer_scope=answer_scope)
             metrics = {"integrated": integrated_metrics, "integrated_top_1": integrated_top_1_metrics}
             if add_isolated_node_eval:
-                isolated_metrics = eval_result.calculate_metrics(eval_mode="isolated")
-                isolated_top_1_metrics = eval_result.calculate_metrics(eval_mode="isolated", simulated_top_k_reader=1)
+                isolated_metrics = eval_result.calculate_metrics(eval_mode="isolated", document_scope=document_scope, answer_scope=answer_scope)
+                isolated_top_1_metrics = eval_result.calculate_metrics(eval_mode="isolated", simulated_top_k_reader=1, document_scope=document_scope, answer_scope=answer_scope)
                 metrics["isolated"] = isolated_metrics
                 metrics["isolated_top_1"] = isolated_top_1_metrics
             tracker.track_metrics(metrics, step=0)
