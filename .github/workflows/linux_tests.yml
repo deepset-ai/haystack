@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     strategy:
+      fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
         folder:
           - "node_tests"
