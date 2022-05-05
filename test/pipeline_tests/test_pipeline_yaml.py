@@ -59,7 +59,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_load_and_save_from_yaml(tmp_path):
-    config_path = SAMPLES_PATH / "pipeline" / "test_pipeline.yaml"
+    config_path = SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml"
 
     # Test the indexing pipeline:
     # Load it
@@ -190,7 +190,7 @@ def test_load_yaml_non_existing_version(tmp_path, caplog):
         )
     with caplog.at_level(logging.WARNING):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert "version random" in caplog.text
+        assert "version 'random'" in caplog.text
         assert f"Haystack {haystack.__version__}" in caplog.text
 
 
@@ -232,7 +232,7 @@ def test_load_yaml_incompatible_version(tmp_path, caplog):
         )
     with caplog.at_level(logging.WARNING):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert "version 1.1.0" in caplog.text
+        assert "version '1.1.0'" in caplog.text
         assert f"Haystack {haystack.__version__}" in caplog.text
 
 
@@ -327,7 +327,7 @@ def test_load_yaml_custom_component_with_no_init(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: unstable
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -358,7 +358,7 @@ def test_load_yaml_custom_component_neednt_call_super(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: unstable
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -722,7 +722,7 @@ def test_load_yaml_custom_component_with_variadic_args(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: unstable
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -755,7 +755,7 @@ def test_load_yaml_custom_component_with_variadic_kwargs(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
-            version: unstable
+            version: ignore
             components:
             - name: custom_node
               type: CustomNode
@@ -881,7 +881,7 @@ def test_load_yaml_wrong_root(tmp_path):
         assert "root" in str(e).lower()
 
 
-def test_load_yaml_two_roots(tmp_path):
+def test_load_yaml_two_roots_invalid(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -904,7 +904,64 @@ def test_load_yaml_two_roots(tmp_path):
         )
     with pytest.raises(PipelineConfigError) as e:
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
-        assert "File" in str(e) or "Query" in str(e)
+    assert "File" in str(e) or "Query" in str(e)
+
+
+def test_load_yaml_two_roots_valid(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: retriever
+              type: MockRetriever
+            - name: retriever_2
+              type: MockRetriever
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: retriever
+                inputs:
+                - Query
+              - name: retriever_2
+                inputs:
+                - Query
+        """
+        )
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
+def test_load_yaml_two_roots_in_separate_pipelines(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: node_1
+              type: MockNode
+            - name: node_2
+              type: MockNode
+            pipelines:
+            - name: pipeline_1
+              nodes:
+              - name: node_1
+                inputs:
+                - Query
+              - name: node_2
+                inputs:
+                - Query
+            - name: pipeline_2
+              nodes:
+              - name: node_1
+                inputs:
+                - File
+              - name: node_2
+                inputs:
+                - File
+        """
+        )
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="pipeline_1")
+    Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml", pipeline_name="pipeline_2")
 
 
 def test_load_yaml_disconnected_component(tmp_path):

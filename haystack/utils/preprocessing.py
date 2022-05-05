@@ -60,8 +60,6 @@ def convert_files_to_docs(
     documents = []
     for suffix, paths in suffix2paths.items():
         for path in paths:
-            if encoding is None and suffix == ".pdf":
-                encoding = "Latin1"
             logger.info("Converting {}".format(path))
             # PDFToTextConverter, TextConverter, and DocxToTextConverter return a list containing a single Document
             document = suffix2converter[suffix].convert(

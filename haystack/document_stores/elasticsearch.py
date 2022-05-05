@@ -1724,6 +1724,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
         """
+        self.embeddings_field_supports_similarity = False
+        self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
+        self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
         super().__init__(
             scheme=scheme,
             username=username,
@@ -1759,9 +1762,6 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             synonym_type=synonym_type,
             use_system_proxy=use_system_proxy,
         )
-        self.embeddings_field_supports_similarity = False
-        self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
-        self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
 
     def query_by_embedding(
         self,

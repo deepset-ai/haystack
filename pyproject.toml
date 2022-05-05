@@ -15,12 +15,9 @@ skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if 
 max-line-length=120
 disable = [
 
-  # Warnings
+  # To keep
   "fixme",
-
-  # Info
   "c-extension-no-member",
-
 
   # To review:
   "missing-docstring",
