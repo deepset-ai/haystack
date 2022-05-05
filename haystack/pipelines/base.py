@@ -1507,7 +1507,7 @@ class Pipeline(BasePipeline):
 
                     # document_relevance_criterion: "context",
                     df_docs["context_match"] = df_docs.apply(
-                        lambda row: 1.0 if any(sim for sim in row["gold_contexts_similarity"] if sim > 65) else 0.0,
+                        lambda row: 1.0 if any(sim for sim in row["gold_contexts_similarity"] if sim > context_matching_threshold) else 0.0,
                         axis=1,
                     )
 
