@@ -166,6 +166,9 @@ class BaseStandardPipeline(ABC):
         sas_model_name_or_path: Optional[str] = None,
         add_isolated_node_eval: bool = False,
         custom_document_id_field: Optional[str] = None,
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
     ) -> EvaluationResult:
 
         """
@@ -178,6 +181,13 @@ class BaseStandardPipeline(ABC):
         :param sas_model_name_or_path: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
                                     should be path or string pointing to downloadable models.
         :param add_isolated_node_eval: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
+        :param context_matching_min_length: The minimum string length context and candidate need to have in order to be scored.
+                           Returns 0.0 otherwise.
+        :param context_matching_boost_split_overlaps: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+                                 If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+                                 we cut the context on the same side, recalculate the score and take the mean of both.
+                                 Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+        :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
         """
         output = self.pipeline.eval(
             labels=labels,
@@ -185,6 +195,9 @@ class BaseStandardPipeline(ABC):
             sas_model_name_or_path=sas_model_name_or_path,
             add_isolated_node_eval=add_isolated_node_eval,
             custom_document_id_field=custom_document_id_field,
+            context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+            context_matching_min_length=context_matching_min_length,
+            context_matching_threshold=context_matching_threshold,
         )
         return output
 

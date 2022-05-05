@@ -538,7 +538,56 @@ def test_reader_eval_in_pipeline(reader):
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_extractive_qa_eval_document_scope(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
-    eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}},
+        context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
+    )
+
+    metrics = eval_result.calculate_metrics(document_scope="id")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    metrics = eval_result.calculate_metrics(document_scope="context")
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0
+    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+
+    metrics = eval_result.calculate_metrics(document_scope="id_and_context")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    metrics = eval_result.calculate_metrics(document_scope="id_or_context")
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 1.0
+    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
+
+    metrics = eval_result.calculate_metrics(document_scope="answer")
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == 0.75
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 0.2
+    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
 
     metrics = eval_result.calculate_metrics(document_scope="id_or_answer")
 

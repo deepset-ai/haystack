@@ -807,6 +807,9 @@ class Pipeline(BasePipeline):
             "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
         ] = "id_or_answer",
         answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
     ) -> EvaluationResult:
         """
         Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
@@ -918,6 +921,13 @@ class Pipeline(BasePipeline):
             - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
                     `document_scope` must be 'answer' or 'id_or_answer'.
             Default value is 'any'.
+        :param context_matching_min_length: The minimum string length context and candidate need to have in order to be scored.
+                           Returns 0.0 otherwise.
+        :param context_matching_boost_split_overlaps: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+                                 If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+                                 we cut the context on the same side, recalculate the score and take the mean of both.
+                                 Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+        :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
         """
         if experiment_tracking_tool is not None:
             tracking_head_cls = TRACKING_TOOL_TO_HEAD.get(experiment_tracking_tool, None)
@@ -950,6 +960,9 @@ class Pipeline(BasePipeline):
                     "document_scope": document_scope,
                     "answer_scope": answer_scope,
                     "custom_document_id_field": custom_document_id_field,
+                    "context_matching_min_length": context_matching_min_length,
+                    "context_matching_boost_split_overlaps": context_matching_boost_split_overlaps,
+                    "context_matching_threshold": context_matching_threshold,
                 }
             )
 
@@ -978,6 +991,9 @@ class Pipeline(BasePipeline):
                 sas_use_gpu=sas_use_gpu,
                 add_isolated_node_eval=add_isolated_node_eval,
                 custom_document_id_field=custom_document_id_field,
+                context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+                context_matching_min_length=context_matching_min_length,
+                context_matching_threshold=context_matching_threshold,
             )
 
             integrated_metrics = eval_result.calculate_metrics(document_scope=document_scope, answer_scope=answer_scope)
@@ -1036,6 +1052,9 @@ class Pipeline(BasePipeline):
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
         custom_document_id_field: Optional[str] = None,
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -1072,6 +1091,13 @@ class Pipeline(BasePipeline):
         :param custom_document_id_field: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
                                          This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
                                          If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+        :param context_matching_min_length: The minimum string length context and candidate need to have in order to be scored.
+                           Returns 0.0 otherwise.
+        :param context_matching_boost_split_overlaps: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+                                 If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+                                 we cut the context on the same side, recalculate the score and take the mean of both.
+                                 Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+        :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1096,7 +1122,14 @@ class Pipeline(BasePipeline):
             for node_name in predictions["_debug"].keys():
                 node_output = predictions["_debug"][node_name]["output"]
                 df = self._build_eval_dataframe(
-                    label.query, label, node_name, node_output, custom_document_id_field=custom_document_id_field
+                    query=label.query,
+                    query_labels=label,
+                    node_name=node_name,
+                    node_output=node_output,
+                    custom_document_id_field=custom_document_id_field,
+                    context_matching_threshold=context_matching_threshold,
+                    context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+                    context_matching_min_length=context_matching_min_length,
                 )
                 eval_result.append(node_name, df)
 
@@ -1124,7 +1157,7 @@ class Pipeline(BasePipeline):
                             for sas, sim in zip(
                                 row["gold_answers_sas"] + [0.0], row["gold_contexts_similarity"] + [100]
                             )
-                            if sim > 65
+                            if sim > context_matching_threshold
                         ),
                         axis=1,
                     )
@@ -1146,7 +1179,7 @@ class Pipeline(BasePipeline):
                                 row["gold_contexts_similarity"] + [100],
                                 row["gold_documents_id_match"] + [1.0],
                             )
-                            if sim > 65 and doc_match == 1.0
+                            if sim > context_matching_threshold and doc_match == 1.0
                         ),
                         axis=1,
                     )
@@ -1217,6 +1250,9 @@ class Pipeline(BasePipeline):
         node_name: str,
         node_output: dict,
         custom_document_id_field: Optional[str] = None,
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
     ) -> DataFrame:
         """
         Builds a Dataframe for each query from which evaluation metrics can be calculated.
@@ -1281,7 +1317,12 @@ class Pipeline(BasePipeline):
                     )
                     df_answers["gold_contexts_similarity"] = df_answers.apply(
                         lambda row: [
-                            calculate_context_similarity(gold_context, row["context"] or "")
+                            calculate_context_similarity(
+                                gold_context,
+                                row["context"] or "",
+                                min_length=context_matching_min_length,
+                                boost_split_overlaps=context_matching_boost_split_overlaps,
+                            )
                             for gold_context in gold_contexts
                         ],
                         axis=1,
@@ -1317,7 +1358,7 @@ class Pipeline(BasePipeline):
                             for em, sim in zip(
                                 row["gold_answers_exact_match"] + [0.0], row["gold_contexts_similarity"] + [100]
                             )
-                            if sim > 65
+                            if sim > context_matching_threshold
                         ),
                         axis=1,
                     )
@@ -1325,7 +1366,7 @@ class Pipeline(BasePipeline):
                         lambda row: max(
                             f1
                             for f1, sim in zip(row["gold_answers_f1"] + [0.0], row["gold_contexts_similarity"] + [100])
-                            if sim > 65
+                            if sim > context_matching_threshold
                         ),
                         axis=1,
                     )
@@ -1361,7 +1402,7 @@ class Pipeline(BasePipeline):
                                 row["gold_contexts_similarity"] + [100],
                                 row["gold_documents_id_match"] + [1.0],
                             )
-                            if sim > 65 and doc_match == 1.0
+                            if sim > context_matching_threshold and doc_match == 1.0
                         ),
                         axis=1,
                     )
@@ -1373,7 +1414,7 @@ class Pipeline(BasePipeline):
                                 row["gold_contexts_similarity"] + [100],
                                 row["gold_documents_id_match"] + [1.0],
                             )
-                            if sim > 65 and doc_match == 1.0
+                            if sim > context_matching_threshold and doc_match == 1.0
                         ),
                         axis=1,
                     )
@@ -1410,7 +1451,12 @@ class Pipeline(BasePipeline):
                     df_docs["gold_contexts"] = [gold_contexts] * len(df_docs)
                     df_docs["gold_contexts_similarity"] = df_docs.apply(
                         lambda row: [
-                            calculate_context_similarity(gold_context, row["context"] or "")
+                            calculate_context_similarity(
+                                gold_context,
+                                row["context"] or "",
+                                min_length=context_matching_min_length,
+                                boost_split_overlaps=context_matching_boost_split_overlaps,
+                            )
                             for gold_context in gold_contexts
                         ],
                         axis=1,
