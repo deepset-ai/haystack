@@ -4,11 +4,10 @@ on:
   # Activate this workflow manually
   workflow_dispatch:
   push:
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.png'
-      - '**/*.gif'
+    paths:
+      - '**/*.py'
+      - '**/setup.cfg'
+      - '**/pyproject.toml'
 
 jobs:
 

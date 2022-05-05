@@ -4,11 +4,13 @@ on:
   # Activate this workflow manually
   workflow_dispatch:
   push:
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.png'
-      - '**/*.gif'
+    paths:
+      - '**/*.py'
+      - '**/*.yml'
+      - '**/*.ipynb'
+      - '**/setup.cfg'
+      - '**/pyproject.toml'
+      - ".github/**/*.*"
 
 jobs:
 
@@ -103,7 +105,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Haystack
-      run: pip install .[ ${{ matrix.marker }} ]
+      run: pip install .[${{ matrix.marker }}]
 
     - name: Run document store tests
       id: pytest
