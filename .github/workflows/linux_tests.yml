@@ -38,7 +38,7 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
-      run: pytest -s -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql  --durations=10
+      run: pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
 
   document-store-tests:
     needs: unit-tests
@@ -86,7 +86,7 @@ jobs:
     - name: Run document store tests
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}  # FIXME set only for Pinecone!
-      run: pytest -s -m "${{ matrix.marker }} and not integration" test/document_store_tests/ --document_store_type=${{ matrix.marker }}
+      run: pytest -s --maxfail=5 --durations=10 -m "${{ matrix.marker }} and not integration" test/document_store_tests/ --document_store_type=${{ matrix.marker }}
 
 
   integration-tests:
@@ -134,7 +134,7 @@ jobs:
       run: pip install .[all]
 
     - name: Run tests
-      run: pytest -s -m "integration" .
+      run: pytest -s --maxfail=5 --durations=10 -m "integration" .
 
 
   rest-and-ui-tests:
