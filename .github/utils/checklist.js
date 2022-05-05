@@ -36,7 +36,7 @@ module.exports = async ({github, context, core}) => {
     console.log(workflows)
 
     // List all comments on this PR
-    const comments_pages = octokit.rest.issues.listComments({
+    const comments_pages = github.rest.issues.listComments({
         owner: context.repo.owner,
         repo: context.repo.repo,
         issue_number: ISSUE_NUMBER
@@ -46,7 +46,7 @@ module.exports = async ({github, context, core}) => {
     // Delete all comments from this bot
     for (const comment of comments) {
         if (comment.user.login === 'github-actions') {
-                await octokit.rest.issues.deleteComment({
+                await github.rest.issues.deleteComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: comment.id
