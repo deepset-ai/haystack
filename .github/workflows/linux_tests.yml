@@ -60,24 +60,15 @@ jobs:
     runs-on: ubuntu-20.04
 
     strategy:
+      fail-fast: false
       matrix:
-        include:
-        - marker: elasticsearch
-          command: |
-            docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
-            docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
-        - marker: faiss
-        - marker: milvus
-          command: |
-            cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
-            wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-            sudo docker-compose up -d
-            sudo docker-compose ps
-        - marker: weaviate
-          command: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
-        - marker: pinecone
-        - marker: graphdb
-          command: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
+        marker:
+        - elasticsearch
+        - faiss
+        - milvus
+        - weaviate
+        - pinecone
+        - graphdb
 
     steps:
     - uses: actions/checkout@v2
@@ -85,8 +76,27 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/linux_cache/
 
-    - name: Setup Docstore
-      run: ${{ matrix.command }}
+    - name: Setup Elasticsearch
+      if: ${{ matrix.marker }} == "elasticsearch"
+      run: |
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
+        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
+
+    - name: Setup Milvus
+      if: ${{ matrix.marker }} == "milvus"
+      run: |
+        cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
+        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
+        sudo docker-compose up -d
+        sudo docker-compose ps
+
+    - name: Setup Weaviate
+      if: ${{ matrix.marker }} == "weaviate"
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+
+    - name: Setup GraphDB
+      if: ${{ matrix.marker }} == "graphdb"
+      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
