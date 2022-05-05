@@ -326,15 +326,9 @@ The DataFrames have the following schema:
 #### calculate\_metrics
 
 ```python
-def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: Literal[
-            "gold_id_match",
-            "context_match",
-            "answer_match",
-            "gold_id_or_context_match",
-            "gold_id_or_answer_match",
-            "gold_id_or_context_or_answer_match",
-            "context_and_answer_match",
-        ] = "gold_id_or_answer_match", eval_mode: str = "integrated", answer_scope: Literal[None, "context", "document", "document_and_context"] = None) -> Dict[str, Dict[str, float]]
+def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_relevance_criterion: Literal[
+            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
+        ] = "id_or_answer", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any") -> Dict[str, Dict[str, float]]
 ```
 
 Calculates proper metrics for each node.
@@ -363,9 +357,6 @@ as there are situations the result can heavily differ from an actual eval run wi
 - `simulated_top_k_reader`: simulates top_k param of reader
 - `simulated_top_k_retriever`: simulates top_k param of retriever.
 remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
-- `doc_relevance_col`: column in the underlying eval table that contains the relevance criteria for documents.
-Values can be: 'gold_id_match', 'context_match', 'answer_match', 'gold_id_or_context_match', 'gold_id_or_answer_match', 'gold_id_or_context_or_answer_match', 'context_and_answer_match'.
-Default value is 'gold_id_or_answer_match'.
 - `eval_mode`: the input on which the node was evaluated on.
 Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
 However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
@@ -373,19 +364,50 @@ you might want to simulate a perfect predecessor in order to get an independent 
 For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
 Values can be 'integrated', 'isolated'.
 Default value is 'integrated'.
+- `document_relevance_criterion`: criterion for deciding whether documents are relevant or not.
+You can select between:
+- 'id': Document's id or custom id must match.
+        Typical use cases:
+        - Document Retrieval
+        - Document-specific Passage Retrieval with fixed preprocessing (not recommended; use 'id_and_context' instead)
+- 'context': Document's content must match.
+        Typical use cases:
+        - Document-independent Passage Retrieval with variable preprocessing
+- 'id_and_context': boolean operation 'id' AND 'context'.
+        Typical use cases:
+        - Document-specific Passage Retrieval with variable preprocessing
+- 'id_or_context': boolean operation 'id' OR 'context'
+        Typical use cases:
+        - Document-independent Document Retrieval having sparse context labels
+- 'answer': Document's content must include the answer. The selected answer_scope will be enforced.
+        Typical use cases:
+        - Question Answering
+- 'id_or_answer' (default): boolean operation 'id' OR 'answer'.
+        This is intended to be a proper default value in order to support both main use cases:
+        - Document Retrieval
+        - Question Answering
+Default value is 'id_or_answer'.
 - `answer_scope`: scope in which a matching answer is considered as correct.
-You can select between :
-- `None` (default): answer is always considered as correct (given that it matches a label)
-- 'context': answer is only considered as correct if its context matches as well
-- 'document': answer is only considered as correct if its document (id) matches as well
-- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well
+You can select between:
+- 'any' (default): answer is always considered as correct (given that it matches a label).
+        For QA evalutions document_relevance_criterion should be 'answer' or 'id_or_answer' (default).
+        Select this for Document Retrieval and Passage Retrieval evaluations in order to use different document_relevance_criterion values.
+- 'context': answer is only considered as correct if its context matches as well.
+        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+- 'document': answer is only considered as correct if its document (id) matches as well.
+        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
+        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+Default value is 'any'.
 
 <a id="schema.EvaluationResult.wrong_examples"></a>
 
 #### wrong\_examples
 
 ```python
-def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: str = "integrated", answer_scope: Literal[None, "context", "document", "document_and_context"] = None) -> List[Dict]
+def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_relevance_criterion: Literal[
+            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
+        ] = "id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any") -> List[Dict]
 ```
 
 Returns the worst performing queries.
@@ -401,8 +423,6 @@ See calculate_metrics() for more information.
 - `simulated_top_k_reader`: simulates top_k param of reader
 - `simulated_top_k_retriever`: simulates top_k param of retriever.
 remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
-- `doc_relevance_col`: column that contains the relevance criteria for documents.
-values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
 - `document_metric`: the document metric worst queries are calculated with.
 values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
 - `document_metric`: the answer metric worst queries are calculated with.
@@ -414,12 +434,41 @@ you might want to simulate a perfect predecessor in order to get an independent 
 For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
 Values can be 'integrated', 'isolated'.
 Default value is 'integrated'.
+- `document_relevance_criterion`: criterion for deciding whether documents are relevant or not.
+You can select between:
+- 'id': Document's id or custom id must match.
+        Typical use cases:
+        - Document Retrieval
+        - Document-specific Passage Retrieval with fixed preprocessing (not recommended; use 'id_and_context' instead)
+- 'context': Document's content must match.
+        Typical use cases:
+        - Document-independent Passage Retrieval with variable preprocessing
+- 'id_and_context': boolean operation 'id' AND 'context'.
+        Typical use cases:
+        - Document-specific Passage Retrieval with variable preprocessing
+- 'id_or_context': boolean operation 'id' OR 'context'
+        Typical use cases:
+        - Document-independent Document Retrieval having sparse context labels
+- 'answer': Document's content must include the answer. The selected answer_scope will be enforced.
+        Typical use cases:
+        - Question Answering
+- 'id_or_answer' (default): boolean operation 'id' OR 'answer'.
+        This is intended to be a proper default value in order to support both main use cases:
+        - Document Retrieval
+        - Question Answering
+Default value is 'id_or_answer'.
 - `answer_scope`: scope in which a matching answer is considered as correct.
-You can select between :
-- `None` (default): answer is always considered as correct (given that it matches a label)
-- 'context': answer is only considered as correct if its context matches as well
-- 'document': answer is only considered as correct if its document (id) matches as well
-- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well
+You can select between:
+- 'any' (default): answer is always considered as correct (given that it matches a label).
+        For QA evalutions document_relevance_criterion should be 'answer' or 'id_or_answer' (default).
+        Select this for Document Retrieval and Passage Retrieval evaluations in order to use different document_relevance_criterion values.
+- 'context': answer is only considered as correct if its context matches as well.
+        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+- 'document': answer is only considered as correct if its document (id) matches as well.
+        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
+        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+Default value is 'any'.
 
 <a id="schema.EvaluationResult.save"></a>
 

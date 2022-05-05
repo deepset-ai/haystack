@@ -1071,7 +1071,9 @@ class Pipeline(BasePipeline):
                     df["sas_context_scope"] = df.apply(
                         lambda row: max(
                             sas
-                            for sas, sim in zip(row["gold_answers_sas"] + [0.0], row["gold_contexts_similarity"] + [100])
+                            for sas, sim in zip(
+                                row["gold_answers_sas"] + [0.0], row["gold_contexts_similarity"] + [100]
+                            )
                             if sim > 65
                         ),
                         axis=1,
@@ -1123,7 +1125,7 @@ class Pipeline(BasePipeline):
                 "gold_contexts",  # generic
                 "gold_id_match",  # doc-specific
                 "context_match",
-                "answer_match",                
+                "answer_match",
                 "gold_id_or_answer_match",
                 "gold_id_and_answer_match",
                 "gold_id_or_context_match",
@@ -1181,7 +1183,11 @@ class Pipeline(BasePipeline):
         gold_answers = query_labels.answers
         gold_offsets_in_documents = query_labels.offsets_in_documents
         gold_document_ids = query_labels.document_ids
-        gold_custom_document_ids = [l.document.meta[custom_document_id_field] for l in query_labels.labels if not l.no_answer] if custom_document_id_field is not None else []
+        gold_custom_document_ids = (
+            [l.document.meta[custom_document_id_field] for l in query_labels.labels if not l.no_answer]
+            if custom_document_id_field is not None
+            else []
+        )
         gold_contexts = query_labels.contexts
 
         # if node returned answers, include answer specific info:
@@ -1236,7 +1242,10 @@ class Pipeline(BasePipeline):
                             answer.meta.get(custom_document_id_field, "") for answer in answers
                         ]
                         df_answers["gold_documents_id_match"] = df_answers.apply(
-                            lambda row: [1.0 if row["custom_document_id"] == gold_custom_id else 0.0 for gold_custom_id in gold_custom_document_ids],
+                            lambda row: [
+                                1.0 if row["custom_document_id"] == gold_custom_id else 0.0
+                                for gold_custom_id in gold_custom_document_ids
+                            ],
                             axis=1,
                         )
 
@@ -1362,25 +1371,28 @@ class Pipeline(BasePipeline):
                             document.meta.get(custom_document_id_field, "") for document in documents
                         ]
                         df_docs["gold_documents_id_match"] = df_docs.apply(
-                            lambda row: [1.0 if row["custom_document_id"] == gold_custom_id else 0.0 for gold_custom_id in gold_custom_document_ids],
+                            lambda row: [
+                                1.0 if row["custom_document_id"] == gold_custom_id else 0.0
+                                for gold_custom_id in gold_custom_document_ids
+                            ],
                             axis=1,
                         )
 
                     df_docs["gold_answers_match"] = df_docs.apply(
-                        lambda row: [1.0 if gold_answer != "" and gold_answer in row["context"] else 0.0 for gold_answer in gold_answers],
+                        lambda row: [
+                            1.0 if gold_answer != "" and gold_answer in row["context"] else 0.0
+                            for gold_answer in gold_answers
+                        ],
                         axis=1,
                     )
-                    
+
                     # document_relevance_criterion: "id"
                     df_docs["gold_id_match"] = df_docs.apply(
                         lambda row: max(row["gold_documents_id_match"] + [0.0]), axis=1
                     )
 
                     # document_relevance_criterion: "answer",
-                    df_docs["answer_match"] = df_docs.apply(
-                        lambda row: max(row["gold_answers_match"] + [0.0]),
-                        axis=1,
-                    )
+                    df_docs["answer_match"] = df_docs.apply(lambda row: max(row["gold_answers_match"] + [0.0]), axis=1)
 
                     # document_relevance_criterion: "id_or_answer",
                     df_docs["gold_id_or_answer_match"] = df_docs.apply(
@@ -1396,7 +1408,7 @@ class Pipeline(BasePipeline):
                     df_docs["context_match"] = df_docs.apply(
                         lambda row: 1.0 if any(sim for sim in row["gold_contexts_similarity"] if sim > 65) else 0.0,
                         axis=1,
-                    )      
+                    )
 
                     # document_relevance_criterion: "id_or_context",
                     df_docs["gold_id_or_context_match"] = df_docs.apply(
