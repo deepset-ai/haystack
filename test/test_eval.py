@@ -536,6 +536,7 @@ def test_reader_eval_in_pipeline(reader):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_document_scope(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -597,6 +598,96 @@ def test_extractive_qa_eval_document_scope(reader, retriever_with_docs):
     assert metrics["Retriever"]["recall_single_hit"] == 1.0
     assert metrics["Retriever"]["precision"] == 0.2
     assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}},
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
+    )
+
+    metrics = eval_result.calculate_metrics(answer_scope="any")
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == 0.75
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 0.2
+    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Reader"]["sas"] == pytest.approx(1.0)
+
+    metrics = eval_result.calculate_metrics(answer_scope="context")
+
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["map"] == 0.75
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.75
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 0.2
+    assert metrics["Retriever"]["ndcg"] == pytest.approx(0.8066, 1e-4)
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Reader"]["sas"] == pytest.approx(1.0)
+
+    metrics = eval_result.calculate_metrics(answer_scope="document")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+    assert metrics["Reader"]["exact_match"] == 0.5
+    assert metrics["Reader"]["f1"] == 0.5
+    assert metrics["Reader"]["sas"] == 0.5
+
+    metrics = eval_result.calculate_metrics(answer_scope="document_and_context")
+
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+    assert metrics["Reader"]["exact_match"] == 0.5
+    assert metrics["Reader"]["f1"] == 0.5
+    assert metrics["Reader"]["sas"] == 0.5
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever_with_docs):
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS,
+        params={"Retriever": {"top_k": 5}},
+        sas_model_name_or_path="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        context_matching_min_length=20,  # artificially set down min_length to see if context matching is working properly
+    )
+
+    # valid values for non default answer_scopes
+    metrics = eval_result.calculate_metrics(document_scope="id_or_answer", answer_scope="context")
+    metrics = eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
+
+    with pytest.raises(ValueError, match="selected answer_scope '.*' is not compatible with document_scope"):
+        metrics = eval_result.calculate_metrics(document_scope="id", answer_scope="context")
+
+    with pytest.raises(ValueError, match="selected answer_scope '.*' is not compatible with document_scope"):
+        metrics = eval_result.calculate_metrics(document_scope="context", answer_scope="context")
+
+    with pytest.raises(ValueError, match="selected answer_scope '.*' is not compatible with document_scope"):
+        metrics = eval_result.calculate_metrics(document_scope="id_and_context", answer_scope="context")
+
+    with pytest.raises(ValueError, match="selected answer_scope '.*' is not compatible with document_scope"):
+        metrics = eval_result.calculate_metrics(document_scope="id_or_context", answer_scope="context")
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
