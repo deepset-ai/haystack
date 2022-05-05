@@ -166,15 +166,10 @@ def print_eval_report(
     graph: DiGraph,
     n_wrong_examples: int = 3,
     metrics_filter: Optional[Dict[str, List[str]]] = None,
-    doc_relevance_col: Literal[
-        "gold_id_match",
-        "context_match",
-        "answer_match",
-        "gold_id_or_context_match",
-        "gold_id_or_answer_match",
-        "gold_id_or_context_or_answer_match",
-        "context_and_answer_match",
-    ] = "gold_id_or_answer_match",
+    document_scope: Literal[
+        "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
+    ] = "id_or_answer",
+    answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
 ):
     """
     Prints a report for a given EvaluationResult visualizing metrics per node specified by the pipeline graph.
@@ -184,18 +179,46 @@ def print_eval_report(
     :param n_wrong_examples: The number of examples to show in order to inspect wrong predictions.
                              Defaults to 3.
     :param metrics_filter: Specifies which metrics of eval_result to show in the report.
-    :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
-            Values can be: 'gold_id_match', 'context_match', 'answer_match', 'gold_id_or_context_match', 'gold_id_or_answer_match', 'gold_id_or_context_or_answer_match', 'context_and_answer_match'.
-            Default value is 'gold_id_or_answer_match'.
+    :param document_scope: criterion for deciding whether documents are relevant or not.
+        You can select between:
+        - 'id': Document's id or custom id must match.
+                Typical use case: Document Retrieval
+        - 'context': Document's content must match.
+                Typical use case: Document-independent Passage Retrieval
+        - 'id_and_context': boolean operation `'id' AND 'context'`.
+                Typical use case: Document-specific Passage Retrieval
+        - 'id_or_context': boolean operation `'id' OR 'context'`.
+                Typical use case: Document Retrieval having sparse context labels
+        - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
+                Typical use case: Question Answering
+        - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+                This is intended to be a proper default value in order to support both main use cases:
+                - Document Retrieval
+                - Question Answering
+        Default value is 'id_or_answer'.
+    :param answer_scope: scope in which a matching answer is considered as correct.
+        You can select between:
+        - 'any' (default): any matching answer is considered as correct.
+                For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+                Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
+        - 'context': answer is only considered as correct if its context matches as well.
+                `document_scope` must be 'answer' or 'id_or_answer'.
+        - 'document': answer is only considered as correct if its document (id) matches as well.
+                `document_scope` must be 'answer' or 'id_or_answer'.
+        - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
+                `document_scope` must be 'answer' or 'id_or_answer'.
+        Default value is 'any'.
     """
     if any(degree > 1 for node, degree in graph.out_degree):
         logger.warning("Pipelines with junctions are currently not supported.")
         return
 
     calculated_metrics = {
-        "": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col),
-        "_top_1": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, simulated_top_k_reader=1),
-        " upper bound": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, eval_mode="isolated"),
+        "": eval_result.calculate_metrics(document_scope=document_scope, answer_scope=answer_scope),
+        "_top_1": eval_result.calculate_metrics(document_scope=document_scope, simulated_top_k_reader=1),
+        " upper bound": eval_result.calculate_metrics(
+            document_scope=document_scope, answer_scope=answer_scope, eval_mode="isolated"
+        ),
     }
 
     if metrics_filter is not None:
