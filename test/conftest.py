@@ -112,11 +112,9 @@ def pytest_collection_modifyitems(config, items):
     name_to_markers = {
         "generator": [pytest.mark.generator],
         "summarizer": [pytest.mark.summarizer],
-
         "tika": [pytest.mark.tika, pytest.mark.integration],
         "parsr": [pytest.mark.parsr, pytest.mark.integration],
         "ocr": [pytest.mark.ocr, pytest.mark.integration],
-        
         "elasticsearch": [pytest.mark.elasticsearch],
         "faiss": [pytest.mark.faiss],
         "milvus": [pytest.mark.milvus, pytest.mark.milvus1],
@@ -167,6 +165,7 @@ def pytest_collection_modifyitems(config, items):
 # Monkeypatch the methods you need with either a mock implementation
 # or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
 #
+
 
 class MockNode(BaseComponent):
     outgoing_edges = 1
