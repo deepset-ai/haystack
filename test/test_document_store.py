@@ -96,7 +96,7 @@ def test_init_elastic_client():
 
 @pytest.mark.elasticsearch
 def test_init_opensearch_client():
-    OpenSearchDocumentStore()
+    OpenSearchDocumentStore(index="test_index", port=9201)
 
 
 @pytest.mark.elasticsearch
