@@ -14,7 +14,7 @@ jobs:
 
   unit-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
+    timeout-minutes: 30
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
@@ -37,14 +37,26 @@ jobs:
       run: pip install .
 
     - name: Run tests
+      id: pytest
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
-      run: pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
+      run: |
+        pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
+
+        echo "::set-output name=${{ matrix.folder }}_run::1"
+      
+    outputs:
+      tests-run: |
+        ${{ steps.pytest.outputs.node_tests_run }} +
+        ${{ steps.pytest.outputs.pipelines_tests_run }} +
+        ${{ steps.pytest.outputs.modeling_tests_run }} +
+        ${{ steps.pytest.outputs.other_tests_run }}
+
+
 
   document-store-tests:
     needs: unit-tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
 
     strategy:
       matrix:
@@ -60,8 +72,6 @@ jobs:
             wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
             sudo docker-compose up -d
             sudo docker-compose ps
-        - marker: milvus1
-          command: docker run -d -p 19530:19530 -p 19121:19121 milvusdb/milvus:1.1.0-cpu-d050721-5e559c
         - marker: weaviate
           command: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
         - marker: pinecone
@@ -85,15 +95,27 @@ jobs:
       run: pip install .[ ${{ matrix.marker }} ]
 
     - name: Run document store tests
+      id: pytest
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}  # FIXME set only for Pinecone!
-      run: pytest -s --maxfail=5 --durations=10 -m "${{ matrix.marker }} and not integration" test/document_store_tests/ --document_store_type=${{ matrix.marker }}
+      run: |
+        pytest -s --maxfail=5 --durations=10 -m "${{ matrix.marker }} and not integration" test/document_store_tests/ --document_store_type=${{ matrix.marker }}
+        
+        echo "::set-output name=${{ matrix.marker }}_tests_runs::1"
+      
+    outputs:
+      tests-run: |
+        ${{ steps.pytest.outputs.elasticsearch_tests_runs }} + 
+        ${{ steps.pytest.outputs.faiss_tests_runs }} +
+        ${{ steps.pytest.outputs.milvus_tests_runs }} +
+        ${{ steps.pytest.outputs.weaviate_tests_runs }} +
+        ${{ steps.pytest.outputs.pinecone_tests_runs }} +
+        ${{ steps.pytest.outputs.graphdb_tests_runs }}
 
 
   integration-tests:
     needs: unit-tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@v2
@@ -135,13 +157,19 @@ jobs:
       run: pip install .[all]
 
     - name: Run tests
-      run: pytest -s --maxfail=5 --durations=10 -m "integration" .
+      id: pytest
+      run: |
+        pytest -s --maxfail=5 --durations=10 -m "integration" .
+
+        echo "::set-output name=integration_tests_run::1"
+      
+    outputs:
+      tests-run: ${{ steps.pytest.outputs.integration_tests_run }}
 
 
   rest-and-ui-tests:
     needs: unit-tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
     
     steps:
     - uses: actions/checkout@v2
@@ -161,4 +189,33 @@ jobs:
         pip install ui/
 
     - name: Run tests
-      run: pytest rest_api/ ui/
+      id: pytest
+      run: |
+        pytest rest_api/ ui/
+
+        echo "::set-output name=rest_tests_run::1"
+      
+    outputs:
+      tests-run: ${{ steps.pytest.outputs.rest_tests_run }}
+
+
+  count:
+    needs: 
+     - unit-tests
+     - document-store-tests
+     - integration-tests
+     - rest-and-ui-tests
+    runs-on: ubuntu-20.04
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup Python
+      uses: ./.github/actions/linux_cache/
+
+    - name: Count tests
+      run: |
+        pytest --collect-only 
+        
+        export TESTS_RUN=$(( ${{ needs.unit-tests.outputs.tests-run }} + ${{ needs.document-store-tests.outputs.tests-run }} + ${{ needs.integration-tests.outputs.tests-run }} + ${{ needs.rest-and-ui-tests.outputs.tests-run }} ))
+        echo "Tests run: $TESTS_RUN / all_tests"
