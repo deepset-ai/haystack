@@ -18,8 +18,8 @@ jobs:
       with:
         script: |
           const opts = github.rest.actions.listRepoWorkflows({
-            'deepset-ai',
-            'haystack',
+            context.repo.owner,
+            context.repo.repo
           })
           const workflows = await github.paginate(opts)
           return workflows
@@ -45,12 +45,25 @@ jobs:
       with:
         script: |
           const opts = octokit.rest.issues.listComments({
-            'deepset-ai',
-            'haystack',
-            '${{ github.event.number }}',
+            context.repo.owner,
+            context.repo.repo,
+            '${{ github.event.number }}'
           });
           const comments = await github.paginate(opts)
-          return comments
+          
+          for (const comment of comments) {
+            if (comment.user.login === 'github-actions') {
+              await octokit.rest.issues.deleteComment({
+                context.repo.owner,
+                context.repo.repo,
+                comment.id
+              });
+            }
+          }
 
-          # Delete the previous Checklist
-          # Render the new checklist
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '✨ New message ✨'
+          })
