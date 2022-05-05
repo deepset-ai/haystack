@@ -942,7 +942,7 @@ class EvaluationResult:
                 f"document_scope must be one of {['answer', 'id_or_answer']}"
             )
 
-        return answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)
+        return answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)  # type: ignore[return-value]
 
     def _calculate_node_metrics(
         self,

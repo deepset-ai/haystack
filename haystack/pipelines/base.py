@@ -977,15 +977,24 @@ class Pipeline(BasePipeline):
                 sas_batch_size=sas_batch_size,
                 sas_use_gpu=sas_use_gpu,
                 add_isolated_node_eval=add_isolated_node_eval,
-                custom_document_id_field=custom_document_id_field
+                custom_document_id_field=custom_document_id_field,
             )
 
             integrated_metrics = eval_result.calculate_metrics(document_scope=document_scope, answer_scope=answer_scope)
-            integrated_top_1_metrics = eval_result.calculate_metrics(simulated_top_k_reader=1, document_scope=document_scope, answer_scope=answer_scope)
+            integrated_top_1_metrics = eval_result.calculate_metrics(
+                simulated_top_k_reader=1, document_scope=document_scope, answer_scope=answer_scope
+            )
             metrics = {"integrated": integrated_metrics, "integrated_top_1": integrated_top_1_metrics}
             if add_isolated_node_eval:
-                isolated_metrics = eval_result.calculate_metrics(eval_mode="isolated", document_scope=document_scope, answer_scope=answer_scope)
-                isolated_top_1_metrics = eval_result.calculate_metrics(eval_mode="isolated", simulated_top_k_reader=1, document_scope=document_scope, answer_scope=answer_scope)
+                isolated_metrics = eval_result.calculate_metrics(
+                    eval_mode="isolated", document_scope=document_scope, answer_scope=answer_scope
+                )
+                isolated_top_1_metrics = eval_result.calculate_metrics(
+                    eval_mode="isolated",
+                    simulated_top_k_reader=1,
+                    document_scope=document_scope,
+                    answer_scope=answer_scope,
+                )
                 metrics["isolated"] = isolated_metrics
                 metrics["isolated_top_1"] = isolated_top_1_metrics
             tracker.track_metrics(metrics, step=0)

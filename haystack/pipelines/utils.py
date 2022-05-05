@@ -233,7 +233,12 @@ def print_eval_report(
         }
 
     pipeline_overview = _format_pipeline_overview(calculated_metrics=calculated_metrics, graph=graph)
-    wrong_examples_report = _format_wrong_examples_report(eval_result=eval_result, n_wrong_examples=n_wrong_examples)
+    wrong_examples_report = _format_wrong_examples_report(
+        eval_result=eval_result,
+        n_wrong_examples=n_wrong_examples,
+        document_scope=document_scope,
+        answer_scope=answer_scope,
+    )
 
     print(f"{pipeline_overview}\n" f"{wrong_examples_report}")
 
@@ -273,9 +278,18 @@ def _format_wrong_examples_node(node_name: str, wrong_examples_formatted: str):
     return s
 
 
-def _format_wrong_examples_report(eval_result: EvaluationResult, n_wrong_examples: int = 3):
+def _format_wrong_examples_report(
+    eval_result: EvaluationResult,
+    n_wrong_examples: int = 3,
+    document_scope: Literal[
+        "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
+    ] = "id_or_answer",
+    answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+):
     examples = {
-        node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
+        node: eval_result.wrong_examples(
+            node, document_scope=document_scope, answer_scope=answer_scope, n=n_wrong_examples
+        )
         for node in eval_result.node_results.keys()
     }
     examples_formatted = {node: "\n".join(map(_format_wrong_example, examples)) for node, examples in examples.items()}
