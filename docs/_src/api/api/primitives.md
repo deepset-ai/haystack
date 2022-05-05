@@ -298,20 +298,42 @@ The DataFrames have the following schema:
 - filters: the filters used with the query
 - gold_answers (answers only): the answers to be given
 - answer (answers only): the answer
-- context (answers only): the surrounding context of the answer within the document
+- context: the content of the document (the surrounding context of the answer for QA)
 - exact_match (answers only): metric depicting if the answer exactly matches the gold label
 - f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
 - sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
-- gold_contexts (documents only): the contents of the gold documents
-- content (documents only): the content of the document
+- exact_match_context_scope (answers only): exact_match with enforced context match
+- f1_context_scope (answers only): f1 with enforced context scope match
+- sas_context_scope (answers only): sas with enforced context scope match
+- exact_match_document_scope (answers only): exact_match with enforced document scope match
+- f1_document_scope (answers only): f1 with enforced document scope match
+- sas_document_scope (answers only): sas with enforced document scope match
+- exact_match_document_and_context_scope: (answers only): exact_match with enforced document and context scope match
+- f1_document_and_context_scope (answers only): f1 with enforced document and context scope match
+- sas_document_and_context_scope (answers only): sas with enforced document and context scope match
+- gold_contexts: the contents of the gold documents
 - gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
+- context_match (documents only): metric depicting whether one of the gold contexts matches the document content
 - answer_match (documents only): metric depicting whether the document contains the answer
-- gold_id_or_answer_match (documents only): metric depicting whether one of the former two conditions are met
+- gold_id_or_answer_match (documents only): metric depicting boolean operation `'gold_id_match' OR 'answer_match'`
+- gold_id_and_answer_match (documents only): metric depicting boolean operation `'gold_id_match' AND 'answer_match'`
+- gold_id_or_context_match (documents only): metric depicting boolean operation `'gold_id_match' OR 'context_match'`
+- gold_id_and_context_match (documents only): metric depicting boolean operation `'gold_id_match' AND 'context_match'`
+- gold_id_and_context_and_answer_match (documents only): metric depicting boolean operation `'gold_id_match' AND 'context_match' AND 'answer_match'`
+- context_and_answer_match (documents only): metric depicting boolean operation `'context_match' AND 'answer_match'`
 - rank: rank or 1-based-position in result list
 - document_id: the id of the document that has been retrieved or that contained the answer
-- gold_document_ids: the documents to be retrieved
+- gold_document_ids: the documents's ids to be retrieved
+- custom_document_id: the custom id of the document (specified by `custom_document_id_field`) that has been retrieved or that contained the answer
+- gold_custom_document_ids: the custom documents's ids (specified by `custom_document_id_field`) to be retrieved
 - offsets_in_document (answers only): the position or offsets within the document the answer was found
 - gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
+- gold_answers_exact_match (answers only): exact_match values per gold_answer
+- gold_answers_f1 (answers only): f1 values per gold_answer
+- gold_answers_sas (answers only): sas values per gold answer
+- gold_documents_id_match: document id match per gold label (if `custom_document_id_field` has been specified, custom ids are used)
+- gold_contexts_similarity: context similarity per gold label
+- gold_answers_match (documents only): whether document contains answer per gold label
 - type: 'answer' or 'document'
 - node: the node name
 - eval_mode: evaluation mode depicting whether the evaluation was executed in integrated or isolated mode.
