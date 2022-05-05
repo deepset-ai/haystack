@@ -1185,11 +1185,16 @@ class Pipeline(BasePipeline):
                 "rank",  # generic
                 "document_id",
                 "gold_document_ids",
+                "custom_document_id",
+                "gold_custom_document_ids",
                 "offsets_in_document",  # answer-specific
                 "gold_offsets_in_documents",
                 "gold_answers_exact_match",
                 "gold_answers_f1",
                 "gold_answers_sas",
+                "gold_documents_id_match",
+                "gold_contexts_similarity",
+                "gold_answers_match",
                 "type",  # generic
                 "node",
                 "eval_mode",
