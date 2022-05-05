@@ -44,7 +44,8 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
         export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql)
-        
+        echo $pytest_output
+
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
         echo "::set-output name=${{ matrix.folder }}_run::${BASH_REMATCH::-7}"
@@ -113,7 +114,8 @@ jobs:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}  # FIXME set only for Pinecone!
       run: |
         export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "${{ matrix.marker }} and not integration" test/document_store_tests/ --document_store_type=${{ matrix.marker }})
-        
+        echo $pytest_output
+
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
         echo "::set-output name=${{ matrix.marker }}_tests_run::${BASH_REMATCH::-7}"
@@ -175,7 +177,8 @@ jobs:
       id: pytest
       run: |
         export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" .)
-        
+        echo $pytest_output
+
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
         echo "::set-output name=integration_tests_run::${BASH_REMATCH::-7}"
@@ -209,7 +212,8 @@ jobs:
       id: pytest
       run: |
         export pytest_output=$(pytest rest_api/ ui/)
-
+        echo $pytest_output
+        
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
         echo "::set-output name=rest_tests_run::${BASH_REMATCH::-7}"
