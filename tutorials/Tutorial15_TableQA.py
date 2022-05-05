@@ -1,5 +1,6 @@
 import os
 import json
+import time
 
 import pandas as pd
 
@@ -7,7 +8,7 @@ from haystack import Label, MultiLabel, Answer
 from haystack.utils import launch_es, fetch_archive_from_http, print_answers
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack import Document, Pipeline
-from haystack.nodes.retriever import TableTextRetriever
+from haystack.nodes.retriever import EmbeddingRetriever
 from haystack.nodes import TableReader, FARMReader, RouteDocuments, JoinAnswers, ParsrConverter
 
 
@@ -17,10 +18,7 @@ def tutorial15_tableqa():
     launch_es()
 
     ## Connect to Elasticsearch
-    # We want to use a small model producing 512-dimensional embeddings, so we need to set embedding_dim to 512
-    document_store = ElasticsearchDocumentStore(
-        host="localhost", username="", password="", index="document", embedding_dim=512
-    )
+    document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
 
     ## Add Tables to DocumentStore
 
@@ -53,15 +51,13 @@ def tutorial15_tableqa():
     # Retrievers help narrowing down the scope for the Reader to a subset of tables where a given question could be answered.
     # They use some simple but fast algorithm.
     #
-    # **Here:** We use the TableTextRetriever capable of retrieving relevant content among a database
+    # **Here:** We use the EmbeddingRetriever capable of retrieving relevant content among a database
     # of texts and tables using dense embeddings.
 
-    retriever = TableTextRetriever(
+    retriever = EmbeddingRetriever(
         document_store=document_store,
-        query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
-        passage_embedding_model="deepset/bert-small-mm_retrieval-passage_encoder",
-        table_embedding_model="deepset/bert-small-mm_retrieval-table_encoder",
-        embed_meta_fields=["title", "section_title"],
+        embedding_model="deepset/all-mpnet-base-v2-table",
+        model_format="sentence_transformers",
     )
 
     # Add table embeddings to the tables in DocumentStore
@@ -104,15 +100,15 @@ def tutorial15_tableqa():
     # for each of the tables, the sorting of the answers might be not helpful.
 
     table_qa_pipeline = Pipeline()
-    table_qa_pipeline.add_node(component=retriever, name="TableTextRetriever", inputs=["Query"])
-    table_qa_pipeline.add_node(component=reader, name="TableReader", inputs=["TableTextRetriever"])
+    table_qa_pipeline.add_node(component=retriever, name="EmbeddingRetriever", inputs=["Query"])
+    table_qa_pipeline.add_node(component=reader, name="TableReader", inputs=["EmbeddingRetriever"])
 
     prediction = table_qa_pipeline.run("When was Guilty Gear Xrd : Sign released?")
     print_answers(prediction, details="minimum")
 
     ### Pipeline for QA on Combination of Text and Tables
-    # We are using one node for retrieving both texts and tables, the TableTextRetriever.
-    # In order to do question-answering on the Documents coming from the TableTextRetriever, we need to route
+    # We are using one node for retrieving both texts and tables, the EmbeddingRetriever.
+    # In order to do question-answering on the Documents coming from the EmbeddingRetriever, we need to route
     # Documents of type "text" to a FARMReader ( or alternatively TransformersReader) and Documents of type
     # "table" to a TableReader.
 
@@ -125,8 +121,8 @@ def tutorial15_tableqa():
     join_answers = JoinAnswers()
 
     text_table_qa_pipeline = Pipeline()
-    text_table_qa_pipeline.add_node(component=retriever, name="TableTextRetriever", inputs=["Query"])
-    text_table_qa_pipeline.add_node(component=route_documents, name="RouteDocuments", inputs=["TableTextRetriever"])
+    text_table_qa_pipeline.add_node(component=retriever, name="EmbeddingRetriever", inputs=["Query"])
+    text_table_qa_pipeline.add_node(component=route_documents, name="RouteDocuments", inputs=["EmbeddingRetriever"])
     text_table_qa_pipeline.add_node(component=text_reader, name="TextReader", inputs=["RouteDocuments.output_1"])
     text_table_qa_pipeline.add_node(component=table_reader, name="TableReader", inputs=["RouteDocuments.output_2"])
     text_table_qa_pipeline.add_node(component=join_answers, name="JoinAnswers", inputs=["TextReader", "TableReader"])
@@ -189,11 +185,12 @@ def tutorial15_tableqa():
     # It can sometimes be hard to provide your data in form of a pandas DataFrame.
     # For this case, we provide the `ParsrConverter` wrapper that can help you to convert, for example, a PDF file into a document that you can index.
     os.system("docker run -d -p 3001:3001 axarev/parsr")
+    time.sleep(30)
     os.system("wget https://www.w3.org/WAI/WCAG21/working-examples/pdf-table/table.pdf")
 
     converter = ParsrConverter()
     docs = converter.convert("table.pdf")
-    tables = [doc for doc in docs if doc["content_type"] == "table"]
+    tables = [doc for doc in docs if doc.content_type == "table"]
 
     print(tables)
 
