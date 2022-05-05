@@ -1153,21 +1153,26 @@ class Pipeline(BasePipeline):
                         gold_answers_sas_per_pred[0] for gold_answers_sas_per_pred in pred_label_sas_grid
                     ]
                     df.map_rows = partial(df.apply, axis=1)
-                    df["sas_context_scope"] = df.map_rows(lambda row: max(
+                    df["sas_context_scope"] = df.map_rows(
+                        lambda row: max(
                             sas
                             for sas, sim in zip(
                                 row["gold_answers_sas"] + [0.0], row["gold_contexts_similarity"] + [100]
                             )
                             if sim > context_matching_threshold
-                        ))
-                    df["sas_document_scope"] = df.map_rows(lambda row: max(
+                        )
+                    )
+                    df["sas_document_scope"] = df.map_rows(
+                        lambda row: max(
                             sas
                             for sas, doc_match in zip(
                                 row["gold_answers_sas"] + [0.0], row["gold_documents_id_match"] + [1.0]
                             )
                             if doc_match == 1.0
-                        ))
-                    df["sas_document_and_context_scope"] = df.map_rows(lambda row: max(
+                        )
+                    )
+                    df["sas_document_and_context_scope"] = df.map_rows(
+                        lambda row: max(
                             sas
                             for sas, sim, doc_match in zip(
                                 row["gold_answers_sas"] + [0.0],
@@ -1175,7 +1180,8 @@ class Pipeline(BasePipeline):
                                 row["gold_documents_id_match"] + [1.0],
                             )
                             if sim > context_matching_threshold and doc_match == 1.0
-                        ))
+                        )
+                    )
 
         # reorder columns for better qualitative evaluation
         for key, df in eval_result.node_results.items():
@@ -1482,7 +1488,9 @@ class Pipeline(BasePipeline):
 
                     # document_relevance_criterion: "context",
                     df_docs["context_match"] = df_docs.map_rows(
-                        lambda row: 1.0 if any(sim for sim in row["gold_contexts_similarity"] if sim > context_matching_threshold) else 0.0
+                        lambda row: 1.0
+                        if any(sim for sim in row["gold_contexts_similarity"] if sim > context_matching_threshold)
+                        else 0.0
                     )
 
                     # document_relevance_criterion: "id_or_context",
