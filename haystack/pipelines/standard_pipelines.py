@@ -3,6 +3,12 @@ from abc import ABC
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 from functools import wraps
 
 from haystack.schema import Document, EvaluationResult, MultiLabel
