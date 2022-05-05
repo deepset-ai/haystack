@@ -112,15 +112,17 @@ def pytest_collection_modifyitems(config, items):
     name_to_markers = {
         "generator": [pytest.mark.generator],
         "summarizer": [pytest.mark.summarizer],
+
         "tika": [pytest.mark.tika, pytest.mark.integration],
         "parsr": [pytest.mark.parsr, pytest.mark.integration],
-        "pipeline": [pytest.mark.pipeline],
+        "ocr": [pytest.mark.ocr, pytest.mark.integration],
+        
         "elasticsearch": [pytest.mark.elasticsearch],
-        "graphdb": [pytest.mark.graphdb],
-        "weaviate": [pytest.mark.weaviate],
-        "pinecone": [pytest.mark.pinecone],
         "faiss": [pytest.mark.faiss],
         "milvus": [pytest.mark.milvus, pytest.mark.milvus1],
+        "weaviate": [pytest.mark.weaviate],
+        "pinecone": [pytest.mark.pinecone],
+        "graphdb": [pytest.mark.graphdb],
     }
     for item in items:
         for name, markers in name_to_markers.items():

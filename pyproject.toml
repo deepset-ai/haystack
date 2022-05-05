@@ -89,17 +89,20 @@ minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
     "integration: integration tests",
+
+    "generator: generator tests",
+    "summarizer: summarizer tests",
+    "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
+
     "tika: require tika container",
     "parsr: require Parsr container",
+    "ocr: requires Tesseract",
+
     "elasticsearch: require elasticsearch container",
     "graphdb: require graphdb container",
-    "generator: generator tests",
-    "pipeline: tests with pipelines",
-    "summarizer: summarizer tests",
     "weaviate: require weaviate container",
     "faiss: uses FAISS",
     "milvus: requires a Milvus 2 setup",
     "milvus1: requires a Milvus 1 container",
-    "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
 ]
 log_cli = true
