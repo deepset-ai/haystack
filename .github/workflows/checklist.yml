@@ -11,17 +11,6 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:
-
-    # - name: Comment PR
-    #   uses: thollander/actions-comment-pull-request@v1
-    #   with:
-    #     message: 'Loading ...'
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
-    # - name: Wait
-    #   run: sleep 10
-
       
     - name: List workflows
       uses: actions/github-script@v6
@@ -29,11 +18,15 @@ jobs:
       with:
         script: |
           const opts = github.rest.actions.listRepoWorkflows({
-            owner,
-            repo,
+            'deepset-ai',
+            'haystack',
           })
           const workflows = await github.paginate(opts)
           return workflows
+
+        # Find latest run for each workflow
+        # Make sure it was run on this commit
+        # Return a structure such as {"workflow_name": true/false}
 
 # github.rest.actions.createWorkflowDispatch({
 #   owner,
@@ -47,9 +40,17 @@ jobs:
 # https://octokit.github.io/rest.js/v18#actions-get-workflow-run
 
 
-    - name: Edit PR comment
-      uses: thollander/actions-comment-pull-request@v1
+    - name: Update Checklist
+      uses: actions/github-script@v6
       with:
-        message: 'Available workflows: ${{steps.set-result.outputs.available_workflows}}'
-        comment_includes: 'Loaded!'
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const opts = octokit.rest.issues.listComments({
+            'deepset-ai',
+            'haystack',
+            '${{ github.event.number }}',
+          });
+          const comments = await github.paginate(opts)
+          return comments
+
+          # Delete the previous Checklist
+          # Render the new checklist
