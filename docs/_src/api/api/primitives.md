@@ -326,7 +326,7 @@ The DataFrames have the following schema:
 #### calculate\_metrics
 
 ```python
-def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_relevance_criterion: Literal[
+def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_scope: Literal[
             "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
         ] = "id_or_answer", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any") -> Dict[str, Dict[str, float]]
 ```
@@ -364,7 +364,7 @@ you might want to simulate a perfect predecessor in order to get an independent 
 For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
 Values can be 'integrated', 'isolated'.
 Default value is 'integrated'.
-- `document_relevance_criterion`: criterion for deciding whether documents are relevant or not.
+- `document_scope`: criterion for deciding whether documents are relevant or not.
 You can select between:
 - 'id': Document's id or custom id must match.
         Typical use case: Document Retrieval
@@ -384,14 +384,14 @@ Default value is 'id_or_answer'.
 - `answer_scope`: scope in which a matching answer is considered as correct.
 You can select between:
 - 'any' (default): any matching answer is considered as correct.
-        For QA evalutions document_relevance_criterion should be 'answer' or 'id_or_answer' (default).
-        Select this for Document Retrieval and Passage Retrieval evaluations in order to use different document_relevance_criterion values.
+        For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+        Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
 - 'context': answer is only considered as correct if its context matches as well.
-        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'id_or_answer'.
 - 'document': answer is only considered as correct if its document (id) matches as well.
-        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'id_or_answer'.
 - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'id_or_answer'.
 Default value is 'any'.
 
 <a id="schema.EvaluationResult.wrong_examples"></a>
@@ -399,7 +399,7 @@ Default value is 'any'.
 #### wrong\_examples
 
 ```python
-def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_relevance_criterion: Literal[
+def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_scope: Literal[
             "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
         ] = "id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any") -> List[Dict]
 ```
@@ -428,7 +428,7 @@ you might want to simulate a perfect predecessor in order to get an independent 
 For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
 Values can be 'integrated', 'isolated'.
 Default value is 'integrated'.
-- `document_relevance_criterion`: criterion for deciding whether documents are relevant or not.
+- `document_scope`: criterion for deciding whether documents are relevant or not.
 You can select between:
 - 'id': Document's id or custom id must match.
         Typical use case: Document Retrieval
@@ -448,14 +448,14 @@ Default value is 'id_or_answer'.
 - `answer_scope`: scope in which a matching answer is considered as correct.
 You can select between:
 - 'any' (default): any matching answer is considered as correct.
-        For QA evalutions document_relevance_criterion should be 'answer' or 'id_or_answer' (default).
-        Select this for Document Retrieval and Passage Retrieval evaluations in order to use different document_relevance_criterion values.
+        For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+        Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
 - 'context': answer is only considered as correct if its context matches as well.
-        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'id_or_answer'.
 - 'document': answer is only considered as correct if its document (id) matches as well.
-        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'id_or_answer'.
 - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-        document_relevance_criterion must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'id_or_answer'.
 Default value is 'any'.
 
 <a id="schema.EvaluationResult.save"></a>

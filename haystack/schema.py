@@ -950,12 +950,7 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
-            "id",
-            "context",
-            "id_and_context",
-            "id_or_context",
-            "answer",
-            "id_or_answer",
+            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer",
         ] = "id_or_answer",
         eval_mode: str = "integrated",
         answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
