@@ -742,29 +742,23 @@ class EvaluationResult:
         :param document_relevance_criterion: criterion for deciding whether documents are relevant or not.
             You can select between:
             - 'id': Document's id or custom id must match.
-                    Typical use cases:
-                    - Document Retrieval
-                    - Document-specific Passage Retrieval with fixed preprocessing (not recommended; use 'id_and_context' instead)
+                    Typical use case: Document Retrieval
             - 'context': Document's content must match.
-                    Typical use cases:
-                    - Document-independent Passage Retrieval with variable preprocessing
-            - 'id_and_context': boolean operation 'id' AND 'context'.
-                    Typical use cases:
-                    - Document-specific Passage Retrieval with variable preprocessing
-            - 'id_or_context': boolean operation 'id' OR 'context'
-                    Typical use cases:
-                    - Document-independent Document Retrieval having sparse context labels
-            - 'answer': Document's content must include the answer. The selected answer_scope will be enforced.
-                    Typical use cases:
-                    - Question Answering
-            - 'id_or_answer' (default): boolean operation 'id' OR 'answer'.
+                    Typical use case: Document-independent Passage Retrieval
+            - 'id_and_context': boolean operation `'id' AND 'context'`.
+                    Typical use case: Document-specific Passage Retrieval
+            - 'id_or_context': boolean operation `'id' OR 'context'`.
+                    Typical use case: Document Retrieval having sparse context labels
+            - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
+                    Typical use case: Question Answering
+            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
             Default value is 'id_or_answer'.
         :param answer_scope: scope in which a matching answer is considered as correct.
             You can select between:
-            - 'any' (default): answer is always considered as correct (given that it matches a label).
+            - 'any' (default): any matching answer is considered as correct.
                     For QA evalutions document_relevance_criterion should be 'answer' or 'id_or_answer' (default).
                     Select this for Document Retrieval and Passage Retrieval evaluations in order to use different document_relevance_criterion values.
             - 'context': answer is only considered as correct if its context matches as well.
@@ -829,29 +823,23 @@ class EvaluationResult:
         :param document_relevance_criterion: criterion for deciding whether documents are relevant or not.
             You can select between:
             - 'id': Document's id or custom id must match.
-                    Typical use cases:
-                    - Document Retrieval
-                    - Document-specific Passage Retrieval with fixed preprocessing (not recommended; use 'id_and_context' instead)
+                    Typical use case: Document Retrieval
             - 'context': Document's content must match.
-                    Typical use cases:
-                    - Document-independent Passage Retrieval with variable preprocessing
-            - 'id_and_context': boolean operation 'id' AND 'context'.
-                    Typical use cases:
-                    - Document-specific Passage Retrieval with variable preprocessing
-            - 'id_or_context': boolean operation 'id' OR 'context'
-                    Typical use cases:
-                    - Document-independent Document Retrieval having sparse context labels
-            - 'answer': Document's content must include the answer. The selected answer_scope will be enforced.
-                    Typical use cases:
-                    - Question Answering
-            - 'id_or_answer' (default): boolean operation 'id' OR 'answer'.
+                    Typical use case: Document-independent Passage Retrieval
+            - 'id_and_context': boolean operation `'id' AND 'context'`.
+                    Typical use case: Document-specific Passage Retrieval
+            - 'id_or_context': boolean operation `'id' OR 'context'`.
+                    Typical use case: Document Retrieval having sparse context labels
+            - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
+                    Typical use case: Question Answering
+            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
             Default value is 'id_or_answer'.
         :param answer_scope: scope in which a matching answer is considered as correct.
             You can select between:
-            - 'any' (default): answer is always considered as correct (given that it matches a label).
+            - 'any' (default): any matching answer is considered as correct.
                     For QA evalutions document_relevance_criterion should be 'answer' or 'id_or_answer' (default).
                     Select this for Document Retrieval and Passage Retrieval evaluations in order to use different document_relevance_criterion values.
             - 'context': answer is only considered as correct if its context matches as well.
@@ -1148,34 +1136,25 @@ class EvaluationResult:
         :param scoped_relevance_criterion: criterion for deciding whether documents are relevant or not.
             You can select between:
             - 'id': Document's id or custom id must match.
-                    Typical use cases:
-                    - Document Retrieval
-                    - Document-specific Passage Retrieval with fixed preprocessing (not recommended; use 'id_and_context' instead)
+                    Typical use case: Document Retrieval
             - 'context': Document's content must match.
-                    Typical use cases:
-                    - Document-independent Passage Retrieval with variable preprocessing
-            - 'id_and_context': boolean operation 'id' AND 'context'.
-                    Typical use cases:
-                    - Document-specific Passage Retrieval with variable preprocessing
-            - 'id_or_context': boolean operation 'id' OR 'context'
-                    Typical use cases:
-                    - Document-independent Document Retrieval having sparse context labels
+                    Typical use case: Document-independent Passage Retrieval
+            - 'id_and_context': boolean operation `'id' AND 'context'`.
+                    Typical use case: Document-specific Passage Retrieval
+            - 'id_or_context': boolean operation `'id' OR 'context'`.
+                    Typical use case: Document Retrieval having sparse context labels
             - 'answer': Document's content must include the answer.
-                    Typical use cases:
-                    - QA with default answer scope (all answers are considered correct)
-            - 'context_and_answer': boolean operation 'context' AND 'answer'
-                    Typical use cases:
-                    - QA with context-specific answers (see answer_scope='context')
-            - 'id_and_answer': boolean operation 'id' AND 'answer'
-                    Typical use cases:
-                    - QA with document-specific answers (see answer_scope='document')
-            - 'id_and_context_and_answer': boolean operation 'id' AND 'context' and 'answer'
-                    Typical use cases:
-                    - QA with document-and-context-specific answers (see answer_scope='document_and_context')
-            - 'id_or_answer' (default): boolean operation 'id' OR 'answer'.
+                    Typical use case: Question Answering
+            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
-                    - QA with default answer scope (all answers are considered correct)
+                    - Question Answering
+            - 'context_and_answer': boolean operation `'context' AND 'answer'`.
+                    Typical use case: Question Answering with context-specific answers (see answer_scope='context')
+            - 'id_and_answer': boolean operation `'id' AND 'answer'`.
+                    Typical use case: Question Answering with document-specific answers (see answer_scope='document')
+            - 'id_and_context_and_answer': boolean operation `'id' AND 'context' and 'answer'`.
+                    Typical use case: Question Answering with document-and-context-specific answers (see answer_scope='document_and_context')
             Default value is 'id_or_answer'.
         """
         if simulated_top_k_retriever != -1:
