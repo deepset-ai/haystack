@@ -11,65 +11,12 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:
-      
-    - name: List workflows
-      uses: actions/github-script@v6
-      id: available_workflows
+    - uses: actions/checkout@v2
+    - uses: actions/github-script@v6
+      env:
+        COMMIT_HASH: ${{ github.event.pull_request.head.sha }}
+        ISSUE_NUMBER: ${{ github.event.number }}
       with:
-        script: |          
-          // List all available workflows
-          const opts = github.rest.actions.listRepoWorkflows({
-            owner: context.repo.owner,
-            repo: context.repo.repo
-          })
-          const workflows = await github.paginate(opts)
-
-          // Find the latest commit on this branch
-          const commit_hash = ${{ github.event.pull_request.head.sha }}
-
-          // List all workflows runs for each of them
-          for (const workflow of workflows) {
-            const opts = github.rest.actions.listRepoWorkflows({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: workflow.id
-            })
-            const workflow_runs = await github.paginate(opts)
-           
-            // Get only the run that was executed against the latest commit, if any
-            workflow.latest_run = null
-            for (const workflow_run of workflow_runs) {
-              if (workflow_run === commit_hash) {
-                workflow.latest_run = workflow_run
-              }
-            }
-          }
-
-          console.log(workflows)
-
-          // List all comments on this PR
-          const opts = octokit.rest.issues.listComments({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: '${{ github.event.number }}'
-          });
-          const comments = await github.paginate(opts)
-          
-          // Delete all comments from this bot
-          for (const comment of comments) {
-            if (comment.user.login === 'github-actions') {
-              await octokit.rest.issues.deleteComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: comment.id
-              });
-            }
-          }
-
-          // Create a new comment
-          await github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '✨ New message ✨'
-          })
+        script: |
+          const script = require('./github/utils/checklist.js')
+          console.log(script({github, context}))
