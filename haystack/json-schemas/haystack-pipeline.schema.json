@@ -74,6 +74,20 @@
           "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-1.3.0.schema.json"
         }
       ]
+    },
+    {
+      "allOf": [
+        {
+          "properties": {
+            "version": {
+              "const": "1.4.0"
+            }
+          }
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-1.4.0.schema.json"
+        }
+      ]
     }
   ]
 }
