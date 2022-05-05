@@ -1,88 +1,80 @@
+import os
 import json
-import pytest
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
-from selenium import webdriver
 
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
 
 
-TEST_BASE_URL = "http://test.test.test.test.test"  # Non existing but valid URL
-
-TEST_HOME_PAGE = """
+TEST_HOME_PAGE = f"""
+<!DOCTYPE html>
 <html>
 <head>
     <title>Test Home Page for Crawler</title>
 </head>
 <body>
     <p>test page content</p>
-    <a href="/page1">page 1</a>
-    <a href="/page2">page 2</a>
+    <a href="BASE_URL/page1">page 1</a>
+    <a href="BASE_URL/page2">page 2</a>
 </body>
 </html>
 """
 
-TEST_PAGE1 = """
+TEST_PAGE1 = f"""
+<!DOCTYPE html>
 <html>
 <head>
     <title>Test Page 1 for Crawler</title>
 </head>
 <body>
     <p>test page 1 content</p>
-    <a href="/">home</a>
-    <a href="/page2">page 2</a>
+    <a href="BASE_URL">home</a>
+    <a href="BASE_URL/page2">page 2</a>
 </body>
 </html>
 """
-TEST_PAGE2 = """
+TEST_PAGE2 = f"""
+<!DOCTYPE html>
 <html>
 <head>
     <title>Test Page 2 for Crawler</title>
 </head>
 <body>
     <p>test page 2 content</p>
-    <a href="/">home</a>
-    <a href="/page1">page 1</a>
-</body>
-</html>
-"""
-TEST_UNWANTED = """
-<html>
-<head>
-    <title>Should never see this page</title>
-</head>
-<body>
-    <p>Should never see this page!</p>
+    <a href="BASE_URL">home</a>
+    <a href="BASE_URL/page1">page 1</a>
 </body>
 </html>
 """
 
 
-@pytest.fixture(autouse=True)
-def mock_webdriver(request, monkeypatch):
-    # Do not patch integration tests
-    if "integration" in request.keywords:
-        return
+@pytest.fixture(scope="session")
+def test_url():
+    tmpdir = Path(tempfile.mkdtemp())
+    base_url = tmpdir / "haystack_test_webpages"
+    os.mkdir(base_url)
 
-    def mock_get(self, url: str) -> None:
-        if url == TEST_BASE_URL:
-            return TEST_HOME_PAGE
-        if "page1" in url:
-            return TEST_PAGE1
-        if "page2" in url:
-            return TEST_PAGE2
-        else:
-            return TEST_UNWANTED
+    with open(base_url/"index.html", 'w') as page:
+        page.write(TEST_HOME_PAGE.replace("BASE_URL", str(base_url)))
 
-    monkeypatch.setattr(webdriver.Chrome, "get", mock_get)
+    with open(base_url/"page1.html", 'w') as page:
+        page.write(TEST_PAGE1.replace("BASE_URL", str(base_url)))
+
+    with open(base_url/"page2.html", 'w') as page:
+        page.write(TEST_PAGE2.replace("BASE_URL", str(base_url)))
+
+    yield f"file://{base_url.absolute()}"
+
+    shutil.rmtree(tmpdir)
 
 
 #
 # Integration
 #
-
 
 @pytest.mark.integration
 def test_crawler(tmp_path):
@@ -108,35 +100,34 @@ def test_crawler(tmp_path):
 # Unit tests
 #
 
-
 def test_crawler_url_none_exception(tmp_path):
     crawler = Crawler(tmp_path)
     with pytest.raises(ValueError):
         crawler.crawl()
 
 
-def test_crawler_depth_0_single_url(tmp_path):
+def test_crawler_depth_0_single_url(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
-    paths = crawler.crawl(urls=[TEST_BASE_URL], crawler_depth=0)
+    paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
     assert len(paths) == 1
 
 
-def test_crawler_depth_0_many_urls(tmp_path):
+def test_crawler_depth_0_many_urls(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
-    _urls = [TEST_BASE_URL, TEST_BASE_URL + "/page1", TEST_BASE_URL + "/page2"]
+    _urls = [test_url + "/index.html", test_url + "/page1.html", test_url + "/page2.html"]
     paths = crawler.crawl(urls=_urls, crawler_depth=0)
     assert len(paths) == 3
 
 
-def test_crawler_depth_1_single_url(tmp_path):
+def test_crawler_depth_1_single_url(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
-    paths = crawler.crawl(urls=[TEST_BASE_URL], crawler_depth=1)
+    paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=1)
     assert len(paths) == 3
 
 
-def test_crawler_output_file_structure(tmp_path):
+def test_crawler_output_file_structure(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
-    paths = crawler.crawl(urls=[TEST_BASE_URL], crawler_depth=0)
+    paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
     with open(paths[0].absolute(), "r") as doc_file:
         data = json.load(doc_file)
         assert "content" in data
@@ -145,19 +136,20 @@ def test_crawler_output_file_structure(tmp_path):
         assert len(data["content"].split()) > 2
 
 
-def test_crawler_filter_urls(tmp_path):
+def test_crawler_filter_urls(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
 
-    assert len(crawler.crawl(urls=[TEST_BASE_URL], filter_urls=["page1"], crawler_depth=1)) == 1
-    assert not crawler.crawl(urls=[TEST_BASE_URL], filter_urls=["page3"], crawler_depth=1)
-    assert not crawler.crawl(urls=[TEST_BASE_URL], filter_urls=["google\.com"], crawler_depth=1)
+    print(crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1))
+    assert len(crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)) == 1
+    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page3"], crawler_depth=1)
+    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
 
 
-def test_crawler_content(tmp_path):
+def test_crawler_content(test_url, tmp_path):
     expected_results = [
-        {"url": TEST_BASE_URL, "partial_content": ["test page content"]},
-        {"url": TEST_BASE_URL + "/page1", "partial_content": ["test page 1 content"]},
-        {"url": TEST_BASE_URL + "/page2", "partial_content": ["test page 2 content"]},
+        {"url": test_url + "/index.html", "partial_content": "test page content"},
+        {"url": test_url + "/page1.html", "partial_content": "test page 1 content"},
+        {"url": test_url + "/page2.html", "partial_content": "test page 2 content"},
     ]
 
     crawler = Crawler(output_dir=tmp_path)
@@ -168,10 +160,10 @@ def test_crawler_content(tmp_path):
             assert result["partial_content"] in content["content"]
 
 
-def test_crawler_return_document(tmp_path):
+def test_crawler_return_document(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
-    documents, _ = crawler.run(urls=[TEST_BASE_URL], crawler_depth=0, return_documents=True)
-    paths, _ = crawler.run(urls=[TEST_BASE_URL], crawler_depth=0, return_documents=False)
+    documents, _ = crawler.run(urls=[test_url + "/index.html"], crawler_depth=0, return_documents=True)
+    paths, _ = crawler.run(urls=[test_url + "/index.html"], crawler_depth=0, return_documents=False)
 
     for path, document in zip(paths["paths"], documents["documents"]):
         with open(path.absolute(), "r") as doc_file:
