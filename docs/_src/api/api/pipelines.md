@@ -472,7 +472,7 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 @classmethod
 def execute_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evaluation_set_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evaluation_set_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False, custom_document_id_field: Optional[str] = None, document_scope: Literal[
             "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any") -> EvaluationResult
+        ] = "id_or_answer", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any", context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
@@ -587,6 +587,13 @@ You can select between:
 - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
         `document_scope` must be 'answer' or 'id_or_answer'.
 Default value is 'any'.
+- `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
+Returns 0.0 otherwise.
+- `context_matching_boost_split_overlaps`: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+we cut the context on the same side, recalculate the score and take the mean of both.
+Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+- `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
 
 <a id="base.Pipeline.eval"></a>
 
@@ -594,7 +601,7 @@ Default value is 'any'.
 
 ```python
 @send_event
-def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None) -> EvaluationResult
+def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -634,6 +641,13 @@ values "integrated" or "isolated" in the column "eval_mode" and the evaluation r
 - `custom_document_id_field`: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
 This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
 If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+- `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
+Returns 0.0 otherwise.
+- `context_matching_boost_split_overlaps`: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+we cut the context on the same side, recalculate the score and take the mean of both.
+Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+- `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
 
 <a id="base.Pipeline.get_nodes_by_class"></a>
 
@@ -1243,7 +1257,7 @@ Instance of DocumentStore or None
 #### eval
 
 ```python
-def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None) -> EvaluationResult
+def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -1258,6 +1272,13 @@ params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
 - `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
 should be path or string pointing to downloadable models.
 - `add_isolated_node_eval`: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
+- `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
+Returns 0.0 otherwise.
+- `context_matching_boost_split_overlaps`: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+we cut the context on the same side, recalculate the score and take the mean of both.
+Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+- `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
 
 <a id="standard_pipelines.BaseStandardPipeline.print_eval_report"></a>
 
