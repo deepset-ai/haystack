@@ -47,7 +47,7 @@ jobs:
         
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=${{ matrix.folder }}_run::${BASH_REMATCH}"
+        echo "::set-output name=${{ matrix.folder }}_run::${BASH_REMATCH::-7}"
       
     outputs:
       tests-run: |
@@ -116,7 +116,7 @@ jobs:
         
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=${{ matrix.marker }}_tests_run::${BASH_REMATCH}"
+        echo "::set-output name=${{ matrix.marker }}_tests_run::${BASH_REMATCH::-7}"
       
     outputs:
       tests-run: |
@@ -178,7 +178,7 @@ jobs:
         
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=integration_tests_run::${BASH_REMATCH}"
+        echo "::set-output name=integration_tests_run::${BASH_REMATCH::-7}"
       
     outputs:
       tests-run: ${{ steps.pytest.outputs.integration_tests_run }}
@@ -212,7 +212,7 @@ jobs:
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=rest_tests_run::${BASH_REMATCH}"
+        echo "::set-output name=rest_tests_run::${BASH_REMATCH::-7}"
       
     outputs:
       tests-run: ${{ steps.pytest.outputs.rest_tests_run }}
@@ -236,7 +236,7 @@ jobs:
       run: |
         # Count available tests
         [[ $(pytest --collect-only .) =~ (([0-9]+) tests collected) ]]
-        export total_tests_count=${BASH_REMATCH}
+        export total_tests_count=${BASH_REMATCH::-6}
 
         export tests_run=$(( ${{ needs.unit-tests.outputs.tests-run }} + ${{ needs.document-store-tests.outputs.tests-run }} + ${{ needs.integration-tests.outputs.tests-run }} + ${{ needs.rest-and-ui-tests.outputs.tests-run }} ))
         echo "============ Tests run: $tests_run / $total_tests_count =============="
