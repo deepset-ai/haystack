@@ -400,7 +400,7 @@ def semantic_answer_similarity(
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
     Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
                         b) the highest similarity of all predictions to gold labels
-                        c) a grid consisting of the similarities of all the predicitions compared to all gold labels
+                        c) a matrix consisting of the similarities of all the predicitions compared to all gold labels
 
     :param predictions: Predicted answers as list of multiple preds per question
     :param gold_labels: Labels as list of multiple possible answers per question
@@ -409,7 +409,7 @@ def semantic_answer_similarity(
     :param batch_size: Number of prediction label pairs to encode at once.
     :param use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
                     Falls back to CPU if no GPU is available.
-    :return: top_1_sas, top_k_sas, pred_label_sas_grid
+    :return: top_1_sas, top_k_sas, pred_label_matrix
     """
     assert len(predictions) == len(gold_labels)
 
@@ -423,7 +423,7 @@ def semantic_answer_similarity(
     # Compute similarities
     top_1_sas = []
     top_k_sas = []
-    pred_label_sas_grid = []
+    pred_label_matrix = []
     lengths: List[Tuple[int, int]] = []
 
     # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
@@ -445,7 +445,7 @@ def semantic_answer_similarity(
             # So to only consider the first doc we have to take the first len_l entries
             top_1_sas.append(np.max(scores_window[:len_l]))
             top_k_sas.append(np.max(scores_window))
-            pred_label_sas_grid.append(scores_window.reshape(len_p, len_l).tolist())
+            pred_label_matrix.append(scores_window.reshape(len_p, len_l).tolist())
             current_position += len_p * len_l
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
@@ -469,9 +469,9 @@ def semantic_answer_similarity(
             sims = cosine_similarity(pred_embeddings, label_embeddings)
             top_1_sas.append(np.max(sims[0, :]))
             top_k_sas.append(np.max(sims))
-            pred_label_sas_grid.append(sims.tolist())
+            pred_label_matrix.append(sims.tolist())
 
-    return top_1_sas, top_k_sas, pred_label_sas_grid
+    return top_1_sas, top_k_sas, pred_label_matrix
 
 
 def _count_overlap(
