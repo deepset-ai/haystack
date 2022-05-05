@@ -47,14 +47,12 @@ jobs:
         [[ $pytest_output =~ (([0-9]+) passed) ]]
         echo "::set-output name=${{ matrix.folder }}_run::${BASH_REMATCH}"
       
-      
     outputs:
       tests-run: |
         ${{ steps.pytest.outputs.node_tests_run }} +
         ${{ steps.pytest.outputs.pipelines_tests_run }} +
         ${{ steps.pytest.outputs.modeling_tests_run }} +
         ${{ steps.pytest.outputs.other_tests_run }}
-
 
 
   document-store-tests:
