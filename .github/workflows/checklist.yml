@@ -18,5 +18,5 @@ jobs:
         ISSUE_NUMBER: ${{ github.event.number }}
       with:
         script: |
-          const script = require('./github/utils/checklist.js')
+          const script = require('./.github/utils/checklist.js')
           console.log(script({github, context}))
