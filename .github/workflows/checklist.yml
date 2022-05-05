@@ -16,51 +16,57 @@ jobs:
       uses: actions/github-script@v6
       id: available_workflows
       with:
-        script: |
+        script: |          
+          // List all available workflows
           const opts = github.rest.actions.listRepoWorkflows({
-            context.repo.owner,
-            context.repo.repo
+            owner: context.repo.owner,
+            repo: context.repo.repo
           })
           const workflows = await github.paginate(opts)
-          return workflows
 
-        # Find latest run for each workflow
-        # Make sure it was run on this commit
-        # Return a structure such as {"workflow_name": true/false}
+          // Find the latest commit on this branch
+          const commit_hash = ${{ github.event.pull_request.head.sha }}
 
-# github.rest.actions.createWorkflowDispatch({
-#   owner,
-#   repo,
-#   workflow_id,
-#   ref,
-# });
-# https://octokit.github.io/rest.js/v18#actions-list-repo-workflows
-# https://octokit.github.io/rest.js/v18/#actions-list-workflow-runs
-# https://octokit.github.io/rest.js/v18#actions-get-workflow
-# https://octokit.github.io/rest.js/v18#actions-get-workflow-run
+          // List all workflows runs for each of them
+          for (const workflow of workflows) {
+            const opts = github.rest.actions.listRepoWorkflows({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflow.id
+            })
+            const workflow_runs = await github.paginate(opts)
+           
+            // Get only the run that was executed against the latest commit, if any
+            workflow.latest_run = null
+            for (const workflow_run of workflow_runs) {
+              if (workflow_run === commit_hash) {
+                workflow.latest_run = workflow_run
+              }
+            }
+          }
 
+          console.log(workflows)
 
-    - name: Update Checklist
-      uses: actions/github-script@v6
-      with:
-        script: |
+          // List all comments on this PR
           const opts = octokit.rest.issues.listComments({
-            context.repo.owner,
-            context.repo.repo,
-            '${{ github.event.number }}'
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: '${{ github.event.number }}'
           });
           const comments = await github.paginate(opts)
           
+          // Delete all comments from this bot
           for (const comment of comments) {
             if (comment.user.login === 'github-actions') {
               await octokit.rest.issues.deleteComment({
-                context.repo.owner,
-                context.repo.repo,
-                comment.id
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id
               });
             }
           }
 
+          // Create a new comment
           await github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
