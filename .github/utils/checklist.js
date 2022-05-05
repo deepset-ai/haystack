@@ -43,6 +43,8 @@ module.exports = async ({github, context, core}) => {
     });
     const comments = await github.paginate(comments_pages)
 
+    console.log(comments)
+
     // Delete all comments from this bot
     for (const comment of comments) {
         if (comment.user.login === 'github-actions') {
