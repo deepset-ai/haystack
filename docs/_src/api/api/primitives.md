@@ -119,7 +119,7 @@ class Span()
 
 <a id="schema.Span.end"></a>
 
-#### end
+#### Span.end
 
 Defining a sequence of characters (Text span) or cells (Table span) via start and end index. 
 
@@ -142,7 +142,7 @@ class Answer()
 
 <a id="schema.Answer.meta"></a>
 
-#### meta
+#### Answer.meta
 
 The fundamental object in Haystack to represent any type of Answers (e.g. extractive QA, generative QA or TableQA).
 
