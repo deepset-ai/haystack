@@ -3,7 +3,7 @@ name: Static Analysis
 on:
   # Activate this workflow manually
   workflow_dispatch:
-  push:
+  pull_request:
     paths:
       - '**/*.py'
       - '**/setup.cfg'
