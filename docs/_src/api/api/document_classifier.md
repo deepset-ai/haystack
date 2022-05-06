@@ -12,7 +12,7 @@ class BaseDocumentClassifier(BaseComponent)
 
 <a id="base.BaseDocumentClassifier.timing"></a>
 
-#### timing
+#### BaseDocumentClassifier.timing
 
 ```python
 def timing(fn, attr_name)
@@ -81,7 +81,7 @@ With this document_classifier, you can directly get predictions via predict()
 
 <a id="transformers.TransformersDocumentClassifier.__init__"></a>
 
-#### \_\_init\_\_
+#### TransformersDocumentClassifier.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
@@ -119,7 +119,7 @@ or an entailment.
 
 <a id="transformers.TransformersDocumentClassifier.predict"></a>
 
-#### predict
+#### TransformersDocumentClassifier.predict
 
 ```python
 def predict(documents: List[Document]) -> List[Document]

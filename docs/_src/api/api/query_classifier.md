@@ -66,7 +66,7 @@ and the further processing can be customized. You can define this by connecting 
 
 <a id="sklearn.SklearnQueryClassifier.__init__"></a>
 
-#### \_\_init\_\_
+#### SklearnQueryClassifier.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: Union[
@@ -138,7 +138,7 @@ from this node.
 
 <a id="transformers.TransformersQueryClassifier.__init__"></a>
 
-#### \_\_init\_\_
+#### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", use_gpu: bool = True)
