@@ -365,7 +365,7 @@ jobs:
      - milvus-tests
      - weaviate-tests
      - pinecone-tests
-     - grapdb-tests
+     - graphdb-tests
      - rest-and-ui-tests
      - integration-tests
     if: always()
