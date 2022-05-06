@@ -16,5 +16,5 @@ renderer:
   descriptive_class_title: false
   descriptive_module_title: true
   add_method_class_prefix: false
-  add_member_class_prefix: false
+  add_member_class_prefix: true
   filename: document_store.md
