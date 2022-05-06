@@ -49,8 +49,9 @@ jobs:
         pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql | tee output.txt
 
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
 
 
   elasticsearch-tests:
@@ -79,8 +80,9 @@ jobs:
         pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch | tee output.txt
 
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
   
 
   faiss-tests:
@@ -105,8 +107,9 @@ jobs:
         pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss | tee output.txt
 
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
 
 
   milvus-tests:
@@ -138,8 +141,9 @@ jobs:
         pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus | tee output.txt
 
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
 
 
   weaviate-tests:
@@ -167,8 +171,9 @@ jobs:
         pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate | tee output.txt
 
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
   
 
   pinecone-tests:
@@ -195,8 +200,9 @@ jobs:
         pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone | tee output.txt
 
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
 
 
   graphdb-tests:
@@ -225,8 +231,9 @@ jobs:
         pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb | tee output.txt
 
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
 
 
   rest-and-ui-tests:
@@ -256,8 +263,9 @@ jobs:
         pytest rest_api/ ui/ | tee output.txt
         
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
       
 
   integration-tests:
@@ -320,8 +328,9 @@ jobs:
         pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }} | tee output.txt
 
         # Output successful tests
-        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
+            echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        fi;
 
 
   count:
@@ -351,10 +360,3 @@ jobs:
         echo "TESTS_COUNT=${BASH_REMATCH::-6}" >> $GITHUB_ENV
         
         echo "============ Tests run: ${{ env.TESTS_RUN }} / $TESTS_COUNT =============="
-
-    - name: Edit PR comment
-      uses: thollander/actions-comment-pull-request@v1
-      with:
-        message: 'Tests run: ${{ env.TESTS_RUN }} / ${{ env.TESTS_COUNT}}'
-        comment_includes: 'Tests run: '
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
