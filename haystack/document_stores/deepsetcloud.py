@@ -17,7 +17,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self,
         api_key: str = None,
         workspace: str = "default",
-        index: str = "default",
+        index: Optional[str] = None,
         duplicate_documents: str = "overwrite",
         api_endpoint: Optional[str] = None,
         similarity: str = "dot_product",
@@ -35,8 +35,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
                         See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
         :param workspace: workspace name in Deepset Cloud
-        :param index: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline.
-                      You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
+        :param index: name of the index to access within the deepset Cloud workspace. This equals typically the name of
+                      your pipeline. You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
+                      If you set index to `None`, this DocumentStore will always return empty results.
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicates documents
@@ -61,12 +62,26 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self.client = DeepsetCloud.get_index_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
         )
+        # Check if index exists
+        pipeline_client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint,
+                                                           workspace=workspace)
 
-        index_info = self.client.info()
-        indexing_info = index_info["indexing"]
-        if indexing_info["pending_file_count"] > 0:
+        deployed_pipelines = set(pipe["name"] for pipe in pipeline_client.list_pipeline_configs(workspace=workspace)
+                                              if pipe["status"] == "DEPLOYED")
+        self.index_exists = index in deployed_pipelines
+
+        if self.index_exists:
+            index_info = self.client.info()
+            indexing_info = index_info["indexing"]
+            if indexing_info["pending_file_count"] > 0:
+                logger.warning(f"{indexing_info['pending_file_count']} files are pending to be indexed. "
+                               f"Indexing status: {indexing_info['status']}")
+        else:
             logger.warning(
-                f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}"
+                f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
+                f"This document store will always return empty responses. To add files to your index, first upload "
+                f"files and publish&deploy your pipeline. "
+                f"DC will automatically index your files for you."
             )
 
         self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
@@ -122,6 +137,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             "`get_all_documents()` can get very slow and resource-heavy since all documents must be loaded from Deepset Cloud. "
             "Consider using `get_all_documents_generator()` instead."
         )
+        if not self.index_exists:
+            return []
+
         return list(
             self.get_all_documents_generator(
                 index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size, headers=headers
@@ -173,6 +191,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
+        if not self.index_exists:
+            return
+
         if batch_size != 10_000:
             raise ValueError("DeepsetCloudDocumentStore does not support batching")
 
@@ -192,6 +213,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def get_document_by_id(
         self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ) -> Optional[Document]:
+        if not self.index_exists:
+            return None
+
         if index is None:
             index = self.index
 
@@ -209,6 +233,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
+        if not self.index_exists:
+            return []
+
         if batch_size != 10_000:
             raise ValueError("DeepsetCloudDocumentStore does not support batching")
 
@@ -222,6 +249,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
     ) -> int:
+        if not self.index_exists:
+            return 0
+
         count_result = self.client.count_documents(
             filters=filters,
             only_documents_without_embedding=only_documents_without_embedding,
@@ -316,6 +346,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
+        if not self.index_exists:
+            return []
+
         if return_embedding is None:
             return_embedding = self.return_embedding
 
@@ -423,6 +456,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        if not self.index_exists:
+            return []
+
         doc_dicts = self.client.query(
             query=query,
             filters=filters,
