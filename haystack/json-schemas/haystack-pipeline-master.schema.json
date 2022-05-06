@@ -57,9 +57,6 @@
             "$ref": "#/definitions/BM25RetrieverComponent"
           },
           {
-            "$ref": "#/definitions/CrawlerComponent"
-          },
-          {
             "$ref": "#/definitions/DensePassageRetrieverComponent"
           },
           {
@@ -1776,70 +1773,6 @@
       ],
       "additionalProperties": false
     },
-    "CrawlerComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "Crawler"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "output_dir": {
-              "title": "Output Dir",
-              "type": "string"
-            },
-            "urls": {
-              "title": "Urls",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "crawler_depth": {
-              "title": "Crawler Depth",
-              "default": 1,
-              "type": "integer"
-            },
-            "filter_urls": {
-              "title": "Filter Urls",
-              "type": "array",
-              "items": {}
-            },
-            "overwrite_existing_files": {
-              "title": "Overwrite Existing Files",
-              "default": true
-            },
-            "id_hash_keys": {
-              "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          "required": [
-            "output_dir"
-          ],
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
     "DensePassageRetrieverComponent": {
       "type": "object",
       "properties": {
@@ -1965,10 +1898,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 }
               ]
             },
@@ -2255,10 +2188,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 }
               ]
             },
@@ -2539,10 +2472,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 }
               ]
             }
@@ -3795,10 +3728,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 }
               ]
             },
