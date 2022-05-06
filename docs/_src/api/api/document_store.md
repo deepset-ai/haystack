@@ -4014,7 +4014,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### \_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
+def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
@@ -4030,8 +4030,9 @@ See https://haystack.deepset.ai/components/document-store for more information.
 If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
 See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
 - `workspace`: workspace name in Deepset Cloud
-- `index`: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline.
-You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
+- `index`: name of the index to access within the deepset Cloud workspace. This equals typically the name of
+your pipeline. You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
+If you set index to `None`, this DocumentStore will always return empty results.
 - `duplicate_documents`: Handle duplicates document based on parameter options.
 Parameter options : ( 'skip','overwrite','fail')
 skip: Ignore the duplicates documents
