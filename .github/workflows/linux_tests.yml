@@ -83,6 +83,8 @@ jobs:
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
             echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
         fi;
+
+        echo ${{ github.event.pull_request.labels }}
   
 
   faiss-tests:
