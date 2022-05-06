@@ -24,7 +24,7 @@ Base class for regular retrievers.
 
 <a id="base.BaseRetriever.retrieve"></a>
 
-#### retrieve
+#### BaseRetriever.retrieve
 
 ```python
 @abstractmethod
@@ -48,7 +48,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="base.BaseRetriever.timing"></a>
 
-#### timing
+#### BaseRetriever.timing
 
 ```python
 def timing(fn, attr_name)
@@ -58,7 +58,7 @@ Wrapper method used to time functions.
 
 <a id="base.BaseRetriever.eval"></a>
 
-#### eval
+#### BaseRetriever.eval
 
 ```python
 def eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False, headers: Optional[Dict[str, str]] = None) -> dict
@@ -107,7 +107,7 @@ class BM25Retriever(BaseRetriever)
 
 <a id="sparse.BM25Retriever.__init__"></a>
 
-#### \_\_init\_\_
+#### BM25Retriever.\_\_init\_\_
 
 ```python
 def __init__(document_store: KeywordDocumentStore, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None, scale_score: bool = True)
@@ -191,7 +191,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="sparse.BM25Retriever.retrieve"></a>
 
-#### retrieve
+#### BM25Retriever.retrieve
 
 ```python
 def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
@@ -226,7 +226,7 @@ Helpful for benchmarking, testing and if you want to do QA on small documents wi
 
 <a id="sparse.FilterRetriever.retrieve"></a>
 
-#### retrieve
+#### FilterRetriever.retrieve
 
 ```python
 def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
@@ -265,7 +265,7 @@ It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 
 <a id="sparse.TfidfRetriever.__init__"></a>
 
-#### \_\_init\_\_
+#### TfidfRetriever.\_\_init\_\_
 
 ```python
 def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
@@ -279,7 +279,7 @@ def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
 
 <a id="sparse.TfidfRetriever.retrieve"></a>
 
-#### retrieve
+#### TfidfRetriever.retrieve
 
 ```python
 def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
@@ -301,7 +301,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="sparse.TfidfRetriever.fit"></a>
 
-#### fit
+#### TfidfRetriever.fit
 
 ```python
 def fit()
@@ -328,7 +328,7 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 
 <a id="dense.DensePassageRetriever.__init__"></a>
 
-#### \_\_init\_\_
+#### DensePassageRetriever.\_\_init\_\_
 
 ```python
 def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
@@ -395,7 +395,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.DensePassageRetriever.retrieve"></a>
 
-#### retrieve
+#### DensePassageRetriever.retrieve
 
 ```python
 def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
@@ -417,7 +417,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.DensePassageRetriever.embed_queries"></a>
 
-#### embed\_queries
+#### DensePassageRetriever.embed\_queries
 
 ```python
 def embed_queries(texts: List[str]) -> List[np.ndarray]
@@ -435,7 +435,7 @@ Embeddings, one per input queries
 
 <a id="dense.DensePassageRetriever.embed_documents"></a>
 
-#### embed\_documents
+#### DensePassageRetriever.embed\_documents
 
 ```python
 def embed_documents(docs: List[Document]) -> List[np.ndarray]
@@ -453,7 +453,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 
 <a id="dense.DensePassageRetriever.train"></a>
 
-#### train
+#### DensePassageRetriever.train
 
 ```python
 def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
@@ -500,7 +500,7 @@ For more information, refer to: https://nvidia.github.io/apex/amp.html
 
 <a id="dense.DensePassageRetriever.save"></a>
 
-#### save
+#### DensePassageRetriever.save
 
 ```python
 def save(save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder")
@@ -520,7 +520,7 @@ None
 
 <a id="dense.DensePassageRetriever.load"></a>
 
-#### load
+#### DensePassageRetriever.load
 
 ```python
 @classmethod
@@ -545,7 +545,7 @@ Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using
 
 <a id="dense.TableTextRetriever.__init__"></a>
 
-#### \_\_init\_\_
+#### TableTextRetriever.\_\_init\_\_
 
 ```python
 def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, infer_tokenizer_classes: bool = False, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
@@ -598,7 +598,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.TableTextRetriever.embed_queries"></a>
 
-#### embed\_queries
+#### TableTextRetriever.embed\_queries
 
 ```python
 def embed_queries(texts: List[str]) -> List[np.ndarray]
@@ -616,7 +616,7 @@ Embeddings, one per input queries
 
 <a id="dense.TableTextRetriever.embed_documents"></a>
 
-#### embed\_documents
+#### TableTextRetriever.embed\_documents
 
 ```python
 def embed_documents(docs: List[Document]) -> List[np.ndarray]
@@ -637,7 +637,7 @@ Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
 
 <a id="dense.TableTextRetriever.train"></a>
 
-#### train
+#### TableTextRetriever.train
 
 ```python
 def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder")
@@ -686,7 +686,7 @@ For more information, refer to: https://nvidia.github.io/apex/amp.html
 
 <a id="dense.TableTextRetriever.save"></a>
 
-#### save
+#### TableTextRetriever.save
 
 ```python
 def save(save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder")
@@ -707,7 +707,7 @@ None
 
 <a id="dense.TableTextRetriever.load"></a>
 
-#### load
+#### TableTextRetriever.load
 
 ```python
 @classmethod
@@ -726,7 +726,7 @@ class EmbeddingRetriever(BaseRetriever)
 
 <a id="dense.EmbeddingRetriever.__init__"></a>
 
-#### \_\_init\_\_
+#### EmbeddingRetriever.\_\_init\_\_
 
 ```python
 def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
@@ -769,7 +769,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.EmbeddingRetriever.retrieve"></a>
 
-#### retrieve
+#### EmbeddingRetriever.retrieve
 
 ```python
 def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
@@ -791,7 +791,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.EmbeddingRetriever.embed_queries"></a>
 
-#### embed\_queries
+#### EmbeddingRetriever.embed\_queries
 
 ```python
 def embed_queries(texts: List[str]) -> List[np.ndarray]
@@ -809,7 +809,7 @@ Embeddings, one per input queries
 
 <a id="dense.EmbeddingRetriever.embed_documents"></a>
 
-#### embed\_documents
+#### EmbeddingRetriever.embed\_documents
 
 ```python
 def embed_documents(docs: List[Document]) -> List[np.ndarray]
@@ -843,7 +843,7 @@ The generated SPARQL query is executed on a knowledge graph.
 
 <a id="text2sparql.Text2SparqlRetriever.__init__"></a>
 
-#### \_\_init\_\_
+#### Text2SparqlRetriever.\_\_init\_\_
 
 ```python
 def __init__(knowledge_graph, model_name_or_path, top_k: int = 1)
@@ -859,7 +859,7 @@ Init the Retriever by providing a knowledge graph and a pre-trained BART model
 
 <a id="text2sparql.Text2SparqlRetriever.retrieve"></a>
 
-#### retrieve
+#### Text2SparqlRetriever.retrieve
 
 ```python
 def retrieve(query: str, top_k: Optional[int] = None)
@@ -874,7 +874,7 @@ Translate a text query to SPARQL and execute it on the knowledge graph to retrie
 
 <a id="text2sparql.Text2SparqlRetriever.format_result"></a>
 
-#### format\_result
+#### Text2SparqlRetriever.format\_result
 
 ```python
 def format_result(result)

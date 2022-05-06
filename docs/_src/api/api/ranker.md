@@ -12,7 +12,7 @@ class BaseRanker(BaseComponent)
 
 <a id="base.BaseRanker.timing"></a>
 
-#### timing
+#### BaseRanker.timing
 
 ```python
 def timing(fn, attr_name)
@@ -22,7 +22,7 @@ Wrapper method used to time functions.
 
 <a id="base.BaseRanker.eval"></a>
 
-#### eval
+#### BaseRanker.eval
 
 ```python
 def eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
@@ -89,7 +89,7 @@ p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 
 <a id="sentence_transformers.SentenceTransformersRanker.__init__"></a>
 
-#### \_\_init\_\_
+#### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None)
@@ -110,7 +110,7 @@ https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
 
-#### predict\_batch
+#### SentenceTransformersRanker.predict\_batch
 
 ```python
 def predict_batch(query_doc_list: List[dict], top_k: int = None, batch_size: int = None)
@@ -132,7 +132,7 @@ List of dictionaries containing query and ranked list of Document
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 
-#### predict
+#### SentenceTransformersRanker.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]

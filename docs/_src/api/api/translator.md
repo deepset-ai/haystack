@@ -14,7 +14,7 @@ Abstract class for a Translator component that translates either a query or a do
 
 <a id="base.BaseTranslator.translate"></a>
 
-#### translate
+#### BaseTranslator.translate
 
 ```python
 @abstractmethod
@@ -25,7 +25,7 @@ Translate the passed query or a list of documents from language A to B.
 
 <a id="base.BaseTranslator.run"></a>
 
-#### run
+#### BaseTranslator.run
 
 ```python
 def run(results: List[Dict[str, Any]] = None, query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None)
@@ -65,7 +65,7 @@ We currently recommend using OPUS models (see __init__() for details)
 
 <a id="transformers.TransformersTranslator.__init__"></a>
 
-#### \_\_init\_\_
+#### TransformersTranslator.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True, use_gpu: bool = True)
@@ -96,7 +96,7 @@ tokenizer.
 
 <a id="transformers.TransformersTranslator.translate"></a>
 
-#### translate
+#### TransformersTranslator.translate
 
 ```python
 def translate(results: List[Dict[str, Any]] = None, query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
