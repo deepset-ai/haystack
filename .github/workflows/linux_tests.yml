@@ -45,7 +45,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql | tee output.txt
+        pytest --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql | tee output.txt
 
         # Output successful tests
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
@@ -76,7 +76,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch | tee output.txt
+        pytest --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch | tee output.txt
 
         # Output successful tests
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
@@ -105,7 +105,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss | tee output.txt
+        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=faiss | tee output.txt
 
         # Output successful tests
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
@@ -139,7 +139,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus | tee output.txt
+        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=milvus | tee output.txt
 
         # Output successful tests
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
@@ -169,7 +169,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate | tee output.txt
+        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=weaviate | tee output.txt
 
         # Output successful tests
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
@@ -198,7 +198,7 @@ jobs:
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone | tee output.txt
+        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=pinecone | tee output.txt
 
         # Output successful tests
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
@@ -229,7 +229,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb | tee output.txt
+        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=graphdb | tee output.txt
 
         # Output successful tests
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
@@ -326,7 +326,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
-        pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }} | tee output.txt
+        pytest --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }} | tee output.txt
 
         # Output successful tests
         if [[ $(cat output.txt) =~ (([0-9]+) passed) ]]; then
