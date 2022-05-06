@@ -11,6 +11,15 @@
       "type": "string",
       "oneOf": [
         {
+          "const": "unstable"
+        },
+        {
+          "const": "1.2.1rc0"
+        },
+        {
+          "const": "1.3.0"
+        },
+        {
           "const": "1.3.1rc0"
         }
       ]
@@ -287,6 +296,11 @@
               "title": "Return Embedding",
               "default": false,
               "type": "boolean"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "default",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -1309,6 +1323,13 @@
               "title": "Merge Multiple Column Headers",
               "default": true,
               "type": "boolean"
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
@@ -1367,6 +1388,13 @@
             "overwrite_existing_files": {
               "title": "Overwrite Existing Files",
               "default": true
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
@@ -1507,10 +1535,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 }
               ]
             }
@@ -1581,6 +1609,13 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -1785,10 +1820,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 }
               ]
             }
@@ -1979,6 +2014,14 @@
               "default": true,
               "type": "boolean"
             },
+            "devices": {
+              "title": "Devices",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "no_ans_boost": {
               "title": "No Ans Boost",
               "default": 0.0,
@@ -2033,6 +2076,10 @@
               "default": true,
               "type": "boolean"
             },
+            "confidence_threshold": {
+              "title": "Confidence Threshold",
+              "type": "number"
+            },
             "proxies": {
               "title": "Proxies",
               "type": "object",
@@ -2052,10 +2099,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 }
               ]
             }
@@ -2144,6 +2191,13 @@
               "default": [
                 "eng"
               ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -2279,6 +2333,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -2320,6 +2381,18 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "encoding": {
+              "title": "Encoding",
+              "default": "UTF-8",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -2360,6 +2433,13 @@
               "default": [
                 "eng"
               ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -2448,6 +2528,13 @@
               "items": {
                 "type": "string"
               }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -2525,6 +2612,13 @@
               "title": "Language",
               "default": "en",
               "type": "string"
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -3206,10 +3300,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 }
               ]
             }
@@ -3296,6 +3390,13 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"
@@ -3387,6 +3488,13 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
               "type": "array",
               "items": {
                 "type": "string"

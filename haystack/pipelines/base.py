@@ -1,3 +1,5 @@
+# pylint: disable=too-many-public-methods
+
 from __future__ import annotations
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
@@ -13,7 +15,6 @@ import logging
 import tempfile
 import traceback
 from pathlib import Path
-from abc import ABC, abstractmethod
 
 import yaml
 import numpy as np
@@ -23,13 +24,6 @@ from pandas.core.frame import DataFrame
 from tqdm import tqdm
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-
-try:
-    from ray import serve
-    import ray
-except:
-    ray = None  # type: ignore
-    serve = None  # type: ignore
 
 from haystack import __version__
 from haystack.nodes.evaluator.evaluator import (
@@ -42,12 +36,15 @@ from haystack.pipelines.config import (
     get_pipeline_definition,
     read_pipeline_config_from_yaml,
     validate_config,
+    _add_node_to_pipeline_graph,
+    _init_pipeline_graph,
+    VALID_ROOT_NODES,
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud
 from haystack.schema import EvaluationResult, MultiLabel, Document
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
-from haystack.nodes.base import BaseComponent
+from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.telemetry import send_event
@@ -62,35 +59,34 @@ CODE_GEN_DEFAULT_COMMENT = "This code has been generated."
 TRACKING_TOOL_TO_HEAD = {"mlflow": MLflowTrackingHead}
 
 
-class RootNode(BaseComponent):
+class Pipeline:
     """
-    RootNode feeds inputs together with corresponding params to a Pipeline.
-    """
+    Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
 
-    outgoing_edges = 1
-
-    def run(self, root_node: str):  # type: ignore
-        return {}, "output_1"
-
-
-class BasePipeline(ABC):
-    """
-    Base class for pipelines, providing the most basic methods to load and save them in different ways.
-    See also the `Pipeline` class for the actual pipeline logic.
+    Under-the-hood, a pipeline is represented as a directed acyclic graph of component nodes. It enables custom query
+    flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
+    Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
 
-    @abstractmethod
-    def run(self, **kwargs):
-        raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
+    def __init__(self):
+        self.graph = DiGraph()
 
-    @abstractmethod
-    def get_config(self, return_defaults: bool = False) -> dict:
+    @property
+    def root_node(self) -> Optional[str]:
         """
-        Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
-
-        :param return_defaults: whether to output parameters that have the default values.
+        Returns the root node of the pipeline's graph.
         """
-        raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
+        if len(self.graph.nodes) < 1:
+            return None
+        return list(self.graph.nodes)[0]  # List conversion is required, see networkx docs
+
+    @property
+    def components(self) -> Dict[str, BaseComponent]:
+        return {
+            name: attributes["component"]
+            for name, attributes in self.graph.nodes.items()
+            if not isinstance(attributes["component"], RootNode)
+        }
 
     def to_code(
         self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
@@ -139,113 +135,6 @@ class BasePipeline(ABC):
             get_ipython().set_next_input(code)  # type: ignore
         except NameError:
             logger.error("Could not create notebook cell. Make sure you're running in a notebook environment.")
-
-    @classmethod
-    @abstractmethod
-    def load_from_config(
-        cls,
-        pipeline_config: Dict,
-        pipeline_name: Optional[str] = None,
-        overwrite_with_env_variables: bool = True,
-        strict_version_check: bool = False,
-    ):
-        """
-        Load Pipeline from a config dict defining the individual components and how they're tied together to form
-        a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
-        be passed.
-
-        Here's a sample configuration:
-
-            ```python
-            |   {
-            |       "version": "1.0",
-            |       "components": [
-            |           {  # define all the building-blocks for Pipeline
-            |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
-            |               "type": "FARMReader",  # Haystack Class name for the component
-            |               "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
-            |           },
-            |           {
-            |               "name": "MyESRetriever",
-            |               "type": "BM25Retriever",
-            |               "params": {
-            |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
-            |                   "custom_query": None,
-            |               },
-            |           },
-            |           {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
-            |       ],
-            |       "pipelines": [
-            |           {  # multiple Pipelines can be defined using the components from above
-            |               "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
-            |               "nodes": [
-            |                   {"name": "MyESRetriever", "inputs": ["Query"]},
-            |                   {"name": "MyReader", "inputs": ["MyESRetriever"]},
-            |               ],
-            |           }
-            |       ],
-            |   }
-            ```
-
-        :param pipeline_config: the pipeline config as dict
-        :param pipeline_name: if the config contains multiple pipelines, the pipeline_name to load must be set.
-        :param overwrite_with_env_variables: Overwrite the configuration with environment variables. For example,
-                                             to change index name param for an ElasticsearchDocumentStore, an env
-                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                             `_` sign must be used to specify nested hierarchical properties.
-        :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
-        """
-        raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
-
-    @classmethod
-    @abstractmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
-        """
-        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
-        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
-        be passed.
-
-        Here's a sample configuration:
-
-            ```yaml
-            |   version: '1.0'
-            |
-            |    components:    # define all the building-blocks for Pipeline
-            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            |      type: FARMReader    # Haystack Class name for the component
-            |      params:
-            |        no_ans_boost: -10
-            |        model_name_or_path: deepset/roberta-base-squad2
-            |    - name: MyESRetriever
-            |      type: BM25Retriever
-            |      params:
-            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
-            |    - name: MyDocumentStore
-            |      type: ElasticsearchDocumentStore
-            |      params:
-            |        index: haystack_test
-            |
-            |    pipelines:    # multiple Pipelines can be defined using the components from above
-            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            |      nodes:
-            |      - name: MyESRetriever
-            |        inputs: [Query]
-            |      - name: MyReader
-            |        inputs: [MyESRetriever]
-            ```
-
-        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
-        If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
-
-        :param path: path of the YAML file.
-        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
-                                             to change index name param for an ElasticsearchDocumentStore, an env
-                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                             `_` sign must be used to specify nested hierarchical properties.
-        """
-        raise NotImplementedError("This is an abstract method. Use Pipeline or RayPipeline instead.")
 
     @classmethod
     def load_from_deepset_cloud(
@@ -343,8 +232,8 @@ class BasePipeline(ABC):
     @classmethod
     def save_to_deepset_cloud(
         cls,
-        query_pipeline: BasePipeline,
-        index_pipeline: BasePipeline,
+        query_pipeline: Pipeline,
+        index_pipeline: Pipeline,
         pipeline_config_name: str,
         workspace: str = "default",
         api_key: Optional[str] = None,
@@ -461,28 +350,6 @@ class BasePipeline(ABC):
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         client.undeploy(pipeline_config_name=pipeline_config_name, timeout=timeout)
 
-
-class Pipeline(BasePipeline):
-    """
-    Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
-
-    Under-the-hood, a pipeline is represented as a directed acyclic graph of component nodes. It enables custom query
-    flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
-    Reader from multiple Retrievers, or re-ranking of candidate documents.
-    """
-
-    def __init__(self):
-        self.graph = DiGraph()
-        self.root_node = None
-
-    @property
-    def components(self) -> Dict[str, BaseComponent]:
-        return {
-            name: attributes["component"]
-            for name, attributes in self.graph.nodes.items()
-            if not isinstance(attributes["component"], RootNode)
-        }
-
     def add_node(self, component: BaseComponent, name: str, inputs: List[str]):
         """
         Add a new node to the pipeline.
@@ -498,67 +365,34 @@ class Pipeline(BasePipeline):
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
         """
-        valid_root_nodes = ["Query", "File"]
-        if self.root_node is None:
-            root_node = inputs[0]
-            if root_node in valid_root_nodes:
-                self.root_node = root_node
-                self.graph.add_node(root_node, component=RootNode())
-            else:
+        if len(self.graph.nodes) < 1:
+            candidate_roots = [input_node for input_node in inputs if input_node in VALID_ROOT_NODES]
+            if len(candidate_roots) != 1:
                 raise PipelineConfigError(
-                    f"Root node '{root_node}' is invalid. Available options are {valid_root_nodes}."
+                    "The first node of a pipeline must have one single root node "
+                    f"as input ({' or '.join(VALID_ROOT_NODES)})."
                 )
+            self.graph = _init_pipeline_graph(root_node_name=candidate_roots[0])
+
+        component_definitions = get_component_definitions(pipeline_config=self.get_config())
+
+        # Check for duplicates before adding the definition
+        if name in component_definitions.keys():
+            raise PipelineConfigError(f"A node named '{name}' is already in the pipeline. Choose another name.")
+        component_definitions[name] = component._component_config
+
+        # Name any nested component before adding them
         component.name = name
         component_names = self._get_all_component_names()
         component_names.add(name)
         self._set_sub_component_names(component, component_names=component_names)
-        self.graph.add_node(name, component=component, inputs=inputs)
 
-        if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            if not len(inputs) == 1 and inputs[0].split(".")[0] == self.root_node:
-                raise PipelineConfigError(
-                    f"The '{name}' node can only input from {self.root_node}. "
-                    f"Set the 'inputs' parameter to ['{self.root_node}']"
-                )
-            # edges_count = self.graph.graph.
-            self.graph.add_edge(self.root_node, name, label="output_1")
-            return
-
-        for input_node in inputs:
-            if "." in input_node:
-                [input_node_name, input_edge_name] = input_node.split(".")
-                if not "output_" in input_edge_name:
-                    raise PipelineConfigError(f"'{input_edge_name}' is not a valid edge name.")
-
-                outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
-                if not int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node:
-                    raise PipelineConfigError(
-                        f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
-                        f"{outgoing_edges_input_node} outgoing edge(s)."
-                    )
-            else:
-                try:
-                    outgoing_edges_input_node = self.graph.nodes[input_node]["component"].outgoing_edges
-                    if not outgoing_edges_input_node == 1:
-                        raise PipelineConfigError(
-                            f"Adding an edge from {input_node} to {name} is ambiguous as {input_node} has {outgoing_edges_input_node} edges. "
-                            f"Please specify the output explicitly."
-                        )
-
-                except KeyError as e:
-                    raise PipelineConfigError(
-                        f"Cannot find node '{input_node}'. Make sure you're not using more "
-                        f"than one root node ({valid_root_nodes}) in the same pipeline and that a node "
-                        f"called '{input_node}' is defined."
-                    ) from e
-
-                input_node_name = input_node
-                input_edge_name = "output_1"
-            self.graph.add_edge(input_node_name, name, label=input_edge_name)
-
-        if not nx.is_directed_acyclic_graph(self.graph):
-            self.graph.remove_node(name)
-            raise PipelineConfigError(f"Cannot add '{name}': it will create a loop in the pipeline.")
+        self.graph = _add_node_to_pipeline_graph(
+            graph=self.graph,
+            components=component_definitions,
+            node={"name": name, "inputs": inputs},
+            instance=component,
+        )
 
     def get_node(self, name: str) -> Optional[BaseComponent]:
         """
@@ -570,6 +404,7 @@ class Pipeline(BasePipeline):
         component = graph_node["component"] if graph_node else None
         return component
 
+    # FIXME unused and untested. In which cases do we need to set nodes? Can this be removed?
     def set_node(self, name: str, component):
         """
         Set the component for a node in the Pipeline.
@@ -622,21 +457,24 @@ class Pipeline(BasePipeline):
                     raise ValueError(
                         f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
                     )
+        root_node = self.root_node
+        if not root_node:
+            raise PipelineError("Cannot run a pipeline with no nodes.")
 
         node_output = None
-        queue = {
-            self.root_node: {"root_node": self.root_node, "params": params}
+        queue: Dict[str, Any] = {
+            root_node: {"root_node": root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
         if query:
-            queue[self.root_node]["query"] = query
+            queue[root_node]["query"] = query
         if file_paths:
-            queue[self.root_node]["file_paths"] = file_paths
+            queue[root_node]["file_paths"] = file_paths
         if labels:
-            queue[self.root_node]["labels"] = labels
+            queue[root_node]["labels"] = labels
         if documents:
-            queue[self.root_node]["documents"] = documents
+            queue[root_node]["documents"] = documents
         if meta:
-            queue[self.root_node]["meta"] = meta
+            queue[root_node]["meta"] = meta
 
         i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
         while queue:
@@ -1293,7 +1131,7 @@ class Pipeline(BasePipeline):
         Here's a sample configuration:
 
             ```yaml
-            |   version: '1.0'
+            |   version: '1.0.0'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -1332,9 +1170,9 @@ class Pipeline(BasePipeline):
         :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
         """
 
-        pipeline_config = read_pipeline_config_from_yaml(path)
+        config = read_pipeline_config_from_yaml(path)
         return cls.load_from_config(
-            pipeline_config=pipeline_config,
+            pipeline_config=config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
             strict_version_check=strict_version_check,
@@ -1357,7 +1195,7 @@ class Pipeline(BasePipeline):
 
             ```python
             |   {
-            |       "version": "0.9",
+            |       "version": "ignore",
             |       "components": [
             |           {  # define all the building-blocks for Pipeline
             |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
@@ -1395,19 +1233,18 @@ class Pipeline(BasePipeline):
         :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise).
         """
         validate_config(pipeline_config, strict_version_check=strict_version_check)
+        pipeline = cls()
 
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
         )
-
-        pipeline = cls()
-
-        components: dict = {}  # instances of component objects.
-        for node in pipeline_definition["nodes"]:
-            name = node["name"]
-            component = cls._load_or_get_component(name=name, definitions=component_definitions, components=components)
-            pipeline.add_node(component=component, name=name, inputs=node.get("inputs", []))
+        components: Dict[str, BaseComponent] = {}
+        for node_config in pipeline_definition["nodes"]:
+            component = cls._load_or_get_component(
+                name=node_config["name"], definitions=component_definitions, components=components
+            )
+            pipeline.add_node(component=component, name=node_config["name"], inputs=node_config["inputs"])
 
         return pipeline
 
@@ -1440,8 +1277,9 @@ class Pipeline(BasePipeline):
                         value
                     ]  # substitute reference (string) with the component object.
 
-            instance = BaseComponent.load_from_args(component_type=component_type, **component_params)
-            components[name] = instance
+            component_instance = BaseComponent._create_instance(component_type, component_params)
+            components[name] = component_instance
+            return component_instance
 
         except KeyError as ke:
             raise PipelineConfigError(
@@ -1452,7 +1290,6 @@ class Pipeline(BasePipeline):
             raise PipelineConfigError(
                 f"Failed loading pipeline component '{name}'. " "See the stacktrace above for more informations."
             ) from e
-        return instance
 
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
         """
@@ -1471,7 +1308,11 @@ class Pipeline(BasePipeline):
 
         :param return_defaults: whether to output parameters that have the default values.
         """
-        pipeline_name = ROOT_NODE_TO_PIPELINE_NAME[self.root_node.lower()]
+        if self.root_node:
+            pipeline_name = ROOT_NODE_TO_PIPELINE_NAME[self.root_node.lower()]
+        else:
+            pipeline_name = "pipeline"
+
         pipeline_definitions: Dict[str, Dict] = {pipeline_name: {"name": pipeline_name, "nodes": []}}
 
         component_definitions: Dict[str, Dict] = {}
@@ -1528,7 +1369,7 @@ class Pipeline(BasePipeline):
         if components_to_search is None:
             components_to_search = list(self.components.values())
         for component in components_to_search:
-            if component.name is not None:
+            if component and component.name is not None:
                 component_names.add(component.name)
                 sub_component_names = self._get_all_component_names(component.utilized_components)
                 component_names.update(sub_component_names)
@@ -1571,297 +1412,6 @@ class Pipeline(BasePipeline):
         print_eval_report(
             eval_result=eval_result, graph=graph, n_wrong_examples=n_wrong_examples, metrics_filter=metrics_filter
         )
-
-
-class RayPipeline(Pipeline):
-    """
-    Ray (https://ray.io) is a framework for distributed computing.
-
-    Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
-    Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
-    of the Reader and a single replica for the Retriever. It enables efficient resource utilization by horizontally
-    scaling Components.
-
-    To set the number of replicas, add  `replicas` in the YAML config for the node in a pipeline:
-
-            ```yaml
-            |    components:
-            |        ...
-            |
-            |    pipelines:
-            |        - name: ray_query_pipeline
-            |          type: RayPipeline
-            |          nodes:
-            |            - name: ESRetriever
-            |              replicas: 2  # number of replicas to create on the Ray cluster
-            |              inputs: [ Query ]
-            ```
-
-    A RayPipeline can only be created with a YAML Pipeline config.
-    >>> from haystack.pipeline import RayPipeline
-    >>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
-    >>> pipeline.run(query="What is the capital of Germany?")
-
-    By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
-    set the `address` parameter when creating the RayPipeline instance.
-    """
-
-    def __init__(self, address: str = None, **kwargs):
-        """
-        :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
-        :param kwargs: Optional parameters for initializing Ray.
-        """
-        ray.init(address=address, **kwargs)
-        serve.start()
-        super().__init__()
-
-    @classmethod
-    def load_from_config(
-        cls,
-        pipeline_config: Dict,
-        pipeline_name: Optional[str] = None,
-        overwrite_with_env_variables: bool = True,
-        strict_version_check: bool = False,
-        address: Optional[str] = None,
-        **kwargs,
-    ):
-        pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
-        component_definitions = get_component_definitions(
-            pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
-        )
-        pipeline = cls(address=address, **kwargs)
-
-        for node_config in pipeline_definition["nodes"]:
-            if pipeline.root_node is None:
-                root_node = node_config["inputs"][0]
-                if root_node in ["Query", "File"]:
-                    pipeline.root_node = root_node
-                    handle = cls._create_ray_deployment(component_name=root_node, pipeline_config=pipeline_config)
-                    pipeline._add_ray_deployment_in_graph(handle=handle, name=root_node, outgoing_edges=1, inputs=[])
-                else:
-                    raise KeyError(f"Root node '{root_node}' is invalid. Available options are 'Query' and 'File'.")
-
-            name = node_config["name"]
-            component_type = component_definitions[name]["type"]
-            component_class = BaseComponent.get_subclass(component_type)
-            replicas = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get("replicas", 1)
-            handle = cls._create_ray_deployment(component_name=name, pipeline_config=pipeline_config, replicas=replicas)
-            pipeline._add_ray_deployment_in_graph(
-                handle=handle,
-                name=name,
-                outgoing_edges=component_class.outgoing_edges,
-                inputs=node_config.get("inputs", []),
-            )
-
-        return pipeline
-
-    @classmethod
-    def load_from_yaml(  # type: ignore
-        cls,
-        path: Path,
-        pipeline_name: Optional[str] = None,
-        overwrite_with_env_variables: bool = True,
-        address: Optional[str] = None,
-        strict_version_check: bool = False,
-        **kwargs,
-    ):
-        """
-        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
-        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
-        be passed.
-
-        Here's a sample configuration:
-
-            ```yaml
-            |   version: '0.9'
-            |
-            |    components:    # define all the building-blocks for Pipeline
-            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            |      type: FARMReader    # Haystack Class name for the component
-            |      params:
-            |        no_ans_boost: -10
-            |        model_name_or_path: deepset/roberta-base-squad2
-            |    - name: MyESRetriever
-            |      type: BM25Retriever
-            |      params:
-            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
-            |    - name: MyDocumentStore
-            |      type: ElasticsearchDocumentStore
-            |      params:
-            |        index: haystack_test
-            |
-            |    pipelines:    # multiple Pipelines can be defined using the components from above
-            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            |      type: RayPipeline
-            |      nodes:
-            |      - name: MyESRetriever
-            |        inputs: [Query]
-            |        replicas: 2    # number of replicas to create on the Ray cluster
-            |      - name: MyReader
-            |        inputs: [MyESRetriever]
-            ```
-
-
-        Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
-        If the pipeline loads correctly regardless, save again the pipeline using `RayPipeline.save_to_yaml()` to remove the warning.
-
-        :param path: path of the YAML file.
-        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
-                                             to change index name param for an ElasticsearchDocumentStore, an env
-                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                             `_` sign must be used to specify nested hierarchical properties.
-        :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
-        """
-        pipeline_config = read_pipeline_config_from_yaml(path)
-        return RayPipeline.load_from_config(
-            pipeline_config=pipeline_config,
-            pipeline_name=pipeline_name,
-            overwrite_with_env_variables=overwrite_with_env_variables,
-            address=address,
-            **kwargs,
-        )
-
-    @classmethod
-    def _create_ray_deployment(cls, component_name: str, pipeline_config: dict, replicas: int = 1):
-        """
-        Create a Ray Deployment for the Component.
-
-        :param component_name: Class name of the Haystack Component.
-        :param pipeline_config: The Pipeline config YAML parsed as a dict.
-        :param replicas: By default, a single replica of the component is created. It can be
-                         configured by setting `replicas` parameter in the Pipeline YAML.
-        """
-        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)  # type: ignore
-        RayDeployment.deploy(pipeline_config, component_name)
-        handle = RayDeployment.get_handle()
-        return handle
-
-    def run(  # type: ignore
-        self,
-        query: Optional[str] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[MultiLabel] = None,
-        documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
-        params: Optional[dict] = None,
-    ):
-        has_next_node = True
-        current_node_id = self.root_node
-        input_dict = {"root_node": self.root_node, "params": params}
-        if query:
-            input_dict["query"] = query
-        if file_paths:
-            input_dict["file_paths"] = file_paths
-        if labels:
-            input_dict["labels"] = labels
-        if documents:
-            input_dict["documents"] = documents
-        if meta:
-            input_dict["meta"] = meta
-
-        output_dict = None
-
-        while has_next_node:
-            output_dict, stream_id = ray.get(self.graph.nodes[current_node_id]["component"].remote(**input_dict))
-            input_dict = output_dict
-            next_nodes = self.get_next_nodes(current_node_id, stream_id)
-
-            if len(next_nodes) > 1:
-                join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
-                if set(self.graph.predecessors(join_node_id)) != set(next_nodes):
-                    raise NotImplementedError(
-                        "The current pipeline does not support multiple levels of parallel nodes."
-                    )
-                inputs_for_join_node: dict = {"inputs": []}
-                for n_id in next_nodes:
-                    output = self.graph.nodes[n_id]["component"].run(**input_dict)
-                    inputs_for_join_node["inputs"].append(output)
-                input_dict = inputs_for_join_node
-                current_node_id = join_node_id
-            elif len(next_nodes) == 1:
-                current_node_id = next_nodes[0]
-            else:
-                has_next_node = False
-
-        return output_dict
-
-    def add_node(self, component, name: str, inputs: List[str]):
-        raise NotImplementedError(
-            "The current implementation of RayPipeline only supports loading Pipelines from a YAML file."
-        )
-
-    def _add_ray_deployment_in_graph(self, handle, name: str, outgoing_edges: int, inputs: List[str]):
-        """
-        Add the Ray deployment handle in the Pipeline Graph.
-
-        :param handle: Ray deployment `handle` to add in the Pipeline Graph. The handle allow calling a Ray deployment
-                       from Python: https://docs.ray.io/en/master/serve/package-ref.html#servehandle-api.
-        :param name: The name for the node. It must not contain any dots.
-        :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["BM25Retriever"].
-
-                       In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
-                       must be specified explicitly as "QueryClassifier.output_2".
-        """
-        self.graph.add_node(name, component=handle, inputs=inputs, outgoing_edges=outgoing_edges)
-
-        if len(self.graph.nodes) == 2:  # first node added; connect with Root
-            self.graph.add_edge(self.root_node, name, label="output_1")
-            return
-
-        for i in inputs:
-            if "." in i:
-                [input_node_name, input_edge_name] = i.split(".")
-                assert "output_" in input_edge_name, f"'{input_edge_name}' is not a valid edge name."
-                outgoing_edges_input_node = self.graph.nodes[input_node_name]["component"].outgoing_edges
-                assert int(input_edge_name.split("_")[1]) <= outgoing_edges_input_node, (
-                    f"Cannot connect '{input_edge_name}' from '{input_node_name}' as it only has "
-                    f"{outgoing_edges_input_node} outgoing edge(s)."
-                )
-            else:
-                outgoing_edges_input_node = self.graph.nodes[i]["outgoing_edges"]
-                assert outgoing_edges_input_node == 1, (
-                    f"Adding an edge from {i} to {name} is ambiguous as {i} has {outgoing_edges_input_node} edges. "
-                    f"Please specify the output explicitly."
-                )
-                input_node_name = i
-                input_edge_name = "output_1"
-            self.graph.add_edge(input_node_name, name, label=input_edge_name)
-
-
-class _RayDeploymentWrapper:
-    """
-    Ray Serve supports calling of __init__ methods on the Classes to create "deployment" instances.
-
-    In case of Haystack, some Components like Retrievers have complex init methods that needs objects
-    like Document Stores.
-
-    This wrapper class encapsulates the initialization of Components. Given a Component Class
-    name, it creates an instance using the YAML Pipeline config.
-    """
-
-    node: BaseComponent
-
-    def __init__(self, pipeline_config: dict, component_name: str):
-        """
-        Create an instance of Component.
-
-        :param pipeline_config: Pipeline YAML parsed as a dict.
-        :param component_name: Component Class name.
-        """
-        if component_name in ["Query", "File"]:
-            self.node = RootNode()
-        else:
-            self.node = BaseComponent.load_from_pipeline_config(pipeline_config, component_name)
-
-    def __call__(self, *args, **kwargs):
-        """
-        Ray calls this method which is then re-directed to the corresponding component's run().
-        """
-        return self.node._dispatch_run(*args, **kwargs)
 
 
 class _HaystackBeirRetrieverAdapter:

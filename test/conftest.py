@@ -233,6 +233,18 @@ class MockRetriever(BaseRetriever):
         pass
 
 
+class MockDenseRetriever(MockRetriever):
+    def __init__(self, document_store: BaseDocumentStore, embedding_dim: int = 768):
+        self.embedding_dim = embedding_dim
+        self.document_store = document_store
+
+    def embed_queries(self, texts):
+        return [np.random.rand(self.embedding_dim)] * len(texts)
+
+    def embed_documents(self, docs):
+        return [np.random.rand(self.embedding_dim)] * len(docs)
+
+
 class MockReader(BaseReader):
     outgoing_edges = 1
 

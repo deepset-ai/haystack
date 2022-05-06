@@ -35,6 +35,38 @@ def test_convert(Converter):
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])  # TODO PDFToTextOCRConverter should pass this test too
+def test_pdf_encoding(Converter):
+    converter = Converter()
+
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
+    assert "ɪ" in document.content
+
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", encoding="Latin1")[0]["documents"][0]
+    assert "ɪ" not in document.content
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])  # TODO PDFToTextOCRConverter should pass this test too
+def test_pdf_ligatures(Converter):
+    converter = Converter()
+
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")[0]["documents"][0]
+    assert "ﬀ" not in document.content
+    assert "ɪ" in document.content
+
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={})[0]["documents"][
+        0
+    ]
+    assert "ﬀ" in document.content
+    assert "ɪ" in document.content
+
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", known_ligatures={"ɪ": "i"})[0][
+        "documents"
+    ][0]
+    assert "ﬀ" in document.content
+    assert "ɪ" not in document.content
+
+
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):

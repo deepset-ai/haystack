@@ -63,9 +63,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param embedding_dim: The embedding vector size.
         :param return_embedding: Whether to return document embeddings.
         :param index: Name of index in document store to use.
-        :param similarity: The similarity function used to compare document vectors. `"dot_product"` is the default
-            since it is more performant with DPR embeddings. `"cosine"` is recommended if you are using a
-            Sentence-Transformer model.
+        :param similarity: The similarity function used to compare document vectors. `"cosine"` is the default
+            and is recommended if you are using a Sentence-Transformer model. `"dot_product"` is more performant
+            with DPR embeddings.
             In both cases, the returned values in Document.score are normalized to be in range [0,1]:
                 - For `"dot_product"`: `expit(np.asarray(raw_score / 100))`
                 - For `"cosine"`: `(raw_score + 1) / 2`
@@ -91,8 +91,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         self._api_key = api_key
 
         # Formal similarity string
-        if similarity in ("dot_product", "cosine"):
+        if similarity == "cosine":
             self.metric_type = similarity
+        elif similarity == "dot_product":
+            self.metric_type = "dotproduct"
         elif similarity in ("l2", "euclidean"):
             self.metric_type = "euclidean"
         else:

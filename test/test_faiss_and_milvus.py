@@ -1,19 +1,22 @@
-import uuid
-import faiss
-import math
-import numpy as np
-import pytest
+import os
 import sys
+import math
+from pathlib import Path
+
+import yaml
+import faiss
+import pytest
+import numpy as np
 
 from haystack.schema import Document
 from haystack.pipelines import DocumentSearchPipeline
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.weaviate import WeaviateDocumentStore
 
 from haystack.pipelines import Pipeline
 from haystack.nodes.retriever.dense import EmbeddingRetriever
 
-from .conftest import ensure_ids_are_correct_uuids
+from .conftest import document_classifier, ensure_ids_are_correct_uuids, SAMPLES_PATH, MockDenseRetriever
 
 
 DOCUMENTS = [
@@ -566,3 +569,38 @@ def test_cosine_sanity_check(document_store_small):
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
     assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.00002)
+
+
+@pytest.mark.integration
+def test_pipeline_with_existing_faiss_docstore(tmp_path):
+
+    document_store: FAISSDocumentStore = FAISSDocumentStore(
+        sql_url=f'sqlite:///{(tmp_path / "faiss_document_store.db").absolute()}'
+    )
+    retriever = MockDenseRetriever(document_store=document_store)
+    document_store.write_documents(DOCUMENTS)
+    document_store.update_embeddings(retriever=retriever, update_existing_embeddings=True)
+
+    document_store.save(tmp_path / "existing_faiss_document_store")
+
+    query_config = f"""
+version: ignore
+components:
+  - name: DPRRetriever
+    type: MockDenseRetriever
+    params:
+      document_store: ExistingFAISSDocumentStore
+  - name: ExistingFAISSDocumentStore
+    type: FAISSDocumentStore
+    params:
+      faiss_index_path: '{tmp_path / "existing_faiss_document_store"}'
+pipelines:
+  - name: query_pipeline
+    nodes:
+      - name: DPRRetriever
+        inputs: [Query]
+    """
+    pipeline = Pipeline.load_from_config(yaml.safe_load(query_config))
+    existing_document_store = pipeline.get_document_store()
+    faiss_index = existing_document_store.faiss_indexes["document"]
+    assert faiss_index.ntotal == len(DOCUMENTS)
