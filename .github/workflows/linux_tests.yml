@@ -12,6 +12,9 @@ on:
       - '**/pyproject.toml'
       - ".github/**/*.*"
 
+env:
+  TESTS_RUN: 0
+
 jobs:
 
   unit-tests:
@@ -39,23 +42,15 @@ jobs:
       run: pip install .
 
     - name: Run tests
-      id: pytest
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=${{ matrix.folder }}_run::${BASH_REMATCH::-7}"
-      
-    outputs:
-      tests-run: |
-        ${{ steps.pytest.outputs.node_tests_run }} +
-        ${{ steps.pytest.outputs.pipelines_tests_run }} +
-        ${{ steps.pytest.outputs.modeling_tests_run }} +
-        ${{ steps.pytest.outputs.other_tests_run }}
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   elasticsearch-tests:
@@ -80,18 +75,14 @@ jobs:
       run: pip install .
 
     - name: Run tests
-      id: pytest
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=tests_run::${BASH_REMATCH::-7}"
-      
-    outputs:
-      tests-run: ${{ steps.pytest.outputs.tests_run }}
-
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+  
 
   faiss-tests:
     runs-on: ubuntu-20.04
@@ -111,18 +102,14 @@ jobs:
       run: pip install .[faiss]
 
     - name: Run tests
-      id: pytest
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=tests_run::${BASH_REMATCH::-7}"
-      
-    outputs:
-      tests-run: ${{ steps.pytest.outputs.tests_run }}
-  
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+
 
   milvus-tests:
     runs-on: ubuntu-20.04
@@ -149,17 +136,13 @@ jobs:
       run: pip install .[milvus]
 
     - name: Run tests
-      id: pytest
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=tests_run::${BASH_REMATCH::-7}"
-      
-    outputs:
-      tests-run: ${{ steps.pytest.outputs.tests_run }}
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   weaviate-tests:
@@ -183,18 +166,14 @@ jobs:
       run: pip install .[weaviate]
 
     - name: Run tests
-      id: pytest
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=tests_run::${BASH_REMATCH::-7}"
-      
-    outputs:
-      tests-run: ${{ steps.pytest.outputs.tests_run }}
-
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+  
 
   pinecone-tests:
     runs-on: ubuntu-20.04
@@ -214,19 +193,15 @@ jobs:
       run: pip install .[pinecone]
 
     - name: Run tests
-      id: pytest
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=tests_run::${BASH_REMATCH::-7}"
-      
-    outputs:
-      tests-run: ${{ steps.pytest.outputs.tests_run }}
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   graphdb-tests:
@@ -251,17 +226,13 @@ jobs:
       run: pip install .[graphdb]
 
     - name: Run tests
-      id: pytest
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=tests_run::${BASH_REMATCH::-7}"
-      
-    outputs:
-      tests-run: ${{ steps.pytest.outputs.tests_run }}
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   rest-and-ui-tests:
@@ -287,20 +258,19 @@ jobs:
         pip install ui/
 
     - name: Run tests
-      id: pytest
       run: |
-        export pytest_output=$(pytest rest_api/ ui/)
+        pytest_output=$(pytest rest_api/ ui/)
         echo $pytest_output
         
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=rest_tests_run::${BASH_REMATCH::-7}"
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
       
-    outputs:
-      tests-run: ${{ steps.pytest.outputs.rest_tests_run }}
-
 
   integration-tests:
+    needs:
+      - unit-tests
+      - elasticsearch-tests
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     strategy:
@@ -351,23 +321,15 @@ jobs:
       run: pip install .
 
     - name: Run tests
-      id: pytest
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }})
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }})
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=${{ matrix.folder }}_run::${BASH_REMATCH::-7}"
-      
-    outputs:
-      tests-run: |
-        ${{ steps.pytest.outputs.node_tests_run }} +
-        ${{ steps.pytest.outputs.pipelines_tests_run }} +
-        ${{ steps.pytest.outputs.modeling_tests_run }} +
-        ${{ steps.pytest.outputs.other_tests_run }}
+        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   count:
@@ -394,17 +356,6 @@ jobs:
       run: |
         # Count available tests
         [[ $(pytest --collect-only .) =~ (([0-9]+) tests collected) ]]
-        export total_tests_count=${BASH_REMATCH::-6}
-
-        export tests_run=${{ needs.unit-tests.outputs.tests-run }}
-        export tests_run=$(( ${{ needs.rest-and-ui-tests.outputs.tests-run }} + tests_run ))
-        export tests_run=$(( ${{ needs.integration-tests.outputs.tests-run }} + tests_run ))
+        total_tests_count=${BASH_REMATCH::-6}
         
-        export tests_run=$(( ${{ needs.elasticsearch-tests.outputs.tests-run }} + tests_run ))
-        export tests_run=$(( ${{ needs.faiss-tests.outputs.tests-run }} + tests_run ))
-        export tests_run=$(( ${{ needs.milvus-tests.outputs.tests-run }} + tests_run ))
-        export tests_run=$(( ${{ needs.weaviate-tests.outputs.tests-run }} + tests_run ))
-        export tests_run=$(( ${{ needs.pinecone-tests.outputs.tests-run }} + tests_run ))
-        export tests_run=$(( ${{ needs.graphdb-tests.outputs.tests-run }} + tests_run ))        
-        
-        echo "============ Tests run: $tests_run / $total_tests_count =============="
+        echo "============ Tests run: $TESTS_RUN / $total_tests_count =============="
