@@ -63,19 +63,25 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
         )
         # Check if index exists
-        pipeline_client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint,
-                                                           workspace=workspace)
+        pipeline_client = DeepsetCloud.get_pipeline_client(
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace
+        )
 
-        deployed_pipelines = set(pipe["name"] for pipe in pipeline_client.list_pipeline_configs(workspace=workspace)
-                                              if pipe["status"] == "DEPLOYED")
+        deployed_pipelines = set(
+            pipe["name"]
+            for pipe in pipeline_client.list_pipeline_configs(workspace=workspace)
+            if pipe["status"] == "DEPLOYED"
+        )
         self.index_exists = index in deployed_pipelines
 
         if self.index_exists:
             index_info = self.client.info()
             indexing_info = index_info["indexing"]
             if indexing_info["pending_file_count"] > 0:
-                logger.warning(f"{indexing_info['pending_file_count']} files are pending to be indexed. "
-                               f"Indexing status: {indexing_info['status']}")
+                logger.warning(
+                    f"{indexing_info['pending_file_count']} files are pending to be indexed. "
+                    f"Indexing status: {indexing_info['status']}"
+                )
         else:
             logger.warning(
                 f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
