@@ -12,8 +12,11 @@ on:
       - '**/pyproject.toml'
       - ".github/**/*.*"
 
+
 env:
   TESTS_RUN: 0
+  TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+
 
 jobs:
 
@@ -42,15 +45,13 @@ jobs:
       run: pip install .
 
     - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql | tee /dev/tty)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   elasticsearch-tests:
@@ -76,12 +77,12 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch | tee /dev/tty)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
   
 
   faiss-tests:
@@ -103,12 +104,12 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss | tee /dev/tty)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   milvus-tests:
@@ -137,12 +138,12 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus | tee /dev/tty)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   weaviate-tests:
@@ -167,12 +168,12 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate | tee /dev/tty)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
   
 
   pinecone-tests:
@@ -196,12 +197,12 @@ jobs:
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone | tee /dev/tty)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   graphdb-tests:
@@ -227,12 +228,12 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb)
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb | tee /dev/tty)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   rest-and-ui-tests:
@@ -259,12 +260,12 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest rest_api/ ui/)
+        pytest_output=$(pytest rest_api/ ui/ | tee /dev/tty)
         echo $pytest_output
         
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
       
 
   integration-tests:
@@ -324,12 +325,12 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }})
+        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }} | tee /dev/tty)
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "TESTS_RUN=${TESTS_RUN}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
+        echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   count:
@@ -356,6 +357,13 @@ jobs:
       run: |
         # Count available tests
         [[ $(pytest --collect-only .) =~ (([0-9]+) tests) ]]
-        total_tests_count=${BASH_REMATCH::-6}
+        echo "TESTS_COUNT=${BASH_REMATCH::-6}" >> $GITHUB_ENV
         
-        echo "============ Tests run: $TESTS_RUN / $total_tests_count =============="
+        echo "============ Tests run: ${{ env.TESTS_RUN }} / $TESTS_COUNT =============="
+
+    - name: Edit PR comment
+      uses: thollander/actions-comment-pull-request@v1
+      with:
+        message: 'Tests run: ${{ env.TESTS_RUN }} / ${{ env.TESTS_COUNT}}'
+        comment_includes: 'Tests run: '
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
