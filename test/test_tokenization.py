@@ -266,7 +266,7 @@ def test_all_tokenizer_on_special_cases(caplog):
         "This is a sentence			with multiple tabs",
     ]
 
-    expected_to_fail = [(1, 1), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (2, 1), (2, 5)]
+    expected_to_fail = {(2, 1), (2, 5)}
 
     for i_tok, tokenizer in enumerate(tokenizers):
         for i_text, text in enumerate(texts):
