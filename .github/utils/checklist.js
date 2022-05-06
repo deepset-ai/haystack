@@ -1,4 +1,10 @@
-module.exports = ({github, context}) => {
+/*
+* Script used in checklist.yml. 
+* Verifies which workflows are available for each PR 
+* and lists which ones have run and with which outcome, 
+* as a checklist for reviewers before approving PRs.
+*/
+module.exports = async ({github, context, core}) => {
 
     const { COMMIT_HASH, ISSUE_NUMBER } = process.env
 
@@ -30,17 +36,19 @@ module.exports = ({github, context}) => {
     console.log(workflows)
 
     // List all comments on this PR
-    const comments_pages = octokit.rest.issues.listComments({
+    const comments_pages = github.rest.issues.listComments({
         owner: context.repo.owner,
         repo: context.repo.repo,
         issue_number: ISSUE_NUMBER
     });
     const comments = await github.paginate(comments_pages)
 
+    console.log(comments)
+
     // Delete all comments from this bot
     for (const comment of comments) {
         if (comment.user.login === 'github-actions') {
-                await octokit.rest.issues.deleteComment({
+                await github.rest.issues.deleteComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: comment.id
