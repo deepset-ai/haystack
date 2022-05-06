@@ -120,6 +120,7 @@ M1 Macbooks require some extra depencies in order to install Haystack.
 brew install postgresql
 brew install cmake
 brew install rust
+brew install sentencepiece
 
 # haystack installation
 GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true pip install git+https://github.com/deepset-ai/haystack.git
