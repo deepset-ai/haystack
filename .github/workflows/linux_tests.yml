@@ -47,10 +47,9 @@ jobs:
     - name: Run tests
       run: |
         pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql | tee output.txt
-        echo $pytest_output
 
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
@@ -78,16 +77,15 @@ jobs:
     - name: Run tests
       run: |
         pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch | tee output.txt
-        echo $pytest_output
 
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
   
 
   faiss-tests:
     runs-on: ubuntu-20.04
-    if: contains(github.event.pull_request.labels.*.name, 'faiss')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss')
 
     steps:
     - uses: actions/checkout@v2
@@ -105,16 +103,15 @@ jobs:
     - name: Run tests
       run: |
         pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss | tee output.txt
-        echo $pytest_output
 
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   milvus-tests:
     runs-on: ubuntu-20.04
-    if: contains(github.event.pull_request.labels.*.name, 'milvus')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus')
 
     steps:
     - uses: actions/checkout@v2
@@ -139,16 +136,15 @@ jobs:
     - name: Run tests
       run: |
         pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus | tee output.txt
-        echo $pytest_output
 
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   weaviate-tests:
     runs-on: ubuntu-20.04
-    if: contains(github.event.pull_request.labels.*.name, 'weaviate')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate')
 
     steps:
     - uses: actions/checkout@v2
@@ -169,16 +165,15 @@ jobs:
     - name: Run tests
       run: |
         pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate | tee output.txt
-        echo $pytest_output
 
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
   
 
   pinecone-tests:
     runs-on: ubuntu-20.04
-    if: contains(github.event.pull_request.labels.*.name, 'pinecone')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone')
 
     steps:
     - uses: actions/checkout@v2
@@ -198,16 +193,15 @@ jobs:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
         pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone | tee output.txt
-        echo $pytest_output
 
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
   graphdb-tests:
     runs-on: ubuntu-20.04
-    if: contains(github.event.pull_request.labels.*.name, 'graphdb')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb')
 
     steps:
     - uses: actions/checkout@v2
@@ -229,10 +223,9 @@ jobs:
     - name: Run tests
       run: |
         pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb | tee output.txt
-        echo $pytest_output
 
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
@@ -260,11 +253,10 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest rest_api/ ui/ | tee /dev/tty)
-        echo $pytest_output
+        pytest rest_api/ ui/ | tee output.txt
         
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
       
 
@@ -326,10 +318,9 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
         pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }} | tee output.txt
-        echo $pytest_output
 
         # Output successful tests
-        [[ $pytest_output =~ (([0-9]+) passed) ]]
+        [[ $(cat output.txt) =~ (([0-9]+) passed) ]]
         echo "TESTS_RUN=${{ env.TESTS_RUN }}+${BASH_REMATCH::-7}" >> $GITHUB_ENV
 
 
