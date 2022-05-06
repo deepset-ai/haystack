@@ -1,8 +1,7 @@
 name: Tests (Linux)
 
 on:
-  # Activate this workflow manually
-  workflow_dispatch:
+  workflow_dispatch: # Activate this workflow manually
   pull_request:
     paths:
       - '**/*.py'

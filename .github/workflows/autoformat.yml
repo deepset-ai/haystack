@@ -1,8 +1,7 @@
 name: Code Format & API Docs
 
 on:
-  # Activate this workflow manually
-  workflow_dispatch:
+  workflow_dispatch:  # Activate this workflow manually
   # Activate this workflow at every push of code changes
   # Note: using push instead of pull_request make the actions
   # run on the contributor's actions instead of Haystack's.

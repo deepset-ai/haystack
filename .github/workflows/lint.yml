@@ -1,8 +1,7 @@
-name: Static Analysis
+name: Lint
 
 on:
-  # Activate this workflow manually
-  workflow_dispatch:
+  workflow_dispatch:  # Activate this workflow manually
   pull_request:
     paths:
       - '**/*.py'
@@ -13,7 +12,6 @@ jobs:
 
   mypy:
     runs-on: ubuntu-20.04
-    timeout-minutes: 45
     steps:
 
     - uses: actions/checkout@v2
@@ -50,3 +48,30 @@ jobs:
 
         echo "=== ui/ ==="
         mypy ui --exclude=ui/build/ --exclude=ui/test/
+
+
+  pylint:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+
+    - name: Install Haystack
+      run: |
+        pip install --upgrade pip
+        pip install .[all]
+        pip install rest_api/
+        pip install ui/
+
+    - name: Pylint
+      run: |
+        pylint -ry haystack/
+        pylint -ry rest_api/
+        pylint -ry ui/
