@@ -46,7 +46,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql | tee /dev/tty)
+        pytest -s --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql | tee output.txt
         echo $pytest_output
 
         # Output successful tests
@@ -77,7 +77,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch | tee /dev/tty)
+        pytest -s --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch | tee output.txt
         echo $pytest_output
 
         # Output successful tests
@@ -104,7 +104,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss | tee /dev/tty)
+        pytest -s --maxfail=5 --durations=10 -m "faiss and not integration" test/document_store_tests/ --document_store_type=faiss | tee output.txt
         echo $pytest_output
 
         # Output successful tests
@@ -138,7 +138,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus | tee /dev/tty)
+        pytest -s --maxfail=5 --durations=10 -m "milvus and not integration" test/document_store_tests/ --document_store_type=milvus | tee output.txt
         echo $pytest_output
 
         # Output successful tests
@@ -168,7 +168,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate | tee /dev/tty)
+        pytest -s --maxfail=5 --durations=10 -m "weaviate and not integration" test/document_store_tests/ --document_store_type=weaviate | tee output.txt
         echo $pytest_output
 
         # Output successful tests
@@ -197,7 +197,7 @@ jobs:
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone | tee /dev/tty)
+        pytest -s --maxfail=5 --durations=10 -m "pinecone and not integration" test/document_store_tests/ --document_store_type=pinecone | tee output.txt
         echo $pytest_output
 
         # Output successful tests
@@ -228,7 +228,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb | tee /dev/tty)
+        pytest -s --maxfail=5 --durations=10 -m "graphdb and not integration" test/document_store_tests/ --document_store_type=graphdb | tee output.txt
         echo $pytest_output
 
         # Output successful tests
@@ -325,7 +325,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
-        pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }} | tee /dev/tty)
+        pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }} | tee output.txt
         echo $pytest_output
 
         # Output successful tests
