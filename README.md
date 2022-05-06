@@ -326,3 +326,4 @@ Here's a list of organizations who use Haystack. Don't hesitate to send a PR to 
 - [Etalab](https://www.etalab.gouv.fr/)
 - [Infineon](https://www.infineon.com/)
 - [Sooth.ai](https://sooth.ai/)
+
