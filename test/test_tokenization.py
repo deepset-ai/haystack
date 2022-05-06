@@ -266,7 +266,7 @@ def test_all_tokenizer_on_special_cases(caplog):
         "This is a sentence			with multiple tabs",
     ]
 
-    expected_to_fail = [(1, 1), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (2, 1), (2, 5)]
+    expected_to_fail = {(2, 1), (2, 5)}
 
     for i_tok, tokenizer in enumerate(tokenizers):
         for i_text, text in enumerate(texts):
@@ -299,8 +299,6 @@ def test_all_tokenizer_on_special_cases(caplog):
             for ((start, end), w_index) in zip(encoded.offsets, encoded.words):
                 word_start_ch = word_spans[w_index][0]
                 token_offsets.append((start + word_start_ch, end + word_start_ch))
-            if getattr(tokenizer, "add_prefix_space", None):
-                token_offsets = [(start - 1, end) for start, end in token_offsets]
 
             # verify that offsets align back to original text
             if text == "力加勝北区ᴵᴺᵀᵃছজটডণত":
