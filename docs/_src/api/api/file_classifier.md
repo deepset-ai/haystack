@@ -14,7 +14,7 @@ Route files in an Indexing Pipeline to corresponding file converters.
 
 <a id="file_type.FileTypeClassifier.__init__"></a>
 
-#### \_\_init\_\_
+#### FileTypeClassifier.\_\_init\_\_
 
 ```python
 def __init__(supported_types: List[str] = DEFAULT_TYPES)
@@ -33,7 +33,7 @@ also be rejected.
 
 <a id="file_type.FileTypeClassifier.run"></a>
 
-#### run
+#### FileTypeClassifier.run
 
 ```python
 def run(file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]])
