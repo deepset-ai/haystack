@@ -1883,6 +1883,56 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
     assert len(emb_docs) == 0
 
 
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_all_docs_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.get_all_documents() == []
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_all_docs_generator_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert list(document_store.get_all_documents_generator()) == []
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_doc_by_id_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.get_document_by_id(id="some id") == None
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_docs_by_id_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.get_documents_by_id(ids=["some id"]) == []
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_doc_count_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.get_document_count() == 0
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_query_by_emb_without_index():
+    query_emb = np.random.randn(768)
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.query_by_embedding(query_emb=query_emb) == []
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_query_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.query(query="some query") == []
+
+
 @pytest.mark.elasticsearch
 def test_elasticsearch_search_field_mapping():
 
