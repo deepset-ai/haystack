@@ -18,8 +18,7 @@ Reader from multiple Retrievers, or re-ranking of candidate documents.
 
 <a id="base.Pipeline.root_node"></a>
 
-
-#### root\_node
+#### Pipeline.root\_node
 
 ```python
 @property
@@ -30,7 +29,7 @@ Returns the root node of the pipeline's graph.
 
 <a id="base.Pipeline.to_code"></a>
 
-#### BasePipeline.to\_code
+#### Pipeline.to\_code
 
 ```python
 def to_code(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False) -> str
@@ -49,7 +48,7 @@ Default value is False.
 
 <a id="base.Pipeline.to_notebook_cell"></a>
 
-#### BasePipeline.to\_notebook\_cell
+#### Pipeline.to\_notebook\_cell
 
 ```python
 def to_notebook_cell(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True)
@@ -68,7 +67,7 @@ Default value is True.
 
 <a id="base.Pipeline.load_from_deepset_cloud"></a>
 
-#### BasePipeline.load\_from\_deepset\_cloud
+#### Pipeline.load\_from\_deepset\_cloud
 
 ```python
 @classmethod
@@ -101,7 +100,7 @@ variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
 
 <a id="base.Pipeline.list_pipelines_on_deepset_cloud"></a>
 
-#### BasePipeline.list\_pipelines\_on\_deepset\_cloud
+#### Pipeline.list\_pipelines\_on\_deepset\_cloud
 
 ```python
 @classmethod
@@ -137,7 +136,7 @@ Returns:
 
 <a id="base.Pipeline.save_to_deepset_cloud"></a>
 
-#### BasePipeline.save\_to\_deepset\_cloud
+#### Pipeline.save\_to\_deepset\_cloud
 
 ```python
 @classmethod
@@ -162,7 +161,7 @@ If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment varia
 
 <a id="base.Pipeline.deploy_on_deepset_cloud"></a>
 
-#### BasePipeline.deploy\_on\_deepset\_cloud
+#### Pipeline.deploy\_on\_deepset\_cloud
 
 ```python
 @classmethod
@@ -191,7 +190,7 @@ If the timeout is exceeded an error will be raised.
 
 <a id="base.Pipeline.undeploy_on_deepset_cloud"></a>
 
-#### BasePipeline.undeploy\_on\_deepset\_cloud
+#### Pipeline.undeploy\_on\_deepset\_cloud
 
 ```python
 @classmethod
@@ -676,7 +675,7 @@ class _HaystackBeirRetrieverAdapter()
 
 <a id="base._HaystackBeirRetrieverAdapter.__init__"></a>
 
-#### \_\_init\_\_
+#### \_HaystackBeirRetrieverAdapter.\_\_init\_\_
 
 ```python
 def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict)
@@ -852,7 +851,7 @@ Ray calls this method which is then re-directed to the corresponding component's
 
 <a id="ray._RayDeploymentWrapper.load_from_pipeline_config"></a>
 
-#### load\_from\_pipeline\_config
+#### \_RayDeploymentWrapper.load\_from\_pipeline\_config
 
 ```python
 @staticmethod
