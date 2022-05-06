@@ -301,12 +301,19 @@ jobs:
 
 
   integration-tests:
-    needs: unit-tests
     runs-on: ubuntu-20.04
-
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false  # Avoid cancelling the others if one of these fails
+      matrix: 
+        folder:
+          - "node_tests"
+          - "pipeline_tests"
+          - "modeling_tests"
+          - "other_tests"
     steps:
     - uses: actions/checkout@v2
-    
+
     - name: Setup Python
       uses: ./.github/actions/linux_cache/
 
@@ -341,20 +348,26 @@ jobs:
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Install Haystack
-      run: pip install .[all]
+      run: pip install .
 
     - name: Run tests
       id: pytest
+      env:
+        TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
-        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" .)
+        export pytest_output=$(pytest -s --maxfail=5 --durations=10 -m "integration" test/${{ matrix.folder }})
         echo $pytest_output
 
         # Output successful tests
         [[ $pytest_output =~ (([0-9]+) passed) ]]
-        echo "::set-output name=integration_tests_run::${BASH_REMATCH::-7}"
+        echo "::set-output name=${{ matrix.folder }}_run::${BASH_REMATCH::-7}"
       
     outputs:
-      tests-run: ${{ steps.pytest.outputs.integration_tests_run }}
+      tests-run: |
+        ${{ steps.pytest.outputs.node_tests_run }} +
+        ${{ steps.pytest.outputs.pipelines_tests_run }} +
+        ${{ steps.pytest.outputs.modeling_tests_run }} +
+        ${{ steps.pytest.outputs.other_tests_run }}
 
 
   count:
@@ -384,15 +397,14 @@ jobs:
         export total_tests_count=${BASH_REMATCH::-6}
 
         export tests_run=${{ needs.unit-tests.outputs.tests-run }}
+        export tests_run=$(( ${{ needs.rest-and-ui-tests.outputs.tests-run }} + tests_run ))
+        export tests_run=$(( ${{ needs.integration-tests.outputs.tests-run }} + tests_run ))
         
         export tests_run=$(( ${{ needs.elasticsearch-tests.outputs.tests-run }} + tests_run ))
         export tests_run=$(( ${{ needs.faiss-tests.outputs.tests-run }} + tests_run ))
         export tests_run=$(( ${{ needs.milvus-tests.outputs.tests-run }} + tests_run ))
         export tests_run=$(( ${{ needs.weaviate-tests.outputs.tests-run }} + tests_run ))
         export tests_run=$(( ${{ needs.pinecone-tests.outputs.tests-run }} + tests_run ))
-        export tests_run=$(( ${{ needs.graphdb-tests.outputs.tests-run }} + tests_run ))
-        
-        export tests_run=$(( ${{ needs.rest-and-ui-tests.outputs.tests-run }} + tests_run ))
-        export tests_run=$(( ${{ needs.integration-tests.outputs.tests-run }} + tests_run ))
+        export tests_run=$(( ${{ needs.graphdb-tests.outputs.tests-run }} + tests_run ))        
         
         echo "============ Tests run: $tests_run / $total_tests_count =============="
