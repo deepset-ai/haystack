@@ -24,8 +24,10 @@ def normalize_answer(s: str):
     def white_space_fix(text):
         return " ".join(text.split())
 
+    _extra_punctuation = r"""–"""
+
     def remove_punc(text):
-        exclude = set(string.punctuation)
+        exclude = set(string.punctuation + _extra_punctuation)
         return "".join(ch for ch in text if ch not in exclude)
 
     def lower(text):
