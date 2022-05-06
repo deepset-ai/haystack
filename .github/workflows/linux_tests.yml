@@ -355,7 +355,7 @@ jobs:
     - name: Count tests
       run: |
         # Count available tests
-        [[ $(pytest --collect-only .) =~ (([0-9]+) tests collected) ]]
+        [[ $(pytest --collect-only .) =~ (([0-9]+) tests) ]]
         total_tests_count=${BASH_REMATCH::-6}
         
         echo "============ Tests run: $TESTS_RUN / $total_tests_count =============="
