@@ -408,16 +408,12 @@ def deepset_cloud_fixture():
                     {
                         "name": DC_TEST_INDEX,
                         "status": "DEPLOYED",
-                        "indexing": {
-                            "status": "INDEXED",
-                            "pending_file_count": 0,
-                            "total_file_count": 31
-                        }
+                        "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31},
                     }
                 ],
                 "has_more": False,
-                "total": 1
-            }
+                "total": 1,
+            },
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
