@@ -14,7 +14,7 @@ Abstract class for Summarizer
 
 <a id="base.BaseSummarizer.predict"></a>
 
-#### predict
+#### BaseSummarizer.predict
 
 ```python
 @abstractmethod
@@ -84,7 +84,7 @@ See the up-to-date list of available models on
 
 <a id="transformers.TransformersSummarizer.__init__"></a>
 
-#### \_\_init\_\_
+#### TransformersSummarizer.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: bool = True, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False)
@@ -115,7 +115,7 @@ Important: The summary will depend on the order of the supplied documents!
 
 <a id="transformers.TransformersSummarizer.predict"></a>
 
-#### predict
+#### TransformersSummarizer.predict
 
 ```python
 def predict(documents: List[Document], generate_single_summary: Optional[bool] = None, truncation: bool = True) -> List[Document]
