@@ -246,7 +246,9 @@ def _format_wrong_examples_report(eval_result: EvaluationResult, n_wrong_example
         node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
         for node in eval_result.node_results.keys()
     }
-    examples_formatted = {node: "\n".join(map(_format_wrong_example, examples)) for node, examples in examples.items()}
+    examples_formatted = {
+        node: "\n".join(map(_format_wrong_example, examples)) for node, examples in examples.items() if any(examples)
+    }
 
     return "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
 
