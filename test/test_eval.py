@@ -3,6 +3,7 @@ import sys
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.modeling.evaluation.squad import normalize_answer
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.evaluator import EvalAnswers, EvalDocuments
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
@@ -1138,3 +1139,18 @@ def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_do
 
     assert metrics["QAReader"]["exact_match"] == 1.0
     assert metrics["QAReader"]["f1"] == 1.0
+
+
+def test_normalize_answer():
+    assert normalize_answer("100 - 150") == "100 150"
+    assert normalize_answer("100 – 150") == "100 150"
+    assert normalize_answer("100 % 150") == "100 150"
+    assert normalize_answer("100 + 150") == "100 150"
+    assert normalize_answer("100 / 150") == "100 150"
+    assert normalize_answer("a test") == "test"
+    assert normalize_answer("the test") == "test"
+    assert normalize_answer("an experiment") == "experiment"
+    assert normalize_answer("normalization test") == "normalization test"
+    assert normalize_answer("NorMaliZation teSt") == "normalization test"
+    assert normalize_answer("   normalization   test  ") == "normalization test"
+    assert normalize_answer("  the normalization test") == "normalization test"
