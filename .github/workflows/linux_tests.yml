@@ -240,7 +240,7 @@ jobs:
   rest-and-ui-tests:
     needs: unit-tests
     runs-on: ubuntu-20.04
-    if: contains(github.event.pull_request.labels.*.name, 'rest_api')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api')
     
     steps:
     - uses: actions/checkout@v2
