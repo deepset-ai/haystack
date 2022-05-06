@@ -14,7 +14,7 @@ Abstract class for Generators
 
 <a id="base.BaseGenerator.predict"></a>
 
-#### predict
+#### BaseGenerator.predict
 
 ```python
 @abstractmethod
@@ -87,7 +87,7 @@ i.e. the model can easily adjust to domain documents even after training has fin
 
 <a id="transformers.RAGenerator.__init__"></a>
 
-#### \_\_init\_\_
+#### RAGenerator.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True)
@@ -115,7 +115,7 @@ See https://huggingface.co/models for full list of available models.
 
 <a id="transformers.RAGenerator.predict"></a>
 
-#### predict
+#### RAGenerator.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
@@ -207,7 +207,7 @@ For a list of all text-generation models see https://huggingface.co/models?pipel
 
 <a id="transformers.Seq2SeqGenerator.__init__"></a>
 
-#### \_\_init\_\_
+#### Seq2SeqGenerator.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True)
@@ -229,7 +229,7 @@ top_k: Optional[int] = None) -> BatchEncoding:
 
 <a id="transformers.Seq2SeqGenerator.predict"></a>
 
-#### predict
+#### Seq2SeqGenerator.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
