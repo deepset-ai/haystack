@@ -12,7 +12,7 @@ class BaseReader(BaseComponent)
 
 <a id="base.BaseReader.run_batch"></a>
 
-#### run\_batch
+#### BaseReader.run\_batch
 
 ```python
 def run_batch(query_doc_list: List[Dict], top_k: Optional[int] = None)
@@ -22,7 +22,7 @@ A unoptimized implementation of running Reader queries in batch
 
 <a id="base.BaseReader.timing"></a>
 
-#### timing
+#### BaseReader.timing
 
 ```python
 def timing(fn, attr_name)
@@ -52,7 +52,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 
 <a id="farm.FARMReader.__init__"></a>
 
-#### \_\_init\_\_
+#### FARMReader.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, devices: List[torch.device] = [], no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, confidence_threshold: Optional[float] = None, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None)
@@ -114,7 +114,7 @@ Additional information can be found here https://huggingface.co/transformers/mai
 
 <a id="farm.FARMReader.train"></a>
 
-#### train
+#### FARMReader.train
 
 ```python
 def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"))
@@ -173,7 +173,7 @@ None
 
 <a id="farm.FARMReader.distil_prediction_layer_from"></a>
 
-#### distil\_prediction\_layer\_from
+#### FARMReader.distil\_prediction\_layer\_from
 
 ```python
 def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 3e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0)
@@ -251,7 +251,7 @@ None
 
 <a id="farm.FARMReader.distil_intermediate_layers_from"></a>
 
-#### distil\_intermediate\_layers\_from
+#### FARMReader.distil\_intermediate\_layers\_from
 
 ```python
 def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None)
@@ -321,7 +321,7 @@ None
 
 <a id="farm.FARMReader.update_parameters"></a>
 
-#### update\_parameters
+#### FARMReader.update\_parameters
 
 ```python
 def update_parameters(context_window_size: Optional[int] = None, no_ans_boost: Optional[float] = None, return_no_answer: Optional[bool] = None, max_seq_len: Optional[int] = None, doc_stride: Optional[int] = None)
@@ -331,7 +331,7 @@ Hot update parameters of a loaded Reader. It may not to be safe when processing 
 
 <a id="farm.FARMReader.save"></a>
 
-#### save
+#### FARMReader.save
 
 ```python
 def save(directory: Path)
@@ -345,7 +345,7 @@ Saves the Reader model so that it can be reused at a later point in time.
 
 <a id="farm.FARMReader.predict_batch"></a>
 
-#### predict\_batch
+#### FARMReader.predict\_batch
 
 ```python
 def predict_batch(query_doc_list: List[dict], top_k: int = None, batch_size: int = None)
@@ -367,7 +367,7 @@ List of dictionaries containing query and answers
 
 <a id="farm.FARMReader.predict"></a>
 
-#### predict
+#### FARMReader.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None)
@@ -404,7 +404,7 @@ Dict containing query and answers
 
 <a id="farm.FARMReader.eval_on_file"></a>
 
-#### eval\_on\_file
+#### FARMReader.eval\_on\_file
 
 ```python
 def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None)
@@ -427,7 +427,7 @@ or use the Reader's device by default.
 
 <a id="farm.FARMReader.eval"></a>
 
-#### eval
+#### FARMReader.eval
 
 ```python
 def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False, use_no_answer_legacy_confidence=False)
@@ -455,7 +455,7 @@ Otherwise we use the no_answer score normalized to a range of [0,1] by an expit 
 
 <a id="farm.FARMReader.calibrate_confidence_scores"></a>
 
-#### calibrate\_confidence\_scores
+#### FARMReader.calibrate\_confidence\_scores
 
 ```python
 def calibrate_confidence_scores(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
@@ -475,7 +475,7 @@ or use the Reader's device by default.
 
 <a id="farm.FARMReader.predict_on_texts"></a>
 
-#### predict\_on\_texts
+#### FARMReader.predict\_on\_texts
 
 ```python
 def predict_on_texts(question: str, texts: List[str], top_k: Optional[int] = None)
@@ -512,7 +512,7 @@ Dict containing question and answers
 
 <a id="farm.FARMReader.convert_to_onnx"></a>
 
-#### convert\_to\_onnx
+#### FARMReader.convert\_to\_onnx
 
 ```python
 @classmethod
@@ -561,7 +561,7 @@ With this reader, you can directly get predictions via predict()
 
 <a id="transformers.TransformersReader.__init__"></a>
 
-#### \_\_init\_\_
+#### TransformersReader.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128)
@@ -600,7 +600,7 @@ If you would like to set no_answer_boost, use a `FARMReader`.
 
 <a id="transformers.TransformersReader.predict"></a>
 
-#### predict
+#### TransformersReader.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None)
@@ -675,7 +675,7 @@ answer = prediction["answers"][0].answer  # "10 june 1996"
 
 <a id="table.TableReader.__init__"></a>
 
-#### \_\_init\_\_
+#### TableReader.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256)
@@ -717,7 +717,7 @@ input size fits the model.
 
 <a id="table.TableReader.predict"></a>
 
-#### predict
+#### TableReader.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
@@ -767,7 +767,7 @@ Pros and Cons of RCIReader compared to TableReader:
 
 <a id="table.RCIReader.__init__"></a>
 
-#### \_\_init\_\_
+#### RCIReader.\_\_init\_\_
 
 ```python
 def __init__(row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row", column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col", row_model_version: Optional[str] = None, column_model_version: Optional[str] = None, row_tokenizer: Optional[str] = None, column_tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
@@ -798,7 +798,7 @@ input size fits the model.
 
 <a id="table.RCIReader.predict"></a>
 
-#### predict
+#### RCIReader.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
