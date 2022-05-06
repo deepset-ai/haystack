@@ -19,7 +19,7 @@ The entities extracted by this Node will populate Document.entities
 
 <a id="entity.EntityExtractor.run"></a>
 
-#### run
+#### EntityExtractor.run
 
 ```python
 def run(documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]
@@ -29,7 +29,7 @@ This is the method called when this node is used in a pipeline
 
 <a id="entity.EntityExtractor.extract"></a>
 
-#### extract
+#### EntityExtractor.extract
 
 ```python
 def extract(text)
