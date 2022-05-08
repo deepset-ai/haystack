@@ -74,7 +74,7 @@ class Document:
         There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
 
         :param content: Content of the document. For most cases, this will be text, but it can be a table or image.
-        :param content_type: One of "image", "table" or "image". Haystack components can use this to adjust their
+        :param content_type: One of "text", "table" or "image". Haystack components can use this to adjust their
                              handling of Documents and check compatibility.
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
