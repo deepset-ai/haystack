@@ -1524,16 +1524,13 @@ def test_DeepsetCloudDocumentStore_invalid_token():
 def test_DeepsetCloudDocumentStore_invalid_api_endpoint():
     if MOCK_DC:
         responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}00/workspaces/default/pipelines",
-            body="Not Found",
-            status=404,
+            method=responses.GET, url=f"{DC_API_ENDPOINT}00/workspaces/default/pipelines", body="Not Found", status=404
         )
 
     with pytest.raises(
         DeepsetCloudError,
         match=f"Could not connect to deepset Cloud:\nGET {DC_API_ENDPOINT}00/workspaces/default/pipelines failed: "
-              f"HTTP 404 - Not Found\nNot Found",
+        f"HTTP 404 - Not Found\nNot Found",
     ):
         DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
@@ -1551,7 +1548,10 @@ def test_DeepsetCloudDocumentStore_invalid_index(caplog):
 
     with caplog.at_level(logging.INFO):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
-        assert "You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud." in caplog.text
+        assert (
+            "You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud."
+            in caplog.text
+        )
 
 
 @responses.activate
