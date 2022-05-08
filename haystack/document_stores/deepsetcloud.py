@@ -98,8 +98,10 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                     f"Indexing status: {indexing_info['status']}"
                 )
             if index in deployed_unhealthy_pipelines:
-                logger.warning(f"The index '{index}' is unhealthy and should be redeployed using "
-                               f"`Pipeline.undeploy_on_deepset_cloud()` and `Pipeline.deploy_on_deepset_cloud()`.")
+                logger.warning(
+                    f"The index '{index}' is unhealthy and should be redeployed using "
+                    f"`Pipeline.undeploy_on_deepset_cloud()` and `Pipeline.deploy_on_deepset_cloud()`."
+                )
         else:
             logger.info(
                 f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
