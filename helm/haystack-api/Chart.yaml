@@ -1,6 +1,6 @@
 apiVersion: v2
-name: haystack
-description: A Helm chart for Kubernetes
+name: haystack-api
+description: A Helm chart for haystack-api component
 
 # A chart can be either an 'application' or a 'library' chart.
 #
