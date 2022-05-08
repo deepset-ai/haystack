@@ -54,7 +54,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
             - name: DOCUMENTSTORE_PARAMS_HOST
-              value: elasticsearch-master
+              value: {{ .Values.haystack.api.documentstore_param_host }}
             - name: PIPELINE_YAML_PATH
               value: /etc/config/my_pipelines.yaml
           command: ["/bin/bash", "-c", "sleep 10 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 8 --timeout 180"]

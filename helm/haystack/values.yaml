@@ -92,3 +92,7 @@ affinity: {}
 
 elasticsearch:
   antiAffinity: soft
+
+haystack:
+  api:
+    documentstore_params_host: elasticsearch-master
