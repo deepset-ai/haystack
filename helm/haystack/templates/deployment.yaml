@@ -61,31 +61,6 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /etc/config
-        - name: {{ .Chart.Name }}-ui
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.ui.repository }}:{{ .Values.image.ui.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.ui.pullPolicy }}
-          ports:
-            - name: ui
-              containerPort: 8501
-              protocol: TCP
-          livenessProbe:
-            initialDelaySeconds: 10
-            httpGet:
-              path: /
-              port: ui
-          readinessProbe:
-            initialDelaySeconds: 10
-            httpGet:
-              path: /
-              port: ui
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          env:
-            - name: API_ENDPOINT
-              value: "http://{{ include "haystack.fullname" . }}:{{ .Values.service.port }}"
-          command: ["/bin/bash", "-c", "sleep 15 && python -m streamlit run ui/webapp.py"]
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

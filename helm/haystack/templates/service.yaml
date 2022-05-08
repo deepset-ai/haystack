@@ -11,9 +11,5 @@ spec:
       targetPort: api
       protocol: TCP
       name: api
-    - port: {{ .Values.service.ui.port }}
-      targetPort: ui
-      protocol: TCP
-      name: ui
   selector:
     {{- include "haystack.selectorLabels" . | nindent 4 }}

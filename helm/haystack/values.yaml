@@ -10,11 +10,6 @@ image:
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: "1.1.0"
-  ui:
-    repository: deepset/haystack-streamlit-ui
-    pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -46,8 +41,6 @@ service:
   type: ClusterIP
   api:
     port: 8000
-  ui:
-    port: 8501
 
 ingress:
   enabled: false
@@ -89,9 +82,6 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-
-elasticsearch:
-  antiAffinity: soft
 
 haystack:
   api:
