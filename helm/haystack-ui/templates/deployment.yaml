@@ -51,7 +51,9 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
             - name: API_ENDPOINT
-              value: "http://{{ include "haystack.fullname" . }}:{{ .Values.service.port }}"
+              value: {{ .Values.haystack.ui.haystack_api_endpoint  }}
+            - name: EVAL_FILE
+              value: {{ .Values.haystack.ui.eval_file }}
           command: ["/bin/bash", "-c", "sleep 15 && python -m streamlit run ui/webapp.py"]
       {{- with .Values.nodeSelector }}
       nodeSelector:

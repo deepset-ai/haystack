@@ -86,3 +86,4 @@ affinity: {}
 haystack:
   ui:
     haystack_api_endpoint: http://hstk-haystack-api
+    eval_file: eval_labels_example.csv
