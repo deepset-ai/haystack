@@ -1180,7 +1180,7 @@ def test_deploy_on_deepset_cloud_invalid_state_in_progress():
             )
     with pytest.raises(
         DeepsetCloudError,
-        match="Deployment of pipline config 'test_new_non_existing_pipeline' aborted. Undeployment was requested.",
+        match="Deployment of pipeline config 'test_new_non_existing_pipeline' aborted. Undeployment was requested.",
     ):
         Pipeline.deploy_on_deepset_cloud(
             pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
@@ -1209,7 +1209,7 @@ def test_undeploy_on_deepset_cloud_invalid_state_in_progress():
             )
     with pytest.raises(
         DeepsetCloudError,
-        match="Undeployment of pipline config 'test_new_non_existing_pipeline' aborted. Deployment was requested.",
+        match="Undeployment of pipeline config 'test_new_non_existing_pipeline' aborted. Deployment was requested.",
     ):
         Pipeline.undeploy_on_deepset_cloud(
             pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
