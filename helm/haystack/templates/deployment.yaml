@@ -43,13 +43,13 @@ spec:
             periodSeconds: 30
             httpGet:
               path: /docs
-              port: api              
+              port: api
           readinessProbe:
             initialDelaySeconds: 30
             periodSeconds: 30
             httpGet:
               path: /docs
-              port: api              
+              port: api
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
