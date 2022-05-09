@@ -296,38 +296,39 @@ jobs:
       run: |
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=milvus
 
-  milvus-tests-windows:
-    needs:
-     - mypy
-     - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
+# FIXME: seems like we can't run containers on Windows
+  # milvus-tests-windows:
+  #   needs:
+  #    - mypy
+  #    - pylint
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
 
-    steps:
-    - uses: actions/checkout@v2
+  #   steps:
+  #   - uses: actions/checkout@v2
 
-    - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+  #   - name: Setup Python
+  #     uses: ./.github/actions/linux_cache/
 
-    - name: Setup Milvus
-      run: |
-        cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
-        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-        sudo docker-compose up -d
-        sudo docker-compose ps
+  #   - name: Setup Milvus
+  #     run: |
+  #       cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
+  #       wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
+  #       sudo docker-compose up -d
+  #       sudo docker-compose ps
 
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
+  #   - name: Install pdftotext
+  #     run: |
+  #       choco install xpdf-utils
+  #       choco install openjdk11
+  #       refreshenv
 
-    - name: Install Haystack
-      run: pip install .[milvus]
+  #   - name: Install Haystack
+  #     run: pip install .[milvus]
 
-    - name: Run tests
-      run: |
-        pytest --maxfail=5 --durations=10 -m "not integration" -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" test/document_store_tests/ --document_store_type=milvus
+  #   - name: Run tests
+  #     run: |
+  #       pytest --maxfail=5 --durations=10 -m "not integration" -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" test/document_store_tests/ --document_store_type=milvus
 
 
   weaviate-tests-linux:
@@ -357,34 +358,35 @@ jobs:
       run: |
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=weaviate
   
-  weaviate-tests-windows:
-    needs:
-     - mypy
-     - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
+# FIXME: seems like we can't run containers on Windows
+  # weaviate-tests-windows:
+  #   needs:
+  #    - mypy
+  #    - pylint
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
-    steps:
-    - uses: actions/checkout@v2
+  #   steps:
+  #   - uses: actions/checkout@v2
 
-    - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+  #   - name: Setup Python
+  #     uses: ./.github/actions/linux_cache/
     
-    - name: Setup Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+  #   - name: Setup Weaviate
+  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
 
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
+  #   - name: Install pdftotext
+  #     run: |
+  #       choco install xpdf-utils
+  #       choco install openjdk11
+  #       refreshenv
 
-    - name: Install Haystack
-      run: pip install .[weaviate]
+  #   - name: Install Haystack
+  #     run: pip install .[weaviate]
 
-    - name: Run tests
-      run: |
-        pytest --maxfail=5 --durations=10 -m "not integration" -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" test/document_store_tests/ --document_store_type=weaviate
+  #   - name: Run tests
+  #     run: |
+  #       pytest --maxfail=5 --durations=10 -m "not integration" -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" test/document_store_tests/ --document_store_type=weaviate
 
 
   pinecone-tests-linux:
