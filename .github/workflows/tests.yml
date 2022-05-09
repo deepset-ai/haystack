@@ -425,35 +425,36 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_store_tests/ --document_store_type=pinecone
 
-  pinecone-tests-windows:
-    needs:
-     - mypy
-     - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
+  # FIXME very slow and very little platform dependency, so to evaluate
+  # pinecone-tests-windows:
+  #   needs:
+  #    - mypy
+  #    - pylint
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
-    steps:
-    - uses: actions/checkout@v2
+  #   steps:
+  #   - uses: actions/checkout@v2
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
+  #   - name: Setup Python
+  #     uses: ./.github/actions/python_cache/
+  #     with:
+  #       prefix: windows
     
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
+  #   - name: Install pdftotext
+  #     run: |
+  #       choco install xpdf-utils
+  #       choco install openjdk11
+  #       refreshenv
 
-    - name: Install Haystack
-      run: pip install .[pinecone]
+  #   - name: Install Haystack
+  #     run: pip install .[pinecone]
 
-    - name: Run tests
-      env:
-        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_store_tests/ --document_store_type=pinecone
+  #   - name: Run tests
+  #     env:
+  #       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  #     run: |
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_store_tests/ --document_store_type=pinecone
 
 
   rest-and-ui-tests-linux:
