@@ -313,7 +313,8 @@ class DensePassageRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[Dict[str, Union[Dict, List, str, int, float, bool]],
+                                List[Dict[str, Union[Dict, List, str, int, float, bool]]]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -329,7 +330,9 @@ class DensePassageRetriever(BaseRetriever):
 
         :param queries: Single query string or list of queries.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
                         operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
                         `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
@@ -410,6 +413,14 @@ class DensePassageRetriever(BaseRetriever):
         if isinstance(queries, str):
             queries = [queries]
             single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
+                                    " as queries or a single filter that will be applied to each query.")
+        else:
+            filters = [filters] * len(queries)
+
         if index is None:
             index = self.document_store.index
         if scale_score is None:
@@ -427,9 +438,10 @@ class DensePassageRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb in query_embs:
+        for query_emb, cur_filters in zip(query_embs, filters):
             cur_docs = self.document_store.query_by_embedding(
-                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+                query_emb=query_emb, top_k=top_k, filters=cur_filters, index=index, headers=headers,
+                scale_score=scale_score
             )
             documents.append(cur_docs)
 
@@ -949,7 +961,8 @@ class TableTextRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[Dict[str, Union[Dict, List, str, int, float, bool]],
+                                List[Dict[str, Union[Dict, List, str, int, float, bool]]]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -965,7 +978,9 @@ class TableTextRetriever(BaseRetriever):
 
         :param queries: Single query string or list of queries.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
                         operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
                         `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
@@ -1046,6 +1061,14 @@ class TableTextRetriever(BaseRetriever):
         if isinstance(queries, str):
             queries = [queries]
             single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
+                                    " as queries or a single filter that will be applied to each query.")
+        else:
+            filters = [filters] * len(queries)
+
         if index is None:
             index = self.document_store.index
         if scale_score is None:
@@ -1063,9 +1086,10 @@ class TableTextRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb in query_embs:
+        for query_emb, cur_filters in zip(query_embs, filters):
             cur_docs = self.document_store.query_by_embedding(
-                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+                query_emb=query_emb, top_k=top_k, filters=cur_filters, index=index, headers=headers,
+                scale_score=scale_score
             )
             documents.append(cur_docs)
 
@@ -1595,7 +1619,8 @@ class EmbeddingRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[Dict[str, Union[Dict, List, str, int, float, bool]],
+                                List[Dict[str, Union[Dict, List, str, int, float, bool]]]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1611,7 +1636,9 @@ class EmbeddingRetriever(BaseRetriever):
 
         :param queries: Single query string or list of queries.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
                         operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
                         `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
@@ -1692,6 +1719,14 @@ class EmbeddingRetriever(BaseRetriever):
         if isinstance(queries, str):
             queries = [queries]
             single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
+                                    " as queries or a single filter that will be applied to each query.")
+        else:
+            filters = [filters] * len(queries)
+
         if index is None:
             index = self.document_store.index
         if scale_score is None:
@@ -1709,9 +1744,10 @@ class EmbeddingRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb in query_embs:
+        for query_emb, cur_filters in zip(query_embs, filters):
             cur_docs = self.document_store.query_by_embedding(
-                query_emb=query_emb, top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
+                query_emb=query_emb, top_k=top_k, filters=cur_filters, index=index, headers=headers,
+                scale_score=scale_score
             )
             documents.append(cur_docs)
 

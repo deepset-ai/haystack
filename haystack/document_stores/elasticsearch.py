@@ -23,8 +23,7 @@ from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.errors import DocumentStoreError
-
+from haystack.errors import DocumentStoreError, HaystackError
 
 logger = logging.getLogger(__name__)
 
@@ -1054,7 +1053,8 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[Dict[str, Union[Dict, List, str, int, float, bool]],
+                                List[Dict[str, Union[Dict, List, str, int, float, bool]]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -1071,7 +1071,9 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         :param queries: Single query or list of queries.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
                         operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
                         `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
@@ -1157,11 +1159,18 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             single_query = True
             queries = [queries]
 
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
+                                    " as queries or a single filter that will be applied to each query.")
+        else:
+            filters = [filters] * len(queries)
+
         body = []
-        for query in queries:
+        for query, cur_filters in zip(queries, filters):
             cur_query_body = self._construct_query_body(
                 query=query,
-                filters=filters,
+                filters=cur_filters,
                 top_k=top_k,
                 custom_query=custom_query,
                 all_terms_must_match=all_terms_must_match,

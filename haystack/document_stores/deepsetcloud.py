@@ -439,7 +439,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[Dict[str, Union[Dict, List, str, int, float, bool]],
+                                List[Dict[str, Union[Dict, List, str, int, float, bool]]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
