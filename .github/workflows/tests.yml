@@ -105,7 +105,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -139,7 +139,9 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
+      with:
+        prefix: windows
 
     - name: Install pdftotext
       run: |
@@ -165,7 +167,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
 
     - name: Setup Elasticsearch
       run: |
@@ -194,7 +196,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/windows_cache/
 
     - name: Set up Elasticsearch and pdftotext
       run: |
@@ -225,7 +227,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -249,7 +251,9 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
+      with:
+        prefix: windows
 
     - name: Install pdftotext
       run: |
@@ -276,7 +280,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
 
     - name: Setup Milvus
       run: |
@@ -308,7 +312,9 @@ jobs:
   #   - uses: actions/checkout@v2
 
   #   - name: Setup Python
-  #     uses: ./.github/actions/linux_cache/
+  #     uses: ./.github/actions/python_cache/
+  #    with:
+  #      prefix: windows
 
   #   - name: Setup Milvus
   #     run: |
@@ -342,7 +348,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
     
     - name: Setup Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
@@ -370,7 +376,9 @@ jobs:
   #   - uses: actions/checkout@v2
 
   #   - name: Setup Python
-  #     uses: ./.github/actions/linux_cache/
+  #     uses: ./.github/actions/python_cache/
+  #     with:
+  #       prefix: windows
     
   #   - name: Setup Weaviate
   #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
@@ -400,7 +408,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
     
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -426,7 +434,9 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
+      with:
+        prefix: windows
     
     - name: Install pdftotext
       run: |
@@ -456,7 +466,7 @@ jobs:
     - uses: actions/checkout@v2
     
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -484,7 +494,9 @@ jobs:
     - uses: actions/checkout@v2
     
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
+      with:
+        prefix: windows
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -531,7 +543,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -596,7 +608,9 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/linux_cache/
+      uses: ./.github/actions/python_cache/
+      with:
+        prefix: windows
 
     - name: Set up Elasticsearch and pdftotext
       run: |
@@ -632,7 +646,7 @@ jobs:
           fetch-depth: 0
       
       - name: Setup Python
-        uses: ./.github/actions/linux_cache/
+        uses: ./.github/actions/python_cache/
 
       - name: Install Dependencies
         run: |
