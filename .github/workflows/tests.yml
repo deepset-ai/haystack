@@ -14,7 +14,7 @@ on:
 
 env:
   TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
-  PYTEST_COMMAND: ${{ env.PYTEST_PARAMS }} --suppress-no-test-exit-code
+  PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
   SUITES_EXCLUDED_FROM_WINDOWS: not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer
 
 jobs:
