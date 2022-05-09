@@ -132,7 +132,9 @@ jobs:
           - "other_tests"
 
     runs-on: windows-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
     timeout-minutes: 30
+
     steps:
     - uses: actions/checkout@v2
 
@@ -156,7 +158,10 @@ jobs:
   
 
   elasticsearch-tests-linux:
-    runs-on: ubuntu-20.04    
+    needs:
+     - mypy
+     - pylint
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
 
@@ -180,8 +185,11 @@ jobs:
         pytest --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch
 
   elasticsearch-tests-windows:
+    needs:
+     - mypy
+     - pylint
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
     
     steps:
     - uses: actions/checkout@v2
@@ -208,6 +216,9 @@ jobs:
   
 
   faiss-tests-linux:
+    needs:
+     - mypy
+     - pylint
     runs-on: ubuntu-20.04
     if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') || !github.event.pull_request.draft
 
@@ -229,8 +240,11 @@ jobs:
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=faiss
 
   faiss-tests-windows:
+    needs:
+     - mypy
+     - pylint
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') && contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
     
     steps:
     - uses: actions/checkout@v2
@@ -253,6 +267,9 @@ jobs:
 
 
   milvus-tests-linux:
+    needs:
+     - mypy
+     - pylint
     runs-on: ubuntu-20.04
     if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') || !github.event.pull_request.draft
 
@@ -281,8 +298,11 @@ jobs:
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=milvus
 
   milvus-tests-windows:
+    needs:
+     - mypy
+     - pylint
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
@@ -312,6 +332,9 @@ jobs:
 
 
   weaviate-tests-linux:
+    needs:
+     - mypy
+     - pylint
     runs-on: ubuntu-20.04
     if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') || !github.event.pull_request.draft
 
@@ -336,8 +359,11 @@ jobs:
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=weaviate
   
   weaviate-tests-windows:
+    needs:
+     - mypy
+     - pylint
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
@@ -362,9 +388,11 @@ jobs:
       run: |
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=weaviate
 
-  
 
   pinecone-tests-linux:
+    needs:
+     - mypy
+     - pylint
     runs-on: ubuntu-20.04
     if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
 
@@ -388,8 +416,11 @@ jobs:
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=pinecone
 
   pinecone-tests-windows:
+    needs:
+     - mypy
+     - pylint
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
@@ -414,6 +445,9 @@ jobs:
 
 
   graphdb-tests-linux:
+    needs:
+     - mypy
+     - pylint
     runs-on: ubuntu-20.04
     if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') || !github.event.pull_request.draft 
 
@@ -438,8 +472,11 @@ jobs:
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=graphdb
   
   graphdb-tests-windows:
+    needs:
+     - mypy
+     - pylint
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') && contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
@@ -498,7 +535,7 @@ jobs:
      - unit-tests-windows
      - elasticsearch-tests-windows
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
@@ -600,7 +637,7 @@ jobs:
      - unit-tests-windows
      - elasticsearch-tests-windows
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     timeout-minutes: 30
     strategy:
