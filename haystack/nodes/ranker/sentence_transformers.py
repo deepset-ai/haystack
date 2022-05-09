@@ -79,6 +79,8 @@ class SentenceTransformersRanker(BaseRanker):
         if len(self.devices) > 1:
             self.model = DataParallel(self.transformer_model, device_ids=self.devices)
 
+        self.batch_size = batch_size
+
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]:
         """
         Use loaded ranker model to re-rank the supplied list of Document.

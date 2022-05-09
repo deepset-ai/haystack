@@ -267,4 +267,3 @@ class RootNode(BaseComponent):
 
     def run_batch(self):  # type: ignore
         return {}, "output_1"
-

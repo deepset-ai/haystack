@@ -1715,7 +1715,7 @@ def test_joinanswers(join_mode):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_batch_querying_single_query(document_store_with_docs):
     query_pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
     query_pipeline.components["ESRetriever"].document_store = document_store_with_docs
     result = query_pipeline.run_batch(queries="Who lives in Berlin?")
@@ -1730,7 +1730,7 @@ def test_batch_querying_single_query(document_store_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_batch_querying_multiple_queries(document_store_with_docs):
     query_pipeline = Pipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_pipeline.yaml", pipeline_name="query_pipeline"
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
     query_pipeline.components["ESRetriever"].document_store = document_store_with_docs
     result = query_pipeline.run_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
