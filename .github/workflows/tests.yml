@@ -146,7 +146,6 @@ jobs:
         choco install xpdf-utils
         choco install openjdk11
         refreshenv
-        Get-Service elasticsearch-service-x64 | Start-Service
 
     - name: Install Haystack
       run: pip install .
@@ -379,7 +378,6 @@ jobs:
         choco install xpdf-utils
         choco install openjdk11
         refreshenv
-        Get-Service elasticsearch-service-x64 | Start-Service
 
     - name: Install Haystack
       run: pip install .[weaviate]
