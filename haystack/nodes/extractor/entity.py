@@ -70,7 +70,7 @@ class EntityExtractor(BaseComponent):
 
         for entities_per_doc, doc in zip(all_entities, flattened_documents):
             if not isinstance(doc, Document):
-                raise HaystackError("Expected a Document.")
+                raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
             doc.meta["entities"] = entities_per_doc
         output = {"documents": documents}
 

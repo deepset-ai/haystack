@@ -188,7 +188,8 @@ class TransformersTranslator(BaseTranslator):
                 translated = []
                 for cur_list in documents:
                     if not isinstance(cur_list, list):
-                        raise HaystackError("Expected a list of Documents / Answers.")
+                        raise HaystackError(f"cur_list was of type {type(cur_list)}, but expected a list of "
+                                            f"Documents / Answers.")
                     cur_translation = self.translate(documents=cur_list)
                     translated.append(cur_translation)
 

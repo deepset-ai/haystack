@@ -90,7 +90,7 @@ class QuestionGenerator(BaseComponent):
             documents_iterator = itertools.chain.from_iterable(documents)  # type: ignore
         for cur_questions, doc in zip(questions_iterator, documents_iterator):
             if not isinstance(doc, Document):
-                raise HaystackError("Expected a Document.")
+                raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
             curr_dict = {"document_id": doc.id, "document_sample": doc.content[:200], "questions": cur_questions}
             generated_questions.append(curr_dict)
         output = {"generated_questions": generated_questions, "documents": documents}

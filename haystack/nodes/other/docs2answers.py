@@ -35,14 +35,14 @@ class Docs2Answers(BaseComponent):
             if len(documents) > 0 and isinstance(documents[0], Document):
                 for doc in documents:
                     if not isinstance(doc, Document):
-                        raise HaystackError("Expected a Document object.")
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                     answers = [self._convert_doc_to_answer(doc)]
                     output["answers"].append(answers)
             # Docs case 2: list of lists of Documents
             elif len(documents) > 0 and isinstance(documents[0], list):
                 for docs in documents:
                     if not isinstance(docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"docs was of type {type(docs)}, but expected a list of Documents.")
                     answers = []
                     for doc in docs:
                         cur_answer = self._convert_doc_to_answer(doc)
@@ -56,7 +56,7 @@ class Docs2Answers(BaseComponent):
                 for query in queries:
                     for doc in documents:
                         if not isinstance(doc, Document):
-                            raise HaystackError("Expected a Document.")
+                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                         answers = [self._convert_doc_to_answer(doc)]
                         output["answers"].append(answers)
             # Docs case 2: list of lists of Documents
@@ -66,10 +66,10 @@ class Docs2Answers(BaseComponent):
                 for query, docs_ in zip(queries, documents):
                     answers = []
                     if not isinstance(docs_, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"docs_ was of type {type(docs_)}, but expected a list of Documents.")
                     for doc in docs_:
                         if not isinstance(doc, Document):
-                            raise HaystackError("Expected a Document.")
+                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                         cur_answer = self._convert_doc_to_answer(doc)
                         answers.append(cur_answer)
                     output["answers"].append(answers)

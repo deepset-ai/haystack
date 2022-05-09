@@ -124,7 +124,7 @@ class BaseGenerator(BaseComponent):
             if len(documents) > 0 and isinstance(documents[0], Document):
                 for doc in documents:
                     if not isinstance(doc, Document):
-                        raise HaystackError("Expected a Document.")
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                     preds = self.predict(query=query, documents=[doc], top_k=top_k)
                     results["answers"].append(preds["answers"])
 
@@ -132,7 +132,7 @@ class BaseGenerator(BaseComponent):
             elif len(documents) > 0 and isinstance(documents[0], list):
                 for docs in documents:
                     if not isinstance(docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"docs was of type {type(docs)}, but expected a list of Documents.")
                     preds = self.predict(query=query, documents=docs, top_k=top_k)
                     results["answers"].append(preds["answers"])
 
@@ -143,7 +143,7 @@ class BaseGenerator(BaseComponent):
                 for query in queries:
                     for doc in documents:
                         if not isinstance(doc, Document):
-                            raise HaystackError("Expected a Document.")
+                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                         preds = self.predict(query=query, documents=[doc], top_k=top_k)
                         results["answers"].append(preds["answers"])
 
@@ -153,7 +153,7 @@ class BaseGenerator(BaseComponent):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
                 for query, cur_docs in zip(queries, documents):
                     if not isinstance(cur_docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
                     preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
                     results["answers"].append(preds["answers"])
 

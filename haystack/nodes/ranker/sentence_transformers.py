@@ -234,7 +234,7 @@ class SentenceTransformersRanker(BaseRanker):
             elif len(documents) > 0 and isinstance(documents[0], list):
                 for docs in documents:
                     if not isinstance(docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"docs was of type {type(docs)}, but expected a list of Documents.")
                     number_of_docs.append(len(docs))
                     all_queries.extend([query] * len(docs))
                     all_docs.extend(docs)
@@ -253,7 +253,7 @@ class SentenceTransformersRanker(BaseRanker):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
                 for query, cur_docs in zip(queries, documents):
                     if not isinstance(cur_docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
                     number_of_docs.append(len(cur_docs))
                     all_queries.extend([query] * len(cur_docs))
                     all_docs.extend(cur_docs)

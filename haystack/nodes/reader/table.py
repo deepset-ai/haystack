@@ -463,7 +463,7 @@ class TableReader(BaseReader):
                 single_doc_list = True
                 for doc in documents:
                     if not isinstance(doc, Document):
-                        raise HaystackError("Expected a Document.")
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                     pred = self.predict(query=query, documents=[doc])
                     results["answers"].append(pred["answers"])
             # Docs case 2: list of lists of Documents -> apply single query to each list of Documents
@@ -471,7 +471,7 @@ class TableReader(BaseReader):
                 single_doc_list = False
                 for docs in documents:
                     if not isinstance(docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"docs was of type {type(docs)}, but expected a list of Documents.")
                     pred = self.predict(query=query, documents=docs)
                     results["answers"].append(pred["answers"])
 
@@ -484,7 +484,7 @@ class TableReader(BaseReader):
                 for query in queries:
                     for doc in documents:
                         if not isinstance(doc, Document):
-                            raise HaystackError("Expected a Document.")
+                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                         pred = self.predict(query=query, documents=[doc])
                         results["answers"].append(pred["answers"])
 
@@ -495,7 +495,7 @@ class TableReader(BaseReader):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
                 for query, cur_docs in zip(queries, documents):
                     if not isinstance(cur_docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
                     pred = self.predict(query=query, documents=cur_docs)
                     results["answers"].append(pred["answers"])
 
@@ -758,7 +758,7 @@ class RCIReader(BaseReader):
                 single_doc_list = True
                 for doc in documents:
                     if not isinstance(doc, Document):
-                        raise HaystackError("Expected a Document.")
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                     pred = self.predict(query=query, documents=[doc])
                     results["answers"].append(pred["answers"])
             # Docs case 2: list of lists of Documents -> apply single query to each list of Documents
@@ -766,7 +766,7 @@ class RCIReader(BaseReader):
                 single_doc_list = False
                 for docs in documents:
                     if not isinstance(docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"docs was of type {type(docs)}, but expected a list of Documents.")
                     pred = self.predict(query=query, documents=docs)
                     results["answers"].append(pred["answers"])
 
@@ -779,7 +779,7 @@ class RCIReader(BaseReader):
                 for query in queries:
                     for doc in documents:
                         if not isinstance(doc, Document):
-                            raise HaystackError("Expected a Document.")
+                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                         pred = self.predict(query=query, documents=[doc])
                         results["answers"].append(pred["answers"])
 
@@ -790,7 +790,7 @@ class RCIReader(BaseReader):
                     raise HaystackError("Number of queries must be equal to number of provided Document lists.")
                 for query, cur_docs in zip(queries, documents):
                     if not isinstance(cur_docs, list):
-                        raise HaystackError("Expected a list of Documents.")
+                        raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
                     pred = self.predict(query=query, documents=cur_docs)
                     results["answers"].append(pred["answers"])
 

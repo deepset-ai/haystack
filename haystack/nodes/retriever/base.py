@@ -349,13 +349,13 @@ class BaseRetriever(BaseComponent):
             document_ids = []
             for doc in documents:
                 if not isinstance(doc, Document):
-                    raise HaystackError(f"Expected a Document object.")
+                    raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                 document_ids.append(doc.id)
             logger.debug(f"Retrieved documents with IDs: {document_ids}")
         else:
             for doc_list in documents:
                 if not isinstance(doc_list, list):
-                    raise HaystackError("Expected a list of Documents.")
+                    raise HaystackError(f"doc_list was of type {type(doc_list)}, but expected a list of Documents.")
                 document_ids = [doc.id for doc in doc_list]
                 logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {"documents": documents}
