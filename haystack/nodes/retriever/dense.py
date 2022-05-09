@@ -278,6 +278,10 @@ class DensePassageRetriever(BaseRetriever):
 
         if top_k is None:
             top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
         single_query = False
         if isinstance(queries, str):
             queries = [queries]
@@ -848,6 +852,10 @@ class TableTextRetriever(BaseRetriever):
 
         if top_k is None:
             top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
         single_query = False
         if isinstance(queries, str):
             queries = [queries]
@@ -1366,6 +1374,10 @@ class EmbeddingRetriever(BaseRetriever):
 
         if top_k is None:
             top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
         single_query = False
         if isinstance(queries, str):
             queries = [queries]

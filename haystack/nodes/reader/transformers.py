@@ -35,6 +35,7 @@ class TransformersReader(BaseReader):
         return_no_answers: bool = False,
         max_seq_len: int = 256,
         doc_stride: int = 128,
+        batch_size: Optional[int] = None,
     ):
         """
         Load a QA model from Transformers.
@@ -64,6 +65,7 @@ class TransformersReader(BaseReader):
         If you would like to set no_answer_boost, use a `FARMReader`.
         :param max_seq_len: max sequence length of one input text for the model
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
+        :param batch_size: Number of documents to process at a time.
         """
         super().__init__()
 
@@ -174,6 +176,9 @@ class TransformersReader(BaseReader):
         """
         if top_k is None:
             top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
 
         inputs, number_of_docs, all_docs, single_query, single_doc_list = self._preprocess_batch_queries_and_docs(
             queries=queries, documents=documents

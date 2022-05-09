@@ -37,6 +37,7 @@ class QuestionGenerator(BaseComponent):
         split_overlap=10,
         use_gpu=True,
         prompt="generate questions:",
+        batch_size: Optional[int] = None,
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -48,6 +49,7 @@ class QuestionGenerator(BaseComponent):
                                    See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+        :param batch_size: Number of documents to process at a time.
         """
         super().__init__()
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
@@ -63,6 +65,7 @@ class QuestionGenerator(BaseComponent):
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
         self.prompt = prompt
+        self.batch_size = batch_size
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
@@ -142,6 +145,9 @@ class QuestionGenerator(BaseComponent):
         :param texts: List of str or list of list of str.
         :param batch_size: Number of texts to process at a time.
         """
+
+        if batch_size is None:
+            batch_size = self.batch_size
 
         if isinstance(texts[0], str):
             single_doc_list = True

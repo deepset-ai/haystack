@@ -58,6 +58,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         self,
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
         use_gpu: bool = True,
+        batch_size : Optional[int] = None,
     ):
         """
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
@@ -66,6 +67,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        self.batch_size = batch_size
         device = 0 if self.devices[0].type == "cuda" else -1
 
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
@@ -84,6 +86,9 @@ class TransformersQueryClassifier(BaseQueryClassifier):
     def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):  # type: ignore
         if isinstance(queries, str):
             return self.run(queries)
+
+        if batch_size is None:
+            batch_size = self.batch_size
 
         split: Dict[str, Dict[str, List]] = {"output_1": {"queries": []}, "output_2": {"queries": []}}
 

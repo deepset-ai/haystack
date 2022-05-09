@@ -99,7 +99,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
         classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
         or an entailment.
-        :param batch_size: batch size to be processed at once
+        :param batch_size: Number of Documents to be processed at a time.
         :param classification_field: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
         """
         super().__init__()

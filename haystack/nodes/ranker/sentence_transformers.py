@@ -43,6 +43,7 @@ class SentenceTransformersRanker(BaseRanker):
         top_k: int = 10,
         use_gpu: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        batch_size: Optional[int] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -55,6 +56,7 @@ class SentenceTransformersRanker(BaseRanker):
                         The strings will be converted into pytorch devices, so use the string notation described here:
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]).
+        :param batch_size: Number of documents to process at a time.
         """
         super().__init__()
 
@@ -152,6 +154,9 @@ class SentenceTransformersRanker(BaseRanker):
         """
         if top_k is None:
             top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
 
         number_of_docs, all_queries, all_docs, single_list_of_docs = self._preprocess_batch_queries_and_docs(
             queries=queries, documents=documents

@@ -61,6 +61,7 @@ class TransformersSummarizer(BaseSummarizer):
         clean_up_tokenization_spaces: bool = True,
         separator_for_single_summary: str = " ",
         generate_single_summary: bool = False,
+        batch_size: Optional[int] = None,
     ):
         """
         Load a Summarization model from Transformers.
@@ -82,6 +83,7 @@ class TransformersSummarizer(BaseSummarizer):
                                         If set to "True", all docs will be joined to a single string that will then
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
+        :param batch_size: Number of documents to process at a time.
         """
         super().__init__()
 
@@ -187,6 +189,9 @@ class TransformersSummarizer(BaseSummarizer):
             isinstance(documents[0], list) and all(len(docs) == 0 for docs in documents if isinstance(docs, list))
         ):
             raise AttributeError("Summarizer needs at least one document to produce a summary.")
+
+        if batch_size is None:
+            batch_size = self.batch_size
 
         if generate_single_summary is None:
             generate_single_summary = self.generate_single_summary

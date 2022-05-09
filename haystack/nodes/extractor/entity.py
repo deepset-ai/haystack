@@ -22,10 +22,12 @@ class EntityExtractor(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(self, model_name_or_path: str = "dslim/bert-base-NER", use_gpu: bool = True):
+    def __init__(self, model_name_or_path: str = "dslim/bert-base-NER", use_gpu: bool = True,
+                 batch_size: Optional[int] = None):
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        self.batch_size = batch_size
 
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
@@ -58,6 +60,9 @@ class EntityExtractor(BaseComponent):
             flattened_documents = documents
         else:
             flattened_documents = list(itertools.chain.from_iterable(documents))  # type: ignore
+
+        if batch_size is None:
+            batch_size = self.batch_size
 
         all_entities = self.extract_batch(
             [doc.content for doc in flattened_documents if isinstance(doc, Document)], batch_size=batch_size
