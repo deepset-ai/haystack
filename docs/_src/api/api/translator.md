@@ -113,7 +113,7 @@ Run the actual translation. You can supply a query or a list of documents. Whate
 
 <a id="transformers.TransformersTranslator.translate_batch"></a>
 
-#### translate\_batch
+#### TransformersTranslator.translate\_batch
 
 ```python
 def translate_batch(queries: Optional[Union[str, List[str]]] = None, documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None, batch_size: Optional[int] = None) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]

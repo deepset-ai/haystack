@@ -114,7 +114,7 @@ See https://huggingface.co/models for full list of available models.
 ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
 classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
 or an entailment.
-- `batch_size`: batch size to be processed at once
+- `batch_size`: Number of Documents to be processed at a time.
 - `classification_field`: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
 
 <a id="transformers.TransformersDocumentClassifier.predict"></a>
@@ -140,7 +140,7 @@ List of Document enriched with meta information
 
 <a id="transformers.TransformersDocumentClassifier.predict_batch"></a>
 
-#### predict\_batch
+#### TransformersDocumentClassifier.predict\_batch
 
 ```python
 def predict_batch(documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]

@@ -83,7 +83,7 @@ Validate if the language of the text is one of valid languages.
 
 <a id="base.BaseConverter.run"></a>
 
-#### run
+#### BaseConverter.run
 
 ```python
 def run(file_paths: Union[Path, List[Path]], meta: Optional[Union[Dict[str, str], List[Optional[Dict[str, str]]]]] = None, remove_numeric_tables: Optional[bool] = None, known_ligatures: Dict[str, str] = KNOWN_LIGATURES, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "UTF-8")
