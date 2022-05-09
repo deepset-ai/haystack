@@ -7,8 +7,7 @@ from haystack.document_stores import GraphDBKnowledgeGraph
 from haystack.utils import fetch_archive_from_http
 
 
-@pytest.mark.graphdb
-def test_graph_retrieval():
+def test_graphdb_graph_retrieval():
     # TODO rename doc_dir
     graph_dir = "../data/tutorial10_knowledge_graph/"
     s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/triples_and_config.zip"
