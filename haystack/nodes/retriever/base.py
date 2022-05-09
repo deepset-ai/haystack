@@ -64,7 +64,7 @@ class BaseRetriever(BaseComponent):
     def retrieve(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -89,7 +89,7 @@ class BaseRetriever(BaseComponent):
     def retrieve_batch(
         self,
         queries: Union[str, List[str]],
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
