@@ -10,7 +10,9 @@ from haystack.document_stores.utils import eval_data_from_json, eval_data_from_j
 from haystack.document_stores.elasticsearch import (
     ElasticsearchDocumentStore, 
     OpenSearchDocumentStore, 
-    OpenDistroElasticsearchDocumentStore, 
+    OpenDistroElasticsearchDocumentStore
+)
+from haystack.document_stores.es_converter import (
     elasticsearch_index_to_document_store,
     open_search_index_to_document_store
 )
