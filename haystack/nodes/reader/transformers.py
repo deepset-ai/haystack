@@ -363,6 +363,6 @@ class TransformersReader(BaseReader):
                         inputs.append(cur)
 
         else:
-            raise HaystackError("'queries' must be of type str or List[str].")
+            raise HaystackError(f"'queries' was of type {type(queries)} but must be of type str or List[str].")
 
         return inputs, number_of_docs, all_docs, single_query, single_doc_list

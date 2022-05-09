@@ -75,7 +75,7 @@ class Docs2Answers(BaseComponent):
                     output["answers"].append(answers)
 
         else:
-            raise HaystackError("'queries' must be of type str or List[str].")
+            raise HaystackError(f"'queries' was of type {type(queries)} but must be of type str or List[str].")
 
         return output, "output_1"
 

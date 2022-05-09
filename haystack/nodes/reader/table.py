@@ -500,7 +500,7 @@ class TableReader(BaseReader):
                     results["answers"].append(pred["answers"])
 
         else:
-            raise HaystackError("'queries' must be of type str or List[str].")
+            raise HaystackError(f"'queries' was of type {type(queries)} but must be of type str or List[str].")
 
         # Group answers by question in case of list of queries and single doc list
         if not single_query and single_doc_list:
@@ -795,7 +795,7 @@ class RCIReader(BaseReader):
                     results["answers"].append(pred["answers"])
 
         else:
-            raise HaystackError("'queries' must be of type str or List[str].")
+            raise HaystackError(f"'queries' was of type {type(queries)} but must be of type str or List[str].")
 
         # Group answers by question in case of list of queries and single doc list
         if not single_query and single_doc_list:
