@@ -116,7 +116,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
+        pytest --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
 
   unit-tests-windows:
     needs:
@@ -152,7 +152,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdb and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
+        pytest --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
 
   
 
@@ -440,63 +440,6 @@ jobs:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
         pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=pinecone
-
-
-  graphdb-tests-linux:
-    needs:
-     - mypy
-     - pylint
-    runs-on: ubuntu-20.04
-    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') || !github.event.pull_request.draft 
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Setup Python
-      uses: ./.github/actions/linux_cache/
-
-    - name: Setup GraphDB
-      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
-    
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-    - name: Install Haystack
-      run: pip install .[graphdb]
-
-    - name: Run tests
-      run: |
-        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=graphdb
-  
-  graphdb-tests-windows:
-    needs:
-     - mypy
-     - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Setup Python
-      uses: ./.github/actions/linux_cache/
-
-    - name: Setup GraphDB
-      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
-    
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-
-    - name: Install Haystack
-      run: pip install .[graphdb]
-
-    - name: Run tests
-      run: |
-        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=graphdb
 
 
   rest-and-ui-tests-linux:

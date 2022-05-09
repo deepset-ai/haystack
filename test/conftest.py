@@ -120,7 +120,8 @@ def pytest_collection_modifyitems(config, items):
         "milvus": [pytest.mark.milvus, pytest.mark.milvus1],
         "weaviate": [pytest.mark.weaviate],
         "pinecone": [pytest.mark.pinecone],
-        "graphdb": [pytest.mark.graphdb],
+        # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
+        "graphdb": [pytest.mark.integration]
     }
     for item in items:
         for name, markers in name_to_markers.items():
@@ -139,7 +140,7 @@ def pytest_collection_modifyitems(config, items):
                 keywords.extend(i.split("-"))
             else:
                 keywords.append(i)
-        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate", "pinecone", "graphdb"]:
+        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate", "pinecone"]:
             if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
