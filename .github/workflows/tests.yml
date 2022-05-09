@@ -190,7 +190,6 @@ jobs:
       uses: ./.github/actions/linux_cache/
 
     - name: Set up Elasticsearch and pdftotext
-      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -240,7 +239,6 @@ jobs:
       uses: ./.github/actions/linux_cache/
 
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -300,7 +298,6 @@ jobs:
         sudo docker-compose ps
 
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -401,7 +398,6 @@ jobs:
       uses: ./.github/actions/linux_cache/
     
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -452,7 +448,6 @@ jobs:
       uses: ./.github/actions/linux_cache/
 
     - name: Setup GraphDB
-      if: ${{ matrix.marker }} == "graphdb"
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
     
     - name: Install pdftotext
@@ -512,15 +507,12 @@ jobs:
       uses: ./.github/actions/linux_cache/
 
     - name: Run Elasticsearch
-      if: matrix.os != "windows-latest"
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
     - name: Install pdftotext
-      if: matrix.os != "windows-latest"
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Set up Elasticsearch and pdftotext
-      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -627,7 +619,6 @@ jobs:
       uses: ./.github/actions/linux_cache/
 
     - name: Set up Elasticsearch and pdftotext
-      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
