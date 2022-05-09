@@ -142,8 +142,9 @@ class TransformersSummarizer(BaseSummarizer):
                     f"Generating summary from first {self.summarizer.tokenizer.model_max_length}"
                     f" tokens."
                 )
-                logger.warning(truncation_warning)
-                break
+                if truncation_warning not in self.print_log:
+                    logger.warning(truncation_warning)
+                    self.print_log.add(truncation_warning)
 
         summaries = self.summarizer(
             contexts,
