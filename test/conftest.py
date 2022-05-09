@@ -139,7 +139,17 @@ def pytest_collection_modifyitems(config, items):
                 keywords.extend(i.split("-"))
             else:
                 keywords.append(i)
-        for cur_doc_store in ["elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate", "pinecone", "graphdb"]:
+        for cur_doc_store in [
+            "elasticsearch",
+            "faiss",
+            "sql",
+            "memory",
+            "milvus1",
+            "milvus",
+            "weaviate",
+            "pinecone",
+            "graphdb",
+        ]:
             if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
