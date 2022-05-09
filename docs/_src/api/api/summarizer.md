@@ -87,7 +87,7 @@ See the up-to-date list of available models on
 #### TransformersSummarizer.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: bool = True, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False)
+def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: bool = True, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False, batch_size: Optional[int] = None)
 ```
 
 Load a Summarization model from Transformers.
@@ -112,6 +112,7 @@ into a single text. This separator appears between those subsequent docs.
 If set to "True", all docs will be joined to a single string that will then
 be summarized.
 Important: The summary will depend on the order of the supplied documents!
+- `batch_size`: Number of documents to process at a time.
 
 <a id="transformers.TransformersSummarizer.predict"></a>
 
@@ -140,7 +141,7 @@ the original, not summarized text
 
 <a id="transformers.TransformersSummarizer.predict_batch"></a>
 
-#### predict\_batch
+#### TransformersSummarizer.predict\_batch
 
 ```python
 def predict_batch(documents: Union[List[Document], List[List[Document]]], generate_single_summary: Optional[bool] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]

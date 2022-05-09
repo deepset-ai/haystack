@@ -39,7 +39,7 @@ This function can be called to perform entity extraction when using the node in 
 
 <a id="entity.EntityExtractor.extract_batch"></a>
 
-#### extract\_batch
+#### EntityExtractor.extract\_batch
 
 ```python
 def extract_batch(texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None)

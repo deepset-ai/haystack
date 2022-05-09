@@ -1053,8 +1053,12 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Optional[Union[Dict[str, Union[Dict, List, str, int, float, bool]],
-                                List[Dict[str, Union[Dict, List, str, int, float, bool]]]]] = None,
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -1161,8 +1165,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         if isinstance(filters, list):
             if len(filters) != len(queries):
-                raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
-                                    " as queries or a single filter that will be applied to each query.")
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
         else:
             filters = [filters] * len(queries)
 

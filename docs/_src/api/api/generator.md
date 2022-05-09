@@ -35,7 +35,7 @@ Generated answers plus additional infos in a dict
 
 <a id="base.BaseGenerator.predict_batch"></a>
 
-#### predict\_batch
+#### BaseGenerator.predict\_batch
 
 ```python
 def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)

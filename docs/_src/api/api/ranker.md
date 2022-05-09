@@ -12,7 +12,7 @@ class BaseRanker(BaseComponent)
 
 <a id="base.BaseRanker.timing"></a>
 
-#### timing
+#### BaseRanker.timing
 
 ```python
 def timing(fn, attr_name)
@@ -22,7 +22,7 @@ Wrapper method used to time functions.
 
 <a id="base.BaseRanker.eval"></a>
 
-#### eval
+#### BaseRanker.eval
 
 ```python
 def eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
@@ -89,10 +89,10 @@ p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 
 <a id="sentence_transformers.SentenceTransformersRanker.__init__"></a>
 
-#### \_\_init\_\_
+#### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: Optional[int] = None)
 ```
 
 **Arguments**:
@@ -107,10 +107,11 @@ See https://huggingface.co/cross-encoder for full list of available models
 The strings will be converted into pytorch devices, so use the string notation described here:
 https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
 (e.g. ["cuda:0"]).
+- `batch_size`: Number of documents to process at a time.
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 
-#### predict
+#### SentenceTransformersRanker.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]
@@ -132,7 +133,7 @@ List of Document
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
 
-#### predict\_batch
+#### SentenceTransformersRanker.predict\_batch
 
 ```python
 def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
