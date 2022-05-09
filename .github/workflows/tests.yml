@@ -103,7 +103,7 @@ jobs:
           - "other_tests"
 
     runs-on: ${{ matrix.os }}
-    if: matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows')
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@v2
@@ -117,7 +117,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -146,7 +146,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows')
     
     steps:
     - uses: actions/checkout@v2
@@ -166,7 +166,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Set up Elasticsearch and pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -199,7 +199,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') && (matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows'))
 
     steps:
     - uses: actions/checkout@v2
@@ -213,7 +213,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -242,7 +242,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && (matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows'))
 
     steps:
     - uses: actions/checkout@v2
@@ -263,7 +263,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -292,7 +292,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && (matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows'))
 
     steps:
     - uses: actions/checkout@v2
@@ -309,7 +309,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -338,7 +338,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && (matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows'))
     
     steps:
     - uses: actions/checkout@v2
@@ -352,7 +352,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -383,7 +383,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') && (matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows'))
     
     steps:
     - uses: actions/checkout@v2
@@ -401,7 +401,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -431,7 +431,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && (matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows'))
     
     steps:
     - uses: actions/checkout@v2
@@ -448,7 +448,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Set up Elasticsearch and pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
@@ -491,7 +491,7 @@ jobs:
           - "other_tests"
 
     runs-on: ${{ matrix.os }}
-    if: matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows')
+    if: matrix.os != "windows-latest" || contains(github.event.pull_request.labels.*.name, 'topic:windows')
     
     steps:
     - uses: actions/checkout@v2
@@ -542,7 +542,7 @@ jobs:
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Set up Elasticsearch and pdftotext
-      if: matrix.os == "windows-latest" and contains(github.event.pull_request.labels.*.name, 'topic:windows')
+      if: matrix.os == "windows-latest" && contains(github.event.pull_request.labels.*.name, 'topic:windows')
       run: |
         choco install xpdf-utils
         choco install openjdk11
