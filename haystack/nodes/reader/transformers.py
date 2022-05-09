@@ -80,6 +80,7 @@ class TransformersReader(BaseReader):
         self.return_no_answers = return_no_answers
         self.max_seq_len = max_seq_len
         self.doc_stride = doc_stride
+        self.batch_size = batch_size
 
         # TODO context_window_size behaviour different from behavior in FARMReader
 

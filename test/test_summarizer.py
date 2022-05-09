@@ -64,8 +64,8 @@ def test_summarization_batch_single_doc_list(summarizer):
 @pytest.mark.slow
 @pytest.mark.summarizer
 def test_summarization_batch_multiple_doc_lists(summarizer):
-    summarized_docs = summarizer.predict_batch(documents=[DOCS])
-    assert len(summarized_docs) == 1  # Number of document lists
+    summarized_docs = summarizer.predict_batch(documents=[DOCS, DOCS])
+    assert len(summarized_docs) == 2  # Number of document lists
     assert len(summarized_docs[0]) == len(DOCS)
     for expected_summary, summary in zip(EXPECTED_SUMMARIES, summarized_docs[0]):
         assert expected_summary == summary.content

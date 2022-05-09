@@ -102,6 +102,7 @@ class TransformersSummarizer(BaseSummarizer):
         self.separator_for_single_summary = separator_for_single_summary
         self.generate_single_summary = generate_single_summary
         self.print_log: Set[str] = set()
+        self.batch_size = batch_size
 
     def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
         """

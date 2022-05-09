@@ -599,7 +599,7 @@ def batch_prediction_single_query_single_doc_list(reader, test_docs_xs):
 @pytest.fixture(scope="function")
 def batch_prediction_single_query_multiple_doc_lists(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs], top_k=5)
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
     return prediction
 
 

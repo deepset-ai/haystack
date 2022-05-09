@@ -44,8 +44,8 @@ def test_output_batch_single_query_multiple_doc_lists(batch_prediction_single_qu
     assert isinstance(prediction["answers"], list)
     assert isinstance(prediction["answers"][0], list)
     assert isinstance(prediction["answers"][0][0], Answer)
-    assert len(prediction["answers"]) == 1  # Predictions for 1 collection of docs
-    assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
+    assert len(prediction["answers"]) == 2  # Predictions for 2 collection of docs
+    assert len(prediction["answers"][0]) == 5  # top-k of 5 per collection of docs
 
 
 def test_output_batch_multiple_queries_single_doc_list(batch_prediction_multiple_queries_single_doc_list):
