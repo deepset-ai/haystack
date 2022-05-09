@@ -199,7 +199,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') and (${{matrix.os}} != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
 
     steps:
     - uses: actions/checkout@v2
@@ -242,7 +242,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') and (${{matrix.os}} != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
 
     steps:
     - uses: actions/checkout@v2
@@ -292,7 +292,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') and (${{matrix.os}} != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
 
     steps:
     - uses: actions/checkout@v2
@@ -338,7 +338,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') and (${{matrix.os}} != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
     
     steps:
     - uses: actions/checkout@v2
@@ -383,7 +383,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') and (${{matrix.os}} != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:graphdb') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
     
     steps:
     - uses: actions/checkout@v2
@@ -431,7 +431,7 @@ jobs:
           - windows-latest
 
     runs-on: ${{ matrix.os }}
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') and (${{matrix.os}} != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
+    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') and (matrix.os != "windows-latest" or contains(github.event.pull_request.labels.*.name, 'topic:windows'))
     
     steps:
     - uses: actions/checkout@v2
