@@ -8,6 +8,39 @@ from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 
 
+# https://en.wikipedia.org/wiki/Ligature_(writing)
+KNOWN_LIGATURES = {
+    # Latin
+    "ﬀ": "ff",
+    "ﬁ": "fi",
+    "ﬂ": "fl",
+    "ﬃ": "ffi",
+    "ﬄ": "ffl",
+    "ﬅ": "ft",
+    "ﬆ": "st",
+    "Ǳ": "DZ",
+    "ǲ": "Dz",
+    "ǳ": "dz",
+    "Ǆ": "DŽ",
+    "ǅ": "Dž",
+    "ǆ": "dž",
+    "Ꜩ": "Tz",
+    "ꜩ": "tz",
+    "🙰": "et",
+    "℔": "lb",
+    "ᵫ": "ue",
+    "Ĳ": "IJ",
+    "ĳ": "ij",  # They are both capitalized together, so the "Ij" ligature doesn't exist
+    "ꝏ": "oo",  # Not the infinite sign but a double-o ligature: https://en.wikipedia.org/wiki/Ligature_(writing)#Massachusett_%EA%9D%8F
+    # Armenian
+    "ﬓ": "մն",
+    "ﬔ": "մե",
+    "ﬕ": "մի",
+    "ﬖ": "վն",
+    "ﬗ": "մխ",
+}
+
+
 class BaseConverter(BaseComponent):
     """
     Base class for implementing file converts to transform input documents to text format for ingestion in DocumentStore.
@@ -50,7 +83,7 @@ class BaseConverter(BaseComponent):
         meta: Optional[Dict[str, str]],
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
-        encoding: Optional[str] = "utf-8",
+        encoding: Optional[str] = "UTF-8",
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -71,7 +104,7 @@ class BaseConverter(BaseComponent):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param encoding: Select the file encoding (default is `utf-8`)
+        :param encoding: Select the file encoding (default is `UTF-8`)
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -98,17 +131,44 @@ class BaseConverter(BaseComponent):
 
     def run(  # type: ignore
         self,
-        file_paths: Union[Path, List[Path]],  # type: ignore
-        meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None,  # type: ignore
-        remove_numeric_tables: Optional[bool] = None,  # type: ignore
-        valid_languages: Optional[List[str]] = None,  # type: ignore
+        file_paths: Union[Path, List[Path]],
+        meta: Optional[Union[Dict[str, str], List[Optional[Dict[str, str]]]]] = None,
+        remove_numeric_tables: Optional[bool] = None,
+        known_ligatures: Dict[str, str] = KNOWN_LIGATURES,
+        valid_languages: Optional[List[str]] = None,
+        encoding: Optional[str] = "UTF-8",
     ):
+        """
+        Extract text from a file.
+
+        :param file_paths: Path to the files you want to convert
+        :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
+                     Can be any custom keys and values.
+        :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
+                                      The tabular structures in documents might be noise for the reader model if it
+                                      does not have table parsing capability for finding answers. However, tables
+                                      may also have long strings that could possible candidate for searching answers.
+                                      The rows containing strings are thus retained in this option.
+        :param known_ligatures: Some converters tends to recognize clusters of letters as ligatures, such as "ﬀ" (double f).
+                                Such ligatures however make text hard to compare with the content of other files,
+                                which are generally ligature free. Therefore we automatically find and replace the most
+                                common ligatures with their split counterparts. The default mapping is in
+                                `haystack.nodes.file_converter.base.KNOWN_LIGATURES`: it is rather biased towards Latin alphabeths
+                                but excludes all ligatures that are known to be used in IPA.
+                                You can use this parameter to provide your own set of ligatures to clean up from the documents.
+        :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
+                                (https://en.wikipedia.org/wiki/ISO_639-1) format.
+                                This option can be used to add test for encoding errors. If the extracted text is
+                                not one of the valid languages, then it might likely be encoding error resulting
+                                in garbled text.
+        :param encoding: Select the file encoding (default is `UTF-8`)
+        """
 
         if isinstance(file_paths, Path):
             file_paths = [file_paths]
 
-        if meta is None or isinstance(meta, dict):
-            meta = [meta] * len(file_paths)  # type: ignore
+        if isinstance(meta, dict) or meta is None:
+            meta = [meta] * len(file_paths)
 
         documents: list = []
         for file_path, file_meta in zip(file_paths, meta):
@@ -117,8 +177,15 @@ class BaseConverter(BaseComponent):
                 meta=file_meta,
                 remove_numeric_tables=remove_numeric_tables,
                 valid_languages=valid_languages,
+                encoding=encoding,
             ):
                 documents.append(doc)
+
+        # Cleanup ligatures
+        for document in documents:
+            for ligature, letters in known_ligatures.items():
+                if document.content is not None:
+                    document.content = document.content.replace(ligature, letters)
 
         result = {"documents": documents}
         return result, "output_1"

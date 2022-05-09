@@ -29,7 +29,7 @@ def tutorial11_pipelines():
     document_store.write_documents(got_docs)
 
     # Initialize Sparse retriever
-    es_retriever = BM25Retriever(document_store=document_store)
+    bm25_retriever = BM25Retriever(document_store=document_store)
 
     # Initialize dense retriever
     embedding_retriever = EmbeddingRetriever(
@@ -51,7 +51,7 @@ def tutorial11_pipelines():
     print("########################")
 
     query = "Who is the father of Arya Stark?"
-    p_extractive_premade = ExtractiveQAPipeline(reader=reader, retriever=es_retriever)
+    p_extractive_premade = ExtractiveQAPipeline(reader=reader, retriever=bm25_retriever)
     res = p_extractive_premade.run(query=query, params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}})
     print("\nQuery: ", query)
     print("Answers:")
@@ -62,7 +62,7 @@ def tutorial11_pipelines():
     print("##########################")
 
     query = "Who is the father of Arya Stark?"
-    p_retrieval = DocumentSearchPipeline(es_retriever)
+    p_retrieval = DocumentSearchPipeline(bm25_retriever)
     res = p_retrieval.run(query=query, params={"Retriever": {"top_k": 10}})
     print()
     print_documents(res, max_text_len=200)
@@ -108,7 +108,7 @@ def tutorial11_pipelines():
 
     # Custom built extractive QA pipeline
     p_extractive = Pipeline()
-    p_extractive.add_node(component=es_retriever, name="Retriever", inputs=["Query"])
+    p_extractive.add_node(component=bm25_retriever, name="Retriever", inputs=["Query"])
     p_extractive.add_node(component=reader, name="Reader", inputs=["Retriever"])
 
     # Now we can run it
@@ -125,7 +125,7 @@ def tutorial11_pipelines():
 
     # Create ensembled pipeline
     p_ensemble = Pipeline()
-    p_ensemble.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
+    p_ensemble.add_node(component=bm25_retriever, name="ESRetriever", inputs=["Query"])
     p_ensemble.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])
     p_ensemble.add_node(
         component=JoinDocuments(join_mode="concatenate"),
@@ -166,7 +166,7 @@ def tutorial11_pipelines():
     # Here we build the pipeline
     p_classifier = Pipeline()
     p_classifier.add_node(component=CustomQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-    p_classifier.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_1"])
+    p_classifier.add_node(component=bm25_retriever, name="ESRetriever", inputs=["QueryClassifier.output_1"])
     p_classifier.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_2"])
     p_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"])
     p_classifier.draw("pipeline_classifier.png")
@@ -193,7 +193,7 @@ def tutorial11_pipelines():
     # You can print out debug information from nodes in your pipelines in a few different ways.
 
     # 1) You can set the `debug` attribute of a given node.
-    es_retriever.debug = True
+    bm25_retriever.debug = True
 
     # 2) You can provide `debug` as a parameter when running your pipeline
     result = p_classifier.run(query="Who is the father of Arya Stark?", params={"ESRetriever": {"debug": True}})

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://haystack.deepset.ai/haystack/json-schemas/haystack-pipeline-master.schema.json",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-master.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -2883,6 +2883,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "encoding": {
+              "title": "Encoding",
+              "default": "UTF-8",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -4173,12 +4178,12 @@
             },
             "top_k_per_candidate": {
               "title": "Top K Per Candidate",
-              "default": 4,
+              "default": 3,
               "type": "integer"
             },
             "return_no_answers": {
               "title": "Return No Answers",
-              "default": true,
+              "default": false,
               "type": "boolean"
             },
             "max_seq_len": {

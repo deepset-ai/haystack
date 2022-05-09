@@ -2,45 +2,35 @@
 
 # Module base
 
-<a id="base.RootNode"></a>
+<a id="base.Pipeline"></a>
 
-## RootNode
-
-```python
-class RootNode(BaseComponent)
-```
-
-RootNode feeds inputs together with corresponding params to a Pipeline.
-
-<a id="base.BasePipeline"></a>
-
-## BasePipeline
+## Pipeline
 
 ```python
-class BasePipeline(ABC)
+class Pipeline()
 ```
 
-Base class for pipelines, providing the most basic methods to load and save them in different ways.
-See also the `Pipeline` class for the actual pipeline logic.
+Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
 
-<a id="base.BasePipeline.get_config"></a>
+Under-the-hood, a pipeline is represented as a directed acyclic graph of component nodes. It enables custom query
+flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
+Reader from multiple Retrievers, or re-ranking of candidate documents.
 
-#### get\_config
+<a id="base.Pipeline.root_node"></a>
+
+
+#### root\_node
 
 ```python
-@abstractmethod
-def get_config(return_defaults: bool = False) -> dict
+@property
+def root_node() -> Optional[str]
 ```
 
-Returns a configuration for the Pipeline that can be used with `Pipeline.load_from_config()`.
+Returns the root node of the pipeline's graph.
 
-**Arguments**:
+<a id="base.Pipeline.to_code"></a>
 
-- `return_defaults`: whether to output parameters that have the default values.
-
-<a id="base.BasePipeline.to_code"></a>
-
-#### to\_code
+#### BasePipeline.to\_code
 
 ```python
 def to_code(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False) -> str
@@ -57,9 +47,9 @@ Default value is True.
 - `add_comment`: Whether to add a preceding comment that this code has been generated.
 Default value is False.
 
-<a id="base.BasePipeline.to_notebook_cell"></a>
+<a id="base.Pipeline.to_notebook_cell"></a>
 
-#### to\_notebook\_cell
+#### BasePipeline.to\_notebook\_cell
 
 ```python
 def to_notebook_cell(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True)
@@ -76,124 +66,9 @@ Default value is True.
 - `add_comment`: Whether to add a preceding comment that this code has been generated.
 Default value is True.
 
-<a id="base.BasePipeline.load_from_config"></a>
+<a id="base.Pipeline.load_from_deepset_cloud"></a>
 
-#### load\_from\_config
-
-```python
-@classmethod
-@abstractmethod
-def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False)
-```
-
-Load Pipeline from a config dict defining the individual components and how they're tied together to form
-
-a Pipeline. A single config can declare multiple Pipelines, in which case an explicit `pipeline_name` must
-be passed.
-
-Here's a sample configuration:
-
-    ```python
-    |   {
-    |       "version": "1.0",
-    |       "components": [
-    |           {  # define all the building-blocks for Pipeline
-    |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
-    |               "type": "FARMReader",  # Haystack Class name for the component
-    |               "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
-    |           },
-    |           {
-    |               "name": "MyESRetriever",
-    |               "type": "BM25Retriever",
-    |               "params": {
-    |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
-    |                   "custom_query": None,
-    |               },
-    |           },
-    |           {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
-    |       ],
-    |       "pipelines": [
-    |           {  # multiple Pipelines can be defined using the components from above
-    |               "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
-    |               "nodes": [
-    |                   {"name": "MyESRetriever", "inputs": ["Query"]},
-    |                   {"name": "MyReader", "inputs": ["MyESRetriever"]},
-    |               ],
-    |           }
-    |       ],
-    |   }
-    ```
-
-**Arguments**:
-
-- `pipeline_config`: the pipeline config as dict
-- `pipeline_name`: if the config contains multiple pipelines, the pipeline_name to load must be set.
-- `overwrite_with_env_variables`: Overwrite the configuration with environment variables. For example,
-to change index name param for an ElasticsearchDocumentStore, an env
-variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-`_` sign must be used to specify nested hierarchical properties.
-- `strict_version_check`: whether to fail in case of a version mismatch (throws a warning otherwise)
-
-<a id="base.BasePipeline.load_from_yaml"></a>
-
-#### load\_from\_yaml
-
-```python
-@classmethod
-@abstractmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
-```
-
-Load Pipeline from a YAML file defining the individual components and how they're tied together to form
-
-a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
-be passed.
-
-Here's a sample configuration:
-
-    ```yaml
-    |   version: '1.0'
-    |
-    |    components:    # define all the building-blocks for Pipeline
-    |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-    |      type: FARMReader    # Haystack Class name for the component
-    |      params:
-    |        no_ans_boost: -10
-    |        model_name_or_path: deepset/roberta-base-squad2
-    |    - name: MyESRetriever
-    |      type: BM25Retriever
-    |      params:
-    |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-    |        custom_query: null
-    |    - name: MyDocumentStore
-    |      type: ElasticsearchDocumentStore
-    |      params:
-    |        index: haystack_test
-    |
-    |    pipelines:    # multiple Pipelines can be defined using the components from above
-    |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-    |      nodes:
-    |      - name: MyESRetriever
-    |        inputs: [Query]
-    |      - name: MyReader
-    |        inputs: [MyESRetriever]
-    ```
-
-Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
-If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
-
-**Arguments**:
-
-- `path`: path of the YAML file.
-- `pipeline_name`: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-- `overwrite_with_env_variables`: Overwrite the YAML configuration with environment variables. For example,
-to change index name param for an ElasticsearchDocumentStore, an env
-variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-`_` sign must be used to specify nested hierarchical properties.
-
-<a id="base.BasePipeline.load_from_deepset_cloud"></a>
-
-#### load\_from\_deepset\_cloud
+#### BasePipeline.load\_from\_deepset\_cloud
 
 ```python
 @classmethod
@@ -224,9 +99,9 @@ to change return_no_answer param for a FARMReader, an env
 variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
 
-<a id="base.BasePipeline.list_pipelines_on_deepset_cloud"></a>
+<a id="base.Pipeline.list_pipelines_on_deepset_cloud"></a>
 
-#### list\_pipelines\_on\_deepset\_cloud
+#### BasePipeline.list\_pipelines\_on\_deepset\_cloud
 
 ```python
 @classmethod
@@ -260,13 +135,13 @@ Returns:
                 'pending_file_count': 3,
                 'total_file_count': 31}}]
 
-<a id="base.BasePipeline.save_to_deepset_cloud"></a>
+<a id="base.Pipeline.save_to_deepset_cloud"></a>
 
-#### save\_to\_deepset\_cloud
+#### BasePipeline.save\_to\_deepset\_cloud
 
 ```python
 @classmethod
-def save_to_deepset_cloud(cls, query_pipeline: BasePipeline, index_pipeline: BasePipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
+def save_to_deepset_cloud(cls, query_pipeline: Pipeline, index_pipeline: Pipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
 ```
 
 Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
@@ -285,9 +160,9 @@ If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 - `overwrite`: Whether to overwrite the config if it already exists. Otherwise an error is being raised.
 
-<a id="base.BasePipeline.deploy_on_deepset_cloud"></a>
+<a id="base.Pipeline.deploy_on_deepset_cloud"></a>
 
-#### deploy\_on\_deepset\_cloud
+#### BasePipeline.deploy\_on\_deepset\_cloud
 
 ```python
 @classmethod
@@ -314,9 +189,9 @@ If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment varia
 - `timeout`: The time in seconds to wait until deployment completes.
 If the timeout is exceeded an error will be raised.
 
-<a id="base.BasePipeline.undeploy_on_deepset_cloud"></a>
+<a id="base.Pipeline.undeploy_on_deepset_cloud"></a>
 
-#### undeploy\_on\_deepset\_cloud
+#### BasePipeline.undeploy\_on\_deepset\_cloud
 
 ```python
 @classmethod
@@ -343,23 +218,9 @@ If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment varia
 - `timeout`: The time in seconds to wait until undeployment completes.
 If the timeout is exceeded an error will be raised.
 
-<a id="base.Pipeline"></a>
-
-## Pipeline
-
-```python
-class Pipeline(BasePipeline)
-```
-
-Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
-
-Under-the-hood, a pipeline is represented as a directed acyclic graph of component nodes. It enables custom query
-flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
-Reader from multiple Retrievers, or re-ranking of candidate documents.
-
 <a id="base.Pipeline.add_node"></a>
 
-#### add\_node
+#### Pipeline.add\_node
 
 ```python
 def add_node(component: BaseComponent, name: str, inputs: List[str])
@@ -382,7 +243,7 @@ must be specified explicitly as "QueryClassifier.output_2".
 
 <a id="base.Pipeline.get_node"></a>
 
-#### get\_node
+#### Pipeline.get\_node
 
 ```python
 def get_node(name: str) -> Optional[BaseComponent]
@@ -396,7 +257,7 @@ Get a node from the Pipeline.
 
 <a id="base.Pipeline.set_node"></a>
 
-#### set\_node
+#### Pipeline.set\_node
 
 ```python
 def set_node(name: str, component)
@@ -411,7 +272,7 @@ Set the component for a node in the Pipeline.
 
 <a id="base.Pipeline.run"></a>
 
-#### run
+#### Pipeline.run
 
 ```python
 def run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[Union[dict, List[dict]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
@@ -464,7 +325,7 @@ then be found in the dict returned by this method under the key "_debug"
 
 <a id="base.Pipeline.eval_beir"></a>
 
-#### eval\_beir
+#### Pipeline.eval\_beir
 
 ```python
 @classmethod
@@ -493,7 +354,7 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 
 <a id="base.Pipeline.execute_eval_run"></a>
 
-#### execute\_eval\_run
+#### Pipeline.execute\_eval\_run
 
 ```python
 @classmethod
@@ -583,7 +444,7 @@ Defaults to False.
 
 <a id="base.Pipeline.eval"></a>
 
-#### eval
+#### Pipeline.eval
 
 ```python
 @send_event
@@ -627,7 +488,7 @@ values "integrated" or "isolated" in the column "eval_mode" and the evaluation r
 
 <a id="base.Pipeline.get_nodes_by_class"></a>
 
-#### get\_nodes\_by\_class
+#### Pipeline.get\_nodes\_by\_class
 
 ```python
 def get_nodes_by_class(class_type) -> List[Any]
@@ -647,7 +508,7 @@ List of components that are an instance the requested class
 
 <a id="base.Pipeline.get_document_store"></a>
 
-#### get\_document\_store
+#### Pipeline.get\_document\_store
 
 ```python
 def get_document_store() -> Optional[BaseDocumentStore]
@@ -661,7 +522,7 @@ Instance of DocumentStore or None
 
 <a id="base.Pipeline.draw"></a>
 
-#### draw
+#### Pipeline.draw
 
 ```python
 def draw(path: Path = Path("pipeline.png"))
@@ -675,7 +536,7 @@ Create a Graphviz visualization of the pipeline.
 
 <a id="base.Pipeline.load_from_yaml"></a>
 
-#### load\_from\_yaml
+#### Pipeline.load\_from\_yaml
 
 ```python
 @classmethod
@@ -690,7 +551,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '1.0'
+    |   version: '1.0.0'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -732,7 +593,7 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 
 <a id="base.Pipeline.load_from_config"></a>
 
-#### load\_from\_config
+#### Pipeline.load\_from\_config
 
 ```python
 @classmethod
@@ -748,7 +609,7 @@ Here's a sample configuration:
 
     ```python
     |   {
-    |       "version": "0.9",
+    |       "version": "ignore",
     |       "components": [
     |           {  # define all the building-blocks for Pipeline
     |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
@@ -789,7 +650,7 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 
 <a id="base.Pipeline.save_to_yaml"></a>
 
-#### save\_to\_yaml
+#### Pipeline.save\_to\_yaml
 
 ```python
 def save_to_yaml(path: Path, return_defaults: bool = False)
@@ -804,7 +665,7 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 
 <a id="base.Pipeline.get_config"></a>
 
-#### get\_config
+#### Pipeline.get\_config
 
 ```python
 def get_config(return_defaults: bool = False) -> dict
@@ -818,7 +679,7 @@ Returns a configuration for the Pipeline that can be used with `Pipeline.load_fr
 
 <a id="base.Pipeline.print_eval_report"></a>
 
-#### print\_eval\_report
+#### Pipeline.print\_eval\_report
 
 ```python
 def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None)
@@ -832,7 +693,39 @@ Prints evaluation report containing a metrics funnel and worst queries for furth
 - `n_wrong_examples`: The number of worst queries to show.
 - `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
 
-<a id="base.RayPipeline"></a>
+<a id="base._HaystackBeirRetrieverAdapter"></a>
+
+## \_HaystackBeirRetrieverAdapter
+
+```python
+class _HaystackBeirRetrieverAdapter()
+```
+
+<a id="base._HaystackBeirRetrieverAdapter.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict)
+```
+
+Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
+
+This has nothing to do with Haystack's retriever classes.
+See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
+
+**Arguments**:
+
+- `index_pipeline`: The indexing pipeline to use.
+- `query_pipeline`: The query pipeline to evaluate.
+- `index_params`: The params to use during indexing (see pipeline.run's params).
+- `query_params`: The params to use during querying (see pipeline.run's params).
+
+<a id="ray"></a>
+
+# Module ray
+
+<a id="ray.RayPipeline"></a>
 
 ## RayPipeline
 
@@ -870,12 +763,12 @@ A RayPipeline can only be created with a YAML Pipeline config.
 By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
 set the `address` parameter when creating the RayPipeline instance.
 
-<a id="base.RayPipeline.__init__"></a>
+<a id="ray.RayPipeline.__init__"></a>
 
-#### \_\_init\_\_
+#### RayPipeline.\_\_init\_\_
 
 ```python
-def __init__(address: str = None, **kwargs)
+def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
 ```
 
 **Arguments**:
@@ -883,13 +776,13 @@ def __init__(address: str = None, **kwargs)
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
 
-<a id="base.RayPipeline.load_from_yaml"></a>
+<a id="ray.RayPipeline.load_from_yaml"></a>
 
-#### load\_from\_yaml
+#### RayPipeline.load\_from\_yaml
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, **kwargs, ,)
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -900,7 +793,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.9'
+    |   version: '1.0.0'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -909,7 +802,7 @@ Here's a sample configuration:
     |        no_ans_boost: -10
     |        model_name_or_path: deepset/roberta-base-squad2
     |    - name: MyESRetriever
-    |      type: BM25Retriever
+    |      type: ElasticsearchRetriever
     |      params:
     |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
     |        custom_query: null
@@ -943,7 +836,7 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
 
-<a id="base._RayDeploymentWrapper"></a>
+<a id="ray._RayDeploymentWrapper"></a>
 
 ## \_RayDeploymentWrapper
 
@@ -959,9 +852,9 @@ like Document Stores.
 This wrapper class encapsulates the initialization of Components. Given a Component Class
 name, it creates an instance using the YAML Pipeline config.
 
-<a id="base._RayDeploymentWrapper.__init__"></a>
+<a id="ray._RayDeploymentWrapper.__init__"></a>
 
-#### \_\_init\_\_
+#### \_RayDeploymentWrapper.\_\_init\_\_
 
 ```python
 def __init__(pipeline_config: dict, component_name: str)
@@ -974,9 +867,9 @@ Create an instance of Component.
 - `pipeline_config`: Pipeline YAML parsed as a dict.
 - `component_name`: Component Class name.
 
-<a id="base._RayDeploymentWrapper.__call__"></a>
+<a id="ray._RayDeploymentWrapper.__call__"></a>
 
-#### \_\_call\_\_
+#### \_RayDeploymentWrapper.\_\_call\_\_
 
 ```python
 def __call__(*args, **kwargs)
@@ -984,33 +877,21 @@ def __call__(*args, **kwargs)
 
 Ray calls this method which is then re-directed to the corresponding component's run().
 
-<a id="base._HaystackBeirRetrieverAdapter"></a>
+<a id="ray._RayDeploymentWrapper.load_from_pipeline_config"></a>
 
-## \_HaystackBeirRetrieverAdapter
-
-```python
-class _HaystackBeirRetrieverAdapter()
-```
-
-<a id="base._HaystackBeirRetrieverAdapter.__init__"></a>
-
-#### \_\_init\_\_
+#### load\_from\_pipeline\_config
 
 ```python
-def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict)
+@staticmethod
+def load_from_pipeline_config(pipeline_config: dict, component_name: str)
 ```
 
-Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
-
-This has nothing to do with Haystack's retriever classes.
-See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
+Load an individual component from a YAML config for Pipelines.
 
 **Arguments**:
 
-- `index_pipeline`: The indexing pipeline to use.
-- `query_pipeline`: The query pipeline to evaluate.
-- `index_params`: The params to use during indexing (see pipeline.run's params).
-- `query_params`: The params to use during querying (see pipeline.run's params).
+- `pipeline_config`: the Pipelines YAML config parsed as a dict.
+- `component_name`: the name of the component to load.
 
 <a id="standard_pipelines"></a>
 
@@ -1029,7 +910,7 @@ This class does not inherit from Pipeline.
 
 <a id="standard_pipelines.BaseStandardPipeline.add_node"></a>
 
-#### add\_node
+#### BaseStandardPipeline.add\_node
 
 ```python
 def add_node(component, name: str, inputs: List[str])
@@ -1052,7 +933,7 @@ must be specified explicitly as "QueryClassifier.output_2".
 
 <a id="standard_pipelines.BaseStandardPipeline.get_node"></a>
 
-#### get\_node
+#### BaseStandardPipeline.get\_node
 
 ```python
 def get_node(name: str)
@@ -1066,7 +947,7 @@ Get a node from the Pipeline.
 
 <a id="standard_pipelines.BaseStandardPipeline.set_node"></a>
 
-#### set\_node
+#### BaseStandardPipeline.set\_node
 
 ```python
 def set_node(name: str, component)
@@ -1081,7 +962,7 @@ Set the component for a node in the Pipeline.
 
 <a id="standard_pipelines.BaseStandardPipeline.draw"></a>
 
-#### draw
+#### BaseStandardPipeline.draw
 
 ```python
 def draw(path: Path = Path("pipeline.png"))
@@ -1095,7 +976,7 @@ Create a Graphviz visualization of the pipeline.
 
 <a id="standard_pipelines.BaseStandardPipeline.save_to_yaml"></a>
 
-#### save\_to\_yaml
+#### BaseStandardPipeline.save\_to\_yaml
 
 ```python
 def save_to_yaml(path: Path, return_defaults: bool = False)
@@ -1110,7 +991,7 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 
 <a id="standard_pipelines.BaseStandardPipeline.load_from_yaml"></a>
 
-#### load\_from\_yaml
+#### BaseStandardPipeline.load\_from\_yaml
 
 ```python
 @classmethod
@@ -1125,7 +1006,7 @@ be passed.
 Here's a sample configuration:
 
     ```yaml
-    |   version: '0.8'
+    |   version: '1.0.0'
     |
     |    components:    # define all the building-blocks for Pipeline
     |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -1163,7 +1044,7 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 
 <a id="standard_pipelines.BaseStandardPipeline.get_nodes_by_class"></a>
 
-#### get\_nodes\_by\_class
+#### BaseStandardPipeline.get\_nodes\_by\_class
 
 ```python
 def get_nodes_by_class(class_type) -> List[Any]
@@ -1185,7 +1066,7 @@ List of components that are an instance of the requested class
 
 <a id="standard_pipelines.BaseStandardPipeline.get_document_store"></a>
 
-#### get\_document\_store
+#### BaseStandardPipeline.get\_document\_store
 
 ```python
 def get_document_store() -> Optional[BaseDocumentStore]
@@ -1199,7 +1080,7 @@ Instance of DocumentStore or None
 
 <a id="standard_pipelines.BaseStandardPipeline.eval"></a>
 
-#### eval
+#### BaseStandardPipeline.eval
 
 ```python
 def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, add_isolated_node_eval: bool = False) -> EvaluationResult
@@ -1230,7 +1111,7 @@ Pipeline for Extractive Question Answering.
 
 <a id="standard_pipelines.ExtractiveQAPipeline.__init__"></a>
 
-#### \_\_init\_\_
+#### ExtractiveQAPipeline.\_\_init\_\_
 
 ```python
 def __init__(reader: BaseReader, retriever: BaseRetriever)
@@ -1243,7 +1124,7 @@ def __init__(reader: BaseReader, retriever: BaseRetriever)
 
 <a id="standard_pipelines.ExtractiveQAPipeline.run"></a>
 
-#### run
+#### ExtractiveQAPipeline.run
 
 ```python
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
@@ -1272,7 +1153,7 @@ Pipeline for semantic document search.
 
 <a id="standard_pipelines.DocumentSearchPipeline.__init__"></a>
 
-#### \_\_init\_\_
+#### DocumentSearchPipeline.\_\_init\_\_
 
 ```python
 def __init__(retriever: BaseRetriever)
@@ -1284,7 +1165,7 @@ def __init__(retriever: BaseRetriever)
 
 <a id="standard_pipelines.DocumentSearchPipeline.run"></a>
 
-#### run
+#### DocumentSearchPipeline.run
 
 ```python
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
@@ -1312,7 +1193,7 @@ Pipeline for Generative Question Answering.
 
 <a id="standard_pipelines.GenerativeQAPipeline.__init__"></a>
 
-#### \_\_init\_\_
+#### GenerativeQAPipeline.\_\_init\_\_
 
 ```python
 def __init__(generator: BaseGenerator, retriever: BaseRetriever)
@@ -1325,7 +1206,7 @@ def __init__(generator: BaseGenerator, retriever: BaseRetriever)
 
 <a id="standard_pipelines.GenerativeQAPipeline.run"></a>
 
-#### run
+#### GenerativeQAPipeline.run
 
 ```python
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
@@ -1354,7 +1235,7 @@ Pipeline that retrieves documents for a query and then summarizes those document
 
 <a id="standard_pipelines.SearchSummarizationPipeline.__init__"></a>
 
-#### \_\_init\_\_
+#### SearchSummarizationPipeline.\_\_init\_\_
 
 ```python
 def __init__(summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False)
@@ -1370,7 +1251,7 @@ pipeline as a "drop-in replacement" for other QA pipelines.
 
 <a id="standard_pipelines.SearchSummarizationPipeline.run"></a>
 
-#### run
+#### SearchSummarizationPipeline.run
 
 ```python
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
@@ -1399,7 +1280,7 @@ Pipeline for finding similar FAQs using semantic document search.
 
 <a id="standard_pipelines.FAQPipeline.__init__"></a>
 
-#### \_\_init\_\_
+#### FAQPipeline.\_\_init\_\_
 
 ```python
 def __init__(retriever: BaseRetriever)
@@ -1411,7 +1292,7 @@ def __init__(retriever: BaseRetriever)
 
 <a id="standard_pipelines.FAQPipeline.run"></a>
 
-#### run
+#### FAQPipeline.run
 
 ```python
 def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
@@ -1440,7 +1321,7 @@ Takes an existing search pipeline and adds one "input translation node" after th
 
 <a id="standard_pipelines.TranslationWrapperPipeline.__init__"></a>
 
-#### \_\_init\_\_
+#### TranslationWrapperPipeline.\_\_init\_\_
 
 ```python
 def __init__(input_translator: BaseTranslator, output_translator: BaseTranslator, pipeline: BaseStandardPipeline)
@@ -1498,7 +1379,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline)
 
 <a id="standard_pipelines.MostSimilarDocumentsPipeline.__init__"></a>
 
-#### \_\_init\_\_
+#### MostSimilarDocumentsPipeline.\_\_init\_\_
 
 ```python
 def __init__(document_store: BaseDocumentStore)
@@ -1514,7 +1395,7 @@ This pipeline can be helpful if you already show a relevant document to your end
 
 <a id="standard_pipelines.MostSimilarDocumentsPipeline.run"></a>
 
-#### run
+#### MostSimilarDocumentsPipeline.run
 
 ```python
 def run(document_ids: List[str], top_k: int = 5)
