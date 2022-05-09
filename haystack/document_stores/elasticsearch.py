@@ -1164,7 +1164,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
                                     " as queries or a single filter that will be applied to each query.")
         else:
-            filters = [filters] * len(queries)
+            filters = [{}] * len(queries)
 
         body = []
         for query, cur_filters in zip(queries, filters):

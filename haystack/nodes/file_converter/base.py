@@ -193,7 +193,7 @@ class BaseConverter(BaseComponent):
     def run_batch(  # type: ignore
         self,
         file_paths: Union[Path, List[Path]],  # type: ignore
-        meta: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = None,  # type: ignore
+        meta: Optional[Union[Dict[str, str], List[Optional[Dict[str, str]]]]] = None,  # type: ignore
         remove_numeric_tables: Optional[bool] = None,  # type: ignore
         valid_languages: Optional[List[str]] = None,  # type: ignore
     ):

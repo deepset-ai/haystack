@@ -419,7 +419,7 @@ class DensePassageRetriever(BaseRetriever):
                 raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
                                     " as queries or a single filter that will be applied to each query.")
         else:
-            filters = [filters] * len(queries)
+            filters = [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
@@ -1067,7 +1067,7 @@ class TableTextRetriever(BaseRetriever):
                 raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
                                     " as queries or a single filter that will be applied to each query.")
         else:
-            filters = [filters] * len(queries)
+            filters = [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
@@ -1725,7 +1725,7 @@ class EmbeddingRetriever(BaseRetriever):
                 raise HaystackError("Number of filters does not match number of queries. Please provide as many filters"
                                     " as queries or a single filter that will be applied to each query.")
         else:
-            filters = [filters] * len(queries)
+            filters = [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
