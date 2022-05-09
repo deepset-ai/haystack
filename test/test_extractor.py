@@ -12,7 +12,7 @@ def test_extractor(document_store_with_docs):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
+    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -32,7 +32,7 @@ def test_extractor_batch_single_query(document_store_with_docs):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
+    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -52,7 +52,7 @@ def test_extractor_batch_multiple_queries(document_store_with_docs):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
+    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -76,7 +76,7 @@ def test_extractor_output_simplifier(document_store_with_docs):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     ner = EntityExtractor()
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", num_processes=0)
+    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
@@ -87,4 +87,4 @@ def test_extractor_output_simplifier(document_store_with_docs):
         query="Who lives in Berlin?", params={"ESRetriever": {"top_k": 1}, "Reader": {"top_k": 1}}
     )
     simplified = simplify_ner_for_qa(prediction)
-    assert simplified[0] == {"answer": "Carla", "entities": ["Carla"]}
+    assert simplified[0] == {"answer": "Carla and I", "entities": ["Carla"]}
