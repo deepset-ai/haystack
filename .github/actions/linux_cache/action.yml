@@ -8,7 +8,7 @@ inputs:
  pythonVersion:
     description: 'Python version to use'
     required: true
-    default: 3.7
+    default: "3.7"
 
 runs:
   using: "composite"
@@ -43,7 +43,7 @@ runs:
     shell: bash
     run: |
       pip install --upgrade pip
-      pip install .[test]
+      pip install .[all]
       pip install rest_api/
       pip install ui/
       pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html

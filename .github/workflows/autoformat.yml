@@ -41,35 +41,9 @@ jobs:
           pip install rest_api/
           pip install ui/
           
-      # Apply Black on the entire codebase
-      - name: Blacken
-        run: black .
-
-      # Convert the Jupyter notebooks into markdown tutorials
-      - name: Generate Tutorials
-        run: |
-          cd docs/_src/tutorials/tutorials/
-          python3 convert_ipynb.py
-
-      # Generate markdown files from the docstrings with pydoc-markdown
-      - name: Generate Docstrings
-        run: |
-          set -e   # Fails on any error in the following loop
-          cd docs/_src/api/api/
-          for file in ../pydoc/* ; do
-            echo "Processing" $file
-            pydoc-markdown "$file"
-          done
-
-      # Generates the OpenAPI specs file to be used on the documentation website
-      - name: Generate OpenAPI Specs
-        run: python .github/utils/generate_openapi_specs.py
-
-      # Generates a new JSON schema for the pipeline YAML validation
-      - name: Generate JSON schema for pipelines
-        run: python .github/utils/generate_json_schema.py
+      - name: Code and Docs Updates
+        run: ./.github/utils/code_and_docs.sh
       
-      # Commit the files to GitHub
       - name: Commit files
         run: |
           git status

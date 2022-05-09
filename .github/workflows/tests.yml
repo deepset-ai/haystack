@@ -152,8 +152,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 \ 
-        -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" test/${{ matrix.folder }} --document_store_type=memory
+        pytest --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" test/${{ matrix.folder }} --document_store_type=memory
 
   
 
@@ -616,3 +615,44 @@ jobs:
       # FIXME many tests are disabled here!
       run: |
         pytest --maxfail=5 --durations=10 -m "integration and not tika and not graphdb" -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
+
+
+  # This CI action mirrors autoformat.yml, with the difference that it
+  # runs on Haystack's end. If the contributor hasn't run autoformat.yml, 
+  # then this check will fail.
+  code-and-docs-check:
+    runs-on: ubuntu-latest
+    needs: integration-tests-linux
+    steps:
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Python
+        uses: ./.github/actions/linux_cache/
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[all]
+          pip install rest_api/
+          pip install ui/
+
+      # Get any additional commit that might have been pushed in the meantime
+      - name: Pull changes (if any)
+        run: git pull origin ${{ github.head_ref }}
+          
+      - name: Code and Docs Updates
+        run: ./.github/utils/code_and_docs.sh
+      
+      # If there is anything to commit, fail
+      - name: Check status
+        run: |
+          if [[ `git status --porcelain` ]]; then
+            git status
+            echo ""
+            echo "This means that the 'autoformat.yml' action didn't run."
+            echo "Please enable GitHub Action on your fork to pass this check!"
+            exit 1
+          fi
