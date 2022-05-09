@@ -71,7 +71,7 @@ class RouteDocuments(BaseComponent):
 
         return split_documents, "split"
 
-    def run_batch(self, documents: Union[List[Document], List[List[Document]]]):  # type: ignore
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]]) -> Tuple[Dict, str]:  # type: ignore
         if isinstance(documents[0], Document):
             return self.run(documents)  # type: ignore
         else:
