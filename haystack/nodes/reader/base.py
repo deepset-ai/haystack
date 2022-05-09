@@ -117,11 +117,12 @@ class BaseReader(BaseComponent):
         batch_size: Optional[int] = None,
     ):
         self.query_count += len(queries) if isinstance(queries, list) else 1
+        if not documents:
+            return {"answers": []}, "output_1"
+
         predict_batch = self.timing(self.predict_batch, "query_time")
-        if documents:
-            results = predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
-        else:
-            results = {"answers": []}
+
+        results = predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
 
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         answer_iterator = itertools.chain.from_iterable(results["answers"])
