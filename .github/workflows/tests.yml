@@ -116,7 +116,9 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
+        pytest --maxfail=5 --durations=10 \
+        -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" \
+        test/${{ matrix.folder }} --document_store_type=memory
 
   unit-tests-windows:
     needs:
@@ -152,7 +154,10 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory,sql
+        pytest --maxfail=5 --durations=10 \ 
+        -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" \
+        -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" \
+        test/${{ matrix.folder }} --document_store_type=memory
 
   
 
@@ -210,7 +215,9 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch
+        pytest --maxfail=5 --durations=10 \
+        -m "elasticsearch and not integration" test/document_store_tests/ \
+        -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" \--document_store_type=elasticsearch
 
   
 
@@ -262,7 +269,9 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=faiss
+        pytest --maxfail=5 --durations=10 -m "not integration" \
+        -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" \
+        test/document_store_tests/ --document_store_type=faiss
 
 
   milvus-tests-linux:
@@ -327,7 +336,9 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=milvus
+        pytest --maxfail=5 --durations=10 -m "not integration" \
+        -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" \
+        test/document_store_tests/ --document_store_type=milvus
 
 
   weaviate-tests-linux:
@@ -384,7 +395,9 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=weaviate
+        pytest --maxfail=5 --durations=10 -m "not integration" \
+        -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" \
+        test/document_store_tests/ --document_store_type=weaviate
 
 
   pinecone-tests-linux:
@@ -439,7 +452,9 @@ jobs:
       env:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        pytest --maxfail=5 --durations=10 -m "not integration" test/document_store_tests/ --document_store_type=pinecone
+        pytest --maxfail=5 --durations=10 -m "not integration" \
+        -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" \
+        test/document_store_tests/ --document_store_type=pinecone
 
 
   rest-and-ui-tests-linux:
@@ -506,7 +521,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest rest_api/ ui/
+        pytest -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" rest_api/ ui/
   
 
   integration-tests-linux:
@@ -614,4 +629,6 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       # FIXME many tests are disabled here!
       run: |
-        pytest --maxfail=5 --durations=10 -m "integration and not tika and not graphdb" -k "not test_parsr_converter" test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
+        pytest --maxfail=5 --durations=10 -m "integration and not tika and not graphdb" \
+        -k "not test_parsr_converter and not test_ray and not test_knowledge_graph and not test_connector and not test_summarizer_translation and not test_summarizer" \
+        test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
