@@ -158,6 +158,6 @@ for i, nb in enumerate(notebooks):
     print(f"Processing {dir}/{nb}")
 
     tutorials_path = Path(__file__).parent.parent.parent / "docs" / "_src" / "tutorials" / "tutorials"
-    with open( tutorials_path / f"{i + 1}.md", "w", encoding="utf-8") as f:
+    with open(tutorials_path / f"{i + 1}.md", "w", encoding="utf-8") as f:
         f.write(headers[i + 1] + "\n\n")
         f.write(body)
