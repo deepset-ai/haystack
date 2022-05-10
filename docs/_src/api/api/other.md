@@ -70,7 +70,7 @@ A node to join `Answer`s produced by multiple `Reader` nodes.
 #### JoinAnswers.\_\_init\_\_
 
 ```python
-def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None)
+def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None, sort_by_score: bool = True)
 ```
 
 **Arguments**:
@@ -81,6 +81,9 @@ of individual `Answer`s.
 adjusting `Answer` scores when using the `"merge"` join_mode. By default, equal weight is assigned to each
 `Reader` score. This parameter is not compatible with the `"concatenate"` join_mode.
 - `top_k_join`: Limit `Answer`s to top_k based on the resulting scored of the join.
+- `sort_by_score`: Whether to sort the incoming answers by their score. Set this to True if your Answers
+are coming from a Reader or TableReader. Set to False if any Answers come from a Generator since this assigns
+None as a score to each.
 
 <a id="route_documents"></a>
 
