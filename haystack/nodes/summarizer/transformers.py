@@ -205,7 +205,8 @@ class TransformersSummarizer(BaseSummarizer):
         if single_doc_list:
             contexts = [doc.content for doc in documents if isinstance(doc, Document)]
         else:
-            contexts = [[doc.content for doc in docs] for docs in documents if isinstance(docs, list)]
+            contexts = [[doc.content for doc in docs if isinstance(doc, Document)]
+                        for docs in documents if isinstance(docs, list)]
 
         if generate_single_summary:
             if single_doc_list:
