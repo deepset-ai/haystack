@@ -1,3 +1,5 @@
+# pylint: disable=too-many-public-methods
+
 from typing import List, Optional, Type, Union, Dict, Any, Generator
 
 import json

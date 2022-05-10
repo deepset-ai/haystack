@@ -18,7 +18,6 @@ disable = [
   # To keep
   "fixme",
   "c-extension-no-member",
-  "too-many-public-methods",
 
   # To review:
   "missing-docstring",
