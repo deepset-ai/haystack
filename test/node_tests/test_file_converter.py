@@ -83,11 +83,11 @@ def test_table_removal(Converter):
 def test_language_validation(Converter, caplog):
     converter = Converter(valid_languages=["en"])
     converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    assert "samples/pdf/sample_pdf_1.pdf is not one of ['en']." not in caplog.text
+    assert "is not one of ['en']." not in caplog.text
 
     converter = Converter(valid_languages=["de"])
     converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    assert "samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
+    assert "is not one of ['de']." in caplog.text
 
 
 def test_docx_converter():
