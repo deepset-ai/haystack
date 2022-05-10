@@ -399,6 +399,22 @@ def deepset_cloud_fixture():
             json={"indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31}},
             status=200,
         )
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
+            json={
+                "data": [
+                    {
+                        "name": DC_TEST_INDEX,
+                        "status": "DEPLOYED",
+                        "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31},
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+        )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
 

@@ -66,17 +66,17 @@ class BearerAuth(requests.auth.AuthBase):
 
 
 class DeepsetCloudError(Exception):
-    """Raised when there is an error communicating with Deepset Cloud"""
+    """Raised when there is an error communicating with deepset Cloud"""
 
 
 class DeepsetCloudClient:
     def __init__(self, api_key: str = None, api_endpoint: Optional[str] = None):
         """
-        A client to communicate with Deepset Cloud.
+        A client to communicate with deepset Cloud.
 
         :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param api_endpoint: The URL of the Deepset Cloud API.
+        :param api_endpoint: The URL of the deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         """
         self.api_key = api_key or os.getenv("DEEPSET_CLOUD_API_KEY")
@@ -285,11 +285,11 @@ class DeepsetCloudClient:
 class IndexClient:
     def __init__(self, client: DeepsetCloudClient, workspace: Optional[str] = None, index: Optional[str] = None):
         """
-        A client to communicate with Deepset Cloud indexes.
+        A client to communicate with deepset Cloud indexes.
 
-        :param client: Deepset Cloud client
-        :param workspace: workspace in Deepset Cloud
-        :param index: index in Deepset Cloud workspace
+        :param client: deepset Cloud client
+        :param workspace: workspace in deepset Cloud
+        :param index: index in deepset Cloud workspace
 
         """
         self.client = client
@@ -302,7 +302,7 @@ class IndexClient:
             response = self.client.get(url=index_url, headers=headers)
             return response.json()
         except Exception as ie:
-            raise DeepsetCloudError(f"Could not connect to Deepset Cloud:\n{ie}") from ie
+            raise DeepsetCloudError(f"Could not connect to deepset Cloud:\n{ie}") from ie
 
     def query(
         self,
@@ -366,7 +366,7 @@ class IndexClient:
             doc = response.json()
         else:
             logger.warning(
-                f"Document {id} could not be fetched from Deepset Cloud: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
+                f"Document {id} could not be fetched from deepset Cloud: HTTP {response.status_code} - {response.reason}\n{response.content.decode()}"
             )
         return doc
 
@@ -398,11 +398,11 @@ class PipelineClient:
         self, client: DeepsetCloudClient, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None
     ):
         """
-        A client to communicate with Deepset Cloud pipelines.
+        A client to communicate with deepset Cloud pipelines.
 
-        :param client: Deepset Cloud client
-        :param workspace: workspace in Deepset Cloud
-        :param pipeline_config_name: name of the pipeline_config in Deepset Cloud workspace
+        :param client: deepset Cloud client
+        :param workspace: workspace in deepset Cloud
+        :param pipeline_config_name: name of the pipeline_config in deepset Cloud workspace
 
         """
         self.client = client
@@ -469,14 +469,14 @@ class PipelineClient:
         self, pipeline_config_name: Optional[str] = None, workspace: str = None, headers: dict = None, timeout: int = 60
     ):
         """
-        Deploys the pipelines of a pipeline config on Deepset Cloud.
+        Deploys the pipelines of a pipeline config on deepset Cloud.
         Blocks until pipelines are successfully deployed, deployment failed or timeout exceeds.
         If pipelines are already deployed no action will be taken and an info will be logged.
         If timeout exceeds a TimeoutError will be raised.
         If deployment fails a DeepsetCloudError will be raised.
 
-        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
-        :param workspace: workspace in Deepset Cloud
+        :param pipeline_config_name: name of the config file inside the deepset Cloud workspace.
+        :param workspace: workspace in deepset Cloud
         :param headers: Headers to pass to API call
         :param timeout: The time in seconds to wait until deployment completes.
                         If the timeout is exceeded an error will be raised.
@@ -500,7 +500,7 @@ class PipelineClient:
             )
         elif status in [PipelineStatus.UNDEPLOYMENT_IN_PROGRESS, PipelineStatus.UNDEPLOYMENT_SCHEDULED]:
             raise DeepsetCloudError(
-                f"Deployment of pipline config '{pipeline_config_name}' aborted. Undeployment was requested."
+                f"Deployment of pipeline config '{pipeline_config_name}' aborted. Undeployment was requested."
             )
         elif status == PipelineStatus.UNDEPLOYED:
             raise DeepsetCloudError(f"Deployment of pipeline config '{pipeline_config_name}' failed.")
@@ -513,14 +513,14 @@ class PipelineClient:
         self, pipeline_config_name: Optional[str] = None, workspace: str = None, headers: dict = None, timeout: int = 60
     ):
         """
-        Undeploys the pipelines of a pipeline config on Deepset Cloud.
+        Undeploys the pipelines of a pipeline config on deepset Cloud.
         Blocks until pipelines are successfully undeployed, undeployment failed or timeout exceeds.
         If pipelines are already undeployed no action will be taken and an info will be logged.
         If timeout exceeds a TimeoutError will be raised.
         If deployment fails a DeepsetCloudError will be raised.
 
-        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
-        :param workspace: workspace in Deepset Cloud
+        :param pipeline_config_name: name of the config file inside the deepset Cloud workspace.
+        :param workspace: workspace in deepset Cloud
         :param headers: Headers to pass to API call
         :param timeout: The time in seconds to wait until undeployment completes.
                         If the timeout is exceeded an error will be raised.
@@ -540,7 +540,7 @@ class PipelineClient:
                 logger.info(f"Pipeline config '{pipeline_config_name}' is already undeployed.")
         elif status in [PipelineStatus.DEPLOYMENT_IN_PROGRESS, PipelineStatus.DEPLOYMENT_SCHEDULED]:
             raise DeepsetCloudError(
-                f"Undeployment of pipline config '{pipeline_config_name}' aborted. Deployment was requested."
+                f"Undeployment of pipeline config '{pipeline_config_name}' aborted. Deployment was requested."
             )
         elif status in [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY]:
             raise DeepsetCloudError(f"Undeployment of pipeline config '{pipeline_config_name}' failed.")
@@ -558,11 +558,11 @@ class PipelineClient:
         headers: dict = None,
     ) -> Tuple[PipelineStatus, bool]:
         """
-        Transitions the pipeline config state to desired target_state on Deepset Cloud.
+        Transitions the pipeline config state to desired target_state on deepset Cloud.
 
         :param target_state: the target state of the Pipeline config.
-        :param pipeline_config_name: name of the config file inside the Deepset Cloud workspace.
-        :param workspace: workspace in Deepset Cloud
+        :param pipeline_config_name: name of the config file inside the deepset Cloud workspace.
+        :param workspace: workspace in deepset Cloud
         :param headers: Headers to pass to API call
         :param timeout: The time in seconds to wait until undeployment completes.
                         If the timeout is exceeded an error will be raised.
@@ -647,10 +647,10 @@ class EvaluationSetClient:
         self, client: DeepsetCloudClient, workspace: Optional[str] = None, evaluation_set: Optional[str] = None
     ):
         """
-        A client to communicate with Deepset Cloud evaluation sets and labels.
+        A client to communicate with deepset Cloud evaluation sets and labels.
 
-        :param client: Deepset Cloud client
-        :param workspace: workspace in Deepset Cloud
+        :param client: deepset Cloud client
+        :param workspace: workspace in deepset Cloud
         :param evaluation_set: name of the evaluation set to fall back to
 
         """
@@ -664,7 +664,7 @@ class EvaluationSetClient:
         If no labels were found, raises DeepsetCloudError.
 
         :param evaluation_set: name of the evaluation set for which labels should be fetched
-        :param workspace: Optional workspace in Deepset Cloud
+        :param workspace: Optional workspace in deepset Cloud
                           If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
 
         :return: list of Label
@@ -721,9 +721,9 @@ class EvaluationSetClient:
 
     def get_evaluation_sets(self, workspace: Optional[str] = None) -> List[dict]:
         """
-        Searches for all evaluation set names in the given workspace in Deepset Cloud.
+        Searches for all evaluation set names in the given workspace in deepset Cloud.
 
-        :param workspace: Optional workspace in Deepset Cloud
+        :param workspace: Optional workspace in deepset Cloud
                           If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
 
         :return: List of dictionaries that represent deepset Cloud evaluation sets.
@@ -760,7 +760,7 @@ class EvaluationSetClient:
 
 class DeepsetCloud:
     """
-    A facade to communicate with Deepset Cloud.
+    A facade to communicate with deepset Cloud.
     """
 
     @classmethod
@@ -772,14 +772,14 @@ class DeepsetCloud:
         index: Optional[str] = None,
     ) -> IndexClient:
         """
-        Creates a client to communicate with Deepset Cloud indexes.
+        Creates a client to communicate with deepset Cloud indexes.
 
         :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param api_endpoint: The URL of the Deepset Cloud API.
+        :param api_endpoint: The URL of the deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
-        :param workspace: workspace in Deepset Cloud
-        :param index: index in Deepset Cloud workspace
+        :param workspace: workspace in deepset Cloud
+        :param index: index in deepset Cloud workspace
 
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
@@ -794,14 +794,14 @@ class DeepsetCloud:
         pipeline_config_name: Optional[str] = None,
     ) -> PipelineClient:
         """
-        Creates a client to communicate with Deepset Cloud pipelines.
+        Creates a client to communicate with deepset Cloud pipelines.
 
         :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param api_endpoint: The URL of the Deepset Cloud API.
+        :param api_endpoint: The URL of the deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
-        :param workspace: workspace in Deepset Cloud
-        :param pipeline_config_name: name of the pipeline_config in Deepset Cloud workspace
+        :param workspace: workspace in deepset Cloud
+        :param pipeline_config_name: name of the pipeline_config in deepset Cloud workspace
 
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
@@ -816,14 +816,14 @@ class DeepsetCloud:
         evaluation_set: str = "default",
     ) -> EvaluationSetClient:
         """
-        Creates a client to communicate with Deepset Cloud labels.
+        Creates a client to communicate with deepset Cloud labels.
 
         :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
-        :param api_endpoint: The URL of the Deepset Cloud API.
+        :param api_endpoint: The URL of the deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
-        :param workspace: workspace in Deepset Cloud
-        :param evaluation_set: name of the evaluation set in Deepset Cloud
+        :param workspace: workspace in deepset Cloud
+        :param evaluation_set: name of the evaluation set in deepset Cloud
 
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
