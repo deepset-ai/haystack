@@ -268,7 +268,6 @@
             },
             "index": {
               "title": "Index",
-              "default": "default",
               "type": "string"
             },
             "duplicate_documents": {
@@ -2742,6 +2741,11 @@
             "top_k_join": {
               "title": "Top K Join",
               "type": "integer"
+            },
+            "sort_by_score": {
+              "title": "Sort By Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
