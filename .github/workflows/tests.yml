@@ -81,9 +81,9 @@ jobs:
 
     - name: Pylint
       run: |
-        pylint -ry haystack/
-        pylint -ry rest_api/
-        pylint -ry ui/
+        pylint -ry -j 0 haystack/
+        pylint -ry -j 0 rest_api/
+        pylint -ry -j 0 ui/
 
 
   unit-tests-linux:
