@@ -1,4 +1,5 @@
 import sys
+import logging
 from uuid import uuid4
 
 import numpy as np
@@ -1507,7 +1508,7 @@ def test_DeepsetCloudDocumentStore_invalid_token():
     if MOCK_DC:
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
             match=[matchers.header_matcher({"authorization": "Bearer invalid_token"})],
             body="Internal Server Error",
             status=500,
@@ -1515,7 +1516,7 @@ def test_DeepsetCloudDocumentStore_invalid_token():
 
     with pytest.raises(
         DeepsetCloudError,
-        match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 500 - Internal Server Error",
+        match=f"Could not connect to deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/pipelines failed: HTTP 500 - Internal Server Error",
     ):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key="invalid_token", index=DC_TEST_INDEX)
 
@@ -1525,22 +1526,20 @@ def test_DeepsetCloudDocumentStore_invalid_token():
 def test_DeepsetCloudDocumentStore_invalid_api_endpoint():
     if MOCK_DC:
         responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX}",
-            body="Not Found",
-            status=404,
+            method=responses.GET, url=f"{DC_API_ENDPOINT}00/workspaces/default/pipelines", body="Not Found", status=404
         )
 
     with pytest.raises(
         DeepsetCloudError,
-        match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}00/workspaces/default/indexes/{DC_TEST_INDEX} failed: HTTP 404 - Not Found",
+        match=f"Could not connect to deepset Cloud:\nGET {DC_API_ENDPOINT}00/workspaces/default/pipelines failed: "
+        f"HTTP 404 - Not Found\nNot Found",
     ):
         DeepsetCloudDocumentStore(api_endpoint=f"{DC_API_ENDPOINT}00", api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_DeepsetCloudDocumentStore_invalid_index():
+def test_DeepsetCloudDocumentStore_invalid_index(caplog):
     if MOCK_DC:
         responses.add(
             method=responses.GET,
@@ -1549,11 +1548,12 @@ def test_DeepsetCloudDocumentStore_invalid_index():
             status=404,
         )
 
-    with pytest.raises(
-        DeepsetCloudError,
-        match=f"Could not connect to Deepset Cloud:\nGET {DC_API_ENDPOINT}/workspaces/default/indexes/invalid_index failed: HTTP 404 - Not Found",
-    ):
+    with caplog.at_level(logging.INFO):
         DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index="invalid_index")
+        assert (
+            "You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud."
+            in caplog.text
+        )
 
 
 @responses.activate
@@ -1883,6 +1883,56 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
 
     emb_docs = deepset_cloud_document_store.query_by_embedding(query_emb)
     assert len(emb_docs) == 0
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_all_docs_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.get_all_documents() == []
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_all_docs_generator_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert list(document_store.get_all_documents_generator()) == []
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_doc_by_id_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.get_document_by_id(id="some id") == None
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_docs_by_id_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.get_documents_by_id(ids=["some id"]) == []
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_get_doc_count_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.get_document_count() == 0
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_query_by_emb_without_index():
+    query_emb = np.random.randn(768)
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.query_by_embedding(query_emb=query_emb) == []
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_DeepsetCloudDocumentStore_query_without_index():
+    document_store = DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=None)
+    assert document_store.query(query="some query") == []
 
 
 @pytest.mark.elasticsearch
