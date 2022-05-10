@@ -1,4 +1,4 @@
-from typing import List
+import sys
 from uuid import uuid4
 
 import numpy as np
@@ -94,6 +94,7 @@ def test_init_elastic_client():
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="No Opensearch container (yet) on Windows runners")
 @pytest.mark.elasticsearch
 def test_init_opensearch_client():
     OpenSearchDocumentStore(index="test_index", port=9201)
