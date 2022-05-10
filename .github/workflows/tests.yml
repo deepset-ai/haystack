@@ -214,7 +214,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_store_tests/ -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" \--document_store_type=elasticsearch
+        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_store_tests/ -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" --document_store_type=elasticsearch
 
   
 
