@@ -2742,6 +2742,11 @@
             "top_k_join": {
               "title": "Top K Join",
               "type": "integer"
+            },
+            "sort_by_score": {
+              "title": "Sort By Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
