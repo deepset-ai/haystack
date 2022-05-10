@@ -1,3 +1,5 @@
+# pylint: disable=too-many-public-methods
+
 from typing import Generator, Optional, Dict, List, Set, Union
 
 import logging
