@@ -1277,7 +1277,7 @@ class Pipeline:
                         value
                     ]  # substitute reference (string) with the component object.
 
-            component_instance = BaseComponent._create_instance(component_type, component_params)
+            component_instance = BaseComponent._create_instance(component_type=component_type, component_params=component_params, name=name)
             components[name] = component_instance
             return component_instance
 
