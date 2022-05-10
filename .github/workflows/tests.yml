@@ -129,7 +129,7 @@ jobs:
           - "node_tests"
           - "pipeline_tests"
           - "modeling_tests"
-          - "other_tests"
+          #- "other_tests"
 
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
