@@ -531,7 +531,7 @@ jobs:
       - unit-tests-linux
       - elasticsearch-tests-linux
 
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
@@ -596,7 +596,7 @@ jobs:
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
