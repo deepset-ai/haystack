@@ -268,7 +268,6 @@
             },
             "index": {
               "title": "Index",
-              "default": "default",
               "type": "string"
             },
             "duplicate_documents": {

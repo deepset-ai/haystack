@@ -4014,31 +4014,43 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### DeepsetCloudDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: str = "default", duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
+def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
 ```
 
-A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
+A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
 
 Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
 
+You can also use this DocumentStore to create new pipelines on deepset Cloud. To do that, take the following
+steps:
+
+- create a new DeepsetCloudDocumentStore without an index (e.g. `DeepsetCloudDocumentStore()`)
+- create query and indexing pipelines using this DocumentStore
+- call `Pipeline.save_to_deepset_cloud()` passing the pipelines and a `pipeline_config_name`
+- call `Pipeline.deploy_on_deepset_cloud()` passing the `pipeline_config_name`
+
 DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
-See https://haystack.deepset.ai/components/document-store for more information.
+See [https://haystack.deepset.ai/components/document-store](https://haystack.deepset.ai/components/document-store)
+for more information.
 
 **Arguments**:
 
 - `api_key`: Secret value of the API key.
 If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
 See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
-- `workspace`: workspace name in Deepset Cloud
-- `index`: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline.
-You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
+- `workspace`: workspace name in deepset Cloud
+- `index`: name of the index to access within the deepset Cloud workspace. This equals typically the name of
+your pipeline. You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
+If you set index to `None`, this DocumentStore will always return empty results.
+This is especially useful if you want to create a new Pipeline within deepset Cloud
+(see Pipeline.save_to_deepset_cloud()` and `Pipeline.deploy_on_deepset_cloud()`).
 - `duplicate_documents`: Handle duplicates document based on parameter options.
 Parameter options : ( 'skip','overwrite','fail')
 skip: Ignore the duplicates documents
 overwrite: Update any existing documents with the same ID when adding documents.
 fail: an error is raised if the document ID of the document being added already
 exists.
-- `api_endpoint`: The URL of the Deepset Cloud API.
+- `api_endpoint`: The URL of the deepset Cloud API.
 If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
 If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defaults to "https://api.cloud.deepset.ai/api/v1".
 - `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
