@@ -206,6 +206,12 @@ class TransformersReader(BaseReader):
             grouped_inputs.append(inputs[left_idx:right_idx])
             left_idx = right_idx
 
+        # Transformers flattens lists of length 1. This restores the original list structure.
+        if isinstance(predictions, dict):
+            predictions = [[predictions]]
+        else:
+            predictions = [p if isinstance(p, list) else [p] for p in predictions]
+
         results: Dict = {"queries": queries, "answers": [], "no_ans_gaps": []}
         for grouped_pred, grouped_inp in zip(grouped_predictions, grouped_inputs):
             # Add Document ID to predictions to be able to construct Answer objects
