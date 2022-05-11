@@ -459,8 +459,16 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         if isinstance(queries, str):
             if isinstance(filters, list):
                 raise HaystackError("If you provide a single query, you need to provid e a single filter dictionary.")
-            return self.query(query=queries, filters=filters, top_k=top_k, custom_query=custom_query, index=index,
-                              headers=headers, all_terms_must_match=all_terms_must_match, scale_score=scale_score)
+            return self.query(
+                query=queries,
+                filters=filters,
+                top_k=top_k,
+                custom_query=custom_query,
+                index=index,
+                headers=headers,
+                all_terms_must_match=all_terms_must_match,
+                scale_score=scale_score,
+            )
 
         documents = []
         if isinstance(filters, list):
@@ -472,15 +480,19 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         else:
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
             for query, cur_filters in zip(queries, filters):
-                cur_docs = self.query(query=query, filters=cur_filters, top_k=top_k, custom_query=custom_query,
-                                      index=index, headers=headers, all_terms_must_match=all_terms_must_match,
-                                      scale_score=scale_score)
+                cur_docs = self.query(
+                    query=query,
+                    filters=cur_filters,
+                    top_k=top_k,
+                    custom_query=custom_query,
+                    index=index,
+                    headers=headers,
+                    all_terms_must_match=all_terms_must_match,
+                    scale_score=scale_score,
+                )
                 documents.append(cur_docs)
 
         return documents
-
-
-
 
     def _create_document_field_map(self) -> Dict:
         return {}
