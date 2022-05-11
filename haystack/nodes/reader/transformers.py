@@ -209,6 +209,8 @@ class TransformersReader(BaseReader):
         # Transformers flattens lists of length 1. This restores the original list structure.
         if isinstance(predictions, dict):
             predictions = [[predictions]]
+        elif len(number_of_docs) == 1:
+            predictions = [predictions]
         else:
             predictions = [p if isinstance(p, list) else [p] for p in predictions]
 
