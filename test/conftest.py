@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union
 
 import subprocess
 import time
@@ -179,6 +179,9 @@ class MockNode(BaseComponent):
     def run(self, *a, **k):
         pass
 
+    def run_batch(self, *a, **k):
+        pass
+
 
 class MockDocumentStore(BaseDocumentStore):
     outgoing_edges = 1
@@ -231,6 +234,21 @@ class MockRetriever(BaseRetriever):
 
     def retrieve(self, query: str, top_k: int):
         pass
+
+    def retrieve_batch(self, queries: Union[str, List[str]], top_k: int):
+        pass
+
+
+class MockDenseRetriever(MockRetriever):
+    def __init__(self, document_store: BaseDocumentStore, embedding_dim: int = 768):
+        self.embedding_dim = embedding_dim
+        self.document_store = document_store
+
+    def embed_queries(self, texts):
+        return [np.random.rand(self.embedding_dim)] * len(texts)
+
+    def embed_documents(self, docs):
+        return [np.random.rand(self.embedding_dim)] * len(docs)
 
 
 class MockReader(BaseReader):
@@ -386,6 +404,22 @@ def deepset_cloud_fixture():
             match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
             json={"indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31}},
             status=200,
+        )
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
+            json={
+                "data": [
+                    {
+                        "name": DC_TEST_INDEX,
+                        "status": "DEPLOYED",
+                        "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31},
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
@@ -568,6 +602,38 @@ def no_answer_reader(request):
 def prediction(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_single_query_single_doc_list(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=docs, top_k=5)
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_single_query_multiple_doc_lists(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_multiple_queries_single_doc_list(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=docs, top_k=5
+    )
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_multiple_queries_multiple_doc_lists(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[docs, docs], top_k=5
+    )
     return prediction
 
 

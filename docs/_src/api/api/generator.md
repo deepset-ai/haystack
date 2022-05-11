@@ -14,7 +14,7 @@ Abstract class for Generators
 
 <a id="base.BaseGenerator.predict"></a>
 
-#### predict
+#### BaseGenerator.predict
 
 ```python
 @abstractmethod
@@ -32,6 +32,54 @@ Abstract method to generate answers.
 **Returns**:
 
 Generated answers plus additional infos in a dict
+
+<a id="base.BaseGenerator.predict_batch"></a>
+
+#### BaseGenerator.predict\_batch
+
+```python
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+```
+
+Generate the answer to the input queries. The generation will be conditioned on the supplied documents.
+
+These documents can for example be retrieved via the Retriever.
+
+- If you provide a single query...
+
+    - ... and a single list of Documents, the query will be applied to each Document individually.
+    - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+      will be aggregated per Document list.
+
+- If you provide a list of queries...
+
+    - ... and a single list of Documents, each query will be applied to each Document individually.
+    - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+      and the Answers will be aggregated per query-Document pair.
+
+**Arguments**:
+
+- `queries`: Single query or list of queries.
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+Can be a single list of Documents or a list of lists of Documents.
+- `top_k`: Number of returned answers per query.
+- `batch_size`: Not applicable.
+
+**Returns**:
+
+Generated answers plus additional infos in a dict like this:
+```python
+|     {'queries': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'query': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'content': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
+```
 
 <a id="transformers"></a>
 
@@ -87,7 +135,7 @@ i.e. the model can easily adjust to domain documents even after training has fin
 
 <a id="transformers.RAGenerator.__init__"></a>
 
-#### \_\_init\_\_
+#### RAGenerator.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True)
@@ -115,7 +163,7 @@ See https://huggingface.co/models for full list of available models.
 
 <a id="transformers.RAGenerator.predict"></a>
 
-#### predict
+#### RAGenerator.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
@@ -123,7 +171,7 @@ def predict(query: str, documents: List[Document], top_k: Optional[int] = None) 
 
 Generate the answer to the input query. The generation will be conditioned on the supplied documents.
 
-These document can for example be retrieved via the Retriever.
+These documents can for example be retrieved via the Retriever.
 
 **Arguments**:
 
@@ -207,7 +255,7 @@ For a list of all text-generation models see https://huggingface.co/models?pipel
 
 <a id="transformers.Seq2SeqGenerator.__init__"></a>
 
-#### \_\_init\_\_
+#### Seq2SeqGenerator.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True)
@@ -229,7 +277,7 @@ top_k: Optional[int] = None) -> BatchEncoding:
 
 <a id="transformers.Seq2SeqGenerator.predict"></a>
 
-#### predict
+#### Seq2SeqGenerator.predict
 
 ```python
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict

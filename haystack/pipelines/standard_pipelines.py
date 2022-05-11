@@ -97,7 +97,7 @@ class BaseStandardPipeline(ABC):
         Here's a sample configuration:
 
             ```yaml
-            |   version: '0.8'
+            |   version: '1.0.0'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -515,12 +515,13 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             output, output_stream = fn(*args, **kwargs)
-            questions = output["generated_questions"][0]["questions"]
-            documents = output["documents"]
-            query_doc_list = []
-            for q in questions:
-                query_doc_list.append({"queries": q, "docs": documents})
-            kwargs["query_doc_list"] = query_doc_list
+            questions = []
+            documents = []
+            for generated_questions, doc in zip(output["generated_questions"], output["documents"]):
+                questions.extend(generated_questions["questions"])
+                documents.extend([[doc]] * len(generated_questions["questions"]))
+            kwargs["queries"] = questions
+            kwargs["documents"] = documents
             return kwargs, output_stream
 
         return wrapper

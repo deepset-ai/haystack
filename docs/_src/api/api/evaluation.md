@@ -22,7 +22,7 @@ Please use pipeline.eval() instead.
 
 <a id="evaluator.EvalDocuments.__init__"></a>
 
-#### \_\_init\_\_
+#### EvalDocuments.\_\_init\_\_
 
 ```python
 def __init__(debug: bool = False, open_domain: bool = True, top_k: int = 10)
@@ -37,7 +37,7 @@ When False, correct retrieval is evaluated based on document_id.
 
 <a id="evaluator.EvalDocuments.run"></a>
 
-#### run
+#### EvalDocuments.run
 
 ```python
 def run(documents: List[Document], labels: List[Label], top_k: Optional[int] = None)
@@ -47,7 +47,7 @@ Run this node on one sample and its labels
 
 <a id="evaluator.EvalDocuments.print"></a>
 
-#### print
+#### EvalDocuments.print
 
 ```python
 def print()
@@ -75,7 +75,7 @@ Please use pipeline.eval() instead.
 
 <a id="evaluator.EvalAnswers.__init__"></a>
 
-#### \_\_init\_\_
+#### EvalAnswers.\_\_init\_\_
 
 ```python
 def __init__(skip_incorrect_retrieval: bool = True, open_domain: bool = True, sas_model: str = None, debug: bool = False)
@@ -100,7 +100,7 @@ Models:
 
 <a id="evaluator.EvalAnswers.run"></a>
 
-#### run
+#### EvalAnswers.run
 
 ```python
 def run(labels: List[Label], answers: List[Answer], correct_retrieval: bool)
@@ -110,7 +110,7 @@ Run this node on one sample and its labels
 
 <a id="evaluator.EvalAnswers.print"></a>
 
-#### print
+#### EvalAnswers.print
 
 ```python
 def print(mode)

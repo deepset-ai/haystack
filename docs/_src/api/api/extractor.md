@@ -19,7 +19,7 @@ The entities extracted by this Node will populate Document.entities
 
 <a id="entity.EntityExtractor.run"></a>
 
-#### run
+#### EntityExtractor.run
 
 ```python
 def run(documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]
@@ -29,13 +29,28 @@ This is the method called when this node is used in a pipeline
 
 <a id="entity.EntityExtractor.extract"></a>
 
-#### extract
+#### EntityExtractor.extract
 
 ```python
 def extract(text)
 ```
 
 This function can be called to perform entity extraction when using the node in isolation.
+
+<a id="entity.EntityExtractor.extract_batch"></a>
+
+#### EntityExtractor.extract\_batch
+
+```python
+def extract_batch(texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None)
+```
+
+This function allows to extract entities out of a list of strings or a list of lists of strings.
+
+**Arguments**:
+
+- `texts`: List of str or list of lists of str to extract entities from.
+- `batch_size`: Number of texts to make predictions on at a time.
 
 <a id="entity.simplify_ner_for_qa"></a>
 

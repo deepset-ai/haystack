@@ -10,19 +10,15 @@ To avoid unnecessary work on either side, please stick to the following process:
 
 ## Formatting of Pull Requests
 
-Please give a concise description in the first comment in the PR that includes: 
+Please give a concise description in the first comment in the PR that includes:
 - What is changing?
-- Why? 
+- Why?
 - What are limitations?
 - Breaking changes (Example of before vs. after)
 - Link the issue that this relates to
 
-## Running tests
+## Working from Github forks
 
-### CI
-Tests will automatically run in our CI for every commit you push to your PR. This is the most convenient way for you and we encourage you to create early "draft pull requests".
-
-#### Forks
 Some actions in our CI (code style and documentation updates) will run on your code and occasionally commit back small changes after a push. To be able to do so,
 these actions are configured to run on your fork instead of on the base repository. To allow those actions to run, please don't forget to:
 
@@ -37,14 +33,47 @@ these actions are configured to run on your fork instead of on the base reposito
 
 3. Make sure the branch of your fork where you push your changes is not called `master`. If it is, either change its name or remember to manually trigger the `Code & Documentation Updates` action after a push.
 
-### Local
-However, you can also run the tests locally by executing pytest in your terminal from the `/test` folder.
+## Setting up your development environment
 
-#### Running all tests
-**Important**: If you want to run **all** tests locally, you'll need **all** document stores running in the background before you run the tests.
-Many of the tests will then be executed multiple times with different document stores.
+When working on Haystack, we recommend installing it in editable mode with `pip install -e` in a Python virtual
+environment. From the root folder:
+```
+pip install -e '.[test]'
+```
 
-You can launch them like this:
+This will install all the dependencies you need to work on the codebase, which most of the times is a subset of all the
+dependencies needed to run Haystack.
+
+## Running the tests
+
+Tests will automatically run in our CI for every commit you push to your PR on Github. This is usually the most convenient
+way and we encourage you to create early "draft pull requests" to leverage the CI at an early stage.
+
+Tests can also be executed locally, by launching `pytest` from the `/test` folder (this is important because running from the
+root folder would also execute the ui and rest API tests, that require specific dependencies).
+
+You can control which tests to run using Pytest markers, let's see how.
+
+### Running a subset of tests (recommended)
+
+In most cases you rather want to run a **subset of tests** locally that are related to your dev, and the most important
+option to reduce the number of tests in a meaningful way, is to run tests only for a list of **selected document stores**.
+This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, milvus, weaviate"`).
+
+For example, calling `pytest . --document_store_type="memory"` will run all the document store tests using the
+InMemoryDocumentStore only, skipping the others (the logs will show which ones). The `InMemoryDocument` store is a very
+good starting point as it doesn't require any external resource:
+```
+pytest . --document_store_type="memory"
+```
+
+You can also run the tests using a **combination of document stores**, provided the corresponding services are up and
+running in your local environment. For example, Elasticsearch must be running before launching the following:
+```
+pytest . --document_store_type="memory,elasticsearch"
+```
+
+**Note:** we recommend using Docker containers to run document stores locally:
 ```
 # Elasticsearch
 docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -62,37 +91,13 @@ docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4
 # Tika
 docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
 ```
-Then run all tests:
-```
-cd test
-pytest
-```
 
-#### Recommendation: Running a subset of tests
-In most cases you rather want to run a **subset of tests** locally that are related to your dev:
-
-The most important option to reduce the number of tests in a meaningful way, is to shrink the "test grid" of document stores.
-This is possible by adding the `--document_store_type` arg to your pytest command. Possible values are: `"elasticsearch, faiss, memory, milvus, weaviate"`.
-For example, calling `pytest . --document_store_type="memory"` will run all tests that can be run with the InMemoryDocumentStore, i.e.: 
-- all the tests that we typically run on the whole "document store grid" will only be run for InMemoryDocumentStore
-- any test that is specific to other document stores (e.g. elasticsearch) and is not supported by the chosen document store will be skipped (and marked in the logs accordingly)
-
-
-Run tests that are possible for a **selected document store**. The InMemoryDocument store is a very good starting point as it doesn't require any of the external docker containers from above: 
-```
-pytest . --document_store_type="memory"
-```
-Run tests using a **combination of document stores**:
-```
-pytest . --document_store_type="memory,elasticsearch"
-```
-*Note: You will need to launch the elasticsearch container here as described above'*
-
-Just run **one individual test**:
+Tests can be also run **individually**:
 ```
 pytest -v test_retriever.py::test_dpr_embedding
 ```
-Select a **logical subset of tests** via markers and the optional "not" keyword:
+
+Or you can select a **logical subset of tests** via markers and the optional "not" keyword:
 ```
 pytest -m not elasticsearch
 pytest -m elasticsearch
@@ -102,14 +107,24 @@ pytest -m not slow
 ...
 ```
 
+### Running all the tests
+
+**Important**: If you want to run **all** the tests locally, you'll need **all** document stores running in the background
+before you run the tests. Many of the tests will then be executed multiple times with different document stores.
+
+To run all tests, from the `/test` folder just run:
+```
+pytest
+```
 
 ## Writing tests
 
-If you are writing a test that depend on a document store, there are a few conventions to define on which document store type this test should/can run:
+If you are writing a test that depend on a document store, there are a few conventions to define on which document store
+type this test should/can run:
 
-### Option 1: The test should run on all document stores / those supplied in the CLI arg `--document_store_type`: 
+### Option 1: The test should run on all document stores / those supplied in the CLI arg `--document_store_type`:
 Use one of the fixtures `document_store` or `document_store_with_docs` or `document_store_type`.
-Do not parameterize it yourself. 
+Do not parameterize it yourself.
 
 Example:
 ```
@@ -120,7 +135,8 @@ def test_write_with_duplicate_doc_ids(document_store):
 
 ```
 
-### Option 2: The test is only compatible with certain document stores: 
+### Option 2: The test is only compatible with certain document stores:
+
 Some tests you don't want to run on all possible document stores. Either because the test is specific to one/few doc store(s) or the test is not really document store related and it's enough to test it on one document store and speed up the execution time.
 
 Example:
@@ -130,7 +146,7 @@ Example:
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss"], indirect=True)
 def test_update_meta(document_store):
     ....
-``` 
+```
 
 ### Option 3: The test is not using a `document_store`/ fixture, but still has a hard requirement for a certain document store:
 
@@ -142,27 +158,31 @@ def test_elasticsearch_custom_fields(elasticsearch_fixture):
     client.indices.delete(index='haystack_test_custom', ignore=[404])
     document_store = ElasticsearchDocumentStore(index="haystack_test_custom", text_field="custom_text_field",
                                                 embedding_field="custom_embedding_field")
-``` 
+```
 
 
 ## Code format and style
-We use [Black](https://github.com/psf/black) to ensure consistent code style, [mypy](http://mypy-lang.org/) for static type checking and 
+
+We use [Black](https://github.com/psf/black) to ensure consistent code style, [mypy](http://mypy-lang.org/) for static type checking and
 [pylint](https://pylint.org/) for linting and code quality.
 
 All checks and autoformatting happen on the CI, so in general you don't need to worry about configuring them in your local environment.
 However, should you prefer to execute them locally, here are a few details about the setup.
 
 ### Black
+
 Black runs with no other configuration than an increase line lenght to 120 characters. Its condiguration can be found in `pyproject.toml`.
 
 You can run it with `python -m black .` from the root folder.
 
 ### Mypy
+
 Mypy currently runs with limited configuration options that can be found at the bottom of `setup.cfg`.
 
 You can run it with `python -m mypy haystack/ rest_api/ ui/` from the root folder.
 
 ### Pylint
+
 Pylint is still being integrated in Haystack. The current exclusion list is very long, and can be found in `pyproject.toml`.
 
 You can run it with `python -m pylint haystack/ rest_api/ ui/ -ry` from the root folder.
@@ -170,8 +190,8 @@ You can run it with `python -m pylint haystack/ rest_api/ ui/ -ry` from the root
 
 ## Contributor Licence Agreement (CLA)
 
-Significant contributions to Haystack require a Contributor License Agreement (CLA). If the contribution requires a CLA, we will get in contact with you. CLAs are quite common among company backed open-source frameworks and our CLA’s wording is similar to other popular projects, like [Rasa](https://cla-assistant.io/RasaHQ/rasa) or [Google's Tensorflow](https://cla.developers.google.com/clas/new?domain=DOMAIN_GOOGLE&kind=KIND_INDIVIDUAL) (retrieved 4th November 2021). 
+Significant contributions to Haystack require a Contributor License Agreement (CLA). If the contribution requires a CLA, we will get in contact with you. CLAs are quite common among company backed open-source frameworks and our CLA’s wording is similar to other popular projects, like [Rasa](https://cla-assistant.io/RasaHQ/rasa) or [Google's Tensorflow](https://cla.developers.google.com/clas/new?domain=DOMAIN_GOOGLE&kind=KIND_INDIVIDUAL) (retrieved 4th November 2021).
 
 The agreement's main purpose is to protect the continued open use of Haystack. At the same time it also helps in protecting you as a contributor. Contributions under this agreement will ensure that your code will continue to be open to everyone in the future (“You hereby grant to Deepset **and anyone** [...]”) as well as removing liabilities on your end (“you provide your Contributions on an AS IS basis, without warranties or conditions of any kind [...]”). You can find the Contributor Licence Agreement [here](https://cla-assistant.io/deepset-ai/haystack).
 
-If you have further questions about the licensing feel free to reach out to contributors@deepset.ai. 
+If you have further questions about the licensing feel free to reach out to contributors@deepset.ai.

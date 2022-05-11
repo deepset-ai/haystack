@@ -21,9 +21,9 @@ def test_crawler_depth(tmp_path):
     assert len(doc_path) == 1
 
     _urls = [
-        "https://haystack.deepset.ai/overview/v0.8.0/get-started",
-        "https://haystack.deepset.ai/overview/v0.7.0/get-started",
-        "https://haystack.deepset.ai/overview/v0.6.0/get-started",
+        "https://haystack.deepset.ai/overview/v1.2.0/get-started",
+        "https://haystack.deepset.ai/overview/v1.1.0/get-started",
+        "https://haystack.deepset.ai/overview/v1.0.0/get-started",
     ]
     doc_path = crawler.crawl(urls=_urls, crawler_depth=0)
     assert len(doc_path) == 3
@@ -43,13 +43,13 @@ def test_crawler_depth(tmp_path):
 
 def test_crawler_filter_urls(tmp_path):
     tmp_dir = tmp_path / "crawled_files"
-    _url = ["https://haystack.deepset.ai/overview/v0.8.0/"]
+    _url = ["https://haystack.deepset.ai/overview/v1.2.0/"]
 
     crawler = Crawler(output_dir=tmp_dir)
-    doc_path = crawler.crawl(urls=_url, filter_urls=["haystack\.deepset\.ai\/overview\/v0\.9\.0\/"])
+    doc_path = crawler.crawl(urls=_url, filter_urls=["haystack\.deepset\.ai\/overview\/v1\.3\.0\/"])
     assert len(doc_path) == 0
 
-    doc_path = crawler.crawl(urls=_url, filter_urls=["haystack\.deepset\.ai\/overview\/v0\.8\.0\/"])
+    doc_path = crawler.crawl(urls=_url, filter_urls=["haystack\.deepset\.ai\/overview\/v1\.2\.0\/"])
     assert len(doc_path) > 0
 
     doc_path = crawler.crawl(urls=_url, filter_urls=["google\.com"])
@@ -61,27 +61,25 @@ def test_crawler_content(tmp_path):
 
     partial_content_match: list = [
         {
-            "url": "https://haystack.deepset.ai/overview/v0.7.0/intro",
+            "url": "https://haystack.deepset.ai/overview/v1.1.0/intro",
             "partial_content": [
-                "What is Haystack",
-                "Utilize all transformer based models",
-                "a Retriever-Reader pipeline in order",
-                "Passing on only a small candidate set",
-                "fast indexing and querying",
-                "Fine-tune models to your own domain",
-                "smoothly switch when new ones get published",
+                "Haystack is an open-source framework ",
+                "for building search systems that work intelligently ",
+                "over large document collections.",
+                "Recent advances in NLP have enabled the application of ",
+                "question answering, retrieval and summarization ",
+                "to real world settings and Haystack is designed to be ",
+                "the bridge between research and industry.",
             ],
         },
         {
-            "url": "https://haystack.deepset.ai/overview/v0.7.0/use-cases",
+            "url": "https://haystack.deepset.ai/overview/v1.1.0/use-cases",
             "partial_content": [
-                "Semantic Search System",
-                "Store your documents in the database of ",
-                "results are chosen based on compatibility in",
-                "Apply a set of standard questions to each document",
-                "Return a NO_ANSWER if a given document",
-                "like what is the revenue forecast for 2020?",
-                "overview of academic papers and internal business",
+                "Expect to see results that highlight",
+                "the very sentence that contains the answer to your question.",
+                "Thanks to the power of Transformer based language models,",
+                "results are chosen based on compatibility in meaning",
+                "rather than lexical overlap.",
             ],
         },
     ]
@@ -106,7 +104,7 @@ def test_crawler_content(tmp_path):
 
 def test_crawler_return_document(tmp_path):
     tmp_dir = tmp_path / "crawled_files"
-    _url = ["https://haystack.deepset.ai/docs/v0.5.0/intromd"]
+    _url = ["https://haystack.deepset.ai/docs/v1.0.0/intromd"]
 
     crawler = Crawler(output_dir=tmp_dir)
     docs_path = crawler.crawl(urls=_url, crawler_depth=1)

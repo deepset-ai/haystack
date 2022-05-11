@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Optional, Dict, List, Tuple
+from typing import Any, Optional, Dict, List, Tuple, Union, Callable, Type
 
 from copy import deepcopy
 from abc import ABC, abstractmethod
@@ -112,46 +112,23 @@ class BaseComponent(ABC):
         return params
 
     @classmethod
-    def get_subclass(cls, component_type: str):
+    def get_subclass(cls, component_type: str) -> Type[BaseComponent]:
         if component_type not in cls._subclasses.keys():
             raise PipelineSchemaError(f"Haystack component with the name '{component_type}' not found.")
         subclass = cls._subclasses[component_type]
         return subclass
 
     @classmethod
-    def load_from_args(cls, component_type: str, **kwargs):
+    def _create_instance(cls, component_type: str, component_params: Dict[str, Any]):
         """
-        Load a component instance of the given type using the kwargs.
+        Returns an instance of the given subclass of BaseComponent.
 
         :param component_type: name of the component class to load.
-        :param kwargs: parameters to pass to the __init__() for the component.
+        :param component_params: parameters to pass to the __init__() for the component.
         """
         subclass = cls.get_subclass(component_type)
-        instance = subclass(**kwargs)
+        instance = subclass(**component_params)
         return instance
-
-    @classmethod
-    def load_from_pipeline_config(cls, pipeline_config: dict, component_name: str):
-        """
-        Load an individual component from a YAML config for Pipelines.
-
-        :param pipeline_config: the Pipelines YAML config parsed as a dict.
-        :param component_name: the name of the component to load.
-        """
-        if pipeline_config:
-            all_component_configs = pipeline_config["components"]
-            all_component_names = [comp["name"] for comp in all_component_configs]
-            component_config = next(comp for comp in all_component_configs if comp["name"] == component_name)
-            component_params = component_config["params"]
-
-            for key, value in component_params.items():
-                if value in all_component_names:  # check if the param value is a reference to another component
-                    component_params[key] = cls.load_from_pipeline_config(pipeline_config, value)
-
-            component_instance = cls.load_from_args(component_config["type"], **component_params)
-        else:
-            component_instance = cls.load_from_args(component_name)
-        return component_instance
 
     @abstractmethod
     def run(
@@ -174,27 +151,51 @@ class BaseComponent(ABC):
         """
         pass
 
+    @abstractmethod
+    def run_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+    ):
+        pass
+
     def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
-        The Pipelines call this method which in turn executes the run() method of Component.
+        The Pipelines call this method when run() is executed. This method in turn executes the _dispatch_run_general()
+        method with the correct run method.
+        """
+        return self._dispatch_run_general(self.run, **kwargs)
 
-        It takes care of the following:
-          - inspect run() signature to validate if all necessary arguments are available
+    def _dispatch_run_batch(self, **kwargs):
+        """
+        The Pipelines call this method when run_batch() is executed. This method in turn executes the
+        _dispatch_run_general() method with the correct run method.
+        """
+        return self._dispatch_run_general(self.run_batch, **kwargs)
+
+    def _dispatch_run_general(self, run_method: Callable, **kwargs):
+        """
+        This method takes care of the following:
+          - inspect run_method's signature to validate if all necessary arguments are available
           - pop `debug` and sets them on the instance to control debug output
-          - call run() with the corresponding arguments and gather output
+          - call run_method with the corresponding arguments and gather output
           - collate `_debug` information if present
           - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
         """
         arguments = deepcopy(kwargs)
         params = arguments.get("params") or {}
 
-        run_signature_args = inspect.signature(self.run).parameters.keys()
+        run_signature_args = inspect.signature(run_method).parameters.keys()
 
         run_params: Dict[str, Any] = {}
         for key, value in params.items():
             if key == self.name:  # targeted params for this node
                 if isinstance(value, dict):
-
                     # Extract debug attributes
                     if "debug" in value.keys():
                         self.debug = value.pop("debug")
@@ -212,7 +213,7 @@ class BaseComponent(ABC):
             if key in run_signature_args:
                 run_inputs[key] = value
 
-        output, stream = self.run(**run_inputs, **run_params)
+        output, stream = run_method(**run_inputs, **run_params)
 
         # Collect debug information
         debug_info = {}
@@ -220,10 +221,8 @@ class BaseComponent(ABC):
             # Include input
             debug_info["input"] = {**run_inputs, **run_params}
             debug_info["input"]["debug"] = self.debug
-            # Include output
-            filtered_output = {
-                key: value for key, value in output.items() if key != "_debug"
-            }  # Exclude _debug to avoid recursion
+            # Include output, exclude _debug to avoid recursion
+            filtered_output = {key: value for key, value in output.items() if key != "_debug"}
             debug_info["output"] = filtered_output
         # Include custom debug info
         custom_debug = output.get("_debug", {})
@@ -254,3 +253,17 @@ class BaseComponent(ABC):
             for param_key, parameter in inspect.signature(class_).parameters.items()
         }
         return component_signature
+
+
+class RootNode(BaseComponent):
+    """
+    RootNode feeds inputs together with corresponding params to a Pipeline.
+    """
+
+    outgoing_edges = 1
+
+    def run(self):  # type: ignore
+        return {}, "output_1"
+
+    def run_batch(self):  # type: ignore
+        return {}, "output_1"

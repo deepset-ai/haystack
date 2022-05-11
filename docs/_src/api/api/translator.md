@@ -14,7 +14,7 @@ Abstract class for a Translator component that translates either a query or a do
 
 <a id="base.BaseTranslator.translate"></a>
 
-#### translate
+#### BaseTranslator.translate
 
 ```python
 @abstractmethod
@@ -25,7 +25,7 @@ Translate the passed query or a list of documents from language A to B.
 
 <a id="base.BaseTranslator.run"></a>
 
-#### run
+#### BaseTranslator.run
 
 ```python
 def run(results: List[Dict[str, Any]] = None, query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None)
@@ -65,7 +65,7 @@ We currently recommend using OPUS models (see __init__() for details)
 
 <a id="transformers.TransformersTranslator.__init__"></a>
 
-#### \_\_init\_\_
+#### TransformersTranslator.\_\_init\_\_
 
 ```python
 def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True, use_gpu: bool = True)
@@ -73,7 +73,7 @@ def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_
 
 Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
 
-models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
+models from Hugging Face's model hub, we recommend using the OPUS models from Helsinki NLP. They provide plenty
 of different models, usually one model per language pair and translation direction.
 They have a pretty standardized naming that should help you find the right model:
 - "Helsinki-NLP/opus-mt-en-de" => translating from English to German
@@ -96,7 +96,7 @@ tokenizer.
 
 <a id="transformers.TransformersTranslator.translate"></a>
 
-#### translate
+#### TransformersTranslator.translate
 
 ```python
 def translate(results: List[Dict[str, Any]] = None, query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
@@ -110,4 +110,20 @@ Run the actual translation. You can supply a query or a list of documents. Whate
 - `query`: The query string to translate
 - `documents`: The documents to translate
 - `dict_key`: If you pass a dictionary in `documents`, you can specify here the field which shall be translated.
+
+<a id="transformers.TransformersTranslator.translate_batch"></a>
+
+#### TransformersTranslator.translate\_batch
+
+```python
+def translate_batch(queries: Optional[Union[str, List[str]]] = None, documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None, batch_size: Optional[int] = None) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]
+```
+
+Run the actual translation. You can supply a single query, a list of queries or a list (of lists) of documents.
+
+**Arguments**:
+
+- `queries`: Single query or list of queries.
+- `documents`: List of documents or list of lists of documets.
+- `batch_size`: Not applicable.
 

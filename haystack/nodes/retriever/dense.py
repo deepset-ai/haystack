@@ -215,7 +215,7 @@ class DensePassageRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -226,7 +226,69 @@ class DensePassageRetriever(BaseRetriever):
         that are most relevant to the query.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -247,6 +309,156 @@ class DensePassageRetriever(BaseRetriever):
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
+
+    def retrieve_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+        lists of Documents (one per query) is returned.
+
+        :param queries: Single query string or list of queries.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param batch_size: Number of queries to embed at a time.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [{}] * len(queries)
+
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
+            )
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb, cur_filters in zip(query_embs, filters):
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb,
+                top_k=top_k,
+                filters=cur_filters,
+                index=index,
+                headers=headers,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
 
     def _get_predictions(self, dicts):
         """
@@ -735,7 +947,7 @@ class TableTextRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -744,7 +956,7 @@ class TableTextRetriever(BaseRetriever):
         if top_k is None:
             top_k = self.top_k
         if not self.document_store:
-            logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
+            logger.error("Cannot perform retrieve() since TableTextRetriever initialized with document_store=None")
             return []
         if index is None:
             index = self.document_store.index
@@ -755,6 +967,156 @@ class TableTextRetriever(BaseRetriever):
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
+
+    def retrieve_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+        lists of Documents (one per query) is returned.
+
+        :param queries: Single query string or list of queries.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param batch_size: Number of queries to embed at a time.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [{}] * len(queries)
+
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
+            )
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb, cur_filters in zip(query_embs, filters):
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb,
+                top_k=top_k,
+                filters=cur_filters,
+                index=index,
+                headers=headers,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
 
     def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
         """
@@ -1182,7 +1544,7 @@ class EmbeddingRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1193,7 +1555,69 @@ class EmbeddingRetriever(BaseRetriever):
         that are most relevant to the query.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -1211,6 +1635,156 @@ class EmbeddingRetriever(BaseRetriever):
             query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         return documents
+
+    def retrieve_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+        lists of Documents (one per query) is returned.
+
+        :param queries: Single query string or list of queries.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param batch_size: Number of queries to embed at a time.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [{}] * len(queries)
+
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
+            )
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb, cur_filters in zip(query_embs, filters):
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb,
+                top_k=top_k,
+                filters=cur_filters,
+                index=index,
+                headers=headers,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """

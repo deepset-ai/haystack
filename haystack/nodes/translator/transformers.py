@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
+from haystack.errors import HaystackError
 from haystack.schema import Document, Answer
 from haystack.nodes.translator.base import BaseTranslator
 from haystack.modeling.utils import initialize_device_settings
@@ -41,7 +42,7 @@ class TransformersTranslator(BaseTranslator):
         use_gpu: bool = True,
     ):
         """Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
-        models from Hugging Face's model hub, we recommend using the OPUS models from Helsiniki NLP. They provide plenty
+        models from Hugging Face's model hub, we recommend using the OPUS models from Helsinki NLP. They provide plenty
         of different models, usually one model per language pair and translation direction.
         They have a pretty standardized naming that should help you find the right model:
         - "Helsinki-NLP/opus-mt-en-de" => translating from English to German
@@ -90,10 +91,10 @@ class TransformersTranslator(BaseTranslator):
             queries_for_translator = [result["query"] for result in results]
             answers_for_translator = [result["answers"][0].answer for result in results]
         if not query and not documents and results is None:
-            raise AttributeError("Translator need query or documents to perform translation")
+            raise AttributeError("Translator needs query or documents to perform translation.")
 
         if query and documents:
-            raise AttributeError("Translator need either query or documents but not both")
+            raise AttributeError("Translator needs either query or documents but not both.")
 
         if documents and len(documents) == 0:
             logger.warning("Empty documents list is passed")
@@ -145,3 +146,52 @@ class TransformersTranslator(BaseTranslator):
             return documents
 
         raise AttributeError("Translator need query or documents to perform translation")
+
+    def translate_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]:
+        """
+        Run the actual translation. You can supply a single query, a list of queries or a list (of lists) of documents.
+
+        :param queries: Single query or list of queries.
+        :param documents: List of documents or list of lists of documets.
+        :param batch_size: Not applicable.
+        """
+        # TODO: This method currently just calls the translate method multiple times, so there is room for improvement.
+
+        if queries and documents:
+            raise AttributeError("Translator needs either query or documents but not both.")
+
+        if not queries and not documents:
+            raise AttributeError("Translator needs query or documents to perform translation.")
+
+        # Translate queries
+        if queries:
+            if isinstance(queries, str):
+                translated = self.run(query=queries)
+            else:
+                translated = []
+                for query in queries:
+                    cur_translation = self.run(query=query)
+                    translated.append(cur_translation)
+
+        # Translate docs / answers
+        elif documents:
+            # Single list of documents / answers
+            if not isinstance(documents[0], list):
+                translated = self.translate(documents=documents)  # type: ignore
+            # Multiple lists of document / answer lists
+            else:
+                translated = []
+                for cur_list in documents:
+                    if not isinstance(cur_list, list):
+                        raise HaystackError(
+                            f"cur_list was of type {type(cur_list)}, but expected a list of " f"Documents / Answers."
+                        )
+                    cur_translation = self.translate(documents=cur_list)
+                    translated.append(cur_translation)
+
+        return translated

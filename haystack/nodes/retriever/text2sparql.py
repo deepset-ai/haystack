@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union, List
 
 import logging
 from transformers import BartForConditionalGeneration, BartTokenizer
@@ -41,9 +41,9 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         if top_k is None:
             top_k = self.top_k
         inputs = self.tok([query], max_length=100, truncation=True, return_tensors="pt")
-        # generate self.top_k+2 SPARQL queries so that we can dismiss some queries with wrong syntax
+        # generate top_k+2 SPARQL queries so that we can dismiss some queries with wrong syntax
         temp = self.model.generate(
-            inputs["input_ids"], num_beams=5, max_length=100, num_return_sequences=self.top_k + 2, early_stopping=True
+            inputs["input_ids"], num_beams=5, max_length=100, num_return_sequences=top_k + 2, early_stopping=True
         )
         sparql_queries = [
             self.tok.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in temp
@@ -57,8 +57,29 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         # if there are no answers we still want to return something
         if len(answers) == 0:
             answers.append(("", ""))
-        results = answers[: self.top_k]
+        results = answers[:top_k]
         results = [self.format_result(result) for result in results]
+        return results
+
+    def retrieve_batch(self, queries: Union[str, List[str]], top_k: Optional[int] = None):
+        """
+        Translate a single query or a list of queries to SPARQL and execute it on the knowledge graph to retrieve
+        a list of answers / list of lists of answers.
+
+        :param query: Single text query or list of queries that shall be translated to SPARQL and then executed on the
+                      knowledge graph.
+        :param top_k: How many SPARQL queries to generate per text query.
+        """
+        # TODO: This method currently just calls the retrieve method multiple times, so there is room for improvement.
+
+        if isinstance(queries, str):
+            return self.run(query=queries, top_k=top_k)
+
+        results = []
+        for query in queries:
+            cur_result = self.run(query=query, top_k=top_k)
+            results.append(cur_result)
+
         return results
 
     def _query_kg(self, sparql_query):
