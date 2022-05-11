@@ -1379,9 +1379,7 @@ class Pipeline(BasePipeline):
                 df_answers["f1_document_scope"] = df_answers.map_rows(
                     lambda row: max(
                         f1
-                        for f1, doc_match in zip(
-                            row["gold_answers_f1"] + [0.0], row["gold_documents_id_match"] + [1.0]
-                        )
+                        for f1, doc_match in zip(row["gold_answers_f1"] + [0.0], row["gold_documents_id_match"] + [1.0])
                         if doc_match == 1.0
                     )
                 )
