@@ -109,7 +109,7 @@ class Document:
         self.embedding = embedding
 
         # Create a unique ID (either new one, or one from user input)
-        if id:
+        if id is not None:
             self.id: str = str(id)
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
