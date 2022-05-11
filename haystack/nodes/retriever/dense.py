@@ -675,7 +675,7 @@ class DensePassageRetriever(BaseRetriever):
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer(
+        trainer = Trainer.create_or_load_checkpoint(
             model=self.model,
             optimizer=optimizer,
             data_silo=data_silo,
@@ -1366,7 +1366,7 @@ class TableTextRetriever(BaseRetriever):
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer(
+        trainer = Traine.create_or_load_checkpointr(
             model=self.model,
             optimizer=optimizer,
             data_silo=data_silo,
