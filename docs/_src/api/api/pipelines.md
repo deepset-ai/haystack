@@ -1189,7 +1189,7 @@ Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scori
 
 <a id="standard_pipelines.BaseStandardPipeline.print_eval_report"></a>
 
-#### print\_eval\_report
+#### BaseStandardPipeline.print\_eval\_report
 
 ```python
 def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None, document_scope: Literal[
