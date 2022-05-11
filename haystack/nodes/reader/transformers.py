@@ -1,7 +1,12 @@
-from typing import List, Optional
+from typing import List, Optional, Union, Dict, Any, Tuple
 
 import logging
+import itertools
+
 from transformers import pipeline
+from transformers.data.processors.squad import SquadExample
+
+from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
@@ -30,6 +35,7 @@ class TransformersReader(BaseReader):
         return_no_answers: bool = False,
         max_seq_len: int = 256,
         doc_stride: int = 128,
+        batch_size: Optional[int] = None,
     ):
         """
         Load a QA model from Transformers.
@@ -59,6 +65,7 @@ class TransformersReader(BaseReader):
         If you would like to set no_answer_boost, use a `FARMReader`.
         :param max_seq_len: max sequence length of one input text for the model
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
+        :param batch_size: Number of documents to process at a time.
         """
         super().__init__()
 
@@ -73,6 +80,7 @@ class TransformersReader(BaseReader):
         self.return_no_answers = return_no_answers
         self.max_seq_len = max_seq_len
         self.doc_stride = doc_stride
+        self.batch_size = batch_size
 
         # TODO context_window_size behaviour different from behavior in FARMReader
 
@@ -105,69 +113,256 @@ class TransformersReader(BaseReader):
         """
         if top_k is None:
             top_k = self.top_k
-        # get top-answers for each candidate passage
+
+        inputs = []
+        all_docs = {}
+        for doc in documents:
+            cur = self.model.create_sample(question=query, context=doc.content)
+            cur.doc_id = doc.id
+            all_docs[doc.id] = doc
+            inputs.append(cur)
+
+        predictions = self.model(
+            inputs,
+            topk=1,
+            handle_impossible_answer=self.return_no_answers,
+            max_seq_len=self.max_seq_len,
+            doc_stride=self.doc_stride,
+        )
+        if isinstance(predictions, dict):
+            predictions = [predictions]
+        # Add Document ID to predictions to be able to construct Answer objects
+        for preds_for_single_doc, inp in zip(predictions, inputs):
+            cur_doc_id = inp.doc_id
+            if isinstance(preds_for_single_doc, list):
+                for pred in preds_for_single_doc:
+                    pred["doc_id"] = cur_doc_id
+            else:
+                preds_for_single_doc["doc_id"] = cur_doc_id
+        if isinstance(predictions[0], list):
+            predictions = list(itertools.chain.from_iterable(predictions))
+
+        answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, all_docs, top_k)
+
+        results = {"query": query, "answers": answers}
+        return results
+
+    def predict_batch(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
+        """
+        Use loaded QA model to find answers for the queries in the Documents.
+
+        - If you provide a single query...
+
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of queries...
+
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query or list of queries.
+        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+                          Can be a single list of Documents or a list of lists of Documents.
+        :param top_k: Number of returned answers per query.
+        :param batch_size: Number of query-document pairs to be processed at a time.
+        """
+        if top_k is None:
+            top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        inputs, number_of_docs, all_docs, single_query, single_doc_list = self._preprocess_batch_queries_and_docs(
+            queries=queries, documents=documents
+        )
+
+        # Inference
+        predictions = self.model(
+            inputs,
+            topk=self.top_k_per_candidate,
+            handle_impossible_answer=self.return_no_answers,
+            max_seq_len=self.max_seq_len,
+            doc_stride=self.doc_stride,
+            batch_size=batch_size,
+        )
+
+        # Group predictions together
+        grouped_predictions = []
+        grouped_inputs = []
+        left_idx = 0
+        right_idx = 0
+        for number in number_of_docs:
+            right_idx = left_idx + number
+            grouped_predictions.append(predictions[left_idx:right_idx])
+            grouped_inputs.append(inputs[left_idx:right_idx])
+            left_idx = right_idx
+
+        results: Dict = {"queries": queries, "answers": [], "no_ans_gaps": []}
+        for grouped_pred, grouped_inp in zip(grouped_predictions, grouped_inputs):
+            # Add Document ID to predictions to be able to construct Answer objects
+            for preds_for_single_doc, inp in zip(grouped_pred, grouped_inp):
+                for pred in preds_for_single_doc:
+                    cur_doc_id = inp.doc_id
+                    pred["doc_id"] = cur_doc_id
+            if isinstance(grouped_pred[0], list):
+                group = list(itertools.chain.from_iterable(grouped_pred))
+            answers, max_no_ans_gap = self._extract_answers_of_predictions(group, all_docs, top_k)
+            results["answers"].append(answers)
+            results["no_ans_gaps"].append(max_no_ans_gap)
+
+        # Group answers by question in case of list of queries and single doc list
+        if not single_query and single_doc_list:
+            answers_per_query = int(len(results["answers"]) / len(queries))
+            answers = []
+            for i in range(0, len(results["answers"]), answers_per_query):
+                answer_group = results["answers"][i : i + answers_per_query]
+                answers.append(answer_group)
+            results["answers"] = answers
+
+        return results
+
+    def _extract_answers_of_predictions(
+        self, predictions: List[Dict[str, Any]], docs: Dict[str, Document], top_k: int
+    ) -> Tuple[List[Answer], float]:
         answers = []
         no_ans_gaps = []
         best_overall_score = 0
-        for doc in documents:
-            transformers_query = {"context": doc.content, "question": query}
-            predictions = self.model(
-                transformers_query,
-                topk=self.top_k_per_candidate,
-                handle_impossible_answer=self.return_no_answers,
-                max_seq_len=self.max_seq_len,
-                doc_stride=self.doc_stride,
-            )
-            # for single preds (e.g. via top_k=1) transformers returns a dict instead of a list
-            if type(predictions) == dict:
-                predictions = [predictions]
 
-            # assemble and format all answers
-            best_doc_score = 0
-            # because we cannot ensure a "no answer" prediction coming back from transformers we initialize it here with 0
-            no_ans_doc_score = 0
-            # TODO add no answer bias on haystack side after getting "no answer" scores from transformers
-            for pred in predictions:
-                if pred["answer"]:
-                    if pred["score"] > best_doc_score:
-                        best_doc_score = pred["score"]
-                    context_start = max(0, pred["start"] - self.context_window_size)
-                    context_end = min(len(doc.content), pred["end"] + self.context_window_size)
-                    answers.append(
-                        Answer(
-                            answer=pred["answer"],
-                            type="extractive",
-                            score=pred["score"],
-                            context=doc.content[context_start:context_end],
-                            offsets_in_document=[Span(start=pred["start"], end=pred["end"])],
-                            offsets_in_context=[
-                                Span(start=pred["start"] - context_start, end=pred["end"] - context_start)
-                            ],
-                            document_id=doc.id,
-                            meta=doc.meta,
-                        )
-                    )
-                else:
-                    no_ans_doc_score = pred["score"]
+        cur_doc_id = predictions[0]["doc_id"]
+        cur_doc = docs[cur_doc_id]
+        no_ans_doc_score = 0
+        best_doc_score = 0
 
+        # TODO add no answer bias on haystack side after getting "no answer" scores from transformers
+        for pred in predictions:
+            # Update best_overall_score based on best_doc_score of predictions of previous Document
+            # + add no_ans_gap for previous Document + update cur_doc
+            if cur_doc_id != pred["doc_id"]:
                 if best_doc_score > best_overall_score:
                     best_overall_score = best_doc_score
+                no_ans_gaps.append(no_ans_doc_score - best_doc_score)
+                cur_doc_id = pred["doc_id"]
+                cur_doc = docs[cur_doc_id]
+                no_ans_doc_score = 0
+                best_doc_score = 0
+            if pred["answer"]:
+                if pred["score"] > best_doc_score:
+                    best_doc_score = pred["score"]
+                context_start = max(0, pred["start"] - self.context_window_size)
+                context_end = min(len(cur_doc.content), pred["end"] + self.context_window_size)
+                answers.append(
+                    Answer(
+                        answer=pred["answer"],
+                        type="extractive",
+                        score=pred["score"],
+                        context=cur_doc.content[context_start:context_end],
+                        offsets_in_document=[Span(start=pred["start"], end=pred["end"])],
+                        offsets_in_context=[Span(start=pred["start"] - context_start, end=pred["end"] - context_start)],
+                        document_id=cur_doc.id,
+                        meta=cur_doc.meta,
+                    )
+                )
+            # "no answer" prediction
+            else:
+                no_ans_doc_score = pred["score"]
 
-            no_ans_gaps.append(no_ans_doc_score - best_doc_score)
+        # Update best_overall_score based on best_doc_score of predictions of last Document
+        # + add no_ans_gap for last Document
+        if best_doc_score > best_overall_score:
+            best_overall_score = best_doc_score
+        no_ans_gaps.append(no_ans_doc_score - best_doc_score)
 
         # Calculate the score for predicting "no answer", relative to our best positive answer score
         no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_overall_score)
 
         if self.return_no_answers:
             answers.append(no_ans_prediction)
-        # sort answers by their `score` and select top-k
+        # Sort answers by score and select top-k
         answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
 
-        results = {"query": query, "answers": answers}
+        return answers, max_no_ans_gap
 
-        return results
+    def _preprocess_batch_queries_and_docs(
+        self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]
+    ) -> Tuple[List[SquadExample], List[int], Dict[str, Document], bool, bool]:
+        # Convert input to transformers format
+        inputs = []
+        number_of_docs = []
+        all_docs = {}
 
-    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
+        # Query case 1: single query
+        if isinstance(queries, str):
+            single_query = True
+            query = queries
+            # Docs case 1: single list of Documents -> apply single query to all Documents
+            if len(documents) > 0 and isinstance(documents[0], Document):
+                single_doc_list = True
+                for doc in documents:
+                    number_of_docs.append(1)
+                    if not isinstance(doc, Document):
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                    cur = self.model.create_sample(question=query, context=doc.content)
+                    cur.doc_id = doc.id
+                    all_docs[doc.id] = doc
+                    inputs.append(cur)
 
-        raise NotImplementedError("Batch prediction not yet available in TransformersReader.")
+            # Docs case 2: list of lists of Documents -> apply single query to each list of Documents
+            elif len(documents) > 0 and isinstance(documents[0], list):
+                single_doc_list = False
+                for docs in documents:
+                    if not isinstance(docs, list):
+                        raise HaystackError(f"docs was of type {type(docs)}, but expected a list of Documents.")
+                    number_of_docs.append(len(docs))
+                    for doc in docs:
+                        cur = self.model.create_sample(question=query, context=doc.content)
+                        cur.doc_id = doc.id
+                        all_docs[doc.id] = doc
+                        inputs.append(cur)
+
+        # Query case 2: list of queries
+        elif isinstance(queries, list) and len(queries) > 0 and isinstance(queries[0], str):
+            single_query = False
+            # Docs case 1: single list of Documents -> apply each query to all Documents
+            if len(documents) > 0 and isinstance(documents[0], Document):
+                single_doc_list = True
+                for query in queries:
+                    for doc in documents:
+                        number_of_docs.append(1)
+                        if not isinstance(doc, Document):
+                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                        cur = self.model.create_sample(question=query, context=doc.content)
+                        cur.doc_id = doc.id
+                        all_docs[doc.id] = doc
+                        inputs.append(cur)
+
+            # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents
+            elif len(documents) > 0 and isinstance(documents[0], list):
+                single_doc_list = False
+                if len(queries) != len(documents):
+                    raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+                for query, cur_docs in zip(queries, documents):
+                    if not isinstance(cur_docs, list):
+                        raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                    number_of_docs.append(len(cur_docs))
+                    for doc in cur_docs:
+                        if not isinstance(doc, Document):
+                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                        cur = self.model.create_sample(question=query, context=doc.content)
+                        cur.doc_id = doc.id
+                        all_docs[doc.id] = doc
+                        inputs.append(cur)
+
+        else:
+            raise HaystackError(f"'queries' was of type {type(queries)} but must be of type str or List[str].")
+
+        return inputs, number_of_docs, all_docs, single_query, single_doc_list
