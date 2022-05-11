@@ -589,6 +589,9 @@ class DensePassageRetriever(BaseRetriever):
         save_dir: str = "../saved_models/dpr",
         query_encoder_save_dir: str = "query_encoder",
         passage_encoder_save_dir: str = "passage_encoder",
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
     ):
         """
         train a DensePassageRetrieval model
@@ -626,6 +629,9 @@ class DensePassageRetriever(BaseRetriever):
         :param save_dir: directory where models are saved
         :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
         :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
+        
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps. 
+        If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
         """
         self.processor.embed_title = embed_title
         self.processor.data_dir = Path(data_dir)
