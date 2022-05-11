@@ -1161,7 +1161,8 @@ class EmbeddingRetriever(BaseRetriever):
         :param query: The query
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
         :param top_k: How many documents to return per query.
-        :param min_score: Only return documents with a score higher than min_score - recommended to set top_k=10000
+        :param min_score: Only return documents with a score higher than min_score - be aware that top_k filter is still
+                applied after the documents have been filtered by the min_score
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         """
         if top_k is None:
