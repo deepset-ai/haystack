@@ -1163,7 +1163,8 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return
-        :param min_score: Only return documents with a score higher than min_score - recommended to set top_k=10000
+        :param min_score: Only return documents with a score higher than min_score - be aware that top_k filter is still
+                applied after the documents have been filtered by the min_score
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -1682,11 +1683,16 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             verify_certs=verify_certs, scheme=scheme, username=username, password=password, port=port, **kwargs
         )
 
+    @staticmethod
+    def _transform_min_score(min_score):
+        return min_score * 2 - 1 + 1000
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
+        min_score: Optional[float] = None,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1759,6 +1765,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return
+        :param min_score: Only return documents with a score higher than min_score - be aware that top_k filter is still
+                applied after the documents have been filtered by the min_score
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
@@ -1777,6 +1785,8 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+        if min_score:
+            body['min_score'] = self._transform_min_score(min_score)
 
         excluded_meta_data: Optional[list] = None
 
