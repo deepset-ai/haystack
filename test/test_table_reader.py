@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 import pytest
 
-from haystack.schema import Document
+from haystack.schema import Document, Answer
 from haystack.pipelines.base import Pipeline
 
 
@@ -21,6 +21,84 @@ def test_table_reader(table_reader):
     assert prediction["answers"][0].answer == "11 november 1974"
     assert prediction["answers"][0].offsets_in_context[0].start == 7
     assert prediction["answers"][0].offsets_in_context[0].end == 8
+
+
+def test_table_reader_batch_single_query_single_doc_list(table_reader):
+    data = {
+        "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+        "age": ["58", "47", "60"],
+        "number of movies": ["87", "53", "69"],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
+    }
+    table = pd.DataFrame(data)
+
+    query = "When was Di Caprio born?"
+    prediction = table_reader.predict_batch(queries=query, documents=[Document(content=table, content_type="table")])
+    # Expected output: List of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 1  # Predictions for 5 docs
+
+
+def test_table_reader_batch_single_query_multiple_doc_lists(table_reader):
+    data = {
+        "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+        "age": ["58", "47", "60"],
+        "number of movies": ["87", "53", "69"],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
+    }
+    table = pd.DataFrame(data)
+
+    query = "When was Di Caprio born?"
+    prediction = table_reader.predict_batch(queries=query, documents=[[Document(content=table, content_type="table")]])
+    # Expected output: List of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 1  # Predictions for 1 collection of docs
+
+
+def test_table_reader_batch_multiple_queries_single_doc_list(table_reader):
+    data = {
+        "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+        "age": ["58", "47", "60"],
+        "number of movies": ["87", "53", "69"],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
+    }
+    table = pd.DataFrame(data)
+
+    query = "When was Di Caprio born?"
+    prediction = table_reader.predict_batch(
+        queries=[query, query], documents=[Document(content=table, content_type="table")]
+    )
+    # Expected output: List of lists of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], list)
+    assert isinstance(prediction["answers"][0][0][0], Answer)
+    assert len(prediction["answers"]) == 2  # Predictions for 2 queries
+
+
+def test_table_reader_batch_multiple_queries_multiple_doc_lists(table_reader):
+    data = {
+        "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+        "age": ["58", "47", "60"],
+        "number of movies": ["87", "53", "69"],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
+    }
+    table = pd.DataFrame(data)
+
+    query = "When was Di Caprio born?"
+    prediction = table_reader.predict_batch(
+        queries=[query, query],
+        documents=[[Document(content=table, content_type="table")], [Document(content=table, content_type="table")]],
+    )
+    # Expected output: List of lists answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 2  # Predictions for 2 collections of documents
 
 
 def test_table_reader_in_pipeline(table_reader):

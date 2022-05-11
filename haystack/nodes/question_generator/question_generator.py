@@ -1,8 +1,10 @@
-from typing import List
+from typing import List, Union, Optional, Iterator
+import itertools
 
 from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
 
+from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.preprocessor import PreProcessor
@@ -35,6 +37,7 @@ class QuestionGenerator(BaseComponent):
         split_overlap=10,
         use_gpu=True,
         prompt="generate questions:",
+        batch_size: Optional[int] = None,
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -46,6 +49,7 @@ class QuestionGenerator(BaseComponent):
                                    See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+        :param batch_size: Number of documents to process at a time.
         """
         super().__init__()
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
@@ -61,6 +65,7 @@ class QuestionGenerator(BaseComponent):
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
         self.prompt = prompt
+        self.batch_size = batch_size
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
@@ -71,26 +76,112 @@ class QuestionGenerator(BaseComponent):
         output = {"generated_questions": generated_questions, "documents": documents}
         return output, "output_1"
 
-    def generate(self, text):
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
+        generated_questions = []
+        if isinstance(documents[0], Document):
+            questions = self.generate_batch(texts=[d.content for d in documents if isinstance(d, Document)])
+            questions_iterator = questions  # type: ignore
+            documents_iterator = documents
+        else:
+            questions = self.generate_batch(
+                texts=[[d.content for d in doc_list] for doc_list in documents if isinstance(doc_list, list)]
+            )
+            questions_iterator = itertools.chain.from_iterable(questions)  # type: ignore
+            documents_iterator = itertools.chain.from_iterable(documents)  # type: ignore
+        for cur_questions, doc in zip(questions_iterator, documents_iterator):
+            if not isinstance(doc, Document):
+                raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+            curr_dict = {"document_id": doc.id, "document_sample": doc.content[:200], "questions": cur_questions}
+            generated_questions.append(curr_dict)
+        output = {"generated_questions": generated_questions, "documents": documents}
+        return output, "output_1"
+
+    def generate(self, text: str) -> List[str]:
         # Performing splitting because T5 has a max input length
         # Also currently, it seems that it only generates about 3 questions for the beginning section of text
-        split_texts_dict = self.preprocessor.split(
+        split_texts_docs = self.preprocessor.split(
             document={"content": text},
             split_by="word",
             split_respect_sentence_boundary=False,
             split_overlap=self.split_overlap,
             split_length=self.split_length,
         )
-        split_texts = [x.content for x in split_texts_dict]
+        split_texts = [
+            f"{self.prompt} {text.content}" if self.prompt not in text.content else text.content
+            for text in split_texts_docs
+        ]
+        tokenized = self.tokenizer(split_texts, return_tensors="pt", padding=True)
+        input_ids = tokenized["input_ids"].to(self.devices[0])
+        # Necessary if padding is enabled so the model won't attend pad tokens
+        attention_mask = tokenized["attention_mask"].to(self.devices[0])
+        tokens_output = self.model.generate(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            num_beams=self.num_beams,
+            max_length=self.max_length,
+            no_repeat_ngram_size=self.no_repeat_ngram_size,
+            length_penalty=self.length_penalty,
+            early_stopping=self.early_stopping,
+        )
+
+        string_output = self.tokenizer.batch_decode(tokens_output)
+        string_output = [cur_output.replace("<pad>", "").replace("</s>", "") for cur_output in string_output]
+
         ret = []
-        for split_text in split_texts:
-            if self.prompt not in split_text:
-                split_text = self.prompt + " " + split_text
-            tokenized = self.tokenizer([split_text], return_tensors="pt")
+        for split in string_output:
+            for question in split.split("<sep>"):
+                question = question.strip()
+                if question and question not in ret:
+                    ret.append(question)
+
+        return ret
+
+    def generate_batch(
+        self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None
+    ) -> Union[List[List[str]], List[List[List[str]]]]:
+        """
+        Generates questions for a list of strings or a list of lists of strings.
+
+        :param texts: List of str or list of list of str.
+        :param batch_size: Number of texts to process at a time.
+        """
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        if isinstance(texts[0], str):
+            single_doc_list = True
+            number_of_docs = [1 for text_list in texts]
+            text_iterator = texts
+        else:
+            single_doc_list = False
+            number_of_docs = [len(text_list) for text_list in texts]
+            text_iterator = itertools.chain.from_iterable(texts)  # type: ignore
+
+        split_texts_docs = [
+            self.preprocessor.split(
+                document={"content": text},
+                split_by="word",
+                split_respect_sentence_boundary=False,
+                split_overlap=self.split_overlap,
+                split_length=self.split_length,
+            )
+            for text in text_iterator
+        ]
+        split_texts = [[doc.content for doc in split if isinstance(doc.content, str)] for split in split_texts_docs]
+        number_of_splits = [len(split) for split in split_texts]
+        flat_split_texts = [
+            f"{self.prompt} {text}" if self.prompt not in text else text
+            for text in itertools.chain.from_iterable(split_texts)
+        ]
+
+        batches = self._get_batches(flat_split_texts, batch_size=batch_size)
+        all_string_outputs = []
+        for batch in batches:
+            tokenized = self.tokenizer(batch, return_tensors="pt", padding=True)
             input_ids = tokenized["input_ids"].to(self.devices[0])
-            attention_mask = tokenized["attention_mask"].to(
-                self.devices[0]
-            )  # necessary if padding is enabled so the model won't attend pad tokens
+            # Necessary if padding is enabled so the model won't attend pad tokens
+            attention_mask = tokenized["attention_mask"].to(self.devices[0])
             tokens_output = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -101,14 +192,50 @@ class QuestionGenerator(BaseComponent):
                 early_stopping=self.early_stopping,
             )
 
-            string_output = self.tokenizer.decode(tokens_output[0])
-            string_output = string_output.replace("<pad>", "").replace("</s>", "")
-            questions_string = string_output.split("<sep>")
-            questions = [x for x in questions_string if x]
+            string_output = self.tokenizer.batch_decode(tokens_output)
+            string_output = [cur_output.replace("<pad>", "").replace("</s>", "") for cur_output in string_output]
+            all_string_outputs.extend(string_output)
 
-            # Doing this instead of set to maintain order since the generated questions seem to have answers
-            # that occur in order in the text
-            for q in questions:
-                if q not in ret:
-                    ret.append(q)
-        return ret
+        # Group predictions together by split
+        grouped_predictions_split = []
+        left_idx = 0
+        right_idx = 0
+        for number in number_of_splits:
+            right_idx = left_idx + number
+            grouped_predictions_split.append(all_string_outputs[left_idx:right_idx])
+            left_idx = right_idx
+        # Group predictions together by doc list
+        grouped_predictions_doc_list = []
+        left_idx = 0
+        right_idx = 0
+        for number in number_of_docs:
+            right_idx = left_idx + number
+            grouped_predictions_doc_list.append(grouped_predictions_split[left_idx:right_idx])
+            left_idx = right_idx
+
+        results = []
+        for group in grouped_predictions_doc_list:
+            group_preds = []
+            for doc in group:
+                doc_preds = []
+                for split in doc:
+                    for question in split.split("<sep>"):
+                        question = question.strip()
+                        if question and question not in doc_preds:
+                            doc_preds.append(question)
+                group_preds.append(doc_preds)
+            if single_doc_list:
+                results.append(group_preds[0])
+            else:
+                results.append(group_preds)
+
+        return results
+
+    @staticmethod
+    def _get_batches(texts: List[str], batch_size: Optional[int]) -> Iterator[List[str]]:
+        if batch_size is None:
+            yield texts
+            return
+        else:
+            for index in range(0, len(texts), batch_size):
+                yield texts[index : index + batch_size]

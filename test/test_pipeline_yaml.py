@@ -355,6 +355,9 @@ def test_load_yaml_custom_component_neednt_call_super(tmp_path):
         def run(self, *a, **k):
             pass
 
+        def run_batch(self, *a, **k):
+            pass
+
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""

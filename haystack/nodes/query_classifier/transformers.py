@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, List, Optional, Dict
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
@@ -58,6 +58,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         self,
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
         use_gpu: bool = True,
+        batch_size: Optional[int] = None,
     ):
         """
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
@@ -66,6 +67,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        self.batch_size = batch_size
         device = 0 if self.devices[0].type == "cuda" else -1
 
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
@@ -80,3 +82,21 @@ class TransformersQueryClassifier(BaseQueryClassifier):
             return {}, "output_1"
         else:
             return {}, "output_2"
+
+    def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):  # type: ignore
+        if isinstance(queries, str):
+            return self.run(queries)
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        split: Dict[str, Dict[str, List]] = {"output_1": {"queries": []}, "output_2": {"queries": []}}
+
+        predictions = self.query_classification_pipeline(queries, batch_size=batch_size)
+        for query, pred in zip(queries, predictions):
+            if pred["label"] == "LABEL_1":
+                split["output_1"]["queries"].append(query)
+            else:
+                split["output_2"]["queries"].append(query)
+
+        return split, "split"
