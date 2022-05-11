@@ -1172,7 +1172,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [{}] * len(queries)
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         body = []
         for query, cur_filters in zip(queries, filters):
