@@ -724,10 +724,10 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer",
+            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+        ] = "document_id_or_answer",
         eval_mode: Literal["integrated", "isolated"] = "integrated",
-        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
@@ -763,32 +763,32 @@ class EvaluationResult:
             Default value is 'integrated'.
         :param document_scope: criterion for deciding whether documents are relevant or not.
             You can select between:
-            - 'id': Document's id or custom id must match.
+            - 'document_id': Document's id or custom id must match.
                     Typical use case: Document Retrieval
             - 'context': Document's content must match.
                     Typical use case: Document-independent Passage Retrieval
-            - 'id_and_context': boolean operation `'id' AND 'context'`.
+            - 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
                     Typical use case: Document-specific Passage Retrieval
-            - 'id_or_context': boolean operation `'id' OR 'context'`.
+            - 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
                     Typical use case: Document Retrieval having sparse context labels
             - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
                     Typical use case: Question Answering
-            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+            - 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
-            Default value is 'id_or_answer'.
+            Default value is 'document_id_or_answer'.
         :param answer_scope: scope in which a matching answer is considered as correct.
             You can select between:
             - 'any' (default): any matching answer is considered as correct.
-                    For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+                    For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
                     Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
             - 'context': answer is only considered as correct if its context matches as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
-            - 'document': answer is only considered as correct if its document (id) matches as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
-            - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+            - 'document_id': answer is only considered as correct if its document (id) matches as well.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+            - 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
             Default value is 'any'.
         """
         return {
@@ -810,12 +810,12 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer",
+            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+        ] = "document_id_or_answer",
         document_metric: str = "recall_single_hit",
         answer_metric: str = "f1",
         eval_mode: Literal["integrated", "isolated"] = "integrated",
-        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> List[Dict]:
         """
         Returns the worst performing queries.
@@ -841,32 +841,32 @@ class EvaluationResult:
             Default value is 'integrated'.
         :param document_scope: criterion for deciding whether documents are relevant or not.
             You can select between:
-            - 'id': Document's id or custom id must match.
+            - 'document_id': Document's id or custom id must match.
                     Typical use case: Document Retrieval
             - 'context': Document's content must match.
                     Typical use case: Document-independent Passage Retrieval
-            - 'id_and_context': boolean operation `'id' AND 'context'`.
+            - 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
                     Typical use case: Document-specific Passage Retrieval
-            - 'id_or_context': boolean operation `'id' OR 'context'`.
+            - 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
                     Typical use case: Document Retrieval having sparse context labels
             - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
                     Typical use case: Question Answering
-            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+            - 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
-            Default value is 'id_or_answer'.
+            Default value is 'document_id_or_answer'.
         :param answer_scope: scope in which a matching answer is considered as correct.
             You can select between:
             - 'any' (default): any matching answer is considered as correct.
-                    For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+                    For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
                     Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
             - 'context': answer is only considered as correct if its context matches as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
-            - 'document': answer is only considered as correct if its document (id) matches as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
-            - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+            - 'document_id': answer is only considered as correct if its document (id) matches as well.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+            - 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
             Default value is 'any'.
         """
         node_df = self.node_results[node]
@@ -932,36 +932,36 @@ class EvaluationResult:
     def _get_document_relevance_criterion(
         self,
         document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer",
-        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+        ] = "document_id_or_answer",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> Literal[
-        "id",
+        "document_id",
         "context",
-        "id_and_context",
-        "id_or_context",
+        "document_id_and_context",
+        "document_id_or_context",
         "answer",
         "context_and_answer",
-        "id_and_answer",
-        "id_and_context_and_answer",
-        "id_or_answer",
+        "document_id_and_answer",
+        "document_id_and_context_and_answer",
+        "document_id_or_answer",
     ]:
         """
         Combines document_scope and answer_scope to create the document_relevance_criterion.
         """
         answer_scope_to_doc_relevance_crit = {
             "context": "context_and_answer",
-            "document": "id_and_answer",
-            "document_and_context": "id_and_context_and_answer",
+            "document_id": "document_id_and_answer",
+            "document_id_and_context": "document_id_and_context_and_answer",
         }
 
         if answer_scope in answer_scope_to_doc_relevance_crit.keys() and document_scope not in [
             "answer",
-            "id_or_answer",
+            "document_id_or_answer",
         ]:
             raise ValueError(
                 f"The selected answer_scope '{answer_scope}' is not compatible with document_scope '{document_scope}'. "
-                f"document_scope must be one of {['answer', 'id_or_answer']}"
+                f"document_scope must be one of {['answer', 'document_id_or_answer']}"
             )
 
         return answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)  # type: ignore[return-value]
@@ -972,10 +972,10 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer",
-        ] = "id_or_answer",
+            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer",
+        ] = "document_id_or_answer",
         eval_mode: str = "integrated",
-        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> Dict[str, float]:
         df = self._filter_eval_mode(df, eval_mode)
 
@@ -1009,7 +1009,7 @@ class EvaluationResult:
         df: pd.DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> Dict[str, float]:
         answers = df[df["type"] == "answer"]
         if len(answers) == 0:
@@ -1029,7 +1029,7 @@ class EvaluationResult:
         answers: pd.DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> pd.DataFrame:
         """
         Builds a dataframe containing answer metrics (columns) per multilabel (index).
@@ -1097,16 +1097,16 @@ class EvaluationResult:
         df: pd.DataFrame,
         simulated_top_k_retriever: int = -1,
         document_relevance_criterion: Literal[
-            "id",
+            "document_id",
             "context",
-            "id_and_context",
-            "id_or_context",
+            "document_id_and_context",
+            "document_id_or_context",
             "answer",
             "context_and_answer",
-            "id_and_answer",
-            "id_and_context_and_answer",
-            "id_or_answer",
-        ] = "id_or_answer",
+            "document_id_and_answer",
+            "document_id_and_context_and_answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer",
     ) -> Dict[str, float]:
         documents = df[df["type"] == "document"]
         if len(documents) == 0:
@@ -1125,16 +1125,16 @@ class EvaluationResult:
         documents: pd.DataFrame,
         simulated_top_k_retriever: int = -1,
         document_relevance_criterion: Literal[
-            "id",
+            "document_id",
             "context",
-            "id_and_context",
-            "id_or_context",
+            "document_id_and_context",
+            "document_id_or_context",
             "answer",
             "context_and_answer",
-            "id_and_answer",
-            "id_and_context_and_answer",
-            "id_or_answer",
-        ] = "id_or_answer",
+            "document_id_and_answer",
+            "document_id_and_context_and_answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer",
     ) -> pd.DataFrame:
         """
         Builds a dataframe containing document metrics (columns) per pair of query and gold document ids (index).
@@ -1149,27 +1149,27 @@ class EvaluationResult:
         :param simulated_top_k_retriever: simulates top_k param of retriever.
         :param document_relevance_criterion: criterion for deciding whether documents are relevant or not.
             You can select between:
-            - 'id': Document's id or custom id must match.
+            - 'document_id': Document's id or custom id must match.
                     Typical use case: Document Retrieval
             - 'context': Document's content must match.
                     Typical use case: Document-independent Passage Retrieval
-            - 'id_and_context': boolean operation `'id' AND 'context'`.
+            - 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
                     Typical use case: Document-specific Passage Retrieval
-            - 'id_or_context': boolean operation `'id' OR 'context'`.
+            - 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
                     Typical use case: Document Retrieval having sparse context labels
             - 'answer': Document's content must include the answer.
                     Typical use case: Question Answering
-            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+            - 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
             - 'context_and_answer': boolean operation `'context' AND 'answer'`.
                     Typical use case: Question Answering with context-specific answers (see answer_scope='context')
-            - 'id_and_answer': boolean operation `'id' AND 'answer'`.
-                    Typical use case: Question Answering with document-specific answers (see answer_scope='document')
-            - 'id_and_context_and_answer': boolean operation `'id' AND 'context' and 'answer'`.
-                    Typical use case: Question Answering with document-and-context-specific answers (see answer_scope='document_and_context')
-            Default value is 'id_or_answer'.
+            - 'document_id_and_answer': boolean operation `'document_id' AND 'answer'`.
+                    Typical use case: Question Answering with document-specific answers (see answer_scope='document_id')
+            - 'document_id_and_context_and_answer': boolean operation `'document_id' AND 'context' and 'answer'`.
+                    Typical use case: Question Answering with document-and-context-specific answers (see answer_scope='document_id_and_context')
+            Default value is 'document_id_or_answer'.
         """
         if simulated_top_k_retriever != -1:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
@@ -1181,7 +1181,7 @@ class EvaluationResult:
             gold_ids = list(query_df["gold_document_ids"].iloc[0])
             retrieved = len(query_df)
 
-            relevance_criterion_col = f"{document_relevance_criterion.replace('id', 'gold_id')}_match"
+            relevance_criterion_col = f"{document_relevance_criterion.replace('document_id', 'gold_id')}_match"
             relevance_criterion_ids = list(query_df[query_df[relevance_criterion_col] == 1]["document_id"].values)
             num_relevants = len(set(gold_ids + relevance_criterion_ids))
             num_retrieved_relevants = query_df[relevance_criterion_col].values.sum()

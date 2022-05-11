@@ -770,9 +770,9 @@ class Pipeline:
         reuse_index: bool = False,
         custom_document_id_field: Optional[str] = None,
         document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer",
-        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+        ] = "document_id_or_answer",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
         context_matching_min_length: int = 100,
         context_matching_boost_split_overlaps: bool = True,
         context_matching_threshold: float = 65.0,
@@ -860,32 +860,32 @@ class Pipeline:
                                          If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
         :param document_scope: criterion for deciding whether documents are relevant or not.
             You can select between:
-            - 'id': Document's id or custom id must match.
+            - 'document_id': Document's id or custom id must match.
                     Typical use case: Document Retrieval
             - 'context': Document's content must match.
                     Typical use case: Document-independent Passage Retrieval
-            - 'id_and_context': boolean operation `'id' AND 'context'`.
+            - 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
                     Typical use case: Document-specific Passage Retrieval
-            - 'id_or_context': boolean operation `'id' OR 'context'`.
+            - 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
                     Typical use case: Document Retrieval having sparse context labels
             - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
                     Typical use case: Question Answering
-            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+            - 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
-            Default value is 'id_or_answer'.
+            Default value is 'document_id_or_answer'.
         :param answer_scope: scope in which a matching answer is considered as correct.
             You can select between:
             - 'any' (default): any matching answer is considered as correct.
-                    For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+                    For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
                     Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
             - 'context': answer is only considered as correct if its context matches as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
-            - 'document': answer is only considered as correct if its document (id) matches as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
-            - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+            - 'document_id': answer is only considered as correct if its document (id) matches as well.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+            - 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
             Default value is 'any'.
         :param context_matching_min_length: The minimum string length context and candidate need to have in order to be scored.
                            Returns 0.0 otherwise.
@@ -1127,7 +1127,7 @@ class Pipeline:
                             if sim > context_matching_threshold
                         )
                     )
-                    df["sas_document_scope"] = df.map_rows(
+                    df["sas_document_id_scope"] = df.map_rows(
                         lambda row: max(
                             sas
                             for sas, doc_match in zip(
@@ -1163,9 +1163,9 @@ class Pipeline:
                 "exact_match_context_scope",
                 "f1_context_scope",
                 "sas_context_scope",
-                "exact_match_document_scope",
-                "f1_document_scope",
-                "sas_document_scope",
+                "exact_match_document_id_scope",
+                "f1_document_id_scope",
+                "sas_document_id_scope",
                 "exact_match_document_and_context_scope",
                 "f1_document_and_context_scope",
                 "sas_document_and_context_scope",
@@ -1331,8 +1331,8 @@ class Pipeline:
                     )
                 )
 
-                # answer_scope: document
-                df_answers["exact_match_document_scope"] = df_answers.map_rows(
+                # answer_scope: document_id
+                df_answers["exact_match_document_id_scope"] = df_answers.map_rows(
                     lambda row: max(
                         em
                         for em, doc_match in zip(
@@ -1341,7 +1341,7 @@ class Pipeline:
                         if doc_match == 1.0
                     )
                 )
-                df_answers["f1_document_scope"] = df_answers.map_rows(
+                df_answers["f1_document_id_scope"] = df_answers.map_rows(
                     lambda row: max(
                         f1
                         for f1, doc_match in zip(row["gold_answers_f1"] + [0.0], row["gold_documents_id_match"] + [1.0])
@@ -1349,7 +1349,7 @@ class Pipeline:
                     )
                 )
 
-                # answer_scope: document_and_context
+                # answer_scope: document_id_and_context
                 df_answers["exact_match_document_and_context_scope"] = df_answers.map_rows(
                     lambda row: max(
                         f1
@@ -1437,18 +1437,18 @@ class Pipeline:
                     ]
                 )
 
-                # document_relevance_criterion: "id"
+                # document_relevance_criterion: "document_id"
                 df_docs["gold_id_match"] = df_docs.map_rows(lambda row: max(row["gold_documents_id_match"] + [0.0]))
 
                 # document_relevance_criterion: "answer",
                 df_docs["answer_match"] = df_docs.map_rows(lambda row: max(row["gold_answers_match"] + [0.0]))
 
-                # document_relevance_criterion: "id_or_answer",
+                # document_relevance_criterion: "document_id_or_answer",
                 df_docs["gold_id_or_answer_match"] = df_docs.map_rows(
                     lambda row: max(row["gold_id_match"], row["answer_match"])
                 )
 
-                # document_relevance_criterion: "id_and_answer",
+                # document_relevance_criterion: "document_id_and_answer",
                 df_docs["gold_id_and_answer_match"] = df_docs.map_rows(
                     lambda row: min(row["gold_id_match"], row["answer_match"])
                 )
@@ -1460,17 +1460,17 @@ class Pipeline:
                     else 0.0
                 )
 
-                # document_relevance_criterion: "id_or_context",
+                # document_relevance_criterion: "document_id_or_context",
                 df_docs["gold_id_or_context_match"] = df_docs.map_rows(
                     lambda row: max(row["gold_id_match"], row["context_match"])
                 )
 
-                # document_relevance_criterion: "id_and_context",
+                # document_relevance_criterion: "document_id_and_context",
                 df_docs["gold_id_and_context_match"] = df_docs.map_rows(
                     lambda row: min(row["gold_id_match"], row["context_match"])
                 )
 
-                # document_relevance_criterion: "id_and_context_and_answer",
+                # document_relevance_criterion: "document_id_and_context_and_answer",
                 df_docs["gold_id_and_context_and_answer_match"] = df_docs.map_rows(
                     lambda row: min(row["gold_id_match"], row["context_match"], row["answer_match"])
                 )
@@ -1865,8 +1865,8 @@ class Pipeline:
         n_wrong_examples: int = 3,
         metrics_filter: Optional[Dict[str, List[str]]] = None,
         document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer",
+            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+        ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
     ):
         """
@@ -1877,32 +1877,32 @@ class Pipeline:
         :param metrics_filter: The metrics to show per node. If None all metrics will be shown.
         :param document_scope: criterion for deciding whether documents are relevant or not.
             You can select between:
-            - 'id': Document's id or custom id must match.
+            - 'document_id': Document's id or custom id must match.
                     Typical use case: Document Retrieval
             - 'context': Document's content must match.
                     Typical use case: Document-independent Passage Retrieval
-            - 'id_and_context': boolean operation `'id' AND 'context'`.
+            - 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
                     Typical use case: Document-specific Passage Retrieval
-            - 'id_or_context': boolean operation `'id' OR 'context'`.
+            - 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
                     Typical use case: Document Retrieval having sparse context labels
             - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
                     Typical use case: Question Answering
-            - 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+            - 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
-            Default value is 'id_or_answer'.
+            Default value is 'document_id_or_answer'.
         :param answer_scope: scope in which a matching answer is considered as correct.
             You can select between:
             - 'any' (default): any matching answer is considered as correct.
-                    For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+                    For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
                     Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
             - 'context': answer is only considered as correct if its context matches as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
-            - 'document': answer is only considered as correct if its document (id) matches as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
-            - 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-                    `document_scope` must be 'answer' or 'id_or_answer'.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+            - 'document_id': answer is only considered as correct if its document (id) matches as well.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+            - 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
+                    `document_scope` must be 'answer' or 'document_id_or_answer'.
             Default value is 'any'.
         """
         graph = DiGraph(self.graph.edges)
