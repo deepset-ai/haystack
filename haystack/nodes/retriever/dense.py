@@ -1284,6 +1284,9 @@ class TableTextRetriever(BaseRetriever):
         query_encoder_save_dir: str = "query_encoder",
         passage_encoder_save_dir: str = "passage_encoder",
         table_encoder_save_dir: str = "table_encoder",
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
     ):
         """
         Train a TableTextRetrieval model.
