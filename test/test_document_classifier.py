@@ -23,6 +23,31 @@ def test_document_classifier(document_classifier):
 
 
 @pytest.mark.slow
+def test_document_classifier_batch_single_doc_list(document_classifier):
+    docs = [
+        Document(content="""That's good. I like it.""", meta={"name": "0"}, id="1"),
+        Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
+    ]
+    results = document_classifier.predict_batch(documents=docs)
+    expected_labels = ["joy", "sadness"]
+    for i, doc in enumerate(results):
+        assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]
+
+
+@pytest.mark.slow
+def test_document_classifier_batch_multiple_doc_lists(document_classifier):
+    docs = [
+        Document(content="""That's good. I like it.""", meta={"name": "0"}, id="1"),
+        Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
+    ]
+    results = document_classifier.predict_batch(documents=[docs, docs])
+    assert len(results) == 2  # 2 Document lists
+    expected_labels = ["joy", "sadness"]
+    for i, doc in enumerate(results[0]):
+        assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]
+
+
+@pytest.mark.slow
 def test_zero_shot_document_classifier(zero_shot_document_classifier):
     assert isinstance(zero_shot_document_classifier, BaseDocumentClassifier)
 

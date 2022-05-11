@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Optional, Dict, List, Tuple, Type
+from typing import Any, Optional, Dict, List, Tuple, Union, Callable, Type
 
 from copy import deepcopy
 from abc import ABC, abstractmethod
@@ -151,27 +151,51 @@ class BaseComponent(ABC):
         """
         pass
 
+    @abstractmethod
+    def run_batch(
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+    ):
+        pass
+
     def _dispatch_run(self, **kwargs) -> Tuple[Dict, str]:
         """
-        The Pipelines call this method which in turn executes the run() method of Component.
+        The Pipelines call this method when run() is executed. This method in turn executes the _dispatch_run_general()
+        method with the correct run method.
+        """
+        return self._dispatch_run_general(self.run, **kwargs)
 
-        It takes care of the following:
-          - inspect run() signature to validate if all necessary arguments are available
+    def _dispatch_run_batch(self, **kwargs):
+        """
+        The Pipelines call this method when run_batch() is executed. This method in turn executes the
+        _dispatch_run_general() method with the correct run method.
+        """
+        return self._dispatch_run_general(self.run_batch, **kwargs)
+
+    def _dispatch_run_general(self, run_method: Callable, **kwargs):
+        """
+        This method takes care of the following:
+          - inspect run_method's signature to validate if all necessary arguments are available
           - pop `debug` and sets them on the instance to control debug output
-          - call run() with the corresponding arguments and gather output
+          - call run_method with the corresponding arguments and gather output
           - collate `_debug` information if present
           - merge component output with the preceding output and pass it on to the subsequent Component in the Pipeline
         """
         arguments = deepcopy(kwargs)
         params = arguments.get("params") or {}
 
-        run_signature_args = inspect.signature(self.run).parameters.keys()
+        run_signature_args = inspect.signature(run_method).parameters.keys()
 
         run_params: Dict[str, Any] = {}
         for key, value in params.items():
             if key == self.name:  # targeted params for this node
                 if isinstance(value, dict):
-
                     # Extract debug attributes
                     if "debug" in value.keys():
                         self.debug = value.pop("debug")
@@ -189,7 +213,7 @@ class BaseComponent(ABC):
             if key in run_signature_args:
                 run_inputs[key] = value
 
-        output, stream = self.run(**run_inputs, **run_params)
+        output, stream = run_method(**run_inputs, **run_params)
 
         # Collect debug information
         debug_info = {}
@@ -197,10 +221,8 @@ class BaseComponent(ABC):
             # Include input
             debug_info["input"] = {**run_inputs, **run_params}
             debug_info["input"]["debug"] = self.debug
-            # Include output
-            filtered_output = {
-                key: value for key, value in output.items() if key != "_debug"
-            }  # Exclude _debug to avoid recursion
+            # Include output, exclude _debug to avoid recursion
+            filtered_output = {key: value for key, value in output.items() if key != "_debug"}
             debug_info["output"] = filtered_output
         # Include custom debug info
         custom_debug = output.get("_debug", {})
@@ -241,4 +263,7 @@ class RootNode(BaseComponent):
     outgoing_edges = 1
 
     def run(self):  # type: ignore
+        return {}, "output_1"
+
+    def run_batch(self):  # type: ignore
         return {}, "output_1"

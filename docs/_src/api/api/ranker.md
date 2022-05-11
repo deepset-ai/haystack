@@ -92,7 +92,7 @@ p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 #### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: Optional[int] = None)
 ```
 
 **Arguments**:
@@ -107,28 +107,7 @@ See https://huggingface.co/cross-encoder for full list of available models
 The strings will be converted into pytorch devices, so use the string notation described here:
 https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
 (e.g. ["cuda:0"]).
-
-<a id="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
-
-#### SentenceTransformersRanker.predict\_batch
-
-```python
-def predict_batch(query_doc_list: List[dict], top_k: int = None, batch_size: int = None)
-```
-
-Use loaded Ranker model to, for a list of queries, rank each query's supplied list of Document.
-
-Returns list of dictionary of query and list of document sorted by (desc.) similarity with query
-
-**Arguments**:
-
-- `query_doc_list`: List of dictionaries containing queries with their retrieved documents
-- `top_k`: The maximum number of answers to return for each query
-- `batch_size`: Number of samples the model receives in one batch for inference
-
-**Returns**:
-
-List of dictionaries containing query and ranked list of Document
+- `batch_size`: Number of documents to process at a time.
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 
@@ -151,4 +130,37 @@ Returns list of Document sorted by (desc.) similarity with the query.
 **Returns**:
 
 List of Document
+
+<a id="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
+
+#### SentenceTransformersRanker.predict\_batch
+
+```python
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Use loaded ranker model to re-rank the supplied lists of Documents.
+
+Returns lists of Documents sorted by (desc.) similarity with the corresponding queries.
+
+
+- If you provide a single query...
+
+    - ... and a single list of Documents, the single list of Documents will be re-ranked based on the
+      supplied query.
+    - ... and a list of lists of Documents, each list of Documents will be re-ranked individually based on the
+      supplied query.
+
+
+- If you provide a list of queries...
+
+    - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
+      its corresponding query.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries
+- `documents`: Single list of Documents or list of lists of Documents to be reranked.
+- `top_k`: The maximum number of documents to return per Document list.
+- `batch_size`: Number of Documents to process at a time.
 

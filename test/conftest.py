@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union
 
 import subprocess
 import time
@@ -179,6 +179,9 @@ class MockNode(BaseComponent):
     def run(self, *a, **k):
         pass
 
+    def run_batch(self, *a, **k):
+        pass
+
 
 class MockDocumentStore(BaseDocumentStore):
     outgoing_edges = 1
@@ -230,6 +233,9 @@ class MockRetriever(BaseRetriever):
     outgoing_edges = 1
 
     def retrieve(self, query: str, top_k: int):
+        pass
+
+    def retrieve_batch(self, queries: Union[str, List[str]], top_k: int):
         pass
 
 
@@ -596,6 +602,38 @@ def no_answer_reader(request):
 def prediction(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_single_query_single_doc_list(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=docs, top_k=5)
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_single_query_multiple_doc_lists(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_multiple_queries_single_doc_list(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=docs, top_k=5
+    )
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_multiple_queries_multiple_doc_lists(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[docs, docs], top_k=5
+    )
     return prediction
 
 
