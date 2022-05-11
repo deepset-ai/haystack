@@ -770,7 +770,12 @@ class Pipeline:
         reuse_index: bool = False,
         custom_document_id_field: Optional[str] = None,
         document_scope: Literal[
-            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
         context_matching_min_length: int = 100,
@@ -1865,7 +1870,12 @@ class Pipeline:
         n_wrong_examples: int = 3,
         metrics_filter: Optional[Dict[str, List[str]]] = None,
         document_scope: Literal[
-            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
     ):

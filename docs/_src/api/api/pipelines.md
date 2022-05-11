@@ -358,8 +358,13 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 ```python
 @classmethod
 def execute_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evaluation_set_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evaluation_set_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False, custom_document_id_field: Optional[str] = None, document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any", context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
@@ -447,32 +452,32 @@ This is especially useful if you want to match documents on other criteria (e.g.
 If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
 - `document_scope`: criterion for deciding whether documents are relevant or not.
 You can select between:
-- 'id': Document's id or custom id must match.
+- 'document_id': Document's id or custom id must match.
         Typical use case: Document Retrieval
 - 'context': Document's content must match.
         Typical use case: Document-independent Passage Retrieval
-- 'id_and_context': boolean operation `'id' AND 'context'`.
+- 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
         Typical use case: Document-specific Passage Retrieval
-- 'id_or_context': boolean operation `'id' OR 'context'`.
+- 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
         Typical use case: Document Retrieval having sparse context labels
 - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
         Typical use case: Question Answering
-- 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+- 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
         This is intended to be a proper default value in order to support both main use cases:
         - Document Retrieval
         - Question Answering
-Default value is 'id_or_answer'.
+Default value is 'document_id_or_answer'.
 - `answer_scope`: scope in which a matching answer is considered as correct.
 You can select between:
 - 'any' (default): any matching answer is considered as correct.
-        For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+        For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
         Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
 - 'context': answer is only considered as correct if its context matches as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
-- 'document': answer is only considered as correct if its document (id) matches as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
-- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
+- 'document_id': answer is only considered as correct if its document (id) matches as well.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
+- 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
 Default value is 'any'.
 - `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
 Returns 0.0 otherwise.
@@ -733,8 +738,13 @@ Returns a configuration for the Pipeline that can be used with `Pipeline.load_fr
 
 ```python
 def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None, document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any")
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any")
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -746,32 +756,32 @@ Prints evaluation report containing a metrics funnel and worst queries for furth
 - `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
 - `document_scope`: criterion for deciding whether documents are relevant or not.
 You can select between:
-- 'id': Document's id or custom id must match.
+- 'document_id': Document's id or custom id must match.
         Typical use case: Document Retrieval
 - 'context': Document's content must match.
         Typical use case: Document-independent Passage Retrieval
-- 'id_and_context': boolean operation `'id' AND 'context'`.
+- 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
         Typical use case: Document-specific Passage Retrieval
-- 'id_or_context': boolean operation `'id' OR 'context'`.
+- 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
         Typical use case: Document Retrieval having sparse context labels
 - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
         Typical use case: Question Answering
-- 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+- 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
         This is intended to be a proper default value in order to support both main use cases:
         - Document Retrieval
         - Question Answering
-Default value is 'id_or_answer'.
+Default value is 'document_id_or_answer'.
 - `answer_scope`: scope in which a matching answer is considered as correct.
 You can select between:
 - 'any' (default): any matching answer is considered as correct.
-        For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+        For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
         Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
 - 'context': answer is only considered as correct if its context matches as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
-- 'document': answer is only considered as correct if its document (id) matches as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
-- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
+- 'document_id': answer is only considered as correct if its document (id) matches as well.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
+- 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
 Default value is 'any'.
 
 <a id="base._HaystackBeirRetrieverAdapter"></a>
@@ -1193,8 +1203,13 @@ Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scori
 
 ```python
 def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None, document_scope: Literal[
-            "id", "context", "id_and_context", "id_or_context", "answer", "id_or_answer"
-        ] = "id_or_answer", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any")
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any")
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -1206,32 +1221,32 @@ Prints evaluation report containing a metrics funnel and worst queries for furth
 - `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
 - `document_scope`: criterion for deciding whether documents are relevant or not.
 You can select between:
-- 'id': Document's id or custom id must match.
+- 'document_id': Document's id or custom id must match.
         Typical use case: Document Retrieval
 - 'context': Document's content must match.
         Typical use case: Document-independent Passage Retrieval
-- 'id_and_context': boolean operation `'id' AND 'context'`.
+- 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
         Typical use case: Document-specific Passage Retrieval
-- 'id_or_context': boolean operation `'id' OR 'context'`.
+- 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
         Typical use case: Document Retrieval having sparse context labels
 - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
         Typical use case: Question Answering
-- 'id_or_answer' (default): boolean operation `'id' OR 'answer'`.
+- 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
         This is intended to be a proper default value in order to support both main use cases:
         - Document Retrieval
         - Question Answering
-Default value is 'id_or_answer'.
+Default value is 'document_id_or_answer'.
 - `answer_scope`: scope in which a matching answer is considered as correct.
 You can select between:
 - 'any' (default): any matching answer is considered as correct.
-        For QA evalutions `document_scope` should be 'answer' or 'id_or_answer' (default).
+        For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
         Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
 - 'context': answer is only considered as correct if its context matches as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
-- 'document': answer is only considered as correct if its document (id) matches as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
-- 'document_and_context': answer is only considered as correct if its document (id) and its context match as well.
-        `document_scope` must be 'answer' or 'id_or_answer'.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
+- 'document_id': answer is only considered as correct if its document (id) matches as well.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
+- 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
+        `document_scope` must be 'answer' or 'document_id_or_answer'.
 Default value is 'any'.
 
 <a id="standard_pipelines.ExtractiveQAPipeline"></a>

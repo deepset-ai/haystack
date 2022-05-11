@@ -724,7 +724,12 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
-            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
         ] = "document_id_or_answer",
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
@@ -810,7 +815,12 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
-            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
         ] = "document_id_or_answer",
         document_metric: str = "recall_single_hit",
         answer_metric: str = "f1",
@@ -932,7 +942,12 @@ class EvaluationResult:
     def _get_document_relevance_criterion(
         self,
         document_scope: Literal[
-            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> Literal[
@@ -972,7 +987,12 @@ class EvaluationResult:
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
         document_scope: Literal[
-            "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer",
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
         ] = "document_id_or_answer",
         eval_mode: str = "integrated",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
