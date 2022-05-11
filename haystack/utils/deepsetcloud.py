@@ -758,6 +758,48 @@ class EvaluationSetClient:
         return self.client.build_workspace_url(workspace)
 
 
+class EvaluationRunClient:
+    def __init__(
+        self, client: DeepsetCloudClient, workspace: Optional[str] = None,
+    ):
+        """
+        A client to manage deepset Cloud evaluation runs.
+
+        :param client: deepset Cloud client
+        :param workspace: workspace in deepset Cloud
+
+        """
+        self.client = client
+        self.workspace = workspace
+
+    def create_eval_run(self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None, headers: dict = None, evaluation_set: Optional[str] = None, eval_mode: Literal["integrated", "isolated"] = "integrated", debug: bool = False):
+        workspace_url = self._build_workspace_url(workspace)
+        eval_run_url = f"{workspace_url}/eval_run"
+        response = self.client.post(eval_run_url, json={
+            "pipeline_id": "abc",
+            "evaluation_set_id": "abc",
+            "debug": debug,
+            "eval_mode": 0 if eval_mode == "integrated" else 1
+        }, headers=headers)
+        return response.json()["data"]
+
+    def get_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None):
+        workspace_url = self._build_workspace_url(workspace)
+        eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}"
+        response = self.client.get(eval_run_url, headers=headers)
+        return response.json()
+
+    def get_eval_runs(self, workspace: Optional[str] = None, headers: dict = None):
+        workspace_url = self._build_workspace_url(workspace)
+        eval_run_url = f"{workspace_url}/eval_run"
+        response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
+        return response
+
+    def _build_workspace_url(self, workspace: Optional[str] = None):
+        if workspace is None:
+            workspace = self.workspace
+        return self.client.build_workspace_url(workspace)
+
 class DeepsetCloud:
     """
     A facade to communicate with deepset Cloud.
