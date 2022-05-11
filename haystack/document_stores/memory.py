@@ -282,6 +282,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         query_emb: np.ndarray,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         top_k: int = 10,
+        min_score: Optional[float] = None,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -357,6 +358,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
+        if min_score:
+            raise NotImplementedError("InMemoryDocumentStore does not support min_score.")
 
         index = index or self.index
         if return_embedding is None:

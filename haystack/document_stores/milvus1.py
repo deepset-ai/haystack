@@ -354,6 +354,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
         query_emb: np.ndarray,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in MilvusDocStore
         top_k: int = 10,
+        min_score: Optional[float] = None,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -371,6 +372,8 @@ class Milvus1DocumentStore(SQLDocumentStore):
         """
         if headers:
             raise NotImplementedError("MilvusDocumentStore does not support headers.")
+        if min_score:
+            raise NotImplementedError("MilvusDocumentStore does not support min_score.")
 
         if filters:
             logger.warning("Query filters are not implemented for the MilvusDocumentStore.")

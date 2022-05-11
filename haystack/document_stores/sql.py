@@ -584,6 +584,7 @@ class SQLDocumentStore(BaseDocumentStore):
         query_emb: np.ndarray,
         filters: Optional[dict] = None,
         top_k: int = 10,
+        min_score: Optional[float] = None,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,

@@ -550,6 +550,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         query_emb: np.ndarray,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
+        min_score: Optional[float] = None,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -625,6 +626,8 @@ class PineconeDocumentStore(SQLDocumentStore):
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
+        if min_score:
+            raise NotImplementedError("Milvus2DocumentStore does not support min_score.")
 
         if return_embedding is None:
             return_embedding = self.return_embedding
