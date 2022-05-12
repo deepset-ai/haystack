@@ -25,6 +25,54 @@ def test_output(prediction):
     assert len(prediction["answers"]) == 5
 
 
+def test_output_batch_single_query_single_doc_list(batch_prediction_single_query_single_doc_list):
+    prediction = batch_prediction_single_query_single_doc_list
+    assert prediction is not None
+    assert prediction["queries"] == "Who lives in Berlin?"
+    # Expected output: List of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 5  # Predictions for 5 docs
+
+
+def test_output_batch_single_query_multiple_doc_lists(batch_prediction_single_query_multiple_doc_lists):
+    prediction = batch_prediction_single_query_multiple_doc_lists
+    assert prediction is not None
+    assert prediction["queries"] == "Who lives in Berlin?"
+    # Expected output: List of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 2  # Predictions for 2 collection of docs
+    assert len(prediction["answers"][0]) == 5  # top-k of 5 per collection of docs
+
+
+def test_output_batch_multiple_queries_single_doc_list(batch_prediction_multiple_queries_single_doc_list):
+    prediction = batch_prediction_multiple_queries_single_doc_list
+    assert prediction is not None
+    assert prediction["queries"] == ["Who lives in Berlin?", "Who lives in New York?"]
+    # Expected output: List of lists of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], list)
+    assert isinstance(prediction["answers"][0][0][0], Answer)
+    assert len(prediction["answers"]) == 2  # Predictions for 2 queries
+    assert len(prediction["answers"][0]) == 5  # Predictions for 5 documents
+
+
+def test_output_batch_multiple_queries_multiple_doc_lists(batch_prediction_multiple_queries_multiple_doc_lists):
+    prediction = batch_prediction_multiple_queries_multiple_doc_lists
+    assert prediction is not None
+    assert prediction["queries"] == ["Who lives in Berlin?", "Who lives in New York?"]
+    # Expected output: List of lists answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 2  # Predictions for 2 collections of documents
+    assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
+
+
 @pytest.mark.slow
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None

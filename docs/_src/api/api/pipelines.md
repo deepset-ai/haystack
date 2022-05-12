@@ -295,6 +295,33 @@ about their execution. By default these include the input parameters
 they received and the output they generated. All debug information can
 then be found in the dict returned by this method under the key "_debug"
 
+<a id="base.Pipeline.run_batch"></a>
+
+#### Pipeline.run\_batch
+
+```python
+def run_batch(queries: Optional[Union[str, List[str]]] = None, file_paths: Optional[List[str]] = None, labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None, documents: Optional[Union[List[Document], List[List[Document]]]] = None, meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
+```
+
+Runs the pipeline in batch mode, one node at a time.
+
+**Arguments**:
+
+- `queries`: Single search query or list of search queries (for query pipelines only)
+- `file_paths`: The files to index (for indexing pipelines only). Providing file_paths will result in
+calling the Pipeline's run method instead of run_batch
+- `labels`: 
+- `documents`: 
+- `meta`: 
+- `params`: Dictionary of parameters to be dispatched to the nodes.
+If you want to pass a param to all nodes, you can just use: {"top_k":10}
+If you want to pass it to targeted nodes, you can do:
+{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated. All debug information can
+then be found in the dict returned by this method under the key "_debug"
+
 <a id="base.Pipeline.eval_beir"></a>
 
 #### Pipeline.eval\_beir

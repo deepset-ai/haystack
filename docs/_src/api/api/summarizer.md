@@ -87,7 +87,7 @@ See the up-to-date list of available models on
 #### TransformersSummarizer.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: bool = True, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False)
+def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: bool = True, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False, batch_size: Optional[int] = None)
 ```
 
 Load a Summarization model from Transformers.
@@ -112,13 +112,14 @@ into a single text. This separator appears between those subsequent docs.
 If set to "True", all docs will be joined to a single string that will then
 be summarized.
 Important: The summary will depend on the order of the supplied documents!
+- `batch_size`: Number of documents to process at a time.
 
 <a id="transformers.TransformersSummarizer.predict"></a>
 
 #### TransformersSummarizer.predict
 
 ```python
-def predict(documents: List[Document], generate_single_summary: Optional[bool] = None, truncation: bool = True) -> List[Document]
+def predict(documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]
 ```
 
 Produce the summarization from the supplied documents.
@@ -132,10 +133,32 @@ These document can for example be retrieved via the Retriever.
 If set to "True", all docs will be joined to a single string that will then
 be summarized.
 Important: The summary will depend on the order of the supplied documents!
-- `truncation`: Truncate to a maximum length accepted by the model
 
 **Returns**:
 
 List of Documents, where Document.text contains the summarization and Document.meta["context"]
 the original, not summarized text
+
+<a id="transformers.TransformersSummarizer.predict_batch"></a>
+
+#### TransformersSummarizer.predict\_batch
+
+```python
+def predict_batch(documents: Union[List[Document], List[List[Document]]], generate_single_summary: Optional[bool] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Produce the summarization from the supplied documents.
+
+These documents can for example be retrieved via the Retriever.
+
+**Arguments**:
+
+- `documents`: Single list of related documents or list of lists of related documents
+(e.g. coming from a retriever) that the answer shall be conditioned on.
+- `generate_single_summary`: Whether to generate a single summary for each provided document list or
+one summary per document.
+If set to "True", all docs of a document list will be joined to a single string
+that will then be summarized.
+Important: The summary will depend on the order of the supplied documents!
+- `batch_size`: Number of Documents to process at a time.
 

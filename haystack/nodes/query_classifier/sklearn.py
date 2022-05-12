@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, Any
+from typing import Union, Any, List, Optional, Iterator, Dict
 import pickle
 import urllib
 
@@ -61,11 +61,13 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         vectorizer_name_or_path: Union[
             str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
+        batch_size: Optional[int] = None,
     ):
         """
         :param model_name_or_path: Gradient boosting based binary classifier to classify between keyword vs statement/question
         queries or statement vs question queries.
         :param vectorizer_name_or_path: A ngram based Tfidf vectorizer for extracting features from query.
+        :param batch_size: Number of queries to process at a time.
         """
         if ((not isinstance(model_name_or_path, Path)) and (not isinstance(model_name_or_path, str))) or (
             (not isinstance(vectorizer_name_or_path, Path)) and (not isinstance(vectorizer_name_or_path, str))
@@ -84,6 +86,7 @@ class SklearnQueryClassifier(BaseQueryClassifier):
 
         self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
+        self.batch_size = batch_size
 
     def run(self, query):
         query_vector = self.vectorizer.transform([query])
@@ -93,3 +96,34 @@ class SklearnQueryClassifier(BaseQueryClassifier):
             return {}, "output_1"
         else:
             return {}, "output_2"
+
+    def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):  # type: ignore
+        if isinstance(queries, str):
+            return self.run(queries)
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        split: Dict[str, Dict[str, List]] = {"output_1": {"queries": []}, "output_2": {"queries": []}}
+
+        batches = self._get_batches(queries=queries, batch_size=batch_size)
+        predictions = []
+        for batch in batches:
+            query_vectors = self.vectorizer.transform(batch)
+            predictions.extend(self.model.predict(query_vectors))
+        for query, pred in zip(queries, predictions):
+            if pred:
+                split["output_1"]["queries"].append(query)
+            else:
+                split["output_2"]["queries"].append(query)
+
+        return split, "split"
+
+    @staticmethod
+    def _get_batches(queries: List[str], batch_size: Optional[int]) -> Iterator[List[str]]:
+        if batch_size is None:
+            yield queries
+            return
+        else:
+            for index in range(0, len(queries), batch_size):
+                yield queries[index : index + batch_size]

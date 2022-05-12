@@ -69,6 +69,9 @@ class ParentComponent(BaseComponent):
     def run(*args, **kwargs):
         logging.info("ParentComponent run() was called")
 
+    def run_batch(*args, **kwargs):
+        pass
+
 
 class ParentComponent2(BaseComponent):
     outgoing_edges = 1
@@ -79,6 +82,9 @@ class ParentComponent2(BaseComponent):
     def run(*args, **kwargs):
         logging.info("ParentComponent2 run() was called")
 
+    def run_batch(*args, **kwargs):
+        pass
+
 
 class ChildComponent(BaseComponent):
     def __init__(self, some_key: str = None) -> None:
@@ -86,6 +92,9 @@ class ChildComponent(BaseComponent):
 
     def run(*args, **kwargs):
         logging.info("ChildComponent run() was called")
+
+    def run_batch(*args, **kwargs):
+        pass
 
 
 class DummyRetriever(MockRetriever):
@@ -1551,6 +1560,9 @@ def test_pipeline_components():
             test = "test"
             return {"test": test}, "output_1"
 
+        def run_batch(self):
+            return
+
     a = Node()
     b = Node()
     c = Node()
@@ -1676,3 +1688,35 @@ def test_joinanswers(join_mode):
     result, _ = join_answers.run(inputs, top_k_join=1)
     assert len(result["answers"]) == 1
     assert result["answers"][0].answer == "answer 2"
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_batch_querying_single_query(document_store_with_docs):
+    query_pipeline = Pipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
+    )
+    query_pipeline.components["ESRetriever"].document_store = document_store_with_docs
+    result = query_pipeline.run_batch(queries="Who lives in Berlin?")
+    # As we have a single query as input, this Pipeline will retrieve a list of relevant documents, apply the reader to
+    # each of the documents and return the predicted answers for each document
+    assert isinstance(result["answers"], list)
+    assert isinstance(result["answers"][0], list)
+    assert isinstance(result["answers"][0][0], Answer)
+    assert len(result["answers"]) == 5  # Predictions for 5 docs, as top-k is set to 5 for the retriever
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_batch_querying_multiple_queries(document_store_with_docs):
+    query_pipeline = Pipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
+    )
+    query_pipeline.components["ESRetriever"].document_store = document_store_with_docs
+    result = query_pipeline.run_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
+    # As we have a list of queries as input, this Pipeline will retrieve a list of relevant documents for each of the
+    # queries (resulting in a list of lists of documents), apply the reader with each query and their corresponding
+    # retrieved documents and return the predicted answers for each document list
+    assert isinstance(result["answers"], list)
+    assert isinstance(result["answers"][0], list)
+    assert isinstance(result["answers"][0][0], Answer)
+    assert len(result["answers"]) == 2  # Predictions for 2 collections of documents
+    assert len(result["answers"][0]) == 5  # top-k of 5 for collection of docs

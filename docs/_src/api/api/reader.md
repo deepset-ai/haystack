@@ -10,16 +10,6 @@
 class BaseReader(BaseComponent)
 ```
 
-<a id="base.BaseReader.run_batch"></a>
-
-#### BaseReader.run\_batch
-
-```python
-def run_batch(query_doc_list: List[Dict], top_k: Optional[int] = None)
-```
-
-A unoptimized implementation of running Reader queries in batch
-
 <a id="base.BaseReader.timing"></a>
 
 #### BaseReader.timing
@@ -348,22 +338,30 @@ Saves the Reader model so that it can be reused at a later point in time.
 #### FARMReader.predict\_batch
 
 ```python
-def predict_batch(query_doc_list: List[dict], top_k: int = None, batch_size: int = None)
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
 ```
 
-Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
+Use loaded QA model to find answers for the queries in the Documents.
 
-Returns list of dictionaries containing answers sorted by (desc.) score
+- If you provide a single query...
+
+    - ... and a single list of Documents, the query will be applied to each Document individually.
+    - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+      will be aggregated per Document list.
+
+- If you provide a list of queries...
+
+    - ... and a single list of Documents, each query will be applied to each Document individually.
+    - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+      and the Answers will be aggregated per query-Document pair.
 
 **Arguments**:
 
-- `query_doc_list`: List of dictionaries containing queries with their retrieved documents
-- `top_k`: The maximum number of answers to return for each query
-- `batch_size`: Number of samples the model receives in one batch for inference
-
-**Returns**:
-
-List of dictionaries containing query and answers
+- `queries`: Single query or list of queries.
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+Can be a single list of Documents or a list of lists of Documents.
+- `top_k`: Number of returned answers per query.
+- `batch_size`: Number of query-document pairs to be processed at a time.
 
 <a id="farm.FARMReader.predict"></a>
 
@@ -564,7 +562,7 @@ With this reader, you can directly get predictions via predict()
 #### TransformersReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128)
+def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128, batch_size: Optional[int] = None)
 ```
 
 Load a QA model from Transformers.
@@ -597,6 +595,7 @@ If False, it cannot return a "no_answer". Note that `no_answer_boost` is unfortu
 If you would like to set no_answer_boost, use a `FARMReader`.
 - `max_seq_len`: max sequence length of one input text for the model
 - `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
+- `batch_size`: Number of documents to process at a time.
 
 <a id="transformers.TransformersReader.predict"></a>
 
@@ -635,6 +634,36 @@ Example:
 **Returns**:
 
 Dict containing query and answers
+
+<a id="transformers.TransformersReader.predict_batch"></a>
+
+#### TransformersReader.predict\_batch
+
+```python
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+```
+
+Use loaded QA model to find answers for the queries in the Documents.
+
+- If you provide a single query...
+
+    - ... and a single list of Documents, the query will be applied to each Document individually.
+    - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+      will be aggregated per Document list.
+
+- If you provide a list of queries...
+
+    - ... and a single list of Documents, each query will be applied to each Document individually.
+    - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+      and the Answers will be aggregated per query-Document pair.
+
+**Arguments**:
+
+- `queries`: Single query or list of queries.
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+Can be a single list of Documents or a list of lists of Documents.
+- `top_k`: Number of returned answers per query.
+- `batch_size`: Number of query-document pairs to be processed at a time.
 
 <a id="table"></a>
 
@@ -741,6 +770,43 @@ of content_type ``'table'``.
 **Returns**:
 
 Dict containing query and answers
+
+<a id="table.TableReader.predict_batch"></a>
+
+#### TableReader.predict\_batch
+
+```python
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+```
+
+Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
+
+of content_type ``'table'``.
+
+Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+
+WARNING: The answer scores are not reliable, as they are always extremely high, even if
+a question cannot be answered by a given table.
+
+- If you provide a single query...
+
+    - ... and a single list of Documents, the query will be applied to each Document individually.
+    - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+      will be aggregated per Document list.
+
+- If you provide a list of queries...
+
+    - ... and a single list of Documents, each query will be applied to each Document individually.
+    - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+      and the Answers will be aggregated per query-Document pair.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `documents`: Single list of Documents or list of lists of Documents in which to search for the answers.
+Documents should be of content_type ``'table'``.
+- `top_k`: The maximum number of answers to return per query.
+- `batch_size`: Not applicable.
 
 <a id="table.RCIReader"></a>
 

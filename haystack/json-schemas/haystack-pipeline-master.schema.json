@@ -2308,6 +2308,10 @@
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -3190,6 +3194,10 @@
             "prompt": {
               "title": "Prompt",
               "default": "generate questions:"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -3452,6 +3460,10 @@
                   }
                 ]
               }
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "required": [
@@ -3570,6 +3582,10 @@
                 },
                 {}
               ]
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -4070,7 +4086,6 @@
             },
             "batch_size": {
               "title": "Batch Size",
-              "default": -1,
               "type": "integer"
             },
             "classification_field": {
@@ -4123,6 +4138,10 @@
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -4200,6 +4219,10 @@
               "title": "Doc Stride",
               "default": 128,
               "type": "integer"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -4272,6 +4295,10 @@
               "title": "Generate Single Summary",
               "default": false,
               "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
