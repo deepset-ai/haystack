@@ -20,7 +20,7 @@ from ..conftest import (
     DC_API_KEY,
     DC_TEST_INDEX,
     SAMPLES_PATH,
-    DOCS_ALL_FORMATS
+    DOCS_ALL_FORMATS,
 )
 from haystack.document_stores import (
     OpenSearchDocumentStore,

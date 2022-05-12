@@ -1646,7 +1646,7 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
 def test_batch_querying_single_query():
     docstore = InMemoryDocumentStore()
     docstore.write_documents(DOCS)
-    
+
     retriever = BM25Retriever(document_store=docstore)
     retriever = FARMReader(SMALL_READER_MODEL)
     pipeline = Pipeline()
@@ -1666,7 +1666,7 @@ def test_batch_querying_single_query():
 def test_batch_querying_multiple_queries():
     docstore = InMemoryDocumentStore()
     docstore.write_documents(DOCS)
-    
+
     retriever = BM25Retriever(document_store=docstore)
     retriever = FARMReader(SMALL_READER_MODEL)
     pipeline = Pipeline()

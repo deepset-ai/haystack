@@ -115,7 +115,6 @@ DOCS = [Document.from_dict(doc) for doc in DOCS_ALL_FORMATS]
 SMALL_READER_MODEL = "distilbert-base-uncased-distilled-squad"
 
 
-
 # Disable telemetry reports when running tests
 posthog.disabled = True
 
