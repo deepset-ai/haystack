@@ -211,6 +211,44 @@ class DeepsetCloudClient:
             auto_paging_page_size=auto_paging_page_size,
         )
 
+    def delete(
+        self,
+        url: str,
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+    ):
+        return self._execute_request(
+            method="DELETE",
+            url=url,
+            query_params=query_params,
+            headers=headers,
+            stream=stream,
+            raise_on_error=raise_on_error,
+        )
+
+    def patch(
+        self,
+        url: str,
+        json: dict = None,
+        data: Any = None,
+        query_params: dict = None,
+        stream: bool = False,
+        headers: dict = None,
+        raise_on_error: bool = True,
+    ):
+        return self._execute_request(
+            method="PATCH",
+            url=url,
+            query_params=query_params,
+            json=json,
+            data=data,
+            stream=stream,
+            headers=headers,
+            raise_on_error=raise_on_error,
+        )
+
     def _execute_auto_paging_request(
         self,
         method: Literal["GET", "POST", "PUT", "HEAD"],
@@ -246,7 +284,7 @@ class DeepsetCloudClient:
 
     def _execute_request(
         self,
-        method: Literal["GET", "POST", "PUT", "HEAD"],
+        method: Literal["GET", "POST", "PUT", "HEAD", "DELETE", "PATCH"],
         url: str,
         json: dict = None,
         data: Any = None,
@@ -818,6 +856,39 @@ class EvaluationRunClient:
         response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
         return response
 
+    def delete_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None):
+        workspace_url = self._build_workspace_url(workspace)
+        eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}"
+        response = self.client.delete(eval_run_url, headers=headers)
+        if response.status_code == 204:
+            logger.info(f"Eval run '{eval_run_id}' deleted.")
+
+    def update_eval_run(
+        self,
+        eval_run_id: str,
+        workspace: Optional[str] = None,
+        pipeline_config_name: Optional[str] = None,
+        headers: dict = None,
+        evaluation_set: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        pipeline_info = self.pipeline_client.get_pipeline_config_info(
+            workspace=workspace, pipeline_config_name=pipeline_config_name, headers=headers
+        )
+        if pipeline_info is None:
+            raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
+        pipeline_id = pipeline_info["pipeline_id"]
+        evalset = next(self.evalset_client._get_evaluation_set(workspace=workspace, evaluation_set=evaluation_set))
+        if evalset is None:
+            raise DeepsetCloudError(f"Evaluation set '{evaluation_set}' does not exist.")
+        evalset_id = evalset["evaluation_set_id"]
+
+        workspace_url = self._build_workspace_url(workspace)
+        eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}"
+        response = self.client.patch(
+            eval_run_url, json={"pipeline_id": pipeline_id, "evaluation_set_id": evalset_id}, headers=headers
+        )
+        return response.json()["data"]
+
     def _build_workspace_url(self, workspace: Optional[str] = None):
         if workspace is None:
             workspace = self.workspace
@@ -894,3 +965,20 @@ class DeepsetCloud:
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return EvaluationSetClient(client=client, workspace=workspace, evaluation_set=evaluation_set)
+
+    @classmethod
+    def get_eval_run_client(
+        cls, api_key: Optional[str] = None, api_endpoint: Optional[str] = None, workspace: str = "default"
+    ) -> EvaluationRunClient:
+        """
+        Creates a client to manage eval runs on deepset Cloud.
+
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param workspace: workspace in deepset Cloud
+
+        """
+        client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
+        return EvaluationRunClient(client=client, workspace=workspace)
