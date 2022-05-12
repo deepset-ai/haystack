@@ -129,18 +129,20 @@ class TransformersReader(BaseReader):
             max_seq_len=self.max_seq_len,
             doc_stride=self.doc_stride,
         )
+        # Transformers gives different output dependiing on top_k_per_candidate and number of inputs
         if isinstance(predictions, dict):
+            predictions = [[predictions]]
+        elif len(inputs) == 1:
             predictions = [predictions]
+        else:
+            predictions = [p if isinstance(p, list) else [p] for p in predictions]
+
         # Add Document ID to predictions to be able to construct Answer objects
         for preds_for_single_doc, inp in zip(predictions, inputs):
             cur_doc_id = inp.doc_id
-            if isinstance(preds_for_single_doc, list):
-                for pred in preds_for_single_doc:
-                    pred["doc_id"] = cur_doc_id
-            else:
-                preds_for_single_doc["doc_id"] = cur_doc_id
-        if isinstance(predictions[0], list):
-            predictions = list(itertools.chain.from_iterable(predictions))
+            for pred in preds_for_single_doc:
+                pred["doc_id"] = cur_doc_id
+        predictions = list(itertools.chain.from_iterable(predictions))
 
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, all_docs, top_k)
 
@@ -198,6 +200,8 @@ class TransformersReader(BaseReader):
         # Transformers flattens lists of length 1. This restores the original list structure.
         if isinstance(predictions, dict):
             predictions = [[predictions]]
+        elif len(number_of_docs) == 1:
+            predictions = [predictions]
         else:
             predictions = [p if isinstance(p, list) else [p] for p in predictions]
 
