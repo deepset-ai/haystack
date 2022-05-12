@@ -125,7 +125,7 @@ or an entailment.
 def predict(documents: List[Document], batch_size: Optional[int] = None) -> List[Document]
 ```
 
-Returns documents containing classification result in meta field.
+Returns documents containing classification result in a meta field.
 
 Documents are updated in place.
 
