@@ -179,9 +179,13 @@ def print_eval_report(
         logger.warning("Pipelines with junctions are currently not supported.")
         return
 
+    answer_nodes = {node for node, df in eval_result.node_results.items() if len(df[df["type"] == "answer"]) > 0}
+    all_top_1_metrics = eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, simulated_top_k_reader=1)
+    answer_top_1_metrics = {node: metrics for node, metrics in all_top_1_metrics.items() if node in answer_nodes}
+
     calculated_metrics = {
         "": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col),
-        "_top_1": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, simulated_top_k_reader=1),
+        "_top_1": answer_top_1_metrics,
         " upper bound": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, eval_mode="isolated"),
     }
 
@@ -242,7 +246,9 @@ def _format_wrong_examples_report(eval_result: EvaluationResult, n_wrong_example
         node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
         for node in eval_result.node_results.keys()
     }
-    examples_formatted = {node: "\n".join(map(_format_wrong_example, examples)) for node, examples in examples.items()}
+    examples_formatted = {
+        node: "\n".join(map(_format_wrong_example, examples)) for node, examples in examples.items() if any(examples)
+    }
 
     return "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
 
