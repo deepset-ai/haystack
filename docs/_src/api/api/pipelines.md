@@ -10,9 +10,11 @@
 class Pipeline()
 ```
 
-Pipeline brings together building blocks to build a complex search pipeline with Haystack and user-defined components.
+Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
 
-Under the hood, a pipeline is represented as a directed acyclic graph of component nodes. You can use it for custom query flows with the option to branch queries (for example, extractive question answering and keyword match query), merge candidate documents for a Reader from multiple Retrievers, or re-ranking of candidate documents.
+Under-the-hood, a pipeline is represented as a directed acyclic graph of component nodes. It enables custom query
+flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
+Reader from multiple Retrievers, or re-ranking of candidate documents.
 
 <a id="base.Pipeline.root_node"></a>
 
@@ -275,22 +277,23 @@ Set the component for a node in the Pipeline.
 def run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[Union[dict, List[dict]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-Runs the Pipeline, one node at a time.
+Runs the pipeline, one node at a time.
 
 **Arguments**:
 
 - `query`: The search query (for query pipelines only)
 - `file_paths`: The files to index (for indexing pipelines only)
-- `labels`: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
-- `documents`: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
-- `meta`: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
-- `params`: Dictionary of parameters to be dispatched to the Nodes.  
-To pass a parameter to all Nodes, use: `{"top_k":10}`.  
-To pass a parameter to targeted Nodes, run:
-`{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
-- `debug`: Specifies whether the Pipeline should instruct Nodes to collect debug information
-about their execution. By default, this information includes the input parameters
-the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
+- `labels`: 
+- `documents`: 
+- `meta`: 
+- `params`: Dictionary of parameters to be dispatched to the nodes.
+If you want to pass a param to all nodes, you can just use: {"top_k":10}
+If you want to pass it to targeted nodes, you can do:
+{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated. All debug information can
+then be found in the dict returned by this method under the key "_debug"
 
 <a id="base.Pipeline.run_batch"></a>
 
@@ -300,28 +303,24 @@ the Nodes received and the output they generated. You can then find all debug in
 def run_batch(queries: Optional[Union[str, List[str]]] = None, file_paths: Optional[List[str]] = None, labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None, documents: Optional[Union[List[Document], List[List[Document]]]] = None, meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
-Runs the Pipeline in a batch mode, one node at a time. The batch mode means that the Pipeline can take more than one query as input. You can use this method for query pipelines only. When used with an indexing pipeline, it calls the pipeline `run()` method.
-
-Here is what the method returns:
-|   |Single query |A list of queries   |
-|---|---|---|
-| A list of Documents  | Applies the query to each Document individually and returns answers for each single Document. | Applies each query to each Document individually and returns answers for each query-document pair. |
-| A list of lists of Documents  |  Applies the query to each list of Documents and returns aggregated answers for each list of Documents. |  Applies each query to its corresponding Document list and aggregates answers for each list of Documents. |
+Runs the pipeline in batch mode, one node at a time.
 
 **Arguments**:
 
-- `queries`: Single search query or a list of search queries (for query pipelines only).
-- `file_paths`: The files to index (for indexing pipelines only). If you provide `file_paths` the Pipeline's `run` method instead of `run_batch` is called.
-- `labels`: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
-- `documents`: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
-- `meta`: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
-- `params`: Dictionary of parameters to be dispatched to the Nodes.  
-To pass a parameter to all Nodes, use: `{"top_k":10}`  
-To pass a parameter to targeted Nodes, run:
-`{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
-- `debug`: Specifies whether the Pipeline should instruct Nodes to collect debug information
-about their execution. By default, this information includes the input parameters
-the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
+- `queries`: Single search query or list of search queries (for query pipelines only)
+- `file_paths`: The files to index (for indexing pipelines only). Providing file_paths will result in
+calling the Pipeline's run method instead of run_batch
+- `labels`: 
+- `documents`: 
+- `meta`: 
+- `params`: Dictionary of parameters to be dispatched to the nodes.
+If you want to pass a param to all nodes, you can just use: {"top_k":10}
+If you want to pass it to targeted nodes, you can do:
+{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated. All debug information can
+then be found in the dict returned by this method under the key "_debug"
 
 <a id="base.Pipeline.eval_beir"></a>
 
@@ -334,23 +333,22 @@ def eval_beir(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, index_par
 
 Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
 
-See [BEIR](https://github.com/beir-cellar/beir) for more information.
+See https://github.com/beir-cellar/beir for more information.
 
 **Arguments**:
 
 - `index_pipeline`: The indexing pipeline to use.
 - `query_pipeline`: The query pipeline to evaluate.
-- `index_params`: The parameters to use during indexing (see pipeline.run's params).
-- `query_params`: The parameters to use during querying (see pipeline.run's params).
+- `index_params`: The params to use during indexing (see pipeline.run's params).
+- `query_params`: The params to use during querying (see pipeline.run's params).
 - `dataset`: The BEIR dataset to use.
 - `dataset_dir`: The directory to store the dataset to.
 - `top_k_values`: The top_k values each metric will be calculated for.
-- `keep_index`: Whether to keep the index after evaluation.  
-If `True`, the index is retained after BEIR evaluation.  
-If `False`, the index is deleted immediately afterwards.
-                   Defaults to `False`.
+- `keep_index`: Whether to keep the index after evaluation.
+If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
+                   Defaults to False.
 
-Returns a tuple containing the ncdg, map, recall, and precision scores.
+Returns a tuple containing the ncdg, map, recall and precision scores.
 Each metric is represented by a dictionary containing the scores for each top_k value.
 
 <a id="base.Pipeline.execute_eval_run"></a>
