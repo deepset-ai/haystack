@@ -124,7 +124,7 @@ class TransformersReader(BaseReader):
 
         predictions = self.model(
             inputs,
-            top_k=1,
+            top_k=self.top_k_per_candidate,
             handle_impossible_answer=self.return_no_answers,
             max_seq_len=self.max_seq_len,
             doc_stride=self.doc_stride,
