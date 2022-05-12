@@ -51,7 +51,7 @@ jobs:
           pip install --upgrade --upgrade-strategy eager .[test]
           pip install --upgrade --upgrade-strategy eager rest_api/
           pip install --upgrade --upgrade-strategy eager ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
   prepare-build:
     needs: build-cache
@@ -95,7 +95,7 @@ jobs:
         pip install --upgrade --upgrade-strategy eager .[test]
         pip install --upgrade --upgrade-strategy eager rest_api/
         pip install --upgrade --upgrade-strategy eager ui/
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     # Windows runner can't run Linux containers. Refer https://github.com/actions/virtual-environments/issues/1143
     - name: Set up Windows test env
