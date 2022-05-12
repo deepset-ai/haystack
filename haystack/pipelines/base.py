@@ -1877,7 +1877,7 @@ class Pipeline:
             "answer",
             "document_id_or_answer",
         ] = "document_id_or_answer",
-        answer_scope: Literal["any", "context", "document", "document_and_context"] = "any",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ):
         """
         Prints evaluation report containing a metrics funnel and worst queries for further analysis.
