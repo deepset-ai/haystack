@@ -744,7 +744,7 @@ def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, 
             "document_id_or_context",
             "answer",
             "document_id_or_answer",
-        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document", "document_and_context"] = "any")
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any")
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.

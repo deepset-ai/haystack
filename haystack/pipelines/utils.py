@@ -214,13 +214,17 @@ def print_eval_report(
         return
 
     answer_nodes = {node for node, df in eval_result.node_results.items() if len(df[df["type"] == "answer"]) > 0}
-    all_top_1_metrics = eval_result.calculate_metrics(document_scope=document_scope, answer_scope=answer_scope, simulated_top_k_reader=1)
+    all_top_1_metrics = eval_result.calculate_metrics(
+        document_scope=document_scope, answer_scope=answer_scope, simulated_top_k_reader=1
+    )
     answer_top_1_metrics = {node: metrics for node, metrics in all_top_1_metrics.items() if node in answer_nodes}
 
     calculated_metrics = {
         "": eval_result.calculate_metrics(document_scope=document_scope, answer_scope=answer_scope),
         "_top_1": answer_top_1_metrics,
-        " upper bound": eval_result.calculate_metrics(document_scope=document_scope, answer_scope=answer_scope, eval_mode="isolated"),
+        " upper bound": eval_result.calculate_metrics(
+            document_scope=document_scope, answer_scope=answer_scope, eval_mode="isolated"
+        ),
     }
 
     if metrics_filter is not None:
