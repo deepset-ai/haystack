@@ -124,7 +124,7 @@ class TransformersReader(BaseReader):
 
         predictions = self.model(
             inputs,
-            topk=1,
+            top_k=1,
             handle_impossible_answer=self.return_no_answers,
             max_seq_len=self.max_seq_len,
             doc_stride=self.doc_stride,
@@ -188,12 +188,18 @@ class TransformersReader(BaseReader):
         # Inference
         predictions = self.model(
             inputs,
-            topk=self.top_k_per_candidate,
+            top_k=self.top_k_per_candidate,
             handle_impossible_answer=self.return_no_answers,
             max_seq_len=self.max_seq_len,
             doc_stride=self.doc_stride,
             batch_size=batch_size,
         )
+
+        # Transformers flattens lists of length 1. This restores the original list structure.
+        if isinstance(predictions, dict):
+            predictions = [[predictions]]
+        else:
+            predictions = [p if isinstance(p, list) else [p] for p in predictions]
 
         # Group predictions together
         grouped_predictions = []
@@ -205,14 +211,6 @@ class TransformersReader(BaseReader):
             grouped_predictions.append(predictions[left_idx:right_idx])
             grouped_inputs.append(inputs[left_idx:right_idx])
             left_idx = right_idx
-
-        # Transformers flattens lists of length 1. This restores the original list structure.
-        if isinstance(predictions, dict):
-            predictions = [[predictions]]
-        elif len(number_of_docs) == 1:
-            predictions = [predictions]
-        else:
-            predictions = [p if isinstance(p, list) else [p] for p in predictions]
 
         results: Dict = {"queries": queries, "answers": [], "no_ans_gaps": []}
         for grouped_pred, grouped_inp in zip(grouped_predictions, grouped_inputs):
