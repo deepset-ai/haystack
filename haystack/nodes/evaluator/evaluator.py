@@ -130,6 +130,9 @@ class EvalDocuments(BaseComponent):
             )
         return {"correct_retrieval": correct_retrieval}, "output_1"
 
+    def run_batch(self):  # type: ignore
+        raise NotImplementedError("run_batch not supported for EvalDocuments node.")
+
     def reciprocal_rank_retrieved(self, retriever_labels, predictions, top_k_eval_documents):
         if self.open_domain:
             for answer in retriever_labels.answers:
@@ -292,6 +295,9 @@ class EvalAnswers(BaseComponent):
                 self.top_k_f1_sum += top_k_f1
                 self.update_has_answer_metrics()
         return {}, "output_1"
+
+    def run_batch(self):  # type: ignore
+        raise NotImplementedError("run_batch not supported for EvalAnswers node.")
 
     def evaluate_extraction(self, gold_labels: List[str], predictions: List[str]):
         if self.open_domain:

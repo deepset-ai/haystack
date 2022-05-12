@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from typing import Optional, List
 
+from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 
 
@@ -74,6 +75,25 @@ class JoinDocuments(BaseComponent):
         output = {"documents": docs, "labels": inputs[0].get("labels", None)}
 
         return output, "output_1"
+
+    def run_batch(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
+        # Join single document lists
+        if isinstance(inputs[0]["documents"][0], Document):
+            return self.run(inputs=inputs, top_k_join=top_k_join)
+        # Join lists of document lists
+        else:
+            output_docs = []
+            incoming_edges = [inp["documents"] for inp in inputs]
+            for idx in range(len(incoming_edges[0])):
+                cur_docs_to_join = []
+                for edge in incoming_edges:
+                    cur_docs_to_join.append({"documents": edge[idx]})
+                cur, _ = self.run(inputs=cur_docs_to_join, top_k_join=top_k_join)
+                output_docs.append(cur["documents"])
+
+            output = {"documents": output_docs, "labels": inputs[0].get("labels", None)}
+
+            return output, "output_1"
 
     def _concatenate_results(self, results):
         """

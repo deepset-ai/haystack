@@ -110,11 +110,11 @@ def print_questions(results: dict):
             for question in result["questions"]:
                 print(f" - {question}")
 
-    elif "results" in results.keys():
+    elif "queries" in results.keys() and "answers" in results.keys():
         print("\nGenerated pairs:")
-        for pair in results["results"]:
-            print(f" - Q:{pair['query']}")
-            for answer in pair["answers"]:
+        for query, answers in zip(results["queries"], results["answers"]):
+            print(f" - Q: {query}")
+            for answer in answers:
 
                 # Verify that the pairs contains Answers under the `answer` key
                 if not isinstance(answer, Answer):

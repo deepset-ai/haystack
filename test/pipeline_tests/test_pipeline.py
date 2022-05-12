@@ -15,14 +15,16 @@ import pandas as pd
 from haystack import __version__
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
+from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.pipelines import Pipeline, RootNode
 from haystack.pipelines.config import validate_config_strings
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
-from haystack.nodes import PreProcessor, TextConverter
+from haystack.nodes import PreProcessor, TextConverter, reader
 from haystack.utils.deepsetcloud import DeepsetCloudError
 from haystack import Document, Answer
 from haystack.nodes.other.route_documents import RouteDocuments
@@ -34,6 +36,8 @@ from ..conftest import (
     DC_API_KEY,
     DC_TEST_INDEX,
     SAMPLES_PATH,
+    DOCS,
+    SMALL_READER_MODEL,
     MockDocumentStore,
     MockRetriever,
     MockNode,
@@ -69,6 +73,9 @@ class ParentComponent(BaseComponent):
     def run(*args, **kwargs):
         logging.info("ParentComponent run() was called")
 
+    def run_batch(*args, **kwargs):
+        pass
+
 
 class ParentComponent2(BaseComponent):
     outgoing_edges = 1
@@ -79,6 +86,9 @@ class ParentComponent2(BaseComponent):
     def run(*args, **kwargs):
         logging.info("ParentComponent2 run() was called")
 
+    def run_batch(*args, **kwargs):
+        pass
+
 
 class ChildComponent(BaseComponent):
     def __init__(self, some_key: str = None) -> None:
@@ -86,6 +96,9 @@ class ChildComponent(BaseComponent):
 
     def run(*args, **kwargs):
         logging.info("ChildComponent run() was called")
+
+    def run_batch(*args, **kwargs):
+        pass
 
 
 class DummyRetriever(MockRetriever):
@@ -1551,6 +1564,9 @@ def test_pipeline_components():
             test = "test"
             return {"test": test}, "output_1"
 
+        def run_batch(self):
+            return
+
     a = Node()
     b = Node()
     c = Node()
@@ -1624,3 +1640,45 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
 
     with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
         pipeline.get_document_store()
+
+
+@pytest.mark.integration
+def test_batch_querying_single_query():
+    docstore = InMemoryDocumentStore()
+    docstore.write_documents(DOCS)
+    
+    retriever = BM25Retriever(document_store=docstore)
+    retriever = FARMReader(SMALL_READER_MODEL)
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever, name="retriever", inputs=["Query"])
+    pipeline.add_node(component=reader, name="reader", inputs=["retriever"])
+
+    result = pipeline.run_batch(queries="Who lives in Berlin?")
+    # As we have a single query as input, this Pipeline will retrieve a list of relevant documents, apply the reader to
+    # each of the documents and return the predicted answers for each document
+    assert isinstance(result["answers"], list)
+    assert isinstance(result["answers"][0], list)
+    assert isinstance(result["answers"][0][0], Answer)
+    assert len(result["answers"]) == 5  # Predictions for 5 docs, as top-k is set to 5 for the retriever
+
+
+@pytest.mark.integration
+def test_batch_querying_multiple_queries():
+    docstore = InMemoryDocumentStore()
+    docstore.write_documents(DOCS)
+    
+    retriever = BM25Retriever(document_store=docstore)
+    retriever = FARMReader(SMALL_READER_MODEL)
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever, name="retriever", inputs=["Query"])
+    pipeline.add_node(component=reader, name="reader", inputs=["retriever"])
+
+    result = pipeline.run_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
+    # As we have a list of queries as input, this Pipeline will retrieve a list of relevant documents for each of the
+    # queries (resulting in a list of lists of documents), apply the reader with each query and their corresponding
+    # retrieved documents and return the predicted answers for each document list
+    assert isinstance(result["answers"], list)
+    assert isinstance(result["answers"][0], list)
+    assert isinstance(result["answers"][0][0], Answer)
+    assert len(result["answers"]) == 2  # Predictions for 2 collections of documents
+    assert len(result["answers"][0]) == 5  # top-k of 5 for collection of docs

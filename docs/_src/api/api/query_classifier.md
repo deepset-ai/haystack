@@ -73,7 +73,7 @@ def __init__(model_name_or_path: Union[
             str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
             str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle")
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle", batch_size: Optional[int] = None)
 ```
 
 **Arguments**:
@@ -81,6 +81,7 @@ def __init__(model_name_or_path: Union[
 - `model_name_or_path`: Gradient boosting based binary classifier to classify between keyword vs statement/question
 queries or statement vs question queries.
 - `vectorizer_name_or_path`: A ngram based Tfidf vectorizer for extracting features from query.
+- `batch_size`: Number of queries to process at a time.
 
 <a id="transformers"></a>
 
@@ -141,7 +142,7 @@ from this node.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", use_gpu: bool = True)
+def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", use_gpu: bool = True, batch_size: Optional[int] = None)
 ```
 
 **Arguments**:

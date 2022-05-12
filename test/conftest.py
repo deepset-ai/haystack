@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union
 
 import subprocess
 import time
@@ -79,6 +79,42 @@ DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
+
+# Documents collections
+DOCS_ALL_FORMATS = [
+    # Document object for a doc
+    Document(
+        content="My name is Christelle and I live in Paris",
+        meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
+    ),
+    Document(
+        content="My name is Camila and I live in Madrid",
+        meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
+    ),
+    Document(
+        content="My name is Matteo and I live in Rome",
+        meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
+    ),
+    # "dict" format
+    {
+        "content": "My name is Carla and I live in Berlin",
+        "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
+    },
+    # metafield at the top level for backward compatibility
+    {
+        "content": "My name is Paul and I live in New York",
+        "meta_field": "test2",
+        "name": "filename2",
+        "date_field": "2019-10-01",
+        "numeric_field": 5.0,
+    },
+]
+DOCS = [Document.from_dict(doc) for doc in DOCS_ALL_FORMATS]
+
+# Other constants for quicker integration tests
+SMALL_READER_MODEL = "distilbert-base-uncased-distilled-squad"
+
+
 
 # Disable telemetry reports when running tests
 posthog.disabled = True
@@ -175,6 +211,9 @@ class MockNode(BaseComponent):
     def run(self, *a, **k):
         pass
 
+    def run_batch(self, *a, **k):
+        pass
+
 
 class MockDocumentStore(BaseDocumentStore):
     outgoing_edges = 1
@@ -226,6 +265,9 @@ class MockRetriever(BaseRetriever):
     outgoing_edges = 1
 
     def retrieve(self, query: str, top_k: int):
+        pass
+
+    def retrieve_batch(self, queries: Union[str, List[str]], top_k: int):
         pass
 
 
@@ -385,7 +427,7 @@ def xpdf_fixture():
             )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def deepset_cloud_fixture():
     if MOCK_DC:
         responses.add(
@@ -415,75 +457,43 @@ def deepset_cloud_fixture():
         responses.add_passthru(DC_API_ENDPOINT)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 @responses.activate
 def deepset_cloud_document_store(deepset_cloud_fixture):
     return DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def rag_generator():
     return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def lfqa_generator(request):
     return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def summarizer():
     return TransformersSummarizer(model_name_or_path="google/pegasus-xsum", use_gpu=-1)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def en_to_de_translator():
     return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def de_to_en_translator():
     return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
 
 
-@pytest.fixture(scope="function")
-def test_docs_xs():
-    return [
-        # current "dict" format for a document
-        {
-            "content": "My name is Carla and I live in Berlin",
-            "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
-        },
-        # metafield at the top level for backward compatibility
-        {
-            "content": "My name is Paul and I live in New York",
-            "meta_field": "test2",
-            "name": "filename2",
-            "date_field": "2019-10-01",
-            "numeric_field": 5.0,
-        },
-        # Document object for a doc
-        Document(
-            content="My name is Christelle and I live in Paris",
-            meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
-        ),
-        Document(
-            content="My name is Camila and I live in Madrid",
-            meta={"meta_field": "test4", "name": "filename4", "date_field": "2021-02-01", "numeric_field": 3.0},
-        ),
-        Document(
-            content="My name is Matteo and I live in Rome",
-            meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
-        ),
-    ]
-
-
-@pytest.fixture(scope="function")
+@pytest.fixture
 def reader_without_normalized_scores():
     return FARMReader(
         model_name_or_path="distilbert-base-uncased-distilled-squad",
@@ -522,24 +532,24 @@ def table_reader(request):
         )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ranker_two_logits():
     return SentenceTransformersRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ranker():
     return SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def zero_shot_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="cross-encoder/nli-distilroberta-base",
@@ -549,14 +559,14 @@ def zero_shot_document_classifier():
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def batched_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False, batch_size=16
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def indexing_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
@@ -588,17 +598,43 @@ def no_answer_reader(request):
         )
 
 
-@pytest.fixture(scope="function")
-def prediction(reader, test_docs_xs):
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+@pytest.fixture
+def prediction(reader):
+    prediction = reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=5)
     return prediction
 
 
-@pytest.fixture(scope="function")
-def no_answer_prediction(no_answer_reader, test_docs_xs):
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-    prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
+@pytest.fixture
+def batch_prediction_single_query_single_doc_list(reader):
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=DOCS, top_k=5)
+    return prediction
+
+
+@pytest.fixture
+def batch_prediction_single_query_multiple_doc_lists(reader):
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[DOCS, DOCS], top_k=5)
+    return prediction
+
+
+@pytest.fixture
+def batch_prediction_multiple_queries_single_doc_list(reader):
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=DOCS, top_k=5
+    )
+    return prediction
+
+
+@pytest.fixture
+def batch_prediction_multiple_queries_multiple_doc_lists(reader):
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[DOCS, DOCS], top_k=5
+    )
+    return prediction
+
+
+@pytest.fixture
+def no_answer_prediction(no_answer_reader):
+    prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=DOCS, top_k=5)
     return prediction
 
 
@@ -671,12 +707,12 @@ def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
-def document_store_with_docs(request, test_docs_xs, tmp_path):
+def document_store_with_docs(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path
     )
-    document_store.write_documents(test_docs_xs)
+    document_store.write_documents(DOCS)
     yield document_store
     document_store.delete_index(document_store.index)
 
@@ -705,7 +741,7 @@ def document_store_dot_product(request, tmp_path):
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
-def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
+def document_store_dot_product_with_docs(request, tmp_path):
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
         document_store_type=request.param,
@@ -713,7 +749,7 @@ def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
         similarity="dot_product",
         tmp_path=tmp_path,
     )
-    document_store.write_documents(test_docs_xs)
+    document_store.write_documents(DOCS)
     yield document_store
     document_store.delete_index(document_store.index)
 
@@ -873,7 +909,7 @@ def get_document_store(
     return document_store
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def adaptive_model_qa(num_processes):
     """
     PyTest Fixture for a Question Answering Inferencer based on PyTorch.
@@ -902,7 +938,7 @@ def adaptive_model_qa(num_processes):
         logging.error(f"Not all the subprocesses are closed! {len(children)} are still running.")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def bert_base_squad2(request):
     model = QAInferencer.load(
         "deepset/minilm-uncased-squad2",

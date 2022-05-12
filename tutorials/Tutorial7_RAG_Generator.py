@@ -16,7 +16,7 @@ def tutorial7_rag_generator():
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Get dataframe with columns "title", and "text"
-    df = pd.read_csv("small_generator_dataset.csv", sep=",")
+    df = pd.read_csv(f"{doc_dir}/small_generator_dataset.csv", sep=",")
     # Minimal cleaning
     df.fillna(value="", inplace=True)
 

@@ -7,6 +7,8 @@ from haystack.schema import Document, Answer
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.reader.farm import FARMReader
 
+from ..conftest import DOCS
+
 
 def test_reader_basic(reader):
     assert reader is not None
@@ -25,7 +27,56 @@ def test_output(prediction):
     assert len(prediction["answers"]) == 5
 
 
-@pytest.mark.integration
+def test_output_batch_single_query_single_doc_list(batch_prediction_single_query_single_doc_list):
+    prediction = batch_prediction_single_query_single_doc_list
+    assert prediction is not None
+    assert prediction["queries"] == "Who lives in Berlin?"
+    # Expected output: List of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 5  # Predictions for 5 docs
+
+
+def test_output_batch_single_query_multiple_doc_lists(batch_prediction_single_query_multiple_doc_lists):
+    prediction = batch_prediction_single_query_multiple_doc_lists
+    assert prediction is not None
+    assert prediction["queries"] == "Who lives in Berlin?"
+    # Expected output: List of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 2  # Predictions for 2 collection of docs
+    assert len(prediction["answers"][0]) == 5  # top-k of 5 per collection of docs
+
+
+def test_output_batch_multiple_queries_single_doc_list(batch_prediction_multiple_queries_single_doc_list):
+    prediction = batch_prediction_multiple_queries_single_doc_list
+    assert prediction is not None
+    assert prediction["queries"] == ["Who lives in Berlin?", "Who lives in New York?"]
+    # Expected output: List of lists of lists of answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], list)
+    assert isinstance(prediction["answers"][0][0][0], Answer)
+    assert len(prediction["answers"]) == 2  # Predictions for 2 queries
+    assert len(prediction["answers"][0]) == 5  # Predictions for 5 documents
+
+
+def test_output_batch_multiple_queries_multiple_doc_lists(batch_prediction_multiple_queries_multiple_doc_lists):
+    prediction = batch_prediction_multiple_queries_multiple_doc_lists
+    assert prediction is not None
+    assert prediction["queries"] == ["Who lives in Berlin?", "Who lives in New York?"]
+    # Expected output: List of lists answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 2  # Predictions for 2 collections of documents
+    assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
+
+
+@pytest.mark.slow
+>>>>>>> master:test/test_reader.py
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None
     assert no_answer_prediction["query"] == "What is the meaning of life?"
@@ -73,15 +124,13 @@ def test_answer_attributes(prediction):
 @pytest.mark.integration
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("window_size", [10, 15, 20])
-def test_context_window_size(reader, test_docs_xs, window_size):
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-
+def test_context_window_size(reader, window_size):
     assert isinstance(reader, FARMReader)
 
     old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
     reader.inferencer.model.prediction_heads[0].context_window_size = window_size
 
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=5)
     for answer in prediction["answers"]:
         # If the extracted answer is larger than the context window, the context window is expanded.
         # If the extracted answer is odd in length, the resulting context window is one less than context_window_size
@@ -102,9 +151,7 @@ def test_context_window_size(reader, test_docs_xs, window_size):
 
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("top_k", [2, 5, 10])
-def test_top_k(reader, test_docs_xs, top_k):
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-
+def test_top_k(reader, top_k):
     assert isinstance(reader, FARMReader)
 
     old_top_k_per_candidate = reader.top_k_per_candidate
@@ -116,7 +163,7 @@ def test_top_k(reader, test_docs_xs, top_k):
     except:
         print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
 
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=top_k)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=top_k)
     assert len(prediction["answers"]) == top_k
 
     reader.top_k_per_candidate = old_top_k_per_candidate
@@ -127,15 +174,12 @@ def test_top_k(reader, test_docs_xs, top_k):
         print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
 
 
-def test_farm_reader_update_params(test_docs_xs):
+def test_farm_reader_update_params():
     reader = FARMReader(
         model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
     )
-
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-
     # original reader
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=3)
     assert len(prediction["answers"]) == 3
     assert prediction["answers"][0].answer == "Carla"
 
@@ -143,7 +187,7 @@ def test_farm_reader_update_params(test_docs_xs):
     reader.update_parameters(
         context_window_size=100, no_ans_boost=100, return_no_answer=True, max_seq_len=384, doc_stride=128
     )
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=3)
     assert len(prediction["answers"]) == 3
     assert prediction["answers"][0].answer == ""
 
@@ -151,25 +195,25 @@ def test_farm_reader_update_params(test_docs_xs):
     reader.update_parameters(
         context_window_size=100, no_ans_boost=0, return_no_answer=False, max_seq_len=384, doc_stride=128
     )
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=3)
     assert len(prediction["answers"]) == 3
     assert None not in [ans.answer for ans in prediction["answers"]]
 
     # update context_window_size
     reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=384, doc_stride=128)
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=3)
     assert len(prediction["answers"]) == 3
     assert len(prediction["answers"][0].context) == 6
 
     # update doc_stride with invalid value
     with pytest.raises(Exception):
         reader.update_parameters(context_window_size=100, no_ans_boost=-10, max_seq_len=384, doc_stride=999)
-        reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+        reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=3)
 
     # update max_seq_len with invalid value
     with pytest.raises(Exception):
         reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=99, doc_stride=128)
-        reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+        reader.predict(query="Who lives in Berlin?", documents=DOCS, top_k=3)
 
 
 @pytest.mark.parametrize("use_confidence_scores", [True, False])

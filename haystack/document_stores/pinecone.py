@@ -659,7 +659,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
         self._limit_check(top_k, include_values=return_embedding)
 
-        if filters is not None:
+        if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
         index = index or self.index
