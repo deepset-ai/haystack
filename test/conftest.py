@@ -112,7 +112,7 @@ DOCS_ALL_FORMATS = [
 DOCS = [Document.from_dict(doc) for doc in DOCS_ALL_FORMATS]
 
 # Other constants for quicker integration tests
-SMALL_READER_MODEL = "distilbert-base-uncased-distilled-squad"
+SMALL_READER_MODEL = "deepset/tinyroberta-squad2"
 
 
 # Disable telemetry reports when running tests

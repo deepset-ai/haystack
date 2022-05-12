@@ -79,7 +79,7 @@ def test_preprocess_passage_split():
     assert len(documents) == 2
 
 
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="UNKNOWN REASON")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Footer is not removed, needs further investigation.")
 def test_clean_header_footer():
     converter = PDFToTextConverter()
     document = converter.convert(
