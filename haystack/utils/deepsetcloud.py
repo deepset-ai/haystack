@@ -781,7 +781,9 @@ class EvaluationRunClient:
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
     ) -> Dict[str, Any]:
-        pipeline_info = self.pipeline_client.get_pipeline_config_info(workspace=workspace, pipeline_config_name=pipeline_config_name, headers=headers)
+        pipeline_info = self.pipeline_client.get_pipeline_config_info(
+            workspace=workspace, pipeline_config_name=pipeline_config_name, headers=headers
+        )
         if pipeline_info is None:
             raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
         pipeline_id = pipeline_info["pipeline_id"]
