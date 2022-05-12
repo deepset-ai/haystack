@@ -20,7 +20,6 @@ from ..conftest import (
     DC_API_KEY,
     DC_TEST_INDEX,
     SAMPLES_PATH,
-    DOCS_ALL_FORMATS,
 )
 from haystack.document_stores import (
     OpenSearchDocumentStore,
@@ -169,7 +168,6 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store: BaseDocumentS
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
-    print("hey!")
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
     assert len(documents) == 5
@@ -177,7 +175,7 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3", "test4", "test5"}
 
 
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME! fails on Windows!")
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME: FAISS fails on Windows with an SQLite error message, to investigate")
 def test_get_all_documents_large_quantities(document_store: BaseDocumentStore):
     # Test to exclude situations like Weaviate not returning more than 100 docs by default
     #   https://github.com/deepset-ai/haystack/issues/1893
@@ -225,9 +223,9 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-def test_get_all_documents_with_correct_filters_legacy_sqlite(tmp_path):
+def test_get_all_documents_with_correct_filters_legacy_sqlite(tmp_path, docs_all_formats):
     document_store_with_docs = get_document_store("sql", tmp_path)
-    document_store_with_docs.write_documents(DOCS_ALL_FORMATS)
+    document_store_with_docs.write_documents(docs_all_formats)
 
     document_store_with_docs.use_windowed_query = False
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})

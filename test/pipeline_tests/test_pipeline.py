@@ -36,7 +36,6 @@ from ..conftest import (
     DC_API_KEY,
     DC_TEST_INDEX,
     SAMPLES_PATH,
-    DOCS,
     SMALL_READER_MODEL,
     MockDocumentStore,
     MockRetriever,
@@ -1643,9 +1642,9 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
 
 
 @pytest.mark.integration
-def test_batch_querying_single_query():
+def test_batch_querying_single_query(docs):
     docstore = InMemoryDocumentStore()
-    docstore.write_documents(DOCS)
+    docstore.write_documents(docs)
 
     retriever = BM25Retriever(document_store=docstore)
     retriever = FARMReader(SMALL_READER_MODEL)
@@ -1663,9 +1662,9 @@ def test_batch_querying_single_query():
 
 
 @pytest.mark.integration
-def test_batch_querying_multiple_queries():
+def test_batch_querying_multiple_queries(docs):
     docstore = InMemoryDocumentStore()
-    docstore.write_documents(DOCS)
+    docstore.write_documents(docs)
 
     retriever = BM25Retriever(document_store=docstore)
     retriever = FARMReader(SMALL_READER_MODEL)
