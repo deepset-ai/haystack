@@ -709,7 +709,7 @@ class EvaluationSetClient:
         """
         try:
             evaluation_sets_response = next(
-                self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+                self._get_evaluation_sets(evaluation_set_filter=evaluation_set, workspace=workspace)
             )
         except StopIteration:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
@@ -748,9 +748,11 @@ class EvaluationSetClient:
 
         :return: Number of labels for the given (or defaulting) index
         """
+        if not evaluation_set:
+            evaluation_set = self.evaluation_set
         try:
             evaluation_sets_response = next(
-                self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+                self._get_evaluation_sets(evaluation_set_filter=evaluation_set, workspace=workspace)
             )
         except StopIteration:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
@@ -767,18 +769,21 @@ class EvaluationSetClient:
         :return: List of dictionaries that represent deepset Cloud evaluation sets.
                  These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
         """
-        evaluation_sets_response = self._get_evaluation_set(evaluation_set=None, workspace=workspace)
+        evaluation_sets_response = self._get_evaluation_sets(workspace=workspace)
 
         return [eval_set for eval_set in evaluation_sets_response]
 
-    def _get_evaluation_set(self, evaluation_set: Optional[str], workspace: Optional[str] = None) -> Generator:
-        if not evaluation_set:
-            evaluation_set = self.evaluation_set
-
+    def _get_evaluation_sets(
+        self, evaluation_set_filter: Optional[str] = None, workspace: Optional[str] = None
+    ) -> Generator:
         url = self._build_workspace_url(workspace=workspace)
         evaluation_set_url = f"{url}/evaluation_sets"
 
-        for response in self.client.get_with_auto_paging(url=evaluation_set_url, query_params={"name": evaluation_set}):
+        query_params = {}
+        if evaluation_set_filter is not None:
+            query_params["name"] = evaluation_set_filter
+
+        for response in self.client.get_with_auto_paging(url=evaluation_set_url, query_params=query_params):
             yield response
 
     def _get_labels_from_evaluation_set(
@@ -825,7 +830,9 @@ class EvaluationRunClient:
         if pipeline_info is None:
             raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
         pipeline_id = pipeline_info["pipeline_id"]
-        evalset = next(self.evalset_client._get_evaluation_set(workspace=workspace, evaluation_set=evaluation_set))
+        evalset = next(
+            self.evalset_client._get_evaluation_sets(workspace=workspace, evaluation_set_filter=evaluation_set)
+        )
         if evalset is None:
             raise DeepsetCloudError(f"Evaluation set '{evaluation_set}' does not exist.")
         evalset_id = evalset["evaluation_set_id"]
@@ -850,11 +857,11 @@ class EvaluationRunClient:
         response = self.client.get(eval_run_url, headers=headers)
         return response.json()
 
-    def get_eval_runs(self, workspace: Optional[str] = None, headers: dict = None) -> Generator:
+    def get_eval_runs(self, workspace: Optional[str] = None, headers: dict = None) -> List[Dict[str, Any]]:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_run"
         response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
-        return response
+        return [eval_run for eval_run in response]
 
     def delete_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None):
         workspace_url = self._build_workspace_url(workspace)
@@ -877,7 +884,9 @@ class EvaluationRunClient:
         if pipeline_info is None:
             raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
         pipeline_id = pipeline_info["pipeline_id"]
-        evalset = next(self.evalset_client._get_evaluation_set(workspace=workspace, evaluation_set=evaluation_set))
+        evalset = next(
+            self.evalset_client._get_evaluation_sets(workspace=workspace, evaluation_set_filter=evaluation_set)
+        )
         if evalset is None:
             raise DeepsetCloudError(f"Evaluation set '{evaluation_set}' does not exist.")
         evalset_id = evalset["evaluation_set_id"]
