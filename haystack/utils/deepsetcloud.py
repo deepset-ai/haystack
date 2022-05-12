@@ -769,6 +769,8 @@ class EvaluationRunClient:
         """
         self.client = client
         self.workspace = workspace
+        self.pipeline_client = PipelineClient(client=client, workspace=workspace)
+        self.evalset_client = EvaluationSetClient(client=client, workspace=workspace)
 
     def create_eval_run(
         self,
@@ -778,14 +780,23 @@ class EvaluationRunClient:
         evaluation_set: Optional[str] = None,
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
-    ):
+    ) -> Dict[str, Any]:
+        pipeline_info = self.pipeline_client.get_pipeline_config_info(workspace=workspace, pipeline_config_name=pipeline_config_name, headers=headers)
+        if pipeline_info is None:
+            raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
+        pipeline_id = pipeline_info["pipeline_id"]
+        evalset = next(self.evalset_client._get_evaluation_set(workspace=workspace, evaluation_set=evaluation_set))
+        if evalset is None:
+            raise DeepsetCloudError(f"Evaluation set '{evaluation_set}' does not exist.")
+        evalset_id = evalset["evaluation_set_id"]
+
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_run"
         response = self.client.post(
             eval_run_url,
             json={
-                "pipeline_id": "abc",
-                "evaluation_set_id": "abc",
+                "pipeline_id": pipeline_id,
+                "evaluation_set_id": evalset_id,
                 "debug": debug,
                 "eval_mode": 0 if eval_mode == "integrated" else 1,
             },
@@ -793,13 +804,13 @@ class EvaluationRunClient:
         )
         return response.json()["data"]
 
-    def get_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None):
+    def get_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None) -> Dict[str, Any]:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}"
         response = self.client.get(eval_run_url, headers=headers)
         return response.json()
 
-    def get_eval_runs(self, workspace: Optional[str] = None, headers: dict = None):
+    def get_eval_runs(self, workspace: Optional[str] = None, headers: dict = None) -> Generator:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_run"
         response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
