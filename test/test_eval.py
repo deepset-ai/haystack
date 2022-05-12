@@ -305,6 +305,7 @@ EVAL_LABELS = [
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     labels = EVAL_LABELS[:1]
 
@@ -357,6 +358,7 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_path):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
@@ -429,6 +431,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
 @pytest.mark.parametrize("retriever_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path):
     labels = [
         # MultiLabel with filter that selects only the document about Carla
@@ -498,6 +501,7 @@ def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -520,6 +524,7 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
 
 
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_reader_eval_in_pipeline(reader):
     pipeline = Pipeline()
     pipeline.add_node(component=reader, name="Reader", inputs=["Query"])
@@ -537,6 +542,7 @@ def test_reader_eval_in_pipeline(reader):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
@@ -553,6 +559,7 @@ def test_extractive_qa_eval_doc_relevance_col(reader, retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -600,6 +607,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
@@ -651,6 +659,7 @@ def test_extractive_qa_eval_simulated_top_k_retriever(reader, retriever_with_doc
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 10}})
@@ -709,6 +718,7 @@ def test_extractive_qa_eval_simulated_top_k_reader_and_retriever(reader, retriev
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
@@ -738,6 +748,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
 
     labels = [
@@ -785,6 +796,7 @@ def test_extractive_qa_eval_wrong_examples(reader, retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_print_eval_report(reader, retriever_with_docs):
 
     labels = [
@@ -885,6 +897,7 @@ def test_faq_calculate_metrics(retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_eval_translation(reader, retriever_with_docs):
 
     # FIXME it makes no sense to have DE->EN input and DE->EN output, right?
@@ -1017,8 +1030,7 @@ def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_multi_retriever_pipeline_eval(document_store_with_docs, reader):
+def test_multi_retriever_pipeline_eval(document_store_with_docs):
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
     dpr_retriever = DensePassageRetriever(document_store_with_docs)
     document_store_with_docs.update_embeddings(retriever=dpr_retriever)
