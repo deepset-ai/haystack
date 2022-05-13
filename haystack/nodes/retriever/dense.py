@@ -6,6 +6,7 @@ from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
+
 import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
