@@ -7,9 +7,9 @@ on:
   pull_request:
     # branches:
     #   - master
-    paths:
-      - '**/*.py'
-      - '**/*.ipynb'
+    # paths:
+    #   - '**/*.py'
+    #   - '**/*.ipynb'
 
 jobs:
 
