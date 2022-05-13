@@ -991,3 +991,120 @@ class DeepsetCloud:
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return EvaluationRunClient(client=client, workspace=workspace)
+
+
+class DeepsetCloudExperiments:
+    """
+    A facade to conduct and manage experiments within deepset Cloud.
+
+    To start a new experiment run:
+    1. Choose a pipeline to evaluate using `list_pipelines()`
+    2. Choose a evaluation set using `list_evaluation_sets()`
+    3. Create a new run using `create_run()`
+    4. Start the run using `start_run()`
+    """
+
+    @classmethod
+    def list_pipelines(
+        cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
+    ) -> List[dict]:
+        """
+        Lists all pipeline configs available on Deepset Cloud.
+
+        :param workspace: workspace in Deepset Cloud
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the Deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+
+        Returns:
+            list of dictionaries: List[dict]
+            each dictionary: {
+                        "name": str -> `pipeline_config_name` to be used in `load_from_deepset_cloud()`,
+                        "..." -> additional pipeline meta information
+                        }
+            example:
+                    [{'name': 'my_super_nice_pipeline_config',
+                        'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
+                        'status': 'DEPLOYED',
+                        'created_at': '2022-02-01T09:57:03.803991+00:00',
+                        'deleted': False,
+                        'is_default': False,
+                        'indexing': {'status': 'IN_PROGRESS',
+                        'pending_file_count': 3,
+                        'total_file_count': 31}}]
+        """
+        client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        pipeline_config_infos = list(client.list_pipeline_configs())
+        return pipeline_config_infos
+
+    @classmethod
+    def list_evaluation_sets(
+        cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
+    ) -> List[dict]:
+        client = DeepsetCloud.get_evaluation_set_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.get_evaluation_sets()
+
+    @classmethod
+    def list_runs(
+        cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
+    ) -> List[dict]:
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.get_eval_runs()
+
+    @classmethod
+    def create_run(
+        cls,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        pipeline_config_name: Optional[str] = None,
+        evaluation_set: Optional[str] = None,
+        eval_mode: Literal["integrated", "isolated"] = "integrated",
+        debug: bool = False,
+    ) -> Dict[str, Any]:
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.create_eval_run(
+            pipeline_config_name=pipeline_config_name, evaluation_set=evaluation_set, eval_mode=eval_mode, debug=debug
+        )
+
+    @classmethod
+    def update_run(
+        cls,
+        eval_run_id: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        pipeline_config_name: Optional[str] = None,
+        evaluation_set: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.update_eval_run(
+            eval_run_id=eval_run_id, pipeline_config_name=pipeline_config_name, evaluation_set=evaluation_set
+        )
+
+    @classmethod
+    def get_run(
+        cls,
+        eval_run_id: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.get_eval_run(eval_run_id=eval_run_id)
+
+    @classmethod
+    def delete_run(
+        cls,
+        eval_run_id: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+    ):
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.delete_eval_run(eval_run_id=eval_run_id)
+
+    @classmethod
+    def start_run(cls):
+        pass
