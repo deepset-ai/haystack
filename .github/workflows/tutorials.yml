@@ -56,8 +56,12 @@ jobs:
         set -e   # Fails on any error in the following loop
         readarray -d '' entries < <(printf '%s\0' tutorials/*.ipynb | sort -zV)
         for file in "${entries[@]}"; do
-          echo "Processing" $file
-          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $file"
+          if [[ "$tutorial" == "Tutorial2_Finetune_a_model_on_your_data.ipynb" ]]; then echo "Skipping Tutorial2, no GPU"; else
+            if [[ "$tutorial" == "Tutorial9_DPR_training.ipynb" ]]; then echo "Skipping Tutorial9, no GPU"; else
+              echo "Running " $file
+              sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $file"
+            fi
+          fi
         done
 
 
@@ -129,6 +133,10 @@ jobs:
         set -e   # Fails on any error in the following loop
         readarray -d '' entries < <(printf '%s\0' tutorials/*.py | sort -zV)
         for file in "${entries[@]}"; do
-          echo "Processing" $file
-          python $file
+          if [[ "$tutorial" == "Tutorial2_Finetune_a_model_on_your_data.py" ]]; then echo "Skipping Tutorial2, no GPU"; else
+            if [[ "$tutorial" == "Tutorial9_DPR_training.py" ]]; then echo "Skipping Tutorial9, no GPU"; else
+              echo "Running " $file
+              python $file
+            fi
+          fi
         done
