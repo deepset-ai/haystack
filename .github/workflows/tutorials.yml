@@ -4,7 +4,7 @@ on:
   # Activate this workflow manually
   workflow_dispatch:
   # Activate this workflow on every push of code changes on master
-  push:
+  pull_request:
     # branches:
     #   - master
     paths:
