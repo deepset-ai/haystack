@@ -253,7 +253,7 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                 "title": "Additional properties group",
                 "description": "To be specified only if contains special pipelines (for example, if this is a Ray pipeline)",
                 "type": "string",
-                "enum": ["ray"]
+                "enum": ["ray"],
             },
             "components": {
                 "title": "Components",
@@ -292,8 +292,8 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                                     "replicas": {
                                         "title": "replicas",
                                         "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
-                                        "type": "integer"
-                                    }
+                                        "type": "integer",
+                                    },
                                 },
                                 "required": ["name", "inputs"],
                                 "additionalProperties": False,
@@ -311,42 +311,15 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         "additionalProperties": False,
         "oneOf": [
             {
-                "not": {
-                    "required": [
-                        "extras"
-                    ]
-                },
+                "not": {"required": ["extras"]},
                 "properties": {
-                    "pipelines" : {
+                    "pipelines": {
                         "title": "Pipelines",
-                        "items": {
-                            "properties": {
-                                "nodes": {
-                                    "items": {
-                                        "not": { 
-                                            "required":[
-                                                "replicas"
-                                            ]
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        "items": {"properties": {"nodes": {"items": {"not": {"required": ["replicas"]}}}}},
                     }
-                }
+                },
             },
-            {
-            "properties": {
-                "extras": {
-                    "enum": [
-                        "ray"
-                    ]
-                }
-            },
-            "required": [
-                    "extras"
-                ]
-            }
+            {"properties": {"extras": {"enum": ["ray"]}}, "required": ["extras"]},
         ],
         "definitions": schema_definitions,
     }
