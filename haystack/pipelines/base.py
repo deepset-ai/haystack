@@ -549,7 +549,7 @@ class Pipeline:
         - Single query + a list of Documents: Applies the query to each Document individually and returns answers    for each single Document.
         - Single query + a list of lists of Documents: Applies the query to each list of Documents and returns aggregated answers for each list of Documents.
         - A list of queries + a list of Documents: Applies each query to each Document individually and returns answers for each query-document pair.
-        - A list of quereis + a list of lists of Documents: Applies each query to its corresponding Document list and aggregates answers for each list of Documents.
+        - A list of queries + a list of lists of Documents: Applies each query to its corresponding Document list and aggregates answers for each list of Documents.
 
 
         :param queries: Single search query or list of search queries (for query pipelines only).
