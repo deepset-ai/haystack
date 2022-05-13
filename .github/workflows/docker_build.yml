@@ -64,5 +64,5 @@ jobs:
           file: ${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           push: true
-          cache-from: type=registry,ref=${{ matrix.repository }}:latest
+          cache-from: type=registry,ref=${{ matrix.repository }}:${{ matrix.tagprefix }}latest
           cache-to: type=inline
