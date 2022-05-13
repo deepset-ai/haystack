@@ -62,9 +62,9 @@ TRACKING_TOOL_TO_HEAD = {"mlflow": MLflowTrackingHead}
 
 class Pipeline:
     """
-   Pipeline brings together building blocks to build a complex search pipeline with Haystack and user-defined components.
-   
-   Under the hood, a Pipeline is represented as a directed acyclic graph of component nodes. You can use it for custom query flows with the option to branch queries (for example, extractive question answering and keyword match query), merge candidate documents for a Reader from multiple Retrievers, or re-ranking of candidate documents.
+    Pipeline brings together building blocks to build a complex search pipeline with Haystack and user-defined components.
+
+    Under the hood, a Pipeline is represented as a directed acyclic graph of component nodes. You can use it for custom query flows with the option to branch queries (for example, extractive question answering and keyword match query), merge candidate documents for a Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
 
     def __init__(self):
@@ -431,7 +431,7 @@ class Pipeline:
         :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
         :param documents: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
         :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
-        :param params: Dictionary of parameters to be dispatched to the nodes.  
+        :param params: Dictionary of parameters to be dispatched to the nodes.
                        To pass a parameter to all Nodes, use: `{"top_k":10}`.
                        To pass a parameter to targeted Nodes, run:
                         `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
