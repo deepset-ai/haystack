@@ -49,7 +49,6 @@ jobs:
     # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
     - name: Reinstall Haystack
       run: |
-        pip install ipython
         pip install .[all]
 
     - name: Run Notebook Tutorials
@@ -58,7 +57,7 @@ jobs:
         readarray -d '' entries < <(printf '%s\0' tutorials/*.ipynb | sort -zV)
         for file in "${entries[@]}"; do
           echo "Processing" $file
-          sudo ipython -c "%run $file"
+          ipython -c "%run $file"
         done
 
 
