@@ -11,6 +11,14 @@
       "type": "string",
       "const": "ignore"
     },
+    "extras": {
+      "title": "Additional properties group",
+      "description": "To be specified only if contains special pipelines (for example, if this is a Ray pipeline)",
+      "type": "string",
+      "enum": [
+        "ray"
+      ]
+    },
     "components": {
       "title": "Components",
       "description": "Component nodes and their configurations, to later be used in the pipelines section. Define here all the building blocks for the pipelines.",
@@ -212,6 +220,11 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "replicas": {
+                  "title": "replicas",
+                  "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
+                  "type": "integer"
                 }
               },
               "required": [
@@ -238,6 +251,45 @@
     "pipelines"
   ],
   "additionalProperties": false,
+  "oneOf": [
+    {
+      "not": {
+        "required": [
+          "extras"
+        ]
+      },
+      "properties": {
+        "pipelines": {
+          "title": "Pipelines",
+          "items": {
+            "properties": {
+              "nodes": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "replicas"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "extras": {
+          "enum": [
+            "ray"
+          ]
+        }
+      },
+      "required": [
+        "extras"
+      ]
+    }
+  ],
   "definitions": {
     "DeepsetCloudDocumentStoreComponent": {
       "type": "object",
