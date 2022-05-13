@@ -690,5 +690,6 @@ jobs:
             echo ""
             echo "This means that the 'autoformat.yml' action didn't run."
             echo "Please enable GitHub Action on your fork to pass this check!"
+            echo "See https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks for instructions"
             exit 1
           fi
