@@ -73,7 +73,7 @@ def test_output_batch_multiple_queries_multiple_doc_lists(batch_prediction_multi
     assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 >>>>>>> master:test/test_reader.py
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None

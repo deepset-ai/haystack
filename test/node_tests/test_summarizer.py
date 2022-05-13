@@ -61,7 +61,7 @@ def test_summarization_batch_single_doc_list(summarizer):
         assert expected_summary == summary.content
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.summarizer
 def test_summarization_batch_multiple_doc_lists(summarizer):
     summarized_docs = summarizer.predict_batch(documents=[DOCS, DOCS])
@@ -71,7 +71,7 @@ def test_summarization_batch_multiple_doc_lists(summarizer):
         assert expected_summary == summary.content
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
     "retriever,document_store", [("embedding", "memory"), ("elasticsearch", "elasticsearch")], indirect=True
