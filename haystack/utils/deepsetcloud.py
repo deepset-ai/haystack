@@ -1002,6 +1002,7 @@ class DeepsetCloudExperiments:
     2. Choose a evaluation set using `list_evaluation_sets()`
     3. Create a new run using `create_run()`
     4. Start the run using `start_run()`
+    5. Track the run using `get_run()`
     """
 
     @classmethod
@@ -1106,5 +1107,12 @@ class DeepsetCloudExperiments:
         return client.delete_eval_run(eval_run_id=eval_run_id)
 
     @classmethod
-    def start_run(cls):
-        pass
+    def start_run(
+        cls,
+        eval_run_id: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+    ):
+        logger.warning(f"Starting run '{eval_run_id}' hasn't been implemented yet. You won't see any progress")
+        logger.info("You can check run progess by inspecting the `status` field returned from `get_run()`.")
