@@ -23,7 +23,7 @@ def shutdown_ray():
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_load_pipeline(document_store_with_docs):
     pipeline = RayPipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "test_ray_pipeline.yaml",
+        SAMPLES_PATH / "pipeline" / "ray.haystack-pipeline.yml",
         pipeline_name="ray_query_pipeline",
         ray_args={"num_cpus": 8},
     )
