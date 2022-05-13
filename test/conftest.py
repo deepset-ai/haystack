@@ -172,6 +172,7 @@ def pytest_collection_modifyitems(config, items):
 # or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
 #
 
+
 class MockNode(BaseComponent):
     outgoing_edges = 1
 
@@ -264,6 +265,7 @@ class MockReader(BaseReader):
 # Document collections
 #
 
+
 @pytest.fixture
 def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
     return [
@@ -313,15 +315,13 @@ def docs_with_true_emb():
     return [
         Document(
             content="The capital of Germany is the city state of Berlin.",
-            embedding=np.loadtxt(SAMPLES_PATH / 'embeddings' / 'embedding_1.txt')
+            embedding=np.loadtxt(SAMPLES_PATH / "embeddings" / "embedding_1.txt"),
         ),
         Document(
             content="Berlin is the capital and largest city of Germany by both area and population.",
-            embedding=np.loadtxt(SAMPLES_PATH / 'embeddings' / 'embedding_2.txt')
+            embedding=np.loadtxt(SAMPLES_PATH / "embeddings" / "embedding_2.txt"),
         ),
     ]
-
-
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -331,8 +331,6 @@ def gc_cleanup(request):
     """
     yield
     gc.collect()
-
-
 
 
 @pytest.fixture(scope="session")
