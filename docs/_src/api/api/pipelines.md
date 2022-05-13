@@ -282,10 +282,10 @@ Runs the Pipeline, one node at a time.
 - `query`: The search query (for query pipelines only).
 - `file_paths`: The files to index (for indexing pipelines only).
 - `labels`: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
-- `documents`: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
+- `documents`: A list of Document objects to be processed by the Pipeline Nodes.
 - `meta`: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
 - `params`: Dictionary of parameters to be dispatched to the nodes.
-To pass a parameter to all Nodes, use: `{"top_k":10}`.
+To pass a parameter to all Nodes, use: `{"top_k": 10}`.
 To pass a parameter to targeted Nodes, run:
  `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
 - `debug`: Specifies whether the Pipeline should instruct Nodes to collect debug information
@@ -302,11 +302,15 @@ def run_batch(queries: Optional[Union[str, List[str]]] = None, file_paths: Optio
 
 Runs the Pipeline in a batch mode, one node at a time. The batch mode means that the Pipeline can take more than one query as input. You can use this method for query pipelines only. When used with an indexing pipeline, it calls the pipeline `run()` method.
 
-Here's what this method returns:
+Here's what this method returns for Retriever-Reader pipelines:
+- Single query: Retrieves top-k relevant Docments and returns a list of answers for each retrieved Document.
+- A list of queries: Retrieves top-k relevant Documents for each query and returns a list of answers for each query.
+
+Here's what this method returns for Reader-only pipelines:
 - Single query + a list of Documents: Applies the query to each Document individually and returns answers    for each single Document.
 - Single query + a list of lists of Documents: Applies the query to each list of Documents and returns aggregated answers for each list of Documents.
 - A list of queries + a list of Documents: Applies each query to each Document individually and returns answers for each query-document pair.
-- A list of quereis + a list of lists of Documents: Applies each query to its corresponding Document list and aggregates answers for each list of Documents.
+- A list of queries + a list of lists of Documents: Applies each query to its corresponding Document list and aggregates answers for each list of Documents.
 
 **Arguments**:
 
