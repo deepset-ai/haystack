@@ -5,8 +5,8 @@ on:
   workflow_dispatch:
   # Activate this workflow on every push of code changes on master
   push:
-    branches:
-      - master
+    # branches:
+    #   - master
     paths:
       - '**/*.py'
       - '**/*.ipynb'
