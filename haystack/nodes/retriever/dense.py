@@ -1366,9 +1366,6 @@ class TableTextRetriever(BaseRetriever):
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp,
-            checkpoint_root_dir=Path(checkpoint_root_dir),
-            checkpoint_every=checkpoint_every,
-            checkpoints_to_keep=checkpoints_to_keep,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -1382,6 +1379,9 @@ class TableTextRetriever(BaseRetriever):
             evaluate_every=evaluate_every,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp,
+            checkpoint_root_dir=Path(checkpoint_root_dir),
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
