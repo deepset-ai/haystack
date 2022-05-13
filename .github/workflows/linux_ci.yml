@@ -53,7 +53,7 @@ jobs:
           pip install .[test]
           pip install rest_api/
           pip install ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
           echo "=== pip freeze ==="
           pip freeze
 
@@ -121,7 +121,7 @@ jobs:
           pip install .[all]
           pip install rest_api/
           pip install ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
           echo "=== pip freeze ==="
           pip freeze
 
@@ -167,7 +167,7 @@ jobs:
           pip install .[all]
           pip install rest_api/
           pip install ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
           echo "=== pip freeze ==="
           pip freeze
           
@@ -298,7 +298,7 @@ jobs:
         pip install .[all]
         pip install rest_api/
         pip install ui/
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
     # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
@@ -345,7 +345,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install .[test]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cpu.html
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
     # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
