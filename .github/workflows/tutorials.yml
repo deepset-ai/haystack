@@ -57,7 +57,7 @@ jobs:
         readarray -d '' entries < <(printf '%s\0' tutorials/*.ipynb | sort -zV)
         for file in "${entries[@]}"; do
           echo "Processing" $file
-          ipython -c "%run $file"
+          sudo ${{ pythonLocation }}/bin/ipython -c "%run $file"
         done
 
 
