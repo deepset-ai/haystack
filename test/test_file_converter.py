@@ -17,9 +17,7 @@ from .conftest import SAMPLES_PATH
 
 
 @pytest.mark.tika
-@pytest.mark.parametrize(
-    "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
-)
+@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter])
 def test_convert(Converter):
     converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]
