@@ -1,114 +1,90 @@
+import os
 import json
+import shutil
+import tempfile
 from pathlib import Path
-from re import search
 
 import pytest
+
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
 
 
-def test_crawler_url_none_exception(tmp_path):
-    tmp_dir = tmp_path / "crawled_files"
-    with pytest.raises(ValueError):
-        Crawler(tmp_dir).crawl()
+TEST_HOME_PAGE = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Home Page for Crawler</title>
+</head>
+<body>
+    <p>test page content</p>
+    <a href="BASE_URL/page1">page 1</a>
+    <a href="BASE_URL/page2">page 2</a>
+</body>
+</html>
+"""
+
+TEST_PAGE1 = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page 1 for Crawler</title>
+</head>
+<body>
+    <p>test page 1 content</p>
+    <a href="BASE_URL">home</a>
+    <a href="BASE_URL/page2">page 2</a>
+</body>
+</html>
+"""
+TEST_PAGE2 = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page 2 for Crawler</title>
+</head>
+<body>
+    <p>test page 2 content</p>
+    <a href="BASE_URL">home</a>
+    <a href="BASE_URL/page1">page 1</a>
+</body>
+</html>
+"""
 
 
-def test_crawler_depth(tmp_path):
-    tmp_dir = tmp_path / "crawled_files"
-    _url = ["https://haystack.deepset.ai/overview/get-started"]
-    crawler = Crawler(output_dir=tmp_dir)
-    doc_path = crawler.crawl(urls=_url, crawler_depth=0)
-    assert len(doc_path) == 1
+@pytest.fixture(scope="session")
+def test_url():
+    tmpdir = Path(tempfile.mkdtemp())
+    base_url = tmpdir / "haystack_test_webpages"
+    os.mkdir(base_url)
 
-    _urls = [
-        "https://haystack.deepset.ai/overview/v1.2.0/get-started",
-        "https://haystack.deepset.ai/overview/v1.1.0/get-started",
-        "https://haystack.deepset.ai/overview/v1.0.0/get-started",
-    ]
-    doc_path = crawler.crawl(urls=_urls, crawler_depth=0)
-    assert len(doc_path) == 3
+    with open(base_url / "index.html", "w") as page:
+        page.write(TEST_HOME_PAGE.replace("BASE_URL", str(base_url)))
 
-    doc_path = crawler.crawl(urls=_url, crawler_depth=1)
-    assert len(doc_path) > 1
+    with open(base_url / "page1.html", "w") as page:
+        page.write(TEST_PAGE1.replace("BASE_URL", str(base_url)))
 
-    for json_file in doc_path:
-        assert isinstance(json_file, Path)
-        with open(json_file.absolute(), "r") as read_file:
-            data = json.load(read_file)
-            assert "content" in data
-            assert "meta" in data
-            assert isinstance(data["content"], str)
-            assert len(data["content"].split()) > 2
+    with open(base_url / "page2.html", "w") as page:
+        page.write(TEST_PAGE2.replace("BASE_URL", str(base_url)))
+
+    yield f"file://{base_url.absolute()}"
+
+    shutil.rmtree(tmpdir)
 
 
-def test_crawler_filter_urls(tmp_path):
-    tmp_dir = tmp_path / "crawled_files"
-    _url = ["https://haystack.deepset.ai/overview/v1.2.0/"]
-
-    crawler = Crawler(output_dir=tmp_dir)
-    doc_path = crawler.crawl(urls=_url, filter_urls=["haystack\.deepset\.ai\/overview\/v1\.3\.0\/"])
-    assert len(doc_path) == 0
-
-    doc_path = crawler.crawl(urls=_url, filter_urls=["haystack\.deepset\.ai\/overview\/v1\.2\.0\/"])
-    assert len(doc_path) > 0
-
-    doc_path = crawler.crawl(urls=_url, filter_urls=["google\.com"])
-    assert len(doc_path) == 0
+#
+# Integration
+#
 
 
-def test_crawler_content(tmp_path):
-    tmp_dir = tmp_path / "crawled_files"
-
-    partial_content_match: list = [
-        {
-            "url": "https://haystack.deepset.ai/overview/v1.1.0/intro",
-            "partial_content": [
-                "Haystack is an open-source framework ",
-                "for building search systems that work intelligently ",
-                "over large document collections.",
-                "Recent advances in NLP have enabled the application of ",
-                "question answering, retrieval and summarization ",
-                "to real world settings and Haystack is designed to be ",
-                "the bridge between research and industry.",
-            ],
-        },
-        {
-            "url": "https://haystack.deepset.ai/overview/v1.1.0/use-cases",
-            "partial_content": [
-                "Expect to see results that highlight",
-                "the very sentence that contains the answer to your question.",
-                "Thanks to the power of Transformer based language models,",
-                "results are chosen based on compatibility in meaning",
-                "rather than lexical overlap.",
-            ],
-        },
-    ]
+@pytest.mark.integration
+def test_crawler(tmp_path):
+    tmp_dir = tmp_path
+    url = ["https://haystack.deepset.ai/"]
 
     crawler = Crawler(output_dir=tmp_dir)
-    for _dict in partial_content_match:
-        url: str = _dict["url"]
-        partial_content: list = _dict["partial_content"]
-
-        doc_path = crawler.crawl(urls=[url], crawler_depth=0)
-        assert len(doc_path) == 1
-
-        for json_file in doc_path:
-            assert isinstance(json_file, Path)
-            with open(json_file.absolute(), "r") as read_file:
-                content = json.load(read_file)
-                assert isinstance(content["content"], str)
-                for partial_line in partial_content:
-                    assert search(partial_line, content["content"])
-                    assert partial_line in content["content"]
-
-
-def test_crawler_return_document(tmp_path):
-    tmp_dir = tmp_path / "crawled_files"
-    _url = ["https://haystack.deepset.ai/docs/v1.0.0/intromd"]
-
-    crawler = Crawler(output_dir=tmp_dir)
-    docs_path = crawler.crawl(urls=_url, crawler_depth=1)
-    results, _ = crawler.run(urls=_url, crawler_depth=1, return_documents=True)
+    docs_path = crawler.crawl(urls=url, crawler_depth=0)
+    results, _ = crawler.run(urls=url, crawler_depth=0, return_documents=True)
     documents = results["documents"]
 
     for json_file, document in zip(docs_path, documents):
@@ -117,5 +93,82 @@ def test_crawler_return_document(tmp_path):
 
         with open(json_file.absolute(), "r") as read_file:
             file_content = json.load(read_file)
+            assert file_content["meta"] == document.meta
+            assert file_content["content"] == document.content
+
+
+#
+# Unit tests
+#
+
+
+def test_crawler_url_none_exception(tmp_path):
+    crawler = Crawler(tmp_path)
+    with pytest.raises(ValueError):
+        crawler.crawl()
+
+
+def test_crawler_depth_0_single_url(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+    paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
+    assert len(paths) == 1
+
+
+def test_crawler_depth_0_many_urls(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+    _urls = [test_url + "/index.html", test_url + "/page1.html", test_url + "/page2.html"]
+    paths = crawler.crawl(urls=_urls, crawler_depth=0)
+    assert len(paths) == 3
+
+
+def test_crawler_depth_1_single_url(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+    paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=1)
+    assert len(paths) == 3
+
+
+def test_crawler_output_file_structure(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+    paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
+    with open(paths[0].absolute(), "r") as doc_file:
+        data = json.load(doc_file)
+        assert "content" in data
+        assert "meta" in data
+        assert isinstance(data["content"], str)
+        assert len(data["content"].split()) > 2
+
+
+def test_crawler_filter_urls(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+
+    print(crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1))
+    assert len(crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)) == 1
+    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page3"], crawler_depth=1)
+    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
+
+
+def test_crawler_content(test_url, tmp_path):
+    expected_results = [
+        {"url": test_url + "/index.html", "partial_content": "test page content"},
+        {"url": test_url + "/page1.html", "partial_content": "test page 1 content"},
+        {"url": test_url + "/page2.html", "partial_content": "test page 2 content"},
+    ]
+
+    crawler = Crawler(output_dir=tmp_path)
+    for result in expected_results:
+        paths = crawler.crawl(urls=[result["url"]], crawler_depth=0)
+        with open(paths[0].absolute(), "r") as read_file:
+            content = json.load(read_file)
+            assert result["partial_content"] in content["content"]
+
+
+def test_crawler_return_document(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+    documents, _ = crawler.run(urls=[test_url + "/index.html"], crawler_depth=0, return_documents=True)
+    paths, _ = crawler.run(urls=[test_url + "/index.html"], crawler_depth=0, return_documents=False)
+
+    for path, document in zip(paths["paths"], documents["documents"]):
+        with open(path.absolute(), "r") as doc_file:
+            file_content = json.load(doc_file)
             assert file_content["meta"] == document.meta
             assert file_content["content"] == document.content

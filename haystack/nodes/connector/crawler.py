@@ -151,11 +151,15 @@ class Crawler(BaseComponent):
             logger.info(f"Fetching from {urls} to `{output_dir}`")
             sub_links: Dict[str, List] = {}
 
-            # don't go beyond the initial list of urls
-            if crawler_depth == 0:
+            # Start by writing out the initial list of urls
+            if filter_urls:
+                for url in urls:
+                    if re.compile("|".join(filter_urls)).search(url):
+                        file_paths += self._write_to_files([url], output_dir=output_dir)
+            else:
                 file_paths += self._write_to_files(urls, output_dir=output_dir)
-            # follow one level of sublinks
-            elif crawler_depth == 1:
+            # follow one level of sublinks if requested
+            if crawler_depth == 1:
                 for url_ in urls:
                     existed_links: List = list(sum(list(sub_links.values()), []))
                     sub_links[url_] = list(
@@ -279,8 +283,10 @@ class Crawler(BaseComponent):
     def _extract_sublinks_from_url(
         self, base_url: str, filter_urls: Optional[List] = None, existed_links: List = None
     ) -> set:
+
         self.driver.get(base_url)
         a_elements = self.driver.find_elements_by_tag_name("a")
+
         sub_links = set()
         if not (existed_links and base_url in existed_links):
             if filter_urls:
