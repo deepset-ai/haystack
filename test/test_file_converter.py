@@ -1,4 +1,3 @@
-from pathlib import Path
 import os
 
 import pytest
@@ -20,7 +19,7 @@ from .conftest import SAMPLES_PATH
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter])
 def test_convert(Converter):
     converter = Converter()
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]["documents"][0]
     pages = document.content.split("\f")
     assert len(pages) == 4  # the sample PDF file has four pages.
     assert pages[0] != ""  # the page 1 of PDF contains text.
