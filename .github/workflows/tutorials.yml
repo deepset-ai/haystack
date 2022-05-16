@@ -1,19 +1,28 @@
 name: Tutorials
 
 on:
-  # Activate this workflow manually
-  workflow_dispatch:
-  # Activate this workflow on every push of code changes on master
+  workflow_dispatch:  # Activate this workflow manually
+  push:
+    branches:
+      - master
+    paths:
+      - '**/*.py'
+      - '**/*.cfg'
+      - '**/*.toml'
+      - '**/*.ipynb'
   pull_request:
     # branches:
     #   - master
     # paths:
     #   - '**/*.py'
+    #   - '**/*.cfg'
+    #   - '**/*.toml'
     #   - '**/*.ipynb'
 
 jobs:
 
   cache:
+    if: ${{ github.event_name }} != "push" || contains(github.event.pull_request.labels.*.name, 'tutorials')
     runs-on: ubuntu-20.04
     timeout-minutes: 45
     steps:
@@ -48,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - id: notebooks-matrix
-        run: echo "::set-output name=matrix::$(find tutorials/ -name *.ipynb | jq -SR . | jq -cs .)"
+        run: echo "::set-output name=matrix::$(find tutorials/ -name "*.ipynb" | jq -SR . | jq -cs .)"
     outputs:
       matrix: ${{ steps.notebooks-matrix.outputs.matrix }}
 
@@ -59,7 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - id: scripts-matrix
-        run: echo "::set-output name=matrix::$(find tutorials/ -name *.py | jq -SR . | jq -cs .)"
+        run: echo "::set-output name=matrix::$(find tutorials/ -name "*.py" | jq -SR . | jq -cs .)"
     outputs:
       matrix: ${{ steps.scripts-matrix.outputs.matrix }}
 
