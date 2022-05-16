@@ -17,7 +17,7 @@ from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaEr
 from haystack.nodes.base import BaseComponent
 
 from ..conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
-from . import conftest
+from .. import conftest
 
 
 #
