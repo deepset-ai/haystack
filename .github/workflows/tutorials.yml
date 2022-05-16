@@ -63,7 +63,7 @@ jobs:
 
     - name: Run notebook
       run: |
-        pip install ipython
+        pip install ipython nbformat
         sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${{ matrix.notebook-path }}"
 
 
