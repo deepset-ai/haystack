@@ -2268,11 +2268,7 @@
             },
             "embed_meta_fields": {
               "title": "Embed Meta Fields",
-              "default": [
-                "name",
-                "section_title",
-                "caption"
-              ],
+              "default": [],
               "type": "array",
               "items": {
                 "type": "string"

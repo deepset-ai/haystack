@@ -1163,7 +1163,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### EmbeddingRetriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True, embed_meta_fields: List[str] = ["name", "section_title", "caption"])
+def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True, embed_meta_fields: List[str] = [])
 ```
 
 **Arguments**:
