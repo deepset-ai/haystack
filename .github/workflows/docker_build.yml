@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - v*
 
 jobs:
   build:
@@ -36,12 +38,12 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           images: |
             ${{ matrix.repository }}
           tags: |
-            type=ref,event=tag,prefix=${{ matrix.tagprefix }}                     
+            type=semver,pattern={{version}},prefix=${{ matrix.tagprefix }}
             type=sha,format=long,prefix=${{ matrix.tagprefix }}
             type=sha,format=long,prefix=,enable=${{ matrix.default }}
             type=raw,value=latest,prefix=${{ matrix.tagprefix }}
@@ -57,10 +59,10 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Build and push docker image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           file: ${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           push: true
-          cache-from: type=registry,ref=${{ matrix.repository }}:latest
+          cache-from: type=registry,ref=${{ matrix.repository }}:${{ matrix.tagprefix }}latest
           cache-to: type=inline
