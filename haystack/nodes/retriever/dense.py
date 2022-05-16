@@ -1468,7 +1468,7 @@ class EmbeddingRetriever(BaseRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
-        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        embed_meta_fields: List[str] = [],
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
