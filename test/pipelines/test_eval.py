@@ -19,7 +19,7 @@ from haystack.pipelines.standard_pipelines import (
 from haystack.nodes.translator.transformers import TransformersTranslator
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
