@@ -131,21 +131,17 @@ jobs:
           pylint -ry rest_api/
           pylint -ry ui/
 
-  
+  # This CI action mirrors autoformat.yml, with the difference that it
+  # runs on Haystack's end. If the contributor hasn't run autoformat.yml, 
+  # then this check will fail.
   code-and-docs-check:
-    needs: build-cache
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    if: ${{ github.event_name }} != "push"
-
+    needs: integration-tests-linux
     steps:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-          repository: ${{github.event.pull_request.head.repo.full_name}}
-          ref: ${{ github.head_ref }}
       
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
@@ -158,65 +154,31 @@ jobs:
           path: ${{ env.pythonLocation }}
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
-      - name: Install Dependencies (on cache miss only)
-        # The cache might miss during the execution of an action: there should always be a fallback step to
-        # rebuild it in case it goes missing
-        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Install Dependencies
         run: |
           pip install --upgrade pip
           pip install .[all]
           pip install rest_api/
           pip install ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
-          echo "=== pip freeze ==="
-          pip freeze
-          
+
       # Get any additional commit that might have been pushed in the meantime
       - name: Pull changes (if any)
         run: git pull origin ${{ github.head_ref }}
-
-      # Apply Black on the entire codebase
-      - name: Blacken
-        run: black .
-
-      # Convert the Jupyter notebooks into markdown tutorials
-      - name: Generate Tutorials
-        run: |
-          cd docs/_src/tutorials/tutorials/
-          python3 convert_ipynb.py
-
-      # Generate markdown files from the docstrings with pydoc-markdown
-      - name: Generate Docstrings
-        run: |
-          set -e   # Fails on any error in the following loop
-          cd docs/_src/api/api/
-          for file in ../pydoc/* ; do
-            echo "Processing" $file
-            pydoc-markdown "$file"
-          done
-
-      # Generates the OpenAPI specs file to be used on the documentation website
-      - name: Generate OpenAPI Specs
-        run: python .github/utils/generate_openapi_specs.py
-
-      # Generates a new JSON schema for the pipeline YAML validation
-      - name: Generate JSON schema for pipelines
-        run: python .github/utils/generate_json_schema.py
+          
+      - name: Code and Docs Updates
+        run: ./.github/utils/code_and_docs.sh
       
       # If there is anything to commit, fail
-      # Note: this CI action mirrors autoformat.yml, with the difference that it
-      # runs on Haystack's end. If the contributor hasn't run autoformat.yml, then this
-      # check will fail.
-      - name: Check git status
+      - name: Check status
         run: |
           if [[ `git status --porcelain` ]]; then
             git status
             echo ""
             echo "This means that the 'autoformat.yml' action didn't run."
             echo "Please enable GitHub Action on your fork to pass this check!"
+            echo "See https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks for instructions"
             exit 1
           fi
-
 
   prepare-matrix:
     needs: build-cache
