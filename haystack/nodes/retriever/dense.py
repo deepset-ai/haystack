@@ -1833,7 +1833,7 @@ class EmbeddingRetriever(BaseRetriever):
                     doc.content = doc.content.to_csv(index=False)
                 else:
                     raise HaystackError("Documents of type 'table' need to have a pd.DataFrame as content field")
-            meta_data_fields = [doc.meta[key] for key in self.embed_meta_fields if key in doc.meta]
+            meta_data_fields = [doc.meta[key] for key in self.embed_meta_fields if key in doc.meta and doc.meta[key]]
             doc.content = "\n".join(meta_data_fields + [doc.content])
             linearized_docs.append(doc)
         return linearized_docs
