@@ -357,7 +357,7 @@ jobs:
     - name: Run Milvus1 tests
       run: |
         export MILVUS1_ENABLED=1
-        pytest -s test/document_stores/test_document_store.py test/modeling/test_eval.py test/document_stores/test_faiss_and_milvus.py test/pipelines/test_pipeline.py test/nodes/test_retriever.py test/pipelines/test_standard_pipelines.py --document_store_type="milvus1"
+        pytest -s test/document_stores/test_document_store.py test/pipelines/test_eval.py test/document_stores/test_faiss_and_milvus.py test/pipelines/test_pipeline.py test/nodes/test_retriever.py test/pipelines/test_standard_pipelines.py --document_store_type="milvus1"
 
   test-pinecone:
     needs: build-cache
