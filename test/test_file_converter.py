@@ -18,9 +18,7 @@ from .conftest import SAMPLES_PATH
 
 @pytest.mark.tika
 @pytest.mark.parametrize(
-    # "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
-    "Converter",
-    [PDFToTextOCRConverter],
+    "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
 )
 def test_convert(Converter):
     converter = Converter()
@@ -35,7 +33,7 @@ def test_convert(Converter):
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
-@pytest.mark.parametrize("Converter", [PDFToTextConverter])  # TODO PDFToTextOCRConverter should pass this test too
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_encoding(Converter):
     converter = Converter()
 
@@ -46,7 +44,7 @@ def test_pdf_encoding(Converter):
     assert "ɪ" not in document.content
 
 
-@pytest.mark.parametrize("Converter", [PDFToTextConverter])  # TODO PDFToTextOCRConverter should pass this test too
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_ligatures(Converter):
     converter = Converter()
 
