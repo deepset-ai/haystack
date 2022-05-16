@@ -22,7 +22,6 @@ on:
 jobs:
 
   notebooks-matrix:
-    needs: cache
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -33,7 +32,6 @@ jobs:
 
 
   scripts-matrix:
-    needs: cache
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
