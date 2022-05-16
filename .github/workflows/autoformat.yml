@@ -12,17 +12,11 @@ on:
   push:
     branches-ignore:    
       - 'master'
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.txt'
-      - '**/*.png'
-      - '**/*.gif'
-
+    
 jobs:
 
   run:
     runs-on: ubuntu-latest
-    needs: integration-tests-linux
     steps:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
       - uses: actions/checkout@v2
@@ -46,11 +40,8 @@ jobs:
           pip install .[all]
           pip install rest_api/
           pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
-      # Get any additional commit that might have been pushed in the meantime
-      - name: Pull changes (if any)
-        run: git pull origin ${{ github.head_ref }}
-          
       - name: Code and Docs Updates
         run: ./.github/utils/code_and_docs.sh
       
