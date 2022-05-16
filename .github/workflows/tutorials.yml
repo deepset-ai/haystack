@@ -13,8 +13,62 @@ on:
 
 jobs:
 
-  notebooks:
+  cache:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    steps:
+      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Cache
+        id: cache-python-env
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.pythonLocation }}
+          # The cache will be rebuild every day and at every change of the dependency files
+          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+      - name: Install dependencies
+        if: steps.cache-python-env.outputs.cache-hit != 'true'
+        run: |
+          pip install --upgrade pip
+          pip install .[test]
+          pip install rest_api/
+          pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+
+
+  notebooks-matrix:
+    needs: build-cache
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - id: notebooks-matrix
+        run: echo "::set-output name=matrix::$(find tutorials/ -name *.ipynb | jq -SR . | jq -cs .)"
+    outputs:
+      matrix: ${{ steps.notebooks-matrix.outputs.matrix }}
+
+  scripts-matrix:
+    needs: build-cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - id: scripts-matrix
+        run: echo "::set-output name=matrix::$(find tutorials/ -name *.py | jq -SR . | jq -cs .)"
+    outputs:
+      matrix: ${{ steps.scripts-matrix.outputs.matrix }}
+
+  notebooks:
+    needs: notebooks-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        notebook-path: ${{fromJson(needs.notebooks-matrix.outputs.matrix)}}
+      fail-fast: false
 
     steps:
     - uses: actions/checkout@v2
@@ -51,22 +105,17 @@ jobs:
       run: |
         pip install .[all]
 
-    - name: Run Notebook Tutorials
-      run: |
-        set -e   # Fails on any error in the following loop
-        readarray -d '' entries < <(printf '%s\0' tutorials/*.ipynb | sort -zV)
-        for file in "${entries[@]}"; do
-          if [[ "$file" == "Tutorial2_Finetune_a_model_on_your_data.ipynb" ]]; then echo "Skipping Tutorial2, no GPU"; else
-            if [[ "$file" == "Tutorial9_DPR_training.ipynb" ]]; then echo "Skipping Tutorial9, no GPU"; else
-              echo "Running " $file
-              sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $file"
-            fi
-          fi
-        done
+    - name: Run notebook
+      run: sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${{ matrix.notebook-path }}"
 
 
   scripts:
+    needs: scripts-matrix
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        script-path: ${{fromJson(needs.scripts-matrix.outputs.matrix)}}
+      fail-fast: false
 
     steps:
     - uses: actions/checkout@v2
@@ -82,7 +131,7 @@ jobs:
       with:
         path: ${{ env.pythonLocation }}
         key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
-    
+
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
@@ -127,16 +176,6 @@ jobs:
     - name: Reinstall Haystack
       run: |
         pip install .[all]
-    
-    - name: Run Python Tutorials
-      run: |
-        set -e   # Fails on any error in the following loop
-        readarray -d '' entries < <(printf '%s\0' tutorials/*.py | sort -zV)
-        for file in "${entries[@]}"; do
-          if [[ "$file" == "Tutorial2_Finetune_a_model_on_your_data.py" ]]; then echo "Skipping Tutorial2, no GPU"; else
-            if [[ "$file" == "Tutorial9_DPR_training.py" ]]; then echo "Skipping Tutorial9, no GPU"; else
-              echo "Running " $file
-              python $file
-            fi
-          fi
-        done
+
+    - name: Run script
+      run: python ${{ matrix.script-path }}
