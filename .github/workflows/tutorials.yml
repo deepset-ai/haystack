@@ -21,36 +21,6 @@ on:
 
 jobs:
 
-  cache:
-    if: ${{ github.event_name }} != "push" || contains(github.event.pull_request.labels.*.name, 'tutorials')
-    runs-on: ubuntu-20.04
-    timeout-minutes: 45
-    steps:
-      - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-
-      - name: Cache
-        id: cache-python-env
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          # The cache will be rebuild every day and at every change of the dependency files
-          key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
-
-      - name: Install dependencies
-        if: steps.cache-python-env.outputs.cache-hit != 'true'
-        run: |
-          pip install --upgrade pip
-          pip install .[test]
-          pip install rest_api/
-          pip install ui/
-          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
-
-
   notebooks-matrix:
     needs: cache
     runs-on: ubuntu-latest
@@ -99,23 +69,6 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Install Dependencies (on cache miss only)
-      # The cache might miss during the execution of an action: there should always be a fallback step to
-      # rebuild it in case it goes missing
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        pip install --upgrade pip
-        pip install .[all]
-        pip install rest_api/
-        pip install ui/
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
-
-    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
-    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
-    - name: Reinstall Haystack
-      run: |
-        pip install .[all]
-
     - name: Run notebook
       run: sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${{ matrix.notebook-path }}"
 
@@ -146,47 +99,19 @@ jobs:
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
 
-    - name: Run Opensearch
-      run: docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
-
-    - name: Run Milvus
-      run: |
-        cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
-        wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-        sudo docker-compose up -d
-        sudo docker-compose ps
-
-    - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
-
-    - name: Run GraphDB
-      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
-
     - name: Run Apache Tika
       run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
 
-    - name: Run Parsr
-      run: docker run -d -p 3001:3001 axarev/parsr:v1.2.2
-      
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-    - name: Install Dependencies (on cache miss only)
-      # The cache might miss during the execution of an action: there should always be a fallback step to
-      # rebuild it in case it goes missing
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        pip install --upgrade pip
-        pip install .[all]
-        pip install rest_api/
-        pip install ui/
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
     # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
     - name: Reinstall Haystack
       run: |
+        pip install --upgrade pip
         pip install .[all]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run script
       run: python ${{ matrix.script-path }}
