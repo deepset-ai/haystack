@@ -135,13 +135,18 @@ jobs:
   # runs on Haystack's end. If the contributor hasn't run autoformat.yml, 
   # then this check will fail.
   code-and-docs-check:
+    needs: build-cache
     runs-on: ubuntu-latest
-    needs: integration-tests-linux
+    timeout-minutes: 45
+    if: ${{ github.event_name }} != "push"
     steps:
       - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.head_ref }}
       
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
@@ -154,12 +159,16 @@ jobs:
           path: ${{ env.pythonLocation }}
           key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
-      - name: Install Dependencies
+      - name: Install Dependencies (on cache miss only)
+        # The cache might miss during the execution of an action: there should always be a fallback step to
+        # rebuild it in case it goes missing
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           pip install --upgrade pip
           pip install .[all]
           pip install rest_api/
           pip install ui/
+          pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
       # Get any additional commit that might have been pushed in the meantime
       - name: Pull changes (if any)
@@ -169,7 +178,7 @@ jobs:
         run: ./.github/utils/code_and_docs.sh
       
       # If there is anything to commit, fail
-      - name: Check status
+      - name: Check git status
         run: |
           if [[ `git status --porcelain` ]]; then
             git status
@@ -179,6 +188,7 @@ jobs:
             echo "See https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks for instructions"
             exit 1
           fi
+
 
   prepare-matrix:
     needs: build-cache
