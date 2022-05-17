@@ -893,10 +893,7 @@ class DeepsetCloud:
 
     @classmethod
     def get_file_client(
-        cls,
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        workspace: str = "default",
+        cls, api_key: Optional[str] = None, api_endpoint: Optional[str] = None, workspace: str = "default"
     ) -> FileClient:
         """
         Creates a client to manage files on deepset Cloud.
