@@ -16,14 +16,15 @@ from haystack.schema import Document
 logger = logging.getLogger(__name__)
 TIKA_CONTAINER_NAME = "tika"
 
-def launch_tika(sleep=15,  delete_existing=False):
+
+def launch_tika(sleep=15, delete_existing=False):
     # Start a Tika server via Docker
 
     logger.debug("Starting Tika ...")
     # This line is needed since it is not possible to start a new docker container with the name tika if there is a stopped image with the same name
     # docker rm only succeeds if the container is stopped, not if it is running
     if delete_existing:
-        _ = subprocess.run([f"docker rm --force {TIKA_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)    
+        _ = subprocess.run([f"docker rm --force {TIKA_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
             f"docker start {TIKA_CONTAINER_NAME} > /dev/null 2>&1 || docker run -p 9998:9998  --name {TIKA_CONTAINER_NAME} apache/tika:1.24.1"
