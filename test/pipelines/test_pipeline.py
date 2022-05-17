@@ -747,7 +747,7 @@ def test_load_from_deepset_cloud_indexing(caplog):
 
     with caplog.at_level(logging.INFO):
         indexing_pipeline.run(file_paths=[SAMPLES_PATH / "docs" / "doc_1.txt"])
-        assert "Note, that DeepsetCloudDocumentStore does not support write operations." in caplog.text
+        assert "Note that DeepsetCloudDocumentStore does not support write operations." in caplog.text
         assert "Input to write_documents: {" in caplog.text
 
 
