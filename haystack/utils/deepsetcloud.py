@@ -870,6 +870,13 @@ class EvaluationRunClient:
         if response.status_code == 204:
             logger.info(f"Eval run '{eval_run_id}' deleted.")
 
+    def start_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None):
+        workspace_url = self._build_workspace_url(workspace)
+        eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}/start"
+        response = self.client.post(eval_run_url, headers=headers)
+        if response.status_code == 204:
+            logger.info(f"Eval run '{eval_run_id}' has been started.")
+
     def update_eval_run(
         self,
         eval_run_id: str,
@@ -1114,5 +1121,29 @@ class DeepsetCloudExperiments:
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
     ):
-        logger.warning(f"Starting run '{eval_run_id}' hasn't been implemented yet. You won't see any progress")
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        client.start_eval_run(eval_run_id=eval_run_id)
         logger.info("You can check run progess by inspecting the `status` field returned from `get_run()`.")
+
+    @classmethod
+    def create_and_start_run(
+        cls,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        pipeline_config_name: Optional[str] = None,
+        evaluation_set: Optional[str] = None,
+        eval_mode: Literal["integrated", "isolated"] = "integrated",
+        debug: bool = False,
+    ):
+        create_response = cls.create_run(
+            workspace=workspace,
+            api_key=api_key,
+            api_endpoint=api_endpoint,
+            pipeline_config_name=pipeline_config_name,
+            evaluation_set=evaluation_set,
+            eval_mode=eval_mode,
+            debug=debug,
+        )
+        eval_run_id = create_response["eval_run_id"]
+        cls.start_run(eval_run_id=eval_run_id, workspace=workspace, api_key=api_key, api_endpoint=api_endpoint)
