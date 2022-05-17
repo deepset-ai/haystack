@@ -909,7 +909,7 @@ one used by hugging-face transformers' modelhub models.
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
 - `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
 - `embed_meta_fields`: Concatenate the provided meta fields and text passage / table to a text pair that is
-then  used to create the embedding.
+then used to create the embedding.
 This is the approach used in the original paper and is likely to improve
 performance if your titles contain meaningful information for retrieval
 (topic, entities etc.).
@@ -1163,7 +1163,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### EmbeddingRetriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
+def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True, embed_meta_fields: List[str] = [])
 ```
 
 **Arguments**:
@@ -1200,6 +1200,11 @@ Additional information can be found here https://huggingface.co/transformers/mai
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+- `embed_meta_fields`: Concatenate the provided meta fields and text passage / table to a text pair that is
+then used to create the embedding.
+This approach is also used in the TableTextRetriever paper and is likely to improve
+performance if your titles contain meaningful information for retrieval
+(topic, entities etc.).
 
 <a id="dense.EmbeddingRetriever.retrieve"></a>
 
