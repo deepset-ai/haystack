@@ -1,3 +1,4 @@
+from functools import wraps
 from typing import List, Optional, Union, Dict, Generator
 
 import json
@@ -7,9 +8,30 @@ import numpy as np
 from haystack.document_stores import KeywordDocumentStore
 from haystack.errors import HaystackError
 from haystack.schema import Document, Label
-from haystack.utils import DeepsetCloud, DeepsetCloudError
+from haystack.utils import DeepsetCloud, DeepsetCloudError, args_to_kwargs
 
 logger = logging.getLogger(__name__)
+
+
+def disable_and_log(func):
+    """
+    Decorator to disable write operation, shows warning and inputs instead.
+    """
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if not self.disabled_write_warning_shown:
+            logger.warning(
+                "Note that DeepsetCloudDocumentStore does not support write operations. "
+                "In order to verify your pipeline works correctly, each input to write operations will be logged."
+            )
+            self.disabled_write_warning_shown = True
+
+        args_as_kwargs = args_to_kwargs(args, func)
+        parameters = {**args_as_kwargs, **kwargs}
+        logger.info(f"Input to {func.__name__}: {parameters}")
+
+    return wrapper
 
 
 class DeepsetCloudDocumentStore(KeywordDocumentStore):
@@ -117,6 +139,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, evaluation_set=label_index
         )
+
+        self.disabled_write_warning_shown = False
 
         super().__init__()
 
@@ -560,6 +584,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def _create_document_field_map(self) -> Dict:
         return {}
 
+    @disable_and_log
     def write_documents(
         self,
         documents: Union[List[dict], List[Document]],
@@ -589,7 +614,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :return: None
         """
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support writing documents.")
+        pass
 
     def get_evaluation_sets(self) -> List[dict]:
         """
@@ -630,22 +655,25 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         return self.evaluation_set_client.get_labels_count(evaluation_set=index)
 
+    @disable_and_log
     def write_labels(
         self,
         labels: Union[List[Label], List[dict]],
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        pass
 
+    @disable_and_log
     def delete_all_documents(
         self,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting documents.")
+        pass
 
+    @disable_and_log
     def delete_documents(
         self,
         index: Optional[str] = None,
@@ -653,8 +681,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting documents.")
+        pass
 
+    @disable_and_log
     def delete_labels(
         self,
         index: Optional[str] = None,
@@ -662,7 +691,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        pass
 
+    @disable_and_log
     def delete_index(self, index: str):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting indexes.")
+        pass

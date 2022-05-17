@@ -4195,6 +4195,16 @@ query result
 
 # Module deepsetcloud
 
+<a id="deepsetcloud.disable_and_log"></a>
+
+#### disable\_and\_log
+
+```python
+def disable_and_log(func)
+```
+
+Decorator to disable write operation, shows warning and inputs instead.
+
 <a id="deepsetcloud.DeepsetCloudDocumentStore"></a>
 
 ## DeepsetCloudDocumentStore
@@ -4522,6 +4532,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### DeepsetCloudDocumentStore.write\_documents
 
 ```python
+@disable_and_log
 def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 

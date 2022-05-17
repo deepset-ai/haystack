@@ -10,6 +10,7 @@ import logging
 from haystack.schema import Document, MultiLabel
 from haystack.errors import PipelineSchemaError
 from haystack.telemetry import send_custom_event
+from haystack.utils import args_to_kwargs
 
 
 logger = logging.getLogger(__name__)
@@ -37,17 +38,11 @@ def exportable_to_yaml(init_func):
         #   Inner classes are heavily used in tests.
         if init_func.__qualname__.endswith(f"{self.__class__.__name__}.{init_func.__name__}"):
 
-            # Store all the named input parameters in self._component_config
-            for k, v in kwargs.items():
+            # Store all the input parameters in self._component_config
+            args_as_kwargs = args_to_kwargs(args, init_func)
+            params = {**args_as_kwargs, **kwargs}
+            for k, v in params.items():
                 self._component_config["params"][k] = v
-
-            # Store unnamed input parameters in self._component_config too by inferring their names
-            sig = inspect.signature(init_func)
-            parameter_names = list(sig.parameters.keys())
-            # we can be sure that the first one is always "self"
-            arg_names = parameter_names[1 : 1 + len(args)]
-            for arg, arg_name in zip(args, arg_names):
-                self._component_config["params"][arg_name] = arg
 
     return wrapper_exportable_to_yaml
 
