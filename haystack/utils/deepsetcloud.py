@@ -507,7 +507,9 @@ class PipelineClient:
                 logger.info(f"Pipeline config '{pipeline_config_name}' successfully deployed.")
             else:
                 logger.info(f"Pipeline config '{pipeline_config_name}' is already deployed.")
-            logger.info(f"Search endpoint for pipeline config '{pipeline_config_name}' is up and running for you under {pipeline_url}")
+            logger.info(
+                f"Search endpoint for pipeline config '{pipeline_config_name}' is up and running for you under {pipeline_url}"
+            )
             if show_curl_message:
                 curl_cmd = (
                     f"curl -X 'POST' \\\n"
