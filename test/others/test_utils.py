@@ -9,7 +9,7 @@ from haystack.utils.augment_squad import augment_squad
 from haystack.utils.squad_data import SquadData
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 TEST_CONTEXT = context = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen. 
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte, 

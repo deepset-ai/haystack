@@ -16,7 +16,7 @@ from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.pipelines import Pipeline
 from haystack.nodes.retriever.dense import EmbeddingRetriever
 
-from .conftest import document_classifier, ensure_ids_are_correct_uuids, SAMPLES_PATH, MockDenseRetriever
+from ..conftest import document_classifier, ensure_ids_are_correct_uuids, SAMPLES_PATH, MockDenseRetriever
 
 
 DOCUMENTS = [
