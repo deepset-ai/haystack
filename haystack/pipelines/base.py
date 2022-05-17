@@ -375,11 +375,15 @@ class Pipeline:
             self.graph = _init_pipeline_graph(root_node_name=candidate_roots[0])
 
         component_definitions = get_component_definitions(pipeline_config=self.get_config())
+        component_definition = {"params": component.get_params(), "type": component.type}
 
-        # Check for duplicates before adding the definition
-        if name in component_definitions.keys():
+        # Check for duplicate names before adding the definition
+        # Note that the very same component must be addable multiple times: 
+        # E.g. for indexing pipelines it's common to add a retriever first and a document store afterwards. The document store is already being used by the retriever however.
+        # Thus the very same document store will be added twice, first as a subcomponent of the retriever and second as a first level node.
+        if name in component_definitions.keys() and component_definitions[name] != component_definition:
             raise PipelineConfigError(f"A node named '{name}' is already in the pipeline. Choose another name.")
-        component_definitions[name] = component._component_config
+        component_definitions[name] = component_definition
 
         # Name any nested component before adding them
         component.name = name
