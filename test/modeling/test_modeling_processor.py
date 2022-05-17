@@ -6,7 +6,7 @@ from transformers import AutoTokenizer
 from haystack.modeling.data_handler.processor import SquadProcessor
 from haystack.modeling.model.tokenization import Tokenizer
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 
 # during inference (parameter return_baskets = False) we do not convert labels

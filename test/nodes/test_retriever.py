@@ -17,7 +17,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 
 @pytest.fixture()
@@ -102,6 +102,41 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
             query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
         )
         assert len(result) == 0
+
+
+def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
+        document_store_with_docs.update_embeddings(retriever_with_docs)
+
+    res = retriever_with_docs.retrieve_batch(queries="Who lives in Berlin?")
+
+    # Expected return type: list of Documents
+    assert isinstance(res, list)
+    assert isinstance(res[0], Document)
+
+    assert res[0].content == "My name is Carla and I live in Berlin"
+    assert len(res) == 5
+    assert res[0].meta["name"] == "filename1"
+
+
+def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_with_docs):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
+        document_store_with_docs.update_embeddings(retriever_with_docs)
+
+    res = retriever_with_docs.retrieve_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
+
+    # Expected return type: list of lists of Documents
+    assert isinstance(res, list)
+    assert isinstance(res[0], list)
+    assert isinstance(res[0][0], Document)
+
+    assert res[0][0].content == "My name is Carla and I live in Berlin"
+    assert len(res[0]) == 5
+    assert res[0][0].meta["name"] == "filename1"
+
+    assert res[1][0].content == "My name is Paul and I live in New York"
+    assert len(res[1]) == 5
+    assert res[1][0].meta["name"] == "filename2"
 
 
 @pytest.mark.elasticsearch

@@ -189,3 +189,17 @@ class BaseConverter(BaseComponent):
 
         result = {"documents": documents}
         return result, "output_1"
+
+    def run_batch(  # type: ignore
+        self,
+        file_paths: Union[Path, List[Path]],  # type: ignore
+        meta: Optional[Union[Dict[str, str], List[Optional[Dict[str, str]]]]] = None,  # type: ignore
+        remove_numeric_tables: Optional[bool] = None,  # type: ignore
+        valid_languages: Optional[List[str]] = None,  # type: ignore
+    ):
+        return self.run(
+            file_paths=file_paths,
+            meta=meta,
+            remove_numeric_tables=remove_numeric_tables,
+            valid_languages=valid_languages,
+        )

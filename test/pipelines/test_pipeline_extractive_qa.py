@@ -64,6 +64,7 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_answers_with_translator(reader, retriever_with_docs, en_to_de_translator, de_to_en_translator):
     base_pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     pipeline = TranslationWrapperPipeline(

@@ -189,7 +189,7 @@ class RAGenerator(BaseGenerator):
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
         Generate the answer to the input query. The generation will be conditioned on the supplied documents.
-        These document can for example be retrieved via the Retriever.
+        These documents can for example be retrieved via the Retriever.
 
         :param query: Query
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.

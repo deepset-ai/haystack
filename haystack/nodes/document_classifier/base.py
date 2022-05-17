@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Optional
 
 import logging
 from abc import abstractmethod
@@ -21,6 +21,12 @@ class BaseDocumentClassifier(BaseComponent):
     def predict(self, documents: List[Document]):
         pass
 
+    @abstractmethod
+    def predict_batch(
+        self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
+    ) -> Union[List[Document], List[List[Document]]]:
+        pass
+
     def run(self, documents: Union[List[dict], List[Document]], root_node: str):  # type: ignore
         self.query_count += 1
         if documents:
@@ -31,13 +37,28 @@ class BaseDocumentClassifier(BaseComponent):
             results = []
 
         document_ids = [doc.id for doc in results]
-        logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        logger.debug(f"Classified documents with IDs: {document_ids}")
 
         # convert back to dicts if we are in an indexing pipeline
         if root_node == "File":
             results = [doc.to_dict() for doc in results]
 
         output = {"documents": results}
+
+        return output, "output_1"
+
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
+        predict_batch = self.timing(self.predict_batch, "query_time")
+        results = predict_batch(documents=documents, batch_size=batch_size)
+        output = {"documents": results}
+
+        if isinstance(documents[0], Document):
+            document_ids = [doc.id for doc in results]
+            logger.debug(f"Classified documents with IDs: {document_ids}")
+        else:
+            for doc_list in results:
+                document_ids = [doc.id for doc in doc_list]
+                logger.debug(f"Classified documents with IDs: {document_ids}")
 
         return output, "output_1"
 

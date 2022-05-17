@@ -16,8 +16,8 @@ from haystack.nodes import FileTypeClassifier
 from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError
 from haystack.nodes.base import BaseComponent
 
-from .conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
-from . import conftest
+from ..conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
+from .. import conftest
 
 
 #
@@ -353,6 +353,9 @@ def test_load_yaml_custom_component_neednt_call_super(tmp_path):
             self.param = param
 
         def run(self, *a, **k):
+            pass
+
+        def run_batch(self, *a, **k):
             pass
 
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:

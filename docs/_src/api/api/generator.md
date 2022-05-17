@@ -33,6 +33,54 @@ Abstract method to generate answers.
 
 Generated answers plus additional infos in a dict
 
+<a id="base.BaseGenerator.predict_batch"></a>
+
+#### BaseGenerator.predict\_batch
+
+```python
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+```
+
+Generate the answer to the input queries. The generation will be conditioned on the supplied documents.
+
+These documents can for example be retrieved via the Retriever.
+
+- If you provide a single query...
+
+    - ... and a single list of Documents, the query will be applied to each Document individually.
+    - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+      will be aggregated per Document list.
+
+- If you provide a list of queries...
+
+    - ... and a single list of Documents, each query will be applied to each Document individually.
+    - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+      and the Answers will be aggregated per query-Document pair.
+
+**Arguments**:
+
+- `queries`: Single query or list of queries.
+- `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+Can be a single list of Documents or a list of lists of Documents.
+- `top_k`: Number of returned answers per query.
+- `batch_size`: Not applicable.
+
+**Returns**:
+
+Generated answers plus additional infos in a dict like this:
+```python
+|     {'queries': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'query': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'content': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
+```
+
 <a id="transformers"></a>
 
 # Module transformers
@@ -123,7 +171,7 @@ def predict(query: str, documents: List[Document], top_k: Optional[int] = None) 
 
 Generate the answer to the input query. The generation will be conditioned on the supplied documents.
 
-These document can for example be retrieved via the Retriever.
+These documents can for example be retrieved via the Retriever.
 
 **Arguments**:
 

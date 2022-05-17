@@ -1,6 +1,7 @@
 # pylint: disable=too-many-public-methods
 
 from __future__ import annotations
+
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
@@ -61,11 +62,9 @@ TRACKING_TOOL_TO_HEAD = {"mlflow": MLflowTrackingHead}
 
 class Pipeline:
     """
-    Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
+    Pipeline brings together building blocks to build a complex search pipeline with Haystack and user-defined components.
 
-    Under-the-hood, a pipeline is represented as a directed acyclic graph of component nodes. It enables custom query
-    flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
-    Reader from multiple Retrievers, or re-ranking of candidate documents.
+    Under the hood, a Pipeline is represented as a directed acyclic graph of component nodes. You can use it for custom query flows with the option to branch queries (for example, extractive question answering and keyword match query), merge candidate documents for a Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
 
     def __init__(self):
@@ -429,38 +428,24 @@ class Pipeline:
         debug: Optional[bool] = None,
     ):
         """
-        Runs the pipeline, one node at a time.
+        Runs the Pipeline, one node at a time.
 
-        :param query: The search query (for query pipelines only)
-        :param file_paths: The files to index (for indexing pipelines only)
-        :param labels:
-        :param documents:
-        :param meta:
+        :param query: The search query (for query pipelines only).
+        :param file_paths: The files to index (for indexing pipelines only).
+        :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
+        :param documents: A list of Document objects to be processed by the Pipeline Nodes.
+        :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
         :param params: Dictionary of parameters to be dispatched to the nodes.
-                       If you want to pass a param to all nodes, you can just use: {"top_k":10}
-                       If you want to pass it to targeted nodes, you can do:
-                       {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-        :param debug: Whether the pipeline should instruct nodes to collect debug information
-                      about their execution. By default these include the input parameters
-                      they received and the output they generated. All debug information can
-                      then be found in the dict returned by this method under the key "_debug"
+                       To pass a parameter to all Nodes, use: `{"top_k": 10}`.
+                       To pass a parameter to targeted Nodes, run:
+                        `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
+        :param debug: Specifies whether the Pipeline should instruct Nodes to collect debug information
+                      about their execution. By default, this information includes the input parameters
+                      the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
         # validate the node names
-        if params:
-            if not all(node_id in self.graph.nodes for node_id in params.keys()):
+        self._validate_node_names_in_params(params=params)
 
-                # Might be a non-targeted param. Verify that too
-                not_a_node = set(params.keys()) - set(self.graph.nodes)
-                valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
-                for node_id in self.graph.nodes:
-                    run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
-                    valid_global_params |= set(run_signature_args)
-                invalid_keys = [key for key in not_a_node if key not in valid_global_params]
-
-                if invalid_keys:
-                    raise ValueError(
-                        f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
-                    )
         root_node = self.root_node
         if not root_node:
             raise PipelineError("Cannot run a pipeline with no nodes.")
@@ -511,7 +496,7 @@ class Pipeline:
                     )
                 queue.pop(node_id)
                 #
-                if stream_id == "split_documents":
+                if stream_id == "split":
                     for stream_id in [key for key in node_output.keys() if key.startswith("output_")]:
                         current_node_output = {k: v for k, v in node_output.items() if not k.startswith("output_")}
                         current_docs = node_output.pop(stream_id)
@@ -545,6 +530,155 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+        return node_output
+
+    def run_batch(  # type: ignore
+        self,
+        queries: Optional[Union[str, List[str]]] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None,
+    ):
+        """
+        Runs the Pipeline in a batch mode, one node at a time. The batch mode means that the Pipeline can take more than one query as input. You can use this method for query pipelines only. When used with an indexing pipeline, it calls the pipeline `run()` method.
+
+        Here's what this method returns for Retriever-Reader pipelines:
+        - Single query: Retrieves top-k relevant Docments and returns a list of answers for each retrieved Document.
+        - A list of queries: Retrieves top-k relevant Documents for each query and returns a list of answers for each query.
+
+        Here's what this method returns for Reader-only pipelines:
+        - Single query + a list of Documents: Applies the query to each Document individually and returns answers    for each single Document.
+        - Single query + a list of lists of Documents: Applies the query to each list of Documents and returns aggregated answers for each list of Documents.
+        - A list of queries + a list of Documents: Applies each query to each Document individually and returns answers for each query-document pair.
+        - A list of queries + a list of lists of Documents: Applies each query to its corresponding Document list and aggregates answers for each list of Documents.
+
+
+        :param queries: Single search query or list of search queries (for query pipelines only).
+        :param file_paths: The files to index (for indexing pipelines only). If you provide `file_paths` the                Pipeline's `run` method instead of `run_batch` is called.
+        :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
+        :param documents: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
+        :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
+        :param params: Dictionary of parameters to be dispatched to the nodes.
+                       To pass a parameter to all Nodes, use: `{"top_k":10}`.
+                       To pass a parameter to targeted Nodes, run:
+                        `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
+        :param debug: Specifies whether the Pipeline should instruct Nodes to collect debug information
+                      about their execution. By default, this information includes the input parameters
+                      the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
+        """
+        if file_paths is not None or meta is not None:
+            logger.info(
+                "It seems that an indexing Pipeline is run, " "so using the nodes' run method instead of run_batch."
+            )
+            if isinstance(queries, list):
+                raise PipelineError("For indexing, only a single query can be provided.")
+            if isinstance(labels, list):
+                raise PipelineError("For indexing, only one MultiLabel object can be provided as labels.")
+            if documents and isinstance(documents[0], list):
+                flattened_documents: List[Document] = []
+                for doc_list in documents:
+                    assert isinstance(doc_list, list)
+                    flattened_documents.extend(doc_list)
+            return self.run(
+                query=queries,
+                file_paths=file_paths,
+                labels=labels,
+                documents=flattened_documents,
+                meta=meta,
+                params=params,
+                debug=debug,
+            )
+        # Validate node names
+        self._validate_node_names_in_params(params=params)
+
+        root_node = self.root_node
+        if not root_node:
+            raise PipelineError("Cannot run a pipeline with no nodes.")
+
+        node_output = None
+        queue: Dict[str, Any] = {
+            root_node: {"root_node": root_node, "params": params}
+        }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
+        if queries:
+            queue[root_node]["queries"] = queries
+        if file_paths:
+            queue[root_node]["file_paths"] = file_paths
+        if labels:
+            queue[root_node]["labels"] = labels
+        if documents:
+            queue[root_node]["documents"] = documents
+        if meta:
+            queue[root_node]["meta"] = meta
+
+        i = 0  # the first item is popped off the queue unless it is a "join" node with unprocessed predecessors
+        while queue:
+            node_id = list(queue.keys())[i]
+            node_input = queue[node_id]
+            node_input["node_id"] = node_id
+
+            # Apply debug attributes to the node input params
+            # NOTE: global debug attributes will override the value specified in each node's params dictionary.
+            if debug is None and node_input:
+                if node_input.get("params", {}):
+                    debug = params.get("debug", None)  # type: ignore
+            if debug is not None:
+                if not node_input.get("params", None):
+                    node_input["params"] = {}
+                if node_id not in node_input["params"].keys():
+                    node_input["params"][node_id] = {}
+                node_input["params"][node_id]["debug"] = debug
+
+            predecessors = set(nx.ancestors(self.graph, node_id))
+            if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
+                try:
+                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run_batch(**node_input)
+                except Exception as e:
+                    tb = traceback.format_exc()
+                    raise Exception(
+                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, "
+                        f"full stack trace: {tb}"
+                    )
+                queue.pop(node_id)
+
+                if stream_id == "split":
+                    for stream_id in [key for key in node_output.keys() if key.startswith("output_")]:
+                        current_node_output = {k: v for k, v in node_output.items() if not k.startswith("output_")}
+                        current_docs = node_output.pop(stream_id)
+                        current_node_output["documents"] = current_docs
+                        next_nodes = self.get_next_nodes(node_id, stream_id)
+                        for n in next_nodes:
+                            queue[n] = current_node_output
+                else:
+                    next_nodes = self.get_next_nodes(node_id, stream_id)
+                    for n in next_nodes:
+                        if queue.get(n):  # concatenate inputs if it's a join node
+                            existing_input = queue[n]
+                            if "inputs" not in existing_input.keys():
+                                updated_input: Dict = {"inputs": [existing_input, node_output], "params": params}
+                                if queries:
+                                    updated_input["queries"] = queries
+                                if file_paths:
+                                    updated_input["file_paths"] = file_paths
+                                if labels:
+                                    updated_input["labels"] = labels
+                                if documents:
+                                    updated_input["documents"] = documents
+                                if meta:
+                                    updated_input["meta"] = meta
+                            else:
+                                existing_input["inputs"].append(node_output)
+                                updated_input = existing_input
+                            queue[n] = updated_input
+                        else:
+                            queue[n] = node_output
+                i = 0
+            else:
+                i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+
         return node_output
 
     @classmethod
@@ -1400,6 +1534,26 @@ class Pipeline:
             new_num = occupied_num + 1
             component_name = f"{type_name}_{new_num}"
         return component_name
+
+    def _validate_node_names_in_params(self, params: Optional[Dict]):
+        """
+        Validates the node names provided in the 'params' arg of run/run_batch method.
+        """
+        if params:
+            if not all(node_id in self.graph.nodes for node_id in params.keys()):
+
+                # Might be a non-targeted param. Verify that too
+                not_a_node = set(params.keys()) - set(self.graph.nodes)
+                valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
+                for node_id in self.graph.nodes:
+                    run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
+                    valid_global_params |= set(run_signature_args)
+                invalid_keys = [key for key in not_a_node if key not in valid_global_params]
+
+                if invalid_keys:
+                    raise ValueError(
+                        f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
+                    )
 
     def print_eval_report(
         self,

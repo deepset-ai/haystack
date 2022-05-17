@@ -5,6 +5,7 @@ import logging
 import numpy as np
 
 from haystack.document_stores import KeywordDocumentStore
+from haystack.errors import HaystackError
 from haystack.schema import Document, Label
 from haystack.utils import DeepsetCloud, DeepsetCloudError
 
@@ -498,6 +499,63 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
         return docs
+
+    def query_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+        scale_score: bool = True,
+    ) -> Union[List[Document], List[List[Document]]]:
+        # TODO This method currently just calls query multiple times. Adapt this once there is a query_batch endpoint
+        # in DC.
+
+        if isinstance(queries, str):
+            if isinstance(filters, list):
+                raise HaystackError("If you provide a single query, you need to provid e a single filter dictionary.")
+            return self.query(
+                query=queries,
+                filters=filters,
+                top_k=top_k,
+                custom_query=custom_query,
+                index=index,
+                headers=headers,
+                all_terms_must_match=all_terms_must_match,
+                scale_score=scale_score,
+            )
+
+        documents = []
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
+            for query, cur_filters in zip(queries, filters):
+                cur_docs = self.query(
+                    query=query,
+                    filters=cur_filters,
+                    top_k=top_k,
+                    custom_query=custom_query,
+                    index=index,
+                    headers=headers,
+                    all_terms_must_match=all_terms_must_match,
+                    scale_score=scale_score,
+                )
+                documents.append(cur_docs)
+
+        return documents
 
     def _create_document_field_map(self) -> Dict:
         return {}

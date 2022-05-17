@@ -28,7 +28,7 @@ Base class for regular retrievers.
 
 ```python
 @abstractmethod
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -194,7 +194,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BM25Retriever.retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -204,13 +204,166 @@ that are most relevant to the query.
 **Arguments**:
 
 - `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+
+    To use the same logical operator multiple times on the same level, logical operators take
+    optionally a list of dictionaries as value.
+
+    __Example__:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+<a id="sparse.BM25Retriever.retrieve_batch"></a>
+
+#### BM25Retriever.retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+
+    To use the same logical operator multiple times on the same level, logical operators take
+    optionally a list of dictionaries as value.
+
+    __Example__:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `batch_size`: Not applicable.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="sparse.FilterRetriever"></a>
@@ -282,7 +435,7 @@ def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
 #### TfidfRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -297,6 +450,33 @@ that are most relevant to the query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+<a id="sparse.TfidfRetriever.retrieve_batch"></a>
+
+#### TfidfRetriever.retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `batch_size`: Not applicable.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="sparse.TfidfRetriever.fit"></a>
@@ -398,7 +578,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### DensePassageRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -408,11 +588,169 @@ that are most relevant to the query.
 **Arguments**:
 
 - `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+
+    To use the same logical operator multiple times on the same level, logical operators take
+    optionally a list of dictionaries as value.
+
+    __Example__:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+<a id="dense.DensePassageRetriever.retrieve_batch"></a>
+
+#### DensePassageRetriever.retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions. Can be a single filter that will be applied to each query or a list of filters
+(one filter per query).
+
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+
+    To use the same logical operator multiple times on the same level, logical operators take
+    optionally a list of dictionaries as value.
+
+    __Example__:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `batch_size`: Number of queries to embed at a time.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.DensePassageRetriever.embed_queries"></a>
@@ -571,7 +909,7 @@ one used by hugging-face transformers' modelhub models.
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
 - `batch_size`: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
 - `embed_meta_fields`: Concatenate the provided meta fields and text passage / table to a text pair that is
-then  used to create the embedding.
+then used to create the embedding.
 This is the approach used in the original paper and is likely to improve
 performance if your titles contain meaningful information for retrieval
 (topic, entities etc.).
@@ -594,6 +932,102 @@ the local token will be used, which must be previously created via `transformer-
 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+<a id="dense.TableTextRetriever.retrieve_batch"></a>
+
+#### TableTextRetriever.retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions. Can be a single filter that will be applied to each query or a list of filters
+(one filter per query).
+
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+
+    To use the same logical operator multiple times on the same level, logical operators take
+    optionally a list of dictionaries as value.
+
+    __Example__:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `batch_size`: Number of queries to embed at a time.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.TableTextRetriever.embed_queries"></a>
@@ -729,7 +1163,7 @@ class EmbeddingRetriever(BaseRetriever)
 #### EmbeddingRetriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
+def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True, embed_meta_fields: List[str] = [])
 ```
 
 **Arguments**:
@@ -766,13 +1200,18 @@ Additional information can be found here https://huggingface.co/transformers/mai
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+- `embed_meta_fields`: Concatenate the provided meta fields and text passage / table to a text pair that is
+then used to create the embedding.
+This approach is also used in the TableTextRetriever paper and is likely to improve
+performance if your titles contain meaningful information for retrieval
+(topic, entities etc.).
 
 <a id="dense.EmbeddingRetriever.retrieve"></a>
 
 #### EmbeddingRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -782,11 +1221,169 @@ that are most relevant to the query.
 **Arguments**:
 
 - `query`: The query
-- `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+
+    To use the same logical operator multiple times on the same level, logical operators take
+    optionally a list of dictionaries as value.
+
+    __Example__:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
 - `top_k`: How many documents to return per query.
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+<a id="dense.EmbeddingRetriever.retrieve_batch"></a>
+
+#### EmbeddingRetriever.retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Scan through documents in DocumentStore and return a small number documents
+
+that are most relevant to the supplied queries.
+
+If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+lists of Documents (one per query) is returned.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries.
+- `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+conditions. Can be a single filter that will be applied to each query or a list of filters
+(one filter per query).
+
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    # or simpler using default operators
+    filters = {
+        "type": "article",
+        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+        "rating": {"$gte": 3},
+        "$or": {
+            "genre": ["economy", "politics"],
+            "publisher": "nytimes"
+        }
+    }
+    ```
+
+    To use the same logical operator multiple times on the same level, logical operators take
+    optionally a list of dictionaries as value.
+
+    __Example__:
+    ```python
+    filters = {
+        "$or": [
+            {
+                "$and": {
+                    "Type": "News Paper",
+                    "Date": {
+                        "$lt": "2019-01-01"
+                    }
+                }
+            },
+            {
+                "$and": {
+                    "Type": "Blog Post",
+                    "Date": {
+                        "$gte": "2019-01-01"
+                    }
+                }
+            }
+        ]
+    }
+    ```
+- `top_k`: How many documents to return per query.
+- `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `batch_size`: Number of queries to embed at a time.
+- `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
+If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 <a id="dense.EmbeddingRetriever.embed_queries"></a>
@@ -870,6 +1467,24 @@ Translate a text query to SPARQL and execute it on the knowledge graph to retrie
 **Arguments**:
 
 - `query`: Text query that shall be translated to SPARQL and then executed on the knowledge graph
+- `top_k`: How many SPARQL queries to generate per text query.
+
+<a id="text2sparql.Text2SparqlRetriever.retrieve_batch"></a>
+
+#### Text2SparqlRetriever.retrieve\_batch
+
+```python
+def retrieve_batch(queries: Union[str, List[str]], top_k: Optional[int] = None)
+```
+
+Translate a single query or a list of queries to SPARQL and execute it on the knowledge graph to retrieve
+
+a list of answers / list of lists of answers.
+
+**Arguments**:
+
+- `query`: Single text query or list of queries that shall be translated to SPARQL and then executed on the
+knowledge graph.
 - `top_k`: How many SPARQL queries to generate per text query.
 
 <a id="text2sparql.Text2SparqlRetriever.format_result"></a>

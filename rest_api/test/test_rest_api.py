@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import os
 from copy import deepcopy
@@ -54,7 +54,13 @@ class MockReader(BaseReader):
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         return {"query": query, "no_ans_gap": None, "answers": [Answer(answer="Adobe Systems")]}
 
-    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
+    def predict_batch(
+        self,
+        queries: Union[str, List[str]],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
         pass
 
 
@@ -77,6 +83,18 @@ class MockRetriever(BaseRetriever):
         if filters and not isinstance(filters, dict):
             raise ValueError("You can't do this!")
         return self.document_store.get_all_documents(filters=filters)
+
+    def retrieve_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: dict = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score=True,
+    ):
+        pass
 
 
 @pytest.fixture(scope="session")

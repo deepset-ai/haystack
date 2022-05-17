@@ -1,4 +1,5 @@
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
+from collections import defaultdict
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
@@ -68,4 +69,16 @@ class RouteDocuments(BaseComponent):
 
                     split_documents[f"output_{index+1}"].append(doc)
 
-        return split_documents, "split_documents"
+        return split_documents, "split"
+
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]]) -> Tuple[Dict, str]:  # type: ignore
+        if isinstance(documents[0], Document):
+            return self.run(documents)  # type: ignore
+        else:
+            split_documents = defaultdict(list)
+            for doc_list in documents:
+                results, _ = self.run(documents=doc_list)  # type: ignore
+                for key in results:
+                    split_documents[key].append(results[key])
+
+            return split_documents, "split"

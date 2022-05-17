@@ -244,6 +244,26 @@ class Crawler(BaseComponent):
 
         return results, "output_1"
 
+    def run_batch(  # type: ignore
+        self,
+        output_dir: Union[str, Path, None] = None,
+        urls: Optional[List[str]] = None,
+        crawler_depth: Optional[int] = None,
+        filter_urls: Optional[List] = None,
+        overwrite_existing_files: Optional[bool] = None,
+        return_documents: Optional[bool] = False,
+        id_hash_keys: Optional[List[str]] = None,
+    ):
+        return self.run(
+            output_dir=output_dir,
+            urls=urls,
+            crawler_depth=crawler_depth,
+            filter_urls=filter_urls,
+            overwrite_existing_files=overwrite_existing_files,
+            return_documents=return_documents,
+            id_hash_keys=id_hash_keys,
+        )
+
     @staticmethod
     def _is_internal_url(base_url: str, sub_link: str) -> bool:
         base_url_ = urlparse(base_url)
