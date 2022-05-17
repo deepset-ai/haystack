@@ -1,7 +1,11 @@
+import logging
 import numpy as np
 import pytest
 import pandas as pd
 from pathlib import Path
+
+import responses
+from haystack.utils.deepsetcloud import DeepsetCloud
 
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
@@ -9,7 +13,7 @@ from haystack.utils.augment_squad import augment_squad
 from haystack.utils.squad_data import SquadData
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
-from ..conftest import SAMPLES_PATH
+from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture
 
 TEST_CONTEXT = context = """Der Merkantilismus förderte Handel und Verkehr mit teils marktkonformen, teils dirigistischen Maßnahmen. 
 An der Schwelle zum 19. Jahrhundert entstand ein neuer Typus des Nationalstaats, der die Säkularisation durchsetzte, 
@@ -256,3 +260,71 @@ def _insert_noise(input: str, ratio):
     for idx, char in zip(insert_idxs, insert_chars):
         input = input[:idx] + char + input[idx:]
     return input
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_upload_file_to_deepset_cloud(caplog):
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/files",
+            json={"file_id": "abc"},
+            status=200,
+        )
+
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/files",
+            json={"file_id": "def"},
+            status=200,
+        )
+
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/files",
+            json={"file_id": "def"},
+            status=200,
+        )
+
+    client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    file_paths = [SAMPLES_PATH/"docx/sample_docx.docx", SAMPLES_PATH/"pdf/sample_pdf_1.pdf", SAMPLES_PATH/"docs/doc_1.txt"]
+    metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
+    with caplog.at_level(logging.INFO):
+        client.upload_files(file_paths=file_paths, metas=metas)
+        assert f"Successfully uploaded {len(file_paths)} files." in caplog.text
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_upload_file_to_deepset_cloud_file_fails(caplog):
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/files",
+            json={"file_id": "abc"},
+            status=200,
+        )
+
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/files",
+            json={"error": "my-error"},
+            status=500,
+        )
+
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/files",
+            json={"file_id": "def"},
+            status=200,
+        )
+
+    client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    file_paths = [SAMPLES_PATH/"docx/sample_docx.docx", SAMPLES_PATH/"pdf/sample_pdf_1.pdf", SAMPLES_PATH/"docs/doc_1.txt"]
+    metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
+    with caplog.at_level(logging.INFO):
+        client.upload_files(file_paths=file_paths, metas=metas)
+        assert f"Successfully uploaded 2 files." in caplog.text
+        assert f"Error uploading file" in caplog.text
+        assert f"my-error" in caplog.text
