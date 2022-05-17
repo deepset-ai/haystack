@@ -589,7 +589,16 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :return: None
         """
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support writing documents.")
+        logger.warning("Note, that DeepsetCloudDocumentStore does not support write operations. "
+                       "In order to verify your pipeline works correctly, each input to write operations will be logged.")
+        method_inputs = {
+            "documents": documents,
+            "index": index,
+            "batch_size": batch_size,
+            "duplicate_documents": duplicate_documents,
+            "headers": headers
+        }
+        logger.info(f"Input to write_documents: {method_inputs}")
 
     def get_evaluation_sets(self) -> List[dict]:
         """
@@ -636,7 +645,14 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        logger.warning("Note, that DeepsetCloudDocumentStore does not support write operations. "
+                       "In order to verify your pipeline works correctly, each input to write operations will be logged.")
+        method_inputs = {
+            "labels": labels,
+            "index": index,
+            "headers": headers
+        }
+        logger.info(f"Input to write_labels: {method_inputs}")
 
     def delete_all_documents(
         self,
@@ -644,7 +660,14 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting documents.")
+        logger.warning("Note, that DeepsetCloudDocumentStore does not support write operations. "
+                       "In order to verify your pipeline works correctly, each input to write operations will be logged.")
+        method_inputs = {
+            "filters": filters,
+            "index": index,
+            "headers": headers
+        }
+        logger.info(f"Input to delete_all_documents: {method_inputs}")
 
     def delete_documents(
         self,
@@ -653,7 +676,15 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting documents.")
+        logger.warning("Note, that DeepsetCloudDocumentStore does not support write operations. "
+                       "In order to verify your pipeline works correctly, each input to write operations will be logged.")
+        method_inputs = {
+            "ids": ids,
+            "index": index,
+            "filters": filters,
+            "headers": headers
+        }
+        logger.info(f"Input to delete_documents: {method_inputs}")
 
     def delete_labels(
         self,
@@ -662,7 +693,20 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        logger.warning("Note, that DeepsetCloudDocumentStore does not support write operations. "
+                       "In order to verify your pipeline works correctly, each input to write operations will be logged.")
+        method_inputs = {
+            "ids": ids,
+            "index": index,
+            "filters": filters,
+            "headers": headers
+        }
+        logger.info(f"Input to delete_labels: {method_inputs}")
 
     def delete_index(self, index: str):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting indexes.")
+        logger.warning("Note, that DeepsetCloudDocumentStore does not support write operations. "
+                       "In order to verify your pipeline works correctly, each input to write operations will be logged.")
+        method_inputs = {
+            "index": index,
+        }
+        logger.info(f"Input to delete_index: {method_inputs}")
