@@ -765,9 +765,7 @@ class EvaluationSetClient:
 
 
 class FileClient:
-    def __init__(
-        self, client: DeepsetCloudClient, workspace: Optional[str] = None
-    ):
+    def __init__(self, client: DeepsetCloudClient, workspace: Optional[str] = None):
         """
         A client to manage files on deepset Cloud.
 
@@ -778,24 +776,36 @@ class FileClient:
         self.client = client
         self.workspace = workspace
 
-    def upload_files(self, file_paths: List[Path], metas: Optional[List[Dict]] = None, workspace: Optional[str] = None, headers: dict = None,):
+    def upload_files(
+        self,
+        file_paths: List[Path],
+        metas: Optional[List[Dict]] = None,
+        workspace: Optional[str] = None,
+        headers: dict = None,
+    ):
         workspace_url = self._build_workspace_url(workspace)
         files_url = f"{workspace_url}/files"
         if metas is None:
             metas = [{} for _ in file_paths]
-        
+
         file_ids = []
         for file_path, meta in zip(file_paths, metas):
             try:
                 if file_path.suffix == ".txt":
                     with open(file_path, "r", encoding="utf-8") as file:
                         response_file_upload = self.client.post(
-                            url = files_url, files={"file": (file_path.name, file, "text/plain")}, data={"meta": json.dumps(meta)}, headers=headers
+                            url=files_url,
+                            files={"file": (file_path.name, file, "text/plain")},
+                            data={"meta": json.dumps(meta)},
+                            headers=headers,
                         )
                 else:
                     with open(file_path, "rb") as file:
                         response_file_upload = self.client.post(
-                            url = files_url, files={"file": (file_path.name, file)}, data={"meta": json.dumps(meta)}, headers=headers
+                            url=files_url,
+                            files={"file": (file_path.name, file)},
+                            data={"meta": json.dumps(meta)},
+                            headers=headers,
                         )
                 file_id = response_file_upload.json().get("file_id")
                 file_ids.append(file_id)
@@ -808,6 +818,7 @@ class FileClient:
         if workspace is None:
             workspace = self.workspace
         return self.client.build_workspace_url(workspace)
+
 
 class DeepsetCloud:
     """
