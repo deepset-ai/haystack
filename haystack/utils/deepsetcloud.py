@@ -466,7 +466,12 @@ class PipelineClient:
             logger.warning(f"Unexpected response from updating pipeline config: {response}")
 
     def deploy(
-        self, pipeline_config_name: Optional[str] = None, workspace: str = None, headers: dict = None, timeout: int = 60
+        self,
+        pipeline_config_name: Optional[str] = None,
+        workspace: str = None,
+        headers: dict = None,
+        timeout: int = 60,
+        show_try_out_message: bool = True,
     ):
         """
         Deploys the pipelines of a pipeline config on deepset Cloud.
@@ -480,6 +485,7 @@ class PipelineClient:
         :param headers: Headers to pass to API call
         :param timeout: The time in seconds to wait until deployment completes.
                         If the timeout is exceeded an error will be raised.
+        :param show_try_out_message: Whether to print a message showing how to query the pipeline using curl.
         """
         status, changed = self._transition_pipeline_state(
             target_state=PipelineStatus.DEPLOYED,
@@ -508,6 +514,25 @@ class PipelineClient:
             raise DeepsetCloudError(
                 f"Deployment of pipeline config '{pipeline_config_name} ended in unexpected status: {status.value}"
             )
+
+        if show_try_out_message and status in [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY]:
+            if workspace is None:
+                workspace = self.workspace
+            if pipeline_config_name is None:
+                pipeline_config_name = self.pipeline_config_name
+            curl_cmd = (
+                f"curl -X 'POST' \\\n"
+                f"  'https://api.test.cloud.deepset.ai/api/v1/workspaces/{workspace}/pipelines/{pipeline_config_name}/search' \\\n"
+                f"  -H 'accept: application/json' \\\n"
+                f"  -H 'Authorization: Bearer <INSERT_TOKEN_HERE>' \\\n"
+                f"  -H 'Content-Type: application/json' \\\n"
+                f"  -d '{{\n"
+                f'  "queries": [\n'
+                f'    "Is there an answer to this question?"\n'
+                f"  ]\n"
+                f"}}'"
+            )
+            logger.info(f"Try it out:\n{curl_cmd}")
 
     def undeploy(
         self, pipeline_config_name: Optional[str] = None, workspace: str = None, headers: dict = None, timeout: int = 60
