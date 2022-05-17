@@ -890,3 +890,23 @@ class DeepsetCloud:
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return EvaluationSetClient(client=client, workspace=workspace, evaluation_set=evaluation_set)
+
+    @classmethod
+    def get_file_client(
+        cls,
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        workspace: str = "default",
+    ) -> FileClient:
+        """
+        Creates a client to manage files on deepset Cloud.
+
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param workspace: workspace in deepset Cloud
+
+        """
+        client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
+        return FileClient(client=client, workspace=workspace)
