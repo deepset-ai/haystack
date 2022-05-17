@@ -6,7 +6,7 @@ import pytest
 import haystack
 from haystack.nodes.file_classifier.file_type import FileTypeClassifier, DEFAULT_TYPES
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 
 def test_filetype_classifier_single_file(tmp_path):

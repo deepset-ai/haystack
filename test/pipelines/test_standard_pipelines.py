@@ -18,7 +18,7 @@ from haystack.nodes import (
 )
 from haystack.schema import Document
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 
 @pytest.mark.parametrize(

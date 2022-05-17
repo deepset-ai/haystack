@@ -28,7 +28,7 @@ from haystack import Document, Answer
 from haystack.nodes.other.route_documents import RouteDocuments
 from haystack.nodes.other.join_answers import JoinAnswers
 
-from .conftest import (
+from ..conftest import (
     MOCK_DC,
     DC_API_ENDPOINT,
     DC_API_KEY,
