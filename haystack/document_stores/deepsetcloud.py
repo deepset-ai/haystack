@@ -22,7 +22,7 @@ def disable_and_log(func):
     def wrapper(self, *args, **kwargs):
         if not self.disabled_write_warning_shown:
             logger.warning(
-                "Note, that DeepsetCloudDocumentStore does not support write operations. "
+                "Note that DeepsetCloudDocumentStore does not support write operations. "
                 "In order to verify your pipeline works correctly, each input to write operations will be logged."
             )
             self.disabled_write_warning_shown = True
