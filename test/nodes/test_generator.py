@@ -9,7 +9,7 @@ from haystack.nodes.answer_generator import Seq2SeqGenerator
 from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 
 
-from .conftest import DOCS_WITH_EMBEDDINGS
+from ..conftest import DOCS_WITH_EMBEDDINGS
 
 
 # Keeping few (retriever,document_store) combination to reduce test time

@@ -357,7 +357,7 @@ jobs:
     - name: Run Milvus1 tests
       run: |
         export MILVUS1_ENABLED=1
-        pytest -s test/test_document_store.py test/test_eval.py test/test_faiss_and_milvus.py test/test_pipeline.py test/test_retriever.py test/test_standard_pipelines.py --document_store_type="milvus1"
+        pytest -s test/document_stores/test_document_store.py test/pipelines/test_eval.py test/document_stores/test_faiss_and_milvus.py test/pipelines/test_pipeline.py test/nodes/test_retriever.py test/pipelines/test_standard_pipelines.py --document_store_type="milvus1"
 
   test-pinecone:
     needs: build-cache
@@ -404,4 +404,4 @@ jobs:
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
         if: steps.pinecone-files.outputs.any_changed == 'true'
         run: |
-          pytest -s test/test_document_store.py test/test_pipeline.py test/test_standard_pipelines.py test/test_pipeline_extractive_qa.py --document_store_type="pinecone"
+          pytest -s test/document_stores/test_document_store.py test/pipelines/test_pipeline.py test/pipelines/test_standard_pipelines.py test/pipelines/test_pipeline_extractive_qa.py --document_store_type="pinecone"

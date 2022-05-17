@@ -12,7 +12,7 @@ from unittest.mock import Mock
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import RequestError
 
-from .conftest import (
+from ..conftest import (
     deepset_cloud_fixture,
     get_document_store,
     MOCK_DC,
