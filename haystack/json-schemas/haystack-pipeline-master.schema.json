@@ -2265,6 +2265,14 @@
               "title": "Scale Score",
               "default": true,
               "type": "boolean"
+            },
+            "embed_meta_fields": {
+              "title": "Embed Meta Fields",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
