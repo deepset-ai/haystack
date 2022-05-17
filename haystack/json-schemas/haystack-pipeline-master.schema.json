@@ -125,6 +125,9 @@
             "$ref": "#/definitions/MarkdownConverterComponent"
           },
           {
+            "$ref": "#/definitions/MultihopDenseRetrieverComponent"
+          },
+          {
             "$ref": "#/definitions/PDFToTextConverterComponent"
           },
           {
@@ -3073,6 +3076,149 @@
               }
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "MultihopDenseRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "MultihopDenseRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "embedding_model": {
+              "title": "Embedding Model",
+              "default": "deutschmann/mdr_roberta_q_encoder",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "num_iterations": {
+              "title": "Num Iterations",
+              "default": 2,
+              "type": "integer"
+            },
+            "max_seq_len_query": {
+              "title": "Max Seq Len Query",
+              "default": 64,
+              "type": "integer"
+            },
+            "max_seq_len_passage": {
+              "title": "Max Seq Len Passage",
+              "default": 256,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 16,
+              "type": "integer"
+            },
+            "embed_title": {
+              "title": "Embed Title",
+              "default": true,
+              "type": "boolean"
+            },
+            "use_fast_tokenizers": {
+              "title": "Use Fast Tokenizers",
+              "default": true,
+              "type": "boolean"
+            },
+            "infer_tokenizer_classes": {
+              "title": "Infer Tokenizer Classes",
+              "default": false,
+              "type": "boolean"
+            },
+            "similarity_function": {
+              "title": "Similarity Function",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "global_loss_buffer_size": {
+              "title": "Global Loss Buffer Size",
+              "default": 150000,
+              "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "devices": {
+              "title": "Devices",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }

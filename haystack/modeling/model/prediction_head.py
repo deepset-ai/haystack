@@ -971,7 +971,9 @@ class TextSimilarityHead(PredictionHead):
                 f"The similarity function can only be 'dot_product' or 'cosine', not '{self.similarity_function}'"
             )
 
-    def forward(self, query_vectors: torch.Tensor, passage_vectors: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, query_vectors: torch.Tensor, passage_vectors: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
         Only packs the embeddings from both language models into a tuple. No further modification.
         The similarity calculation is handled later to enable distributed training (DDP)
