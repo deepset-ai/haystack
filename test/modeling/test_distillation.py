@@ -3,7 +3,7 @@ from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.processor import UnlabeledTextProcessor
 import torch
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 
 def create_checkpoint(model):

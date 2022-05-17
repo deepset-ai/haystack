@@ -16,8 +16,8 @@ from haystack.nodes import FileTypeClassifier
 from haystack.errors import HaystackError, PipelineConfigError, PipelineSchemaError
 from haystack.nodes.base import BaseComponent
 
-from .conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
-from . import conftest
+from ..conftest import SAMPLES_PATH, MockNode, MockDocumentStore, MockReader, MockRetriever
+from .. import conftest
 
 
 #
