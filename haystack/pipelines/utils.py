@@ -126,8 +126,8 @@ def _generate_components_code(
         }
         init_args = ", ".join(f"{key}={value}" for key, value in param_value_dict.items())
         declaration = f"{variable_name} = {class_name}({init_args})"
-        # set name of subcomponents explicitly as it won't be set via Pipeline.add_node()
-        if name not in (node["name"] for node in pipeline_definition["nodes"]):
+        # set name of subcomponents explicitly if it's not the default name as it won't be set via Pipeline.add_node()
+        if name != class_name and name not in (node["name"] for node in pipeline_definition["nodes"]):
             declaration = f'{declaration}\n{variable_name}.name = "{name}"'
         declarations[name] = declaration
 

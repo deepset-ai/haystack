@@ -81,11 +81,28 @@ class Pipeline:
 
     @property
     def components(self) -> Dict[str, BaseComponent]:
-        return {
-            name: attributes["component"]
-            for name, attributes in self.graph.nodes.items()
+        """
+        Returns all components used by this pipeline.
+        Note that this also includes such components that are being utilized by other components only and are not being used as a pipeline node directly.
+        """
+        node_components = [
+            attributes["component"]
+            for attributes in self.graph.nodes.values()
             if not isinstance(attributes["component"], RootNode)
-        }
+        ]
+        all_components = self._find_all_components(node_components)
+        return {component.name: component for component in all_components if component.name is not None}
+
+    def _find_all_components(self, components: List[BaseComponent]) -> Set[BaseComponent]:
+        """
+        Finds all components given the provided components.
+        Components are found by traversing the provided components and their utilized components.
+        """
+        distinct_components = set(components)
+        for component in components:
+            sub_components = self._find_all_components(component.utilized_components)
+            distinct_components.update(sub_components)
+        return distinct_components
 
     def to_code(
         self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
@@ -373,15 +390,16 @@ class Pipeline:
                 )
             self.graph = _init_pipeline_graph(root_node_name=candidate_roots[0])
 
+        # Check for duplicate names before adding the component
+        # Note that the very same component must be addable multiple times:
+        # E.g. for indexing pipelines it's common to add a retriever first and a document store afterwards.
+        # The document store is already being used by the retriever however.
+        # Thus the very same document store will be added twice, first as a subcomponent of the retriever and second as a first level node.
+        if name in self.components and self.components[name] != component:
+            raise PipelineConfigError(f"A node named '{name}' is already in the pipeline. Choose another name.")
+
         component_definitions = get_component_definitions(pipeline_config=self.get_config())
         component_definition = {"params": component.get_params(), "type": component.type}
-
-        # Check for duplicate names before adding the definition
-        # Note that the very same component must be addable multiple times:
-        # E.g. for indexing pipelines it's common to add a retriever first and a document store afterwards. The document store is already being used by the retriever however.
-        # Thus the very same document store will be added twice, first as a subcomponent of the retriever and second as a first level node.
-        if name in component_definitions.keys() and component_definitions[name] != component_definition:
-            raise PipelineConfigError(f"A node named '{name}' is already in the pipeline. Choose another name.")
         component_definitions[name] = component_definition
 
         # Name any nested component before adding them
