@@ -338,18 +338,18 @@ Saves the Reader model so that it can be reused at a later point in time.
 #### FARMReader.predict\_batch
 
 ```python
-def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
 ```
 
 Use loaded QA model to find answers for the queries in the Documents.
 
-- If you provide a single query...
+- If you provide a list containing a single query...
 
     - ... and a single list of Documents, the query will be applied to each Document individually.
     - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
       will be aggregated per Document list.
 
-- If you provide a list of queries...
+- If you provide a list of multiple queries...
 
     - ... and a single list of Documents, each query will be applied to each Document individually.
     - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
@@ -640,18 +640,18 @@ Dict containing query and answers
 #### TransformersReader.predict\_batch
 
 ```python
-def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
 ```
 
 Use loaded QA model to find answers for the queries in the Documents.
 
-- If you provide a single query...
+- If you provide a list containing a single query...
 
     - ... and a single list of Documents, the query will be applied to each Document individually.
     - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
       will be aggregated per Document list.
 
-- If you provide a list of queries...
+- If you provide a list of multiple queries...
 
     - ... and a single list of Documents, each query will be applied to each Document individually.
     - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
@@ -776,7 +776,7 @@ Dict containing query and answers
 #### TableReader.predict\_batch
 
 ```python
-def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
 ```
 
 Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
@@ -788,13 +788,13 @@ Returns dictionary containing query and list of Answer objects sorted by (desc.)
 WARNING: The answer scores are not reliable, as they are always extremely high, even if
 a question cannot be answered by a given table.
 
-- If you provide a single query...
+- If you provide a list containing a single query...
 
     - ... and a single list of Documents, the query will be applied to each Document individually.
     - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
       will be aggregated per Document list.
 
-- If you provide a list of queries...
+- If you provide a list of multiple queries...
 
     - ... and a single list of Documents, each query will be applied to each Document individually.
     - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents

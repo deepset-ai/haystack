@@ -1027,7 +1027,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### ElasticsearchDocumentStore.query\_batch
 
 ```python
-def query_batch(queries: Union[str, List[str]], filters: Optional[
+def query_batch(queries: List[str], filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
                 List[Dict[str, Union[Dict, List, str, int, float, bool]]],
@@ -1039,12 +1039,11 @@ Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
 
-This method lets you find relevant documents for a single query string (output: List of Documents), or a
-a list of query strings (output: List of Lists of Documents).
+This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
 
 **Arguments**:
 
-- `queries`: Single query or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions. Can be a single filter that will be applied to each query or a list of filters
 (one filter per query).
