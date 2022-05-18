@@ -506,4 +506,3 @@ def _get_defined_node_class(node_name: str, components: Dict[str, Dict[str, str]
         ) from e
 
     return node_class
-
