@@ -111,6 +111,7 @@ def test_query(document_store_with_docs):
     assert len(docs) == 3
 
 
+@pytest.mark.weaviate
 def test_get_all_documents_unaffected_by_QUERY_MAXIMUM_RESULTS(document_store_with_docs, monkeypatch):
     """
     Ensure `get_all_documents` works no matter the value of QUERY_MAXIMUM_RESULTS
