@@ -147,7 +147,7 @@ class BaseGenerator(BaseComponent):
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
             for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i: i + answers_per_query]
+                answer_group = results["answers"][i : i + answers_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 

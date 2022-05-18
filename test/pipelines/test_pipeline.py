@@ -1703,6 +1703,7 @@ def test_batch_querying_single_query(document_store_with_docs):
     assert len(result["answers"]) == 1  # Predictions for 1 collection of docs (single query)
     assert len(result["answers"][0]) == 5  # Reader top-k set to 5
 
+
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_batch_querying_multiple_queries(document_store_with_docs):
     query_pipeline = Pipeline.load_from_yaml(
