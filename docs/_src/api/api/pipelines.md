@@ -25,6 +25,18 @@ def root_node() -> Optional[str]
 
 Returns the root node of the pipeline's graph.
 
+<a id="base.Pipeline.components"></a>
+
+#### Pipeline.components
+
+```python
+@property
+def components() -> Dict[str, BaseComponent]
+```
+
+Returns all components used by this pipeline.
+Note that this also includes such components that are being utilized by other components only and are not being used as a pipeline node directly.
+
 <a id="base.Pipeline.to_code"></a>
 
 #### Pipeline.to\_code

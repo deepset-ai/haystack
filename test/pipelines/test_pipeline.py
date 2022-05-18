@@ -467,6 +467,7 @@ def test_generate_code_imports():
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "retri_2 = TfidfRetriever(document_store=document_store)\n"
         "\n"
@@ -497,6 +498,7 @@ def test_generate_code_imports_no_pipeline_cls():
         "from haystack.nodes import BM25Retriever\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -524,6 +526,7 @@ def test_generate_code_comment():
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -717,6 +720,7 @@ def test_load_from_deepset_cloud_query():
     assert isinstance(retriever, BM25Retriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
     assert document_store == query_pipeline.get_document_store()
+    assert document_store.name == "DocumentStore"
 
     prediction = query_pipeline.run(query="man on horse", params={})
 

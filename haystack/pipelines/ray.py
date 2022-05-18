@@ -333,6 +333,6 @@ class _RayDeploymentWrapper:
                 component_params[key] = _RayDeploymentWrapper.load_from_pipeline_config(pipeline_config, value)
 
         component_instance = BaseComponent._create_instance(
-            component_type=component_config["type"], component_params=component_params
+            component_type=component_config["type"], component_params=component_params, name=component_name
         )
         return component_instance

@@ -81,11 +81,31 @@ class Pipeline:
 
     @property
     def components(self) -> Dict[str, BaseComponent]:
-        return {
-            name: attributes["component"]
-            for name, attributes in self.graph.nodes.items()
-            if not isinstance(attributes["component"], RootNode)
-        }
+        """
+        Returns all components used by this pipeline.
+        Note that this also includes such components that are being utilized by other components only and are not being used as a pipeline node directly.
+        """
+        all_components = self._find_all_components()
+        return {component.name: component for component in all_components if component.name is not None}
+
+    def _find_all_components(self, seed_components: List[BaseComponent] = None) -> Set[BaseComponent]:
+        """
+        Finds all components given the provided seed components.
+        Components are found by traversing the provided seed components and their utilized components.
+        If seed_components is None, the node components (except the root node) of the pipeline will be used as seed components.
+        """
+        if seed_components is None:
+            seed_components = [
+                attributes["component"]
+                for attributes in self.graph.nodes.values()
+                if not isinstance(attributes["component"], RootNode)
+            ]
+
+        distinct_components = set(seed_components)
+        for component in seed_components:
+            sub_components = self._find_all_components(component.utilized_components)
+            distinct_components.update(sub_components)
+        return distinct_components
 
     def to_code(
         self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
@@ -373,11 +393,15 @@ class Pipeline:
                 )
             self.graph = _init_pipeline_graph(root_node_name=candidate_roots[0])
 
-        component_definitions = get_component_definitions(pipeline_config=self.get_config())
-
-        # Check for duplicates before adding the definition
-        if name in component_definitions.keys():
+        # Check for duplicate names before adding the component
+        # Note that the very same component must be addable multiple times:
+        # E.g. for indexing pipelines it's common to add a retriever first and a document store afterwards.
+        # The document store is already being used by the retriever however.
+        # Thus the very same document store will be added twice, first as a subcomponent of the retriever and second as a first level node.
+        if name in self.components.keys() and self.components[name] != component:
             raise PipelineConfigError(f"A node named '{name}' is already in the pipeline. Choose another name.")
+
+        component_definitions = get_component_definitions(pipeline_config=self.get_config())
         component_definitions[name] = component._component_config
 
         # Name any nested component before adding them
@@ -1411,7 +1435,9 @@ class Pipeline:
                         value
                     ]  # substitute reference (string) with the component object.
 
-            component_instance = BaseComponent._create_instance(component_type, component_params)
+            component_instance = BaseComponent._create_instance(
+                component_type=component_type, component_params=component_params, name=name
+            )
             components[name] = component_instance
             return component_instance
 
