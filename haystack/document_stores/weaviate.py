@@ -708,7 +708,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 raise ValueError(f"Weaviate raised an exception: {e}")
 
             if "errors" in result:
-                raise ValueError(f"Query results contain errors: {result.get('errors')}")
+                raise ValueError(f"Query results contain errors: {result['errors']}")
 
             # If `query.do` didn't raise and `result` doesn't contain errors,
             # we are good accessing data
