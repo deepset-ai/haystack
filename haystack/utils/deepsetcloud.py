@@ -1,4 +1,5 @@
 import json
+from mimetypes import guess_type
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -791,22 +792,14 @@ class FileClient:
         file_ids = []
         for file_path, meta in zip(file_paths, metas):
             try:
-                if file_path.suffix == ".txt":
-                    with open(file_path, "r", encoding="utf-8") as file:
-                        response_file_upload = self.client.post(
-                            url=files_url,
-                            files={"file": (file_path.name, file, "text/plain")},
-                            data={"meta": json.dumps(meta)},
-                            headers=headers,
-                        )
-                else:
-                    with open(file_path, "rb") as file:
-                        response_file_upload = self.client.post(
-                            url=files_url,
-                            files={"file": (file_path.name, file)},
-                            data={"meta": json.dumps(meta)},
-                            headers=headers,
-                        )
+                mime_type = guess_type(str(file_path))
+                with open(file_path, "rb") as file:
+                    response_file_upload = self.client.post(
+                        url=files_url,
+                        files={"file": (file_path.name, file, mime_type)},
+                        data={"meta": json.dumps(meta)},
+                        headers=headers,
+                    )
                 file_id = response_file_upload.json().get("file_id")
                 file_ids.append(file_id)
             except Exception as e:
