@@ -85,21 +85,24 @@ class Pipeline:
         Returns all components used by this pipeline.
         Note that this also includes such components that are being utilized by other components only and are not being used as a pipeline node directly.
         """
-        node_components = [
-            attributes["component"]
-            for attributes in self.graph.nodes.values()
-            if not isinstance(attributes["component"], RootNode)
-        ]
-        all_components = self._find_all_components(node_components)
+        all_components = self._find_all_components()
         return {component.name: component for component in all_components if component.name is not None}
 
-    def _find_all_components(self, components: List[BaseComponent]) -> Set[BaseComponent]:
+    def _find_all_components(self, seed_components: List[BaseComponent] = None) -> Set[BaseComponent]:
         """
-        Finds all components given the provided components.
-        Components are found by traversing the provided components and their utilized components.
+        Finds all components given the provided seed components.
+        Components are found by traversing the provided seed components and their utilized components.
+        If seed_components is None, the node components (except the root node) of the pipeline will be used as seed components.
         """
-        distinct_components = set(components)
-        for component in components:
+        if seed_components is None:
+            seed_components = [
+                attributes["component"]
+                for attributes in self.graph.nodes.values()
+                if not isinstance(attributes["component"], RootNode)
+            ]
+
+        distinct_components = set(seed_components)
+        for component in seed_components:
             sub_components = self._find_all_components(component.utilized_components)
             distinct_components.update(sub_components)
         return distinct_components
@@ -395,12 +398,11 @@ class Pipeline:
         # E.g. for indexing pipelines it's common to add a retriever first and a document store afterwards.
         # The document store is already being used by the retriever however.
         # Thus the very same document store will be added twice, first as a subcomponent of the retriever and second as a first level node.
-        if name in self.components and self.components[name] != component:
+        if name in self.components.keys() and self.components[name] != component:
             raise PipelineConfigError(f"A node named '{name}' is already in the pipeline. Choose another name.")
 
         component_definitions = get_component_definitions(pipeline_config=self.get_config())
-        component_definition = {"params": component.get_params(), "type": component.type}
-        component_definitions[name] = component_definition
+        component_definitions[name] = component._component_config
 
         # Name any nested component before adding them
         component.name = name
