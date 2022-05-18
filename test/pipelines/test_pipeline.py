@@ -121,6 +121,7 @@ class JoinNode(RootNode):
 # Integration tests
 #
 
+
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_to_code_creates_same_pipelines():
@@ -141,10 +142,10 @@ def test_to_code_creates_same_pipelines():
     assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
 
 
-
 #
 # Unit tests
 #
+
 
 def test_get_config_creates_dependent_component():
     child = ChildComponent()
@@ -1426,7 +1427,7 @@ def test_graph_validation_duplicate_node():
 
 
 # See https://github.com/deepset-ai/haystack/issues/2568
-def test_pipeline_nodes_can_have_uncopiable_objects_as_args():    
+def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
     class DummyNode(MockNode):
         def __init__(self, uncopiable: ssl.SSLContext):
             self.uncopiable = uncopiable
