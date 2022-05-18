@@ -114,15 +114,17 @@ class BaseComponent(ABC):
         return subclass
 
     @classmethod
-    def _create_instance(cls, component_type: str, component_params: Dict[str, Any]):
+    def _create_instance(cls, component_type: str, component_params: Dict[str, Any], name: Optional[str] = None):
         """
         Returns an instance of the given subclass of BaseComponent.
 
         :param component_type: name of the component class to load.
         :param component_params: parameters to pass to the __init__() for the component.
+        :param name: name of the component instance
         """
         subclass = cls.get_subclass(component_type)
         instance = subclass(**component_params)
+        instance.name = name
         return instance
 
     @abstractmethod
