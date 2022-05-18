@@ -312,7 +312,7 @@ class DensePassageRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -329,10 +329,9 @@ class DensePassageRetriever(BaseRetriever):
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
 
-        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-        lists of Documents (one per query) is returned.
+        Returns a list of lists of Documents (one per query).
 
-        :param queries: Single query string or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. Can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
@@ -413,11 +412,6 @@ class DensePassageRetriever(BaseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        single_query = False
-        if isinstance(queries, str):
-            queries = [queries]
-            single_query = True
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -425,7 +419,7 @@ class DensePassageRetriever(BaseRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [{}] * len(queries)
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
@@ -435,10 +429,7 @@ class DensePassageRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
             )
-            if single_query:
-                return []  # type: ignore
-            else:
-                return [[] * len(queries)]  # type: ignore
+            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []
@@ -455,10 +446,7 @@ class DensePassageRetriever(BaseRetriever):
             )
             documents.append(cur_docs)
 
-        if single_query:
-            return documents[0]
-        else:
-            return documents
+        return documents
 
     def _get_predictions(self, dicts):
         """
@@ -970,7 +958,7 @@ class TableTextRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -987,10 +975,9 @@ class TableTextRetriever(BaseRetriever):
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
 
-        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-        lists of Documents (one per query) is returned.
+        Returns a list of lists of Documents (one per query).
 
-        :param queries: Single query string or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. Can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
@@ -1071,11 +1058,6 @@ class TableTextRetriever(BaseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        single_query = False
-        if isinstance(queries, str):
-            queries = [queries]
-            single_query = True
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -1083,7 +1065,7 @@ class TableTextRetriever(BaseRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [{}] * len(queries)
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
@@ -1093,10 +1075,7 @@ class TableTextRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
             )
-            if single_query:
-                return []  # type: ignore
-            else:
-                return [[] * len(queries)]  # type: ignore
+            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []
@@ -1113,10 +1092,7 @@ class TableTextRetriever(BaseRetriever):
             )
             documents.append(cur_docs)
 
-        if single_query:
-            return documents[0]
-        else:
-            return documents
+        return documents
 
     def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
         """
@@ -1645,7 +1621,7 @@ class EmbeddingRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -1662,10 +1638,9 @@ class EmbeddingRetriever(BaseRetriever):
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
 
-        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-        lists of Documents (one per query) is returned.
+        Returns a list of lists of Documents (one per query).
 
-        :param queries: Single query string or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. Can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
@@ -1746,11 +1721,6 @@ class EmbeddingRetriever(BaseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        single_query = False
-        if isinstance(queries, str):
-            queries = [queries]
-            single_query = True
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -1758,7 +1728,7 @@ class EmbeddingRetriever(BaseRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [{}] * len(queries)
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
@@ -1768,10 +1738,7 @@ class EmbeddingRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
             )
-            if single_query:
-                return []  # type: ignore
-            else:
-                return [[] * len(queries)]  # type: ignore
+            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []
@@ -1788,10 +1755,7 @@ class EmbeddingRetriever(BaseRetriever):
             )
             documents.append(cur_docs)
 
-        if single_query:
-            return documents[0]
-        else:
-            return documents
+        return documents
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """

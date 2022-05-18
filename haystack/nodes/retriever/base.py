@@ -88,14 +88,14 @@ class BaseRetriever(BaseComponent):
     @abstractmethod
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         pass
 
     def timing(self, fn, attr_name):
@@ -289,8 +289,8 @@ class BaseRetriever(BaseComponent):
     def run_batch(  # type: ignore
         self,
         root_node: str,
-        queries: Optional[Union[str, List[str]]] = None,
-        filters: Optional[dict] = None,
+        queries: Optional[List[str]] = None,
+        filters: Optional[Union[dict, List[dict]]] = None,
         top_k: Optional[int] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         index: Optional[str] = None,

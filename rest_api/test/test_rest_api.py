@@ -56,7 +56,7 @@ class MockReader(BaseReader):
 
     def predict_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -86,7 +86,7 @@ class MockRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: dict = None,
         top_k: Optional[int] = None,
         index: str = None,
