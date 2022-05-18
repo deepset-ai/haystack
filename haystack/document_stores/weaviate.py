@@ -724,6 +724,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
             # than QUERY_MAXIMUM_RESULTS.
             # See: https://weaviate.io/developers/weaviate/current/graphql-references/filters.html#offset-argument-pagination
             if not docs:
+                logger.warning(
+                    "The query returned less documents than expected: this can happen when "
+                    "the value of QUERY_MAXIMUM_RESULTS is lower than the total number of "
+                    "documents stored."
+                )
                 break
 
             all_docs += docs
