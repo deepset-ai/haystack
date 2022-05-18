@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Optional, List
 
 import logging
 from transformers import BartForConditionalGeneration, BartTokenizer
