@@ -1436,7 +1436,7 @@ def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
     pipeline.add_node(component=node, name="node", inputs=["Query"])
 
     # If the object is getting copied, it will raise TypeError: cannot pickle 'SSLContext' object
-    # get_components_definitions should NOT copy objects to allow this usecase
+    # `get_components_definitions()` should NOT copy objects to allow this usecase
     get_component_definitions(pipeline.get_config())
 
 
