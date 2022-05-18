@@ -111,12 +111,11 @@ def test_query(document_store_with_docs):
     assert len(docs) == 3
 
 
-@pytest.mark.weaviate
-@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
-def test_get_all_documents(document_store_with_docs):
-    # Ensure the method works no matter the value of QUERY_MAXIMUM_RESULTS
-    # see https://github.com/deepset-ai/haystack/issues/2517
-    with patch.object(document_store_with_docs, "get_document_count") as count:
-        count.return_value = 13_000
-        docs = document_store_with_docs.get_all_documents()
-        assert len(docs) == 3
+def test_get_all_documents_unaffected_by_QUERY_MAXIMUM_RESULTS(document_store_with_docs, monkeypatch):
+    """
+    Ensure `get_all_documents` works no matter the value of QUERY_MAXIMUM_RESULTS
+    see https://github.com/deepset-ai/haystack/issues/2517
+    """
+    monkeypatch.setattr(document_store_with_docs, "get_document_count", lambda **kwargs: 13_000)
+    docs = document_store_with_docs.get_all_documents()
+    assert len(docs) == 3
