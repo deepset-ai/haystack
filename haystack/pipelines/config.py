@@ -67,14 +67,31 @@ def get_component_definitions(
                                          `_` sign must be used to specify nested hierarchical properties.
     """
     component_definitions = {}  # definitions of each component from the YAML.
-    raw_component_definitions = copy.deepcopy(pipeline_config["components"])
-    for component_definition in raw_component_definitions:
+    for component_definition in pipeline_config["components"]:
+        name = component_definition["name"]
+        component_definitions[name] = {key: value for key, value in component_definition.items() if key != "name"}
         if overwrite_with_env_variables:
-            _overwrite_with_env_variables(component_definition)
-        name = component_definition.pop("name")
-        component_definitions[name] = component_definition
+            _overwrite_with_env_variables(component_name=name, component_definition=component_definition)
 
     return component_definitions
+
+
+def _overwrite_with_env_variables(component_name: str, component_definition: Dict[str, Any]):
+    """
+    Overwrite the pipeline config with environment variables. For example, to change index name param for an
+    ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
+    `_` sign must be used to specify nested hierarchical properties.
+
+    :param definition: a dictionary containing the YAML definition of a component.
+    """
+    env_prefix = f"{component_name}_params_".upper()
+    for key, value in os.environ.items():
+        if key.startswith(env_prefix):
+            param_name = key.replace(env_prefix, "").lower()
+            component_definition["params"][param_name] = value
+            logger.info(
+                f"Param '{param_name}' of component '{component_name}' overwritten with environment variable '{key}' value '{value}'."
+            )
 
 
 def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
@@ -490,20 +507,3 @@ def _get_defined_node_class(node_name: str, components: Dict[str, Dict[str, str]
 
     return node_class
 
-
-def _overwrite_with_env_variables(component_definition: Dict[str, Any]):
-    """
-    Overwrite the pipeline config with environment variables. For example, to change index name param for an
-    ElasticsearchDocumentStore, an env variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-    `_` sign must be used to specify nested hierarchical properties.
-
-    :param definition: a dictionary containing the YAML definition of a component.
-    """
-    env_prefix = f"{component_definition['name']}_params_".upper()
-    for key, value in os.environ.items():
-        if key.startswith(env_prefix):
-            param_name = key.replace(env_prefix, "").lower()
-            component_definition["params"][param_name] = value
-            logger.info(
-                f"Param '{param_name}' of component '{component_definition['name']}' overwritten with environment variable '{key}' value '{value}'."
-            )

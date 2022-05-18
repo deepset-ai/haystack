@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import ssl
 import json
 import platform
 import sys
@@ -9,6 +10,7 @@ import pytest
 from requests import PreparedRequest
 import responses
 import logging
+from transformers import pipeline
 import yaml
 import pandas as pd
 
@@ -19,7 +21,7 @@ from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.pipelines import Pipeline, RootNode
-from haystack.pipelines.config import validate_config_strings
+from haystack.pipelines.config import validate_config_strings, get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
 from haystack.nodes import PreProcessor, TextConverter
@@ -119,7 +121,6 @@ class JoinNode(RootNode):
 # Integration tests
 #
 
-
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 def test_to_code_creates_same_pipelines():
@@ -140,10 +141,10 @@ def test_to_code_creates_same_pipelines():
     assert index_pipeline.get_config() == locals()["index_pipeline_from_code"].get_config()
 
 
+
 #
 # Unit tests
 #
-
 
 def test_get_config_creates_dependent_component():
     child = ChildComponent()
@@ -1422,6 +1423,21 @@ def test_graph_validation_duplicate_node():
     pipeline.add_node(name="node", component=node, inputs=["Query"])
     with pytest.raises(PipelineConfigError, match="'node' is already in the pipeline"):
         pipeline.add_node(name="node", component=other_node, inputs=["Query"])
+
+
+# See https://github.com/deepset-ai/haystack/issues/2568
+def test_pipeline_nodes_can_have_uncopiable_objects_as_args():    
+    class DummyNode(MockNode):
+        def __init__(self, uncopiable: ssl.SSLContext):
+            self.uncopiable = uncopiable
+
+    node = DummyNode(uncopiable=ssl.SSLContext())
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+
+    # If the object is getting copied, it will raise TypeError: cannot pickle 'SSLContext' object
+    # get_components_definitions should NOT copy objects to allow this usecase
+    get_component_definitions(pipeline.get_config())
 
 
 def test_parallel_paths_in_pipeline_graph():
