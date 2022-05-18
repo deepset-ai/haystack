@@ -755,9 +755,9 @@ class EvaluationResult:
         If you applied `simulated_top_k_retriever` to a Reader node, you should treat the results with caution as they can differ from an actual eval run with a corresponding `top_k_retriever` heavily.
 
         :param simulated_top_k_reader: Simulates the `top_k` parameter of the Reader.
-        :param simulated_top_k_retriever: Simulates the `top_k` parameter of the Retriever.  
+        :param simulated_top_k_retriever: Simulates the `top_k` parameter of the Retriever.
             Note: There might be a discrepancy between simulated Reader metrics and an actual Pipeline run with Retriever `top_k`.
-        :param eval_mode: The input the Node was evaluated on.  
+        :param eval_mode: The input the Node was evaluated on.
             Usually a Node gets evaluated on the prediction provided by its predecessor Nodes in the Pipeline (`value='integrated'`).
             However, as the quality of the Node can heavily depend on the Node's input and thus the predecessor's quality,
             you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your Node.
