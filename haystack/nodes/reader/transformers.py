@@ -303,7 +303,7 @@ class TransformersReader(BaseReader):
         return answers, max_no_ans_gap
 
     def _preprocess_batch_queries_and_docs(
-        self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]
+        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
     ) -> Tuple[List[SquadExample], List[int], Dict[str, Document], bool]:
         # Convert input to transformers format
         inputs = []

@@ -539,7 +539,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
         scale_score: bool = True,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         # TODO This method currently just calls query multiple times. Adapt this once there is a query_batch endpoint
         # in DC.
 

@@ -1077,7 +1077,7 @@ class FARMReader(BaseReader):
         return answers, max_no_ans_gap
 
     def _preprocess_batch_queries_and_docs(
-        self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]
+        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
     ) -> Tuple[List[QAInput], List[int], bool]:
         # Convert input to FARM format
         inputs = []

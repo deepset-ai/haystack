@@ -30,7 +30,7 @@ class BaseGraphRetriever(BaseComponent):
         pass
 
     @abstractmethod
-    def retrieve_batch(self, queries: Union[str, List[str]], top_k: Optional[int] = None):
+    def retrieve_batch(self, queries: List[str], top_k: Optional[int] = None):
         pass
 
     def eval(self):
@@ -41,7 +41,7 @@ class BaseGraphRetriever(BaseComponent):
         results = {"answers": answers}
         return results, "output_1"
 
-    def run_batch(self, queries: Union[str, List[str]], top_k: Optional[int] = None):  # type: ignore
+    def run_batch(self, queries: List[str], top_k: Optional[int] = None):  # type: ignore
         answers = self.retrieve_batch(queries=queries, top_k=top_k)
         results = {"answers": answers}
         return results, "output_1"
@@ -335,7 +335,7 @@ class BaseRetriever(BaseComponent):
 
     def run_query_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
