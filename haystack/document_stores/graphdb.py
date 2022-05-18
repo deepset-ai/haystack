@@ -1,7 +1,8 @@
 from typing import Dict, Optional
 
-import requests
 from pathlib import Path
+
+import requests
 from requests.auth import HTTPBasicAuth
 
 try:
@@ -38,8 +39,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         :param index: name of the index (also called repository) stored in the GraphDB instance
         :param prefixes: definitions of namespaces with a new line after each namespace, e.g., PREFIX hp: <https://deepset.ai/harry_potter/>
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(host=host, port=port, username=username, password=password, index=index, prefixes=prefixes)
+        super().__init__()
 
         self.url = f"http://{host}:{port}"
         self.index = index
@@ -57,7 +57,7 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
         """
         url = f"{self.url}/rest/repositories"
         files = {"config": open(config_path, "r", encoding="utf-8")}
-        response = requests.post(url, files=files, headers=headers)
+        response = requests.post(url, files=files, headers=headers)  # type: ignore
         if response.status_code > 299:
             raise Exception(response.text)
 
@@ -168,4 +168,11 @@ class GraphDBKnowledgeGraph(BaseKnowledgeGraph):
             sparql.customHttpHeaders = headers
         results = sparql.query().convert()
         # if query is a boolean query, return boolean instead of text result
-        return results["results"]["bindings"] if "results" in results else results["boolean"]
+        # FIXME: 'results' likely doesn't support membership test (`"something" in results`).
+        # Pylint raises unsupported-membership-test and unsubscriptable-object.
+        # Silenced for now, keep in mind for future debugging.
+        return (
+            results["results"]["bindings"]  # pylint: disable=unsubscriptable-object
+            if "results" in results  # pylint: disable=unsupported-membership-test
+            else results["boolean"]  # pylint: disable=unsubscriptable-object
+        )

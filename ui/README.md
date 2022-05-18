@@ -2,7 +2,7 @@
 
 This is a minimal UI that can spin up to test Haystack for your prototypes. It's based on streamlit and is very easy to extend for your purposes. 
 
-![Screenshot](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/streamlit_ui_screenshot.png)
+![Screenshot](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/streamlit_ui_screenshot.png)
 
 ## Usage
 
@@ -40,4 +40,4 @@ The file just needs to have two columns separated by semicolon. You can add more
 
 The feedback can be exported with the API endpoint `export-doc-qa-feedback`. To learn more about finetuning a model with user feedback, please check out our [docs](https://haystack.deepset.ai/usage/domain-adaptation#user-feedback).
 
-![Screenshot](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/streamlit_ui_screenshot_eval_mode.png)
+![Screenshot](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/streamlit_ui_screenshot_eval_mode.png)

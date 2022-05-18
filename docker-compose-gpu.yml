@@ -14,16 +14,16 @@ services:
           - driver: nvidia
             count: 1
             capabilities: [gpu]
-    # Mount custom Pipeline YAML and custom Components.
+    # # Mount custom Pipeline YAML and custom Components.
     # volumes:
     #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
     ports:
       - 8000:8000
     restart: on-failure
     environment:
-      # See rest_api/pipelines.yaml for configurations of Search & Indexing Pipeline.
+      # See rest_api/pipeline/pipelines.haystack-pipeline.yml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
-      - PIPELINE_YAML_PATH=/home/user/rest_api/pipeline/pipelines_dpr.yaml
+      - PIPELINE_YAML_PATH=/home/user/rest_api/pipeline/pipelines_dpr.haystack-pipeline.yml
       - CONCURRENT_REQUEST_PER_WORKER
     depends_on:
       - elasticsearch
@@ -59,4 +59,4 @@ services:
       - DEFAULT_QUESTION_AT_STARTUP
       - DEFAULT_DOCS_FROM_RETRIEVER
       - DEFAULT_NUMBER_OF_ANSWERS
-    command: "/bin/bash -c 'sleep 15 && streamlit run webapp.py'"
+    command: "/bin/bash -c 'sleep 15 && python -m streamlit run ui/webapp.py'"

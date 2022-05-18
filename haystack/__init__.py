@@ -1,13 +1,15 @@
+# pylint: disable=wrong-import-position,wrong-import-order
+
 from typing import Union
 from types import ModuleType
 
 try:
-    import importlib.metadata as metadata
-except ModuleNotFoundError:
+    from importlib import metadata
+except (ModuleNotFoundError, ImportError):
     # Python <= 3.7
     import importlib_metadata as metadata  # type: ignore
 
-__version__ = metadata.version("farm-haystack")
+__version__: str = str(metadata.version("farm-haystack"))
 
 
 # This configuration must be done before any import to apply to all submodules
@@ -18,12 +20,12 @@ logging.basicConfig(
 )
 logging.getLogger("haystack").setLevel(logging.INFO)
 
-from haystack import pipelines
-from haystack.schema import Document, Answer, Label, MultiLabel, Span
-from haystack.nodes import BaseComponent
-from haystack.pipelines import Pipeline
-
 import pandas as pd
+
+from haystack.schema import Document, Answer, Label, MultiLabel, Span, EvaluationResult
+from haystack.nodes.base import BaseComponent
+from haystack.pipelines.base import Pipeline
+
 
 pd.options.display.max_colwidth = 80
 
@@ -40,7 +42,7 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
     Return a wrapped object that warns about deprecated accesses at import
     """
 
-    class DeprecationWrapper(object):
+    class DeprecationWrapper:
         warned = []
 
         def __getattr__(self, attr):
@@ -60,7 +62,10 @@ def DeprecatedModule(mod, deprecated_attributes=None, is_module_deprecated=True)
 
 
 # All modules to be aliased need to be imported here
-import haystack
+
+# This self-import is used to monkey-patch, keep for now
+import haystack  # pylint: disable=import-self
+from haystack import pipelines
 from haystack.nodes import (
     connector,
     document_classifier,
@@ -99,13 +104,12 @@ except ImportError:
     pass
 
 from haystack.modeling.evaluation import eval
-from haystack.modeling.logger import MLFlowLogger, StdoutLogger, TensorBoardLogger
-from haystack.nodes.other import JoinDocuments, Docs2Answers
+from haystack.nodes.other import JoinDocuments, Docs2Answers, JoinAnswers, RouteDocuments
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.file_classifier import FileTypeClassifier
-import haystack.utils.preprocessing as preprocessing
+from haystack.utils import preprocessing
 import haystack.modeling.utils as modeling_utils
-import haystack.utils.cleaning as cleaning
+from haystack.utils import cleaning
 
 # For the alias to work as an importable module (like `from haystack import reader`),
 # modules need to be set as attributes of their parent model.
@@ -173,9 +177,6 @@ if graph_retriever:
 # Adding them to sys.modules would enable `import haystack.pipelines.JoinDocuments`,
 # which I believe it's a very rare import style.
 setattr(file_converter, "FileTypeClassifier", FileTypeClassifier)
-setattr(modeling_utils, "MLFlowLogger", MLFlowLogger)
-setattr(modeling_utils, "StdoutLogger", StdoutLogger)
-setattr(modeling_utils, "TensorBoardLogger", TensorBoardLogger)
 setattr(pipelines, "JoinDocuments", JoinDocuments)
 setattr(pipelines, "Docs2Answers", Docs2Answers)
 setattr(pipelines, "SklearnQueryClassifier", SklearnQueryClassifier)

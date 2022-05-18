@@ -1,35 +1,38 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Optional, Dict, List, Union, Optional
-from dataclasses import asdict
+from typing import Any, Optional, Dict, List, Union
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-if typing.TYPE_CHECKING:
-    from dataclasses import dataclass
-else:
-    from pydantic.dataclasses import dataclass
-
-from pydantic.json import pydantic_encoder
 from pathlib import Path
 from uuid import uuid4
-import mmh3
-import numpy as np
 import logging
 import time
 import json
-import pandas as pd
 import ast
+from dataclasses import asdict
+
+import mmh3
+import numpy as np
+import pandas as pd
+
+from pydantic import BaseConfig
+from pydantic.json import pydantic_encoder
+
+if not typing.TYPE_CHECKING:
+    # We are using Pydantic dataclasses instead of vanilla Python's
+    # See #1598 for the reasons behind this choice & performance considerations
+    from pydantic.dataclasses import dataclass
+else:
+    from dataclasses import dataclass  # type: ignore  # pylint: disable=ungrouped-imports
 
 
 logger = logging.getLogger(__name__)
 
-
-from pydantic import BaseConfig
 
 BaseConfig.arbitrary_types_allowed = True
 
@@ -42,7 +45,6 @@ class Document:
     meta: Dict[str, Any]
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: Optional[List[str]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -72,12 +74,12 @@ class Document:
         There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
 
         :param content: Content of the document. For most cases, this will be text, but it can be a table or image.
-        :param content_type: One of "image", "table" or "image". Haystack components can use this to adjust their
+        :param content_type: One of "text", "table" or "image". Haystack components can use this to adjust their
                              handling of Documents and check compatibility.
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
         :param score: The relevance score of the Document determined by a model (e.g. Retriever or Re-Ranker).
-                      In the range of [0,1], where 1 means extremely relevant.
+                      If model's `scale_score` was set to True (default) score is in the unit interval (range of [0,1]), where 1 means extremely relevant.
         :param meta: Meta fields for a document like name, url, or author in the form of a custom dict (any keys and values allowed).
         :param embedding: Vector encoding of the text
         :param id_hash_keys: Generate the document id from a custom list of strings that refere to the documents attributes.
@@ -217,7 +219,6 @@ class Document:
             and getattr(other, "score", None) == self.score
             and getattr(other, "meta", None) == self.meta
             and np.array_equal(getattr(other, "embedding", None), self.embedding)
-            and getattr(other, "id_hash_keys", None) == self.id_hash_keys
         )
 
     def __repr__(self):
@@ -225,7 +226,7 @@ class Document:
 
     def __str__(self):
         # In some cases, self.content is None (therefore not subscriptable)
-        if not self.content:
+        if self.content is None:
             return f"<Document: id={self.id}, content=None>"
         return f"<Document: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}'>"
 
@@ -340,6 +341,7 @@ class Label:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
+    filters: Optional[dict] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -357,6 +359,7 @@ class Label:
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         meta: Optional[dict] = None,
+        filters: Optional[dict] = None,
     ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
@@ -379,6 +382,8 @@ class Label:
         :param created_at: Timestamp of update with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S")
         :param meta: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
+        :param filters: filters that should be applied to the query to rule out non-relevant documents. For example, if there are different correct answers
+                        in a DocumentStore depending on the retrieved document and the answer in this label is correct only on condition of the filters.
         """
 
         # Create a unique ID (either new one, or one from user input)
@@ -416,19 +421,18 @@ class Label:
                     )
             else:
                 # Automatically infer no_answer from Answer object
-                if self.answer.answer == "" or self.answer.answer is None:
-                    no_answer = True
-                else:
-                    no_answer = False
+                no_answer = self.answer.answer == "" or self.answer.answer is None
+
         self.no_answer = no_answer
 
         # TODO autofill answer.document_id if Document is provided
 
         self.pipeline_id = pipeline_id
         if not meta:
-            self.meta = dict()
+            self.meta = {}
         else:
             self.meta = meta
+        self.filters = filters
 
     def to_dict(self):
         return asdict(self)
@@ -476,11 +480,20 @@ class Label:
         return str(self.to_dict())
 
     def __str__(self):
-        return str(self.to_dict())
+        return f"<Label: {self.to_dict()}>"
 
 
 @dataclass
 class MultiLabel:
+    labels: List[Label]
+    query: str
+    answers: List[str]
+    no_answer: bool
+    document_ids: List[str]
+    document_contents: List[str]
+    gold_offsets_in_contexts: List[Dict]
+    gold_offsets_in_documents: List[Dict]
+
     def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -494,7 +507,6 @@ class MultiLabel:
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
-
         # drop duplicate labels and remove negative labels if needed.
         labels = list(set(labels))
         if drop_negative_labels:
@@ -509,6 +521,8 @@ class MultiLabel:
         self.labels = labels
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
+        self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
+        self.id = hash((self.query, json.dumps(self.filters, sort_keys=True).encode()))
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
@@ -546,13 +560,19 @@ class MultiLabel:
         self.document_contents = [l.document.content for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
-        unique_values = set([getattr(l, key) for l in self.labels])
+        if any(isinstance(getattr(l, key), dict) for l in self.labels):
+            # dict is not hashable so we collect unique filters via looping through all labels
+            unique_values = []
+            for l in self.labels:
+                if l.filters not in unique_values:
+                    unique_values.append(l.filters)
+        else:
+            unique_values = list({getattr(l, key) for l in self.labels})
         if must_be_single_value and len(unique_values) > 1:
             raise ValueError(
                 f"Tried to combine attribute '{key}' of Labels, but found multiple different values: {unique_values}"
             )
-        else:
-            return list(unique_values)
+        return unique_values
 
     def to_dict(self):
         return asdict(self)
@@ -574,7 +594,7 @@ class MultiLabel:
         return str(self.to_dict())
 
     def __str__(self):
-        return str(self.to_dict())
+        return f"<MultiLabel: {self.to_dict()}>"
 
 
 def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
@@ -627,7 +647,9 @@ class EvaluationResult:
         Additional answer or document specific evaluation infos like gold labels
         and metrics depicting whether the row matches the gold labels are included, too.
         The DataFrames have the following schema:
+        - multilabel_id: the id of the multilabel, which is unique for the pair of query and filters
         - query: the query
+        - filters: the filters used with the query
         - gold_answers (answers only): the answers to be given
         - answer (answers only): the answer
         - context (answers only): the surrounding context of the answer within the document
@@ -679,7 +701,7 @@ class EvaluationResult:
         self,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_match",
+        doc_relevance_col: str = "gold_id_or_answer_match",
         eval_mode: str = "integrated",
     ) -> Dict[str, Dict[str, float]]:
         """
@@ -708,7 +730,8 @@ class EvaluationResult:
         :param simulated_top_k_retriever: simulates top_k param of retriever.
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
         :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
-            values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
+            Values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'.
+            Default value is 'gold_id_or_answer_match'.
         :param eval_mode: the input on which the node was evaluated on.
             Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
@@ -776,10 +799,12 @@ class EvaluationResult:
             )
             worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
             wrong_examples = []
-            for query, metrics in worst_df.iterrows():
-                query_answers = answers[answers["query"] == query]
+            for multilabel_id, metrics in worst_df.iterrows():
+                query_answers = answers[answers["multilabel_id"] == multilabel_id]
                 query_dict = {
-                    "query": query,
+                    "multilabel_id": query_answers["multilabel_id"].iloc[0],
+                    "query": query_answers["query"].iloc[0],
+                    "filters": query_answers["filters"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "answers": query_answers.drop(
                         ["node", "query", "type", "gold_answers", "gold_offsets_in_documents", "gold_document_ids"],
@@ -798,13 +823,24 @@ class EvaluationResult:
             )
             worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
             wrong_examples = []
-            for query, metrics in worst_df.iterrows():
-                query_documents = documents[documents["query"] == query]
+            for multilabel_id, metrics in worst_df.iterrows():
+                query_documents = documents[documents["multilabel_id"] == multilabel_id]
                 query_dict = {
-                    "query": query,
+                    "multilabel_id": query_documents["multilabel_id"].iloc[0],
+                    "query": query_documents["query"].iloc[0],
+                    "filters": query_documents["filters"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "documents": query_documents.drop(
-                        ["node", "query", "type", "gold_document_ids", "gold_document_contents"], axis=1
+                        [
+                            "node",
+                            "query",
+                            "multilabel_id",
+                            "filters",
+                            "type",
+                            "gold_document_ids",
+                            "gold_document_contents",
+                        ],
+                        axis=1,
                     ).to_dict(orient="records"),
                     "gold_document_ids": query_documents["gold_document_ids"].iloc[0],
                 }
@@ -863,35 +899,42 @@ class EvaluationResult:
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
         - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
-        queries = answers["query"].unique()
-
-        # simulate top k reader
-        if simulated_top_k_reader != -1:
-            answers = answers[answers["rank"] <= simulated_top_k_reader]
-
         # simulate top k retriever
         if simulated_top_k_retriever != -1:
             documents = self._get_documents_df()
+
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
-            for query in queries:
-                top_k_document_ids = top_k_documents[top_k_documents["query"] == query]["document_id"].unique()
-                query_answers = answers[answers["query"] == query]
+            for multilabel_id in answers["multilabel_id"].unique():
+                top_k_document_ids = top_k_documents[top_k_documents["multilabel_id"] == multilabel_id][
+                    "document_id"
+                ].unique()
+                query_answers = answers[answers["multilabel_id"] == multilabel_id]
+                # consider only the answers within simulated_top_k_retriever documents
                 simulated_query_answers = query_answers[query_answers["document_id"].isin(top_k_document_ids)]
+                # simulate top k reader
+                if simulated_top_k_reader != -1:
+                    # consider only the simulated_top_k_reader answers within simulated_query_answers
+                    simulated_query_answers = simulated_query_answers.nsmallest(simulated_top_k_reader, "rank")
                 simulated_query_answers["rank"] = np.arange(1, len(simulated_query_answers) + 1)
                 simulated_answers.append(simulated_query_answers)
             answers = pd.concat(simulated_answers)
+        # simulate top k reader
+        elif simulated_top_k_reader != -1:
+            answers = answers[answers["rank"] <= simulated_top_k_reader]
 
         # build metrics df
         metrics = []
-        for query in queries:
-            query_df = answers[answers["query"] == query]
+
+        for multilabel_id in answers["multilabel_id"].unique():
+            query_df = answers[answers["multilabel_id"] == multilabel_id]
+
             metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
 
             query_metrics = {metric: query_df[metric].max() if len(query_df) > 0 else 0.0 for metric in metrics_cols}
             metrics.append(query_metrics)
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=queries)
+        metrics_df = pd.DataFrame.from_records(metrics, index=answers["multilabel_id"].unique())
         return metrics_df
 
     def _get_documents_df(self):
@@ -921,7 +964,7 @@ class EvaluationResult:
         self, documents: pd.DataFrame, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match"
     ) -> pd.DataFrame:
         """
-        Builds a dataframe containing document metrics (columns) per query (index).
+        Builds a dataframe containing document metrics (columns) per pair of query and gold document ids (index).
         Document metrics are:
         - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
         - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision)
@@ -933,10 +976,10 @@ class EvaluationResult:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
 
         metrics = []
-        queries = documents["query"].unique()
-        for query in queries:
-            query_df = documents[documents["query"] == query]
-            gold_ids = query_df["gold_document_ids"].iloc[0]
+
+        for multilabel_id in documents["multilabel_id"].unique():
+            query_df = documents[documents["multilabel_id"] == multilabel_id]
+            gold_ids = list(query_df["gold_document_ids"].iloc[0])
             retrieved = len(query_df)
 
             relevance_criteria_ids = list(query_df[query_df[doc_relevance_col] == 1]["document_id"].values)
@@ -948,8 +991,8 @@ class EvaluationResult:
             ]
 
             avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
-            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 0.0
-            recall_single_hit = min(num_retrieved_relevants, 1)
+            recall_multi_hit = num_retrieved_relevants / num_relevants if num_relevants > 0 else 1.0
+            recall_single_hit = min(num_retrieved_relevants, 1) if num_relevants > 0 else 1.0
             precision = num_retrieved_relevants / retrieved if retrieved > 0 else 0.0
             rr = 1.0 / rank_retrieved_relevants.min() if len(rank_retrieved_relevants) > 0 else 0.0
             dcg = (
@@ -973,7 +1016,7 @@ class EvaluationResult:
                 }
             )
 
-        metrics_df = pd.DataFrame.from_records(metrics, index=queries)
+        metrics_df = pd.DataFrame.from_records(metrics, index=documents["multilabel_id"].unique())
         return metrics_df
 
     def save(self, out_dir: Union[str, Path]):

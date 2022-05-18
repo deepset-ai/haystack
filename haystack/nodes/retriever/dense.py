@@ -1,14 +1,17 @@
 from typing import List, Dict, Union, Optional
 
 import logging
-import numpy as np
 from pathlib import Path
-from tqdm.auto import tqdm
+from copy import deepcopy
 
+import numpy as np
+from tqdm.auto import tqdm
 import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
+import pandas as pd
 
+from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -54,8 +57,9 @@ class DensePassageRetriever(BaseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_score: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -102,34 +106,22 @@ class DensePassageRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
+                        will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            query_embedding_model=query_embedding_model,
-            passage_embedding_model=passage_embedding_model,
-            model_version=model_version,
-            max_seq_len_query=max_seq_len_query,
-            max_seq_len_passage=max_seq_len_passage,
-            top_k=top_k,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            embed_title=embed_title,
-            use_fast_tokenizers=use_fast_tokenizers,
-            infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function,
-            progress_bar=progress_bar,
-            devices=devices,
-            use_auth_token=use_auth_token,
-        )
+        super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
@@ -140,6 +132,7 @@ class DensePassageRetriever(BaseRetriever):
         self.batch_size = batch_size
         self.progress_bar = progress_bar
         self.top_k = top_k
+        self.scale_score = scale_score
 
         if document_store is None:
             logger.warning(
@@ -211,7 +204,7 @@ class DensePassageRetriever(BaseRetriever):
             embeds_dropout_prob=0.1,
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
-            device=str(self.devices[0]),
+            device=self.devices[0],
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
@@ -222,19 +215,85 @@ class DensePassageRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if top_k is None:
             top_k = self.top_k
@@ -243,11 +302,163 @@ class DensePassageRetriever(BaseRetriever):
             return []
         if index is None:
             index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers
+            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
+
+    def retrieve_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+        lists of Documents (one per query) is returned.
+
+        :param queries: Single query string or list of queries.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param batch_size: Number of queries to embed at a time.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [{}] * len(queries)
+
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
+            )
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb, cur_filters in zip(query_embs, filters):
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb,
+                top_k=top_k,
+                filters=cur_filters,
+                index=index,
+                headers=headers,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
 
     def _get_predictions(self, dicts):
         """
@@ -470,7 +681,7 @@ class DensePassageRetriever(BaseRetriever):
             use_amp=use_amp,
         )
 
-        # 7. Let it grow! Watch the tracked metrics live on the public mlflow server: https://public-mlflow.deepset.ai
+        # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
         trainer.train()
 
         self.model.save(Path(save_dir), lm1_name=query_encoder_save_dir, lm2_name=passage_encoder_save_dir)
@@ -566,8 +777,9 @@ class TableTextRetriever(BaseRetriever):
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_score: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -587,7 +799,7 @@ class TableTextRetriever(BaseRetriever):
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields and text passage / table to a text pair that is
-                                  then  used to create the embedding.
+                                  then used to create the embedding.
                                   This is the approach used in the original paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
@@ -600,36 +812,22 @@ class TableTextRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
+                        training will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            query_embedding_model=query_embedding_model,
-            passage_embedding_model=passage_embedding_model,
-            table_embedding_model=table_embedding_model,
-            model_version=model_version,
-            max_seq_len_query=max_seq_len_query,
-            max_seq_len_passage=max_seq_len_passage,
-            max_seq_len_table=max_seq_len_table,
-            top_k=top_k,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            embed_meta_fields=embed_meta_fields,
-            use_fast_tokenizers=use_fast_tokenizers,
-            infer_tokenizer_classes=infer_tokenizer_classes,
-            similarity_function=similarity_function,
-            progress_bar=progress_bar,
-            devices=devices,
-            use_auth_token=use_auth_token,
-        )
+        super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
@@ -641,6 +839,7 @@ class TableTextRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.top_k = top_k
         self.embed_meta_fields = embed_meta_fields
+        self.scale_score = scale_score
 
         if document_store is None:
             logger.warning(
@@ -737,7 +936,7 @@ class TableTextRetriever(BaseRetriever):
             lm1_output_types=["per_sequence"],
             lm2_output_types=["per_sequence"],
             lm3_output_types=["per_sequence"],
-            device=str(self.devices[0]),
+            device=self.devices[0],
         )
 
         self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
@@ -748,23 +947,176 @@ class TableTextRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
         if not self.document_store:
-            logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
+            logger.error("Cannot perform retrieve() since TableTextRetriever initialized with document_store=None")
             return []
         if index is None:
             index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers
+            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
+
+    def retrieve_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+        lists of Documents (one per query) is returned.
+
+        :param queries: Single query string or list of queries.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param batch_size: Number of queries to embed at a time.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [{}] * len(queries)
+
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
+            )
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb, cur_filters in zip(query_embs, filters):
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb,
+                top_k=top_k,
+                filters=cur_filters,
+                index=index,
+                headers=headers,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
 
     def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
         """
@@ -1017,7 +1369,7 @@ class TableTextRetriever(BaseRetriever):
             use_amp=use_amp,
         )
 
-        # 7. Let it grow! Watch the tracked metrics live on the public mlflow server: https://public-mlflow.deepset.ai
+        # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
         trainer.train()
 
         self.model.save(
@@ -1113,8 +1465,10 @@ class EmbeddingRetriever(BaseRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
+        scale_score: bool = True,
+        embed_meta_fields: List[str] = [],
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1139,28 +1493,27 @@ class EmbeddingRetriever(BaseRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
-                        As multi-GPU training is currently not implemented for DPR, training will only use the first device provided in this list.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
+                        training will only use the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
                                 the local token will be used, which must be previously created via `transformer-cli login`.
                                 Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param embed_meta_fields: Concatenate the provided meta fields and text passage / table to a text pair that is
+                                  then used to create the embedding.
+                                  This approach is also used in the TableTextRetriever paper and is likely to improve
+                                  performance if your titles contain meaningful information for retrieval
+                                  (topic, entities etc.).
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            document_store=document_store,
-            embedding_model=embedding_model,
-            model_version=model_version,
-            use_gpu=use_gpu,
-            batch_size=batch_size,
-            max_seq_len=max_seq_len,
-            model_format=model_format,
-            pooling_strategy=pooling_strategy,
-            emb_extraction_layer=emb_extraction_layer,
-            top_k=top_k,
-        )
+        super().__init__()
 
         if devices is not None:
-            self.devices = devices
+            self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
@@ -1179,39 +1532,266 @@ class EmbeddingRetriever(BaseRetriever):
         self.top_k = top_k
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
+        self.scale_score = scale_score
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
-        if not model_format in _EMBEDDING_ENCODERS.keys():
+        if model_format not in _EMBEDDING_ENCODERS.keys():
             raise ValueError(f"Unknown retriever embedding model format {model_format}")
+
+        if self.embedding_model.startswith("sentence-transformers") and self.model_format != "sentence_transformers":
+            logger.warning(
+                f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
+                f" You may need to set 'model_format='sentence_transformers' to ensure correct loading of model."
+            )
+
         self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
+        self.embed_meta_fields = embed_meta_fields
 
     def retrieve(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
 
         :param query: The query
-        :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                                           If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                                           Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
         query_emb = self.embed_queries(texts=[query])
         documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers
+            query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         return documents
+
+    def retrieve_batch(
+        self,
+        queries: Union[str, List[str]],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
+        lists of Documents (one per query) is returned.
+
+        :param queries: Single query string or list of queries.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param batch_size: Number of queries to embed at a time.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+
+        if top_k is None:
+            top_k = self.top_k
+
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        single_query = False
+        if isinstance(queries, str):
+            queries = [queries]
+            single_query = True
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [{}] * len(queries)
+
+        if index is None:
+            index = self.document_store.index
+        if scale_score is None:
+            scale_score = self.scale_score
+        if not self.document_store:
+            logger.error(
+                "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
+            )
+            if single_query:
+                return []  # type: ignore
+            else:
+                return [[] * len(queries)]  # type: ignore
+
+        documents = []
+        query_embs = []
+        for batch in self._get_batches(queries=queries, batch_size=batch_size):
+            query_embs.extend(self.embed_queries(texts=batch))
+        for query_emb, cur_filters in zip(query_embs, filters):
+            cur_docs = self.document_store.query_by_embedding(
+                query_emb=query_emb,
+                top_k=top_k,
+                filters=cur_filters,
+                index=index,
+                headers=headers,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
+
+        if single_query:
+            return documents[0]
+        else:
+            return documents
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """
@@ -1233,4 +1813,27 @@ class EmbeddingRetriever(BaseRetriever):
         :param docs: List of documents to embed
         :return: Embeddings, one per input document
         """
+        docs = self._preprocess_documents(docs)
         return self.embedding_encoder.embed_documents(docs)
+
+    def _preprocess_documents(self, docs: List[Document]) -> List[Document]:
+        """
+        Turns table documents into text documents by representing the table in csv format.
+        This allows us to use text embedding models for table retrieval.
+        It also concatenates specified meta data fields with the text representations.
+
+        :param docs: List of documents to linearize. If the document is not a table, it is returned as is.
+        :return: List of documents with meta data + linearized tables or original documents if they are not tables.
+        """
+        linearized_docs = []
+        for doc in docs:
+            doc = deepcopy(doc)
+            if doc.content_type == "table":
+                if isinstance(doc.content, pd.DataFrame):
+                    doc.content = doc.content.to_csv(index=False)
+                else:
+                    raise HaystackError("Documents of type 'table' need to have a pd.DataFrame as content field")
+            meta_data_fields = [doc.meta[key] for key in self.embed_meta_fields if key in doc.meta and doc.meta[key]]
+            doc.content = "\n".join(meta_data_fields + [doc.content])
+            linearized_docs.append(doc)
+        return linearized_docs

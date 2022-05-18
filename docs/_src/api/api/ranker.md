@@ -1,30 +1,35 @@
-<a name="base"></a>
+<a id="base"></a>
+
 # Module base
 
-<a name="base.BaseRanker"></a>
+<a id="base.BaseRanker"></a>
+
 ## BaseRanker
 
 ```python
 class BaseRanker(BaseComponent)
 ```
 
-<a name="base.BaseRanker.timing"></a>
-#### timing
+<a id="base.BaseRanker.timing"></a>
+
+#### BaseRanker.timing
 
 ```python
- | timing(fn, attr_name)
+def timing(fn, attr_name)
 ```
 
 Wrapper method used to time functions.
 
-<a name="base.BaseRanker.eval"></a>
-#### eval
+<a id="base.BaseRanker.eval"></a>
+
+#### BaseRanker.eval
 
 ```python
- | eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+def eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
 ```
 
 Performs evaluation of the Ranker.
+
 Ranker is evaluated in the same way as a Retriever based on whether it finds the correct document given the query string and at which
 position in the ranking of documents the correct document is.
 
@@ -45,16 +50,18 @@ position in the ranking of documents the correct document is.
 - `doc_index`: Index/Table in DocumentStore where documents that are used for evaluation are stored
 - `top_k`: How many documents to return per query
 - `open_domain`: If ``True``, retrieval will be evaluated by checking if the answer string to a question is
-                    contained in the retrieved docs (common approach in open-domain QA).
-                    If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
-                    are within ids explicitly stated in the labels.
+contained in the retrieved docs (common approach in open-domain QA).
+If ``False``, retrieval uses a stricter evaluation that checks if the retrieved document ids
+are within ids explicitly stated in the labels.
 - `return_preds`: Whether to add predictions in the returned dictionary. If True, the returned dictionary
-                     contains the keys "predictions" and "metrics".
+contains the keys "predictions" and "metrics".
 
-<a name="sentence_transformers"></a>
+<a id="sentence_transformers"></a>
+
 # Module sentence\_transformers
 
-<a name="sentence_transformers.SentenceTransformersRanker"></a>
+<a id="sentence_transformers.SentenceTransformersRanker"></a>
+
 ## SentenceTransformersRanker
 
 ```python
@@ -74,17 +81,18 @@ https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transfor
 
 Usage example:
 ...
-retriever = ElasticsearchRetriever(document_store=document_store)
+retriever = BM25Retriever(document_store=document_store)
 ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
 p = Pipeline()
 p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
 p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 
-<a name="sentence_transformers.SentenceTransformersRanker.__init__"></a>
-#### \_\_init\_\_
+<a id="sentence_transformers.SentenceTransformersRanker.__init__"></a>
+
+#### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[int, str, torch.device]]] = None)
+def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: Optional[int] = None)
 ```
 
 **Arguments**:
@@ -95,34 +103,18 @@ See https://huggingface.co/cross-encoder for full list of available models
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `top_k`: The maximum number of documents to return
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. ["cuda:0"]).
+- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+The strings will be converted into pytorch devices, so use the string notation described here:
+https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+(e.g. ["cuda:0"]).
+- `batch_size`: Number of documents to process at a time.
 
-<a name="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
-#### predict\_batch
+<a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 
-```python
- | predict_batch(query_doc_list: List[dict], top_k: int = None, batch_size: int = None)
-```
-
-Use loaded Ranker model to, for a list of queries, rank each query's supplied list of Document.
-
-Returns list of dictionary of query and list of document sorted by (desc.) similarity with query
-
-**Arguments**:
-
-- `query_doc_list`: List of dictionaries containing queries with their retrieved documents
-- `top_k`: The maximum number of answers to return for each query
-- `batch_size`: Number of samples the model receives in one batch for inference
-
-**Returns**:
-
-List of dictionaries containing query and ranked list of Document
-
-<a name="sentence_transformers.SentenceTransformersRanker.predict"></a>
-#### predict
+#### SentenceTransformersRanker.predict
 
 ```python
- | predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]
+def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]
 ```
 
 Use loaded ranker model to re-rank the supplied list of Document.
@@ -138,4 +130,37 @@ Returns list of Document sorted by (desc.) similarity with the query.
 **Returns**:
 
 List of Document
+
+<a id="sentence_transformers.SentenceTransformersRanker.predict_batch"></a>
+
+#### SentenceTransformersRanker.predict\_batch
+
+```python
+def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Use loaded ranker model to re-rank the supplied lists of Documents.
+
+Returns lists of Documents sorted by (desc.) similarity with the corresponding queries.
+
+
+- If you provide a single query...
+
+    - ... and a single list of Documents, the single list of Documents will be re-ranked based on the
+      supplied query.
+    - ... and a list of lists of Documents, each list of Documents will be re-ranked individually based on the
+      supplied query.
+
+
+- If you provide a list of queries...
+
+    - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
+      its corresponding query.
+
+**Arguments**:
+
+- `queries`: Single query string or list of queries
+- `documents`: Single list of Documents or list of lists of Documents to be reranked.
+- `top_k`: The maximum number of documents to return per Document list.
+- `batch_size`: Number of Documents to process at a time.
 

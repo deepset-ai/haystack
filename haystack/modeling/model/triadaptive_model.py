@@ -9,7 +9,7 @@ from torch import nn
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class TriAdaptiveModel(nn.Module):
         language_model3: LanguageModel,
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float = 0.1,
-        device: str = "cuda",
+        device: torch.device = torch.device("cuda"),
         lm1_output_types: Union[str, List[str]] = ["per_sequence"],
         lm2_output_types: Union[str, List[str]] = ["per_sequence"],
         lm3_output_types: Union[str, List[str]] = ["per_sequence"],
@@ -71,7 +71,7 @@ class TriAdaptiveModel(nn.Module):
                                 "per_sequence", a single embedding will be extracted to represent the full
                                 input sequence. Can either be a single string, or a list of strings,
                                 one for each prediction head.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         :param loss_aggregation_fn: Function to aggregate the loss of multiple prediction heads.
                                     Input: loss_per_head (list of tensors), global_step (int), batch (dict)
                                     Output: aggregated loss (tensor)
@@ -129,7 +129,7 @@ class TriAdaptiveModel(nn.Module):
     def load(
         cls,
         load_dir: Path,
-        device: str,
+        device: torch.device,
         strict: bool = False,
         lm1_name: str = "lm1",
         lm2_name: str = "lm2",
@@ -155,7 +155,7 @@ class TriAdaptiveModel(nn.Module):
         * special_tokens_map.json
 
         :param load_dir: Location where the TriAdaptiveModel is stored.
-        :param device: To which device we want to sent the model, either cpu or cuda.
+        :param device: To which device we want to sent the model, either torch.device("cpu") or torch.device("cuda").
         :param lm1_name: The name to assign to the first loaded language model (for encoding queries).
         :param lm2_name: The name to assign to the second loaded language model (for encoding context/passages).
         :param lm3_name: The name to assign to the second loaded language model (for encoding tables).
@@ -218,7 +218,7 @@ class TriAdaptiveModel(nn.Module):
         :param global_step: number of current training step.
         :param kwargs: Placeholder for passing generic parameters.
                        Note: Contains the batch (as dict of tensors), when called from Trainer.train().
-        :return loss: torch.Tensor that is the per sample loss (len: batch_size)
+        :return: loss: torch.Tensor that is the per sample loss (len: batch_size)
         """
         all_losses = self.logits_to_loss_per_head(logits, **kwargs)
         # This aggregates the loss per sample across multiple prediction heads
@@ -369,7 +369,7 @@ class TriAdaptiveModel(nn.Module):
             "prediction_heads": ",".join([head.__class__.__name__ for head in self.prediction_heads]),
         }
         try:
-            MlLogger.log_params(params)
+            tracker.track_params(params)
         except Exception as e:
             logger.warning(f"ML logging didn't work: {e}")
 

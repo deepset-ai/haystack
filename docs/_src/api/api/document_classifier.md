@@ -1,26 +1,31 @@
-<a name="base"></a>
+<a id="base"></a>
+
 # Module base
 
-<a name="base.BaseDocumentClassifier"></a>
+<a id="base.BaseDocumentClassifier"></a>
+
 ## BaseDocumentClassifier
 
 ```python
 class BaseDocumentClassifier(BaseComponent)
 ```
 
-<a name="base.BaseDocumentClassifier.timing"></a>
-#### timing
+<a id="base.BaseDocumentClassifier.timing"></a>
+
+#### BaseDocumentClassifier.timing
 
 ```python
- | timing(fn, attr_name)
+def timing(fn, attr_name)
 ```
 
 Wrapper method used to time functions.
 
-<a name="transformers"></a>
+<a id="transformers"></a>
+
 # Module transformers
 
-<a name="transformers.TransformersDocumentClassifier"></a>
+<a id="transformers.TransformersDocumentClassifier"></a>
+
 ## TransformersDocumentClassifier
 
 ```python
@@ -42,7 +47,7 @@ With this document_classifier, you can directly get predictions via predict()
  **Usage example at query time:**
  ```python
 |    ...
-|    retriever = ElasticsearchRetriever(document_store=document_store)
+|    retriever = BM25Retriever(document_store=document_store)
 |    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion")
 |    p = Pipeline()
 |    p.add_node(component=retriever, name="Retriever", inputs=["Query"])
@@ -74,14 +79,16 @@ With this document_classifier, you can directly get predictions via predict()
 |    p.run(file_paths=file_paths)
  ```
 
-<a name="transformers.TransformersDocumentClassifier.__init__"></a>
-#### \_\_init\_\_
+<a id="transformers.TransformersDocumentClassifier.__init__"></a>
+
+#### TransformersDocumentClassifier.\_\_init\_\_
 
 ```python
- | __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = -1, classification_field: str = None)
+def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: Optional[int] = None, classification_field: str = None)
 ```
 
 Load a text classification model from Transformers.
+
 Available models for the task of text-classification include:
 - ``'bhadresh-savani/distilbert-base-uncased-emotion'``
 - ``'Hate-speech-CNERG/dehatebert-mono-english'``
@@ -107,24 +114,48 @@ See https://huggingface.co/models for full list of available models.
 ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
 classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
 or an entailment.
-- `batch_size`: batch size to be processed at once
+- `batch_size`: Number of Documents to be processed at a time.
 - `classification_field`: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
 
-<a name="transformers.TransformersDocumentClassifier.predict"></a>
-#### predict
+<a id="transformers.TransformersDocumentClassifier.predict"></a>
+
+#### TransformersDocumentClassifier.predict
 
 ```python
- | predict(documents: List[Document]) -> List[Document]
+def predict(documents: List[Document], batch_size: Optional[int] = None) -> List[Document]
 ```
 
-Returns documents containing classification result in meta field.
+Returns documents containing classification result in a meta field.
+
 Documents are updated in place.
 
 **Arguments**:
 
-- `documents`: List of Document to classify
+- `documents`: A list of Documents to classify.
+- `batch_size`: The number of Documents to classify at a time.
 
 **Returns**:
 
-List of Document enriched with meta information
+A list of Documents enriched with meta information.
+
+<a id="transformers.TransformersDocumentClassifier.predict_batch"></a>
+
+#### TransformersDocumentClassifier.predict\_batch
+
+```python
+def predict_batch(documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+```
+
+Returns documents containing classification result in meta field.
+
+Documents are updated in place.
+
+**Arguments**:
+
+- `documents`: List of Documents or list of lists of Documents to classify.
+- `batch_size`: Number of Documents to classify at a time.
+
+**Returns**:
+
+List of Documents or list of lists of Documents enriched with meta information.
 

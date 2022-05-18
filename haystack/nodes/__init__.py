@@ -2,7 +2,6 @@ from haystack.utils.import_utils import safe_import
 
 from haystack.nodes.base import BaseComponent
 
-Crawler = safe_import("haystack.nodes.connector.crawler", "Crawler", "crawler")  # Has optional dependencies
 from haystack.nodes.answer_generator import BaseGenerator, RAGenerator, Seq2SeqGenerator
 from haystack.nodes.document_classifier import BaseDocumentClassifier, TransformersDocumentClassifier
 from haystack.nodes.evaluator import EvalDocuments, EvalAnswers
@@ -21,7 +20,7 @@ from haystack.nodes.file_converter import (
     AzureConverter,
     ParsrConverter,
 )
-from haystack.nodes.other import Docs2Answers, JoinDocuments
+from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers
 from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
@@ -31,7 +30,9 @@ from haystack.nodes.retriever import (
     BaseRetriever,
     DensePassageRetriever,
     EmbeddingRetriever,
+    BM25Retriever,
     ElasticsearchRetriever,
+    FilterRetriever,
     ElasticsearchFilterOnlyRetriever,
     TfidfRetriever,
     Text2SparqlRetriever,
@@ -39,3 +40,5 @@ from haystack.nodes.retriever import (
 )
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
+
+Crawler = safe_import("haystack.nodes.connector.crawler", "Crawler", "crawler")  # Has optional dependencies
