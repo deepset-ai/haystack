@@ -288,7 +288,11 @@ def test_upload_file_to_deepset_cloud(caplog):
         )
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
-    file_paths = [SAMPLES_PATH/"docx/sample_docx.docx", SAMPLES_PATH/"pdf/sample_pdf_1.pdf", SAMPLES_PATH/"docs/doc_1.txt"]
+    file_paths = [
+        SAMPLES_PATH / "docx/sample_docx.docx",
+        SAMPLES_PATH / "pdf/sample_pdf_1.pdf",
+        SAMPLES_PATH / "docs/doc_1.txt",
+    ]
     metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
     with caplog.at_level(logging.INFO):
         client.upload_files(file_paths=file_paths, metas=metas)
@@ -321,7 +325,11 @@ def test_upload_file_to_deepset_cloud_file_fails(caplog):
         )
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
-    file_paths = [SAMPLES_PATH/"docx/sample_docx.docx", SAMPLES_PATH/"pdf/sample_pdf_1.pdf", SAMPLES_PATH/"docs/doc_1.txt"]
+    file_paths = [
+        SAMPLES_PATH / "docx/sample_docx.docx",
+        SAMPLES_PATH / "pdf/sample_pdf_1.pdf",
+        SAMPLES_PATH / "docs/doc_1.txt",
+    ]
     metas = [{"file_id": "sample_docx.docx"}, {"file_id": "sample_pdf_1.pdf"}, {"file_id": "doc_1.txt"}]
     with caplog.at_level(logging.INFO):
         client.upload_files(file_paths=file_paths, metas=metas)
