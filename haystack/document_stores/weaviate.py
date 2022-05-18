@@ -22,10 +22,15 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
+from haystack.errors import DocumentStoreError
 
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
+
+
+class WeaviateDocumentStoreError(DocumentStoreError):
+    pass
 
 
 class WeaviateDocumentStore(BaseDocumentStore):
@@ -705,10 +710,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
             try:
                 result = query.do()
             except Exception as e:
-                raise ValueError(f"Weaviate raised an exception: {e}")
+                raise WeaviateDocumentStoreError(f"Weaviate raised an exception: {e}")
 
             if "errors" in result:
-                raise ValueError(f"Query results contain errors: {result['errors']}")
+                raise WeaviateDocumentStoreError(f"Query results contain errors: {result['errors']}")
 
             # If `query.do` didn't raise and `result` doesn't contain errors,
             # we are good accessing data
