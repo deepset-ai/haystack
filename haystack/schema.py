@@ -626,12 +626,11 @@ class NumpyEncoder(json.JSONEncoder):
 class EvaluationResult:
     def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
         """
-        Convenience class to store, pass and interact with results of a pipeline evaluation run (e.g. pipeline.eval()).
+        A convenience class to store, pass, and interact with results of a pipeline evaluation run (for example `pipeline.eval()`).
         Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
         convenience methods to work with them.
-        For example, you can calculate eval metrics, get detailed reports or simulate different top_k settings.
+        For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
-        Example:
         ```python
         | eval_results = pipeline.eval(...)
         |
@@ -643,57 +642,57 @@ class EvaluationResult:
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
-        Rows are enriched with basic infos like rank, query, type or node.
-        Additional answer or document specific evaluation infos like gold labels
-        and metrics depicting whether the row matches the gold labels are included, too.
+        Rows are enriched with basic information like rank, query, type, or node.
+        Additional answer or document-specific evaluation information, like gold labels
+        and metrics showing whether the row matches the gold labels, are included, too.
         The DataFrames have the following schema:
-        - multilabel_id: the id of the multilabel, which is unique for the pair of query and filters
-        - query: the query
-        - filters: the filters used with the query
-        - gold_answers (answers only): the answers to be given
-        - answer (answers only): the answer
-        - context: the content of the document (the surrounding context of the answer for QA)
-        - exact_match (answers only): metric depicting if the answer exactly matches the gold label
-        - f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
-        - sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
-        - exact_match_context_scope (answers only): exact_match with enforced context match
-        - f1_context_scope (answers only): f1 with enforced context scope match
-        - sas_context_scope (answers only): sas with enforced context scope match
-        - exact_match_document_scope (answers only): exact_match with enforced document scope match
-        - f1_document_scope (answers only): f1 with enforced document scope match
-        - sas_document_scope (answers only): sas with enforced document scope match
-        - exact_match_document_and_context_scope: (answers only): exact_match with enforced document and context scope match
-        - f1_document_and_context_scope (answers only): f1 with enforced document and context scope match
-        - sas_document_and_context_scope (answers only): sas with enforced document and context scope match
-        - gold_contexts: the contents of the gold documents
-        - gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
-        - context_match (documents only): metric depicting whether one of the gold contexts matches the document content
-        - answer_match (documents only): metric depicting whether the document contains the answer
-        - gold_id_or_answer_match (documents only): metric depicting boolean operation `'gold_id_match' OR 'answer_match'`
-        - gold_id_and_answer_match (documents only): metric depicting boolean operation `'gold_id_match' AND 'answer_match'`
-        - gold_id_or_context_match (documents only): metric depicting boolean operation `'gold_id_match' OR 'context_match'`
-        - gold_id_and_context_match (documents only): metric depicting boolean operation `'gold_id_match' AND 'context_match'`
-        - gold_id_and_context_and_answer_match (documents only): metric depicting boolean operation `'gold_id_match' AND 'context_match' AND 'answer_match'`
-        - context_and_answer_match (documents only): metric depicting boolean operation `'context_match' AND 'answer_match'`
-        - rank: rank or 1-based-position in result list
-        - document_id: the id of the document that has been retrieved or that contained the answer
-        - gold_document_ids: the documents's ids to be retrieved
-        - custom_document_id: the custom id of the document (specified by `custom_document_id_field`) that has been retrieved or that contained the answer
-        - gold_custom_document_ids: the custom documents's ids (specified by `custom_document_id_field`) to be retrieved
-        - offsets_in_document (answers only): the position or offsets within the document the answer was found
-        - gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
-        - gold_answers_exact_match (answers only): exact_match values per gold_answer
-        - gold_answers_f1 (answers only): f1 values per gold_answer
-        - gold_answers_sas (answers only): sas values per gold answer
-        - gold_documents_id_match: document id match per gold label (if `custom_document_id_field` has been specified, custom ids are used)
-        - gold_contexts_similarity: context similarity per gold label
-        - gold_answers_match (documents only): whether document contains answer per gold label
-        - type: 'answer' or 'document'
-        - node: the node name
-        - eval_mode: evaluation mode depicting whether the evaluation was executed in integrated or isolated mode.
-                     Check pipeline.eval()'s add_isolated_node_eval param for more information.
+        - multilabel_id: The ID of the multilabel, which is unique for the pair of query and filters.
+        - query: The actual query string.
+        - filters: The filters used with the query.
+        - gold_answers (answers only): The expected answers.
+        - answer (answers only): The actual answer.
+        - context: The content of the document (the surrounding context of the answer for QA).
+        - exact_match (answers only): A metric showing if the answer exactly matches the gold label.
+        - f1 (answers only): A metric showing how well the answer overlaps with the gold label on a token basis.
+        - sas (answers only, optional): A metric showing how well the answer matches the gold label on a semantic basis.
+        - exact_match_context_scope (answers only): exact_match with enforced context match.
+        - f1_context_scope (answers only): f1 with enforced context scope match.
+        - sas_context_scope (answers only): sas with enforced context scope match.
+        - exact_match_document_scope (answers only): exact_match with enforced document scope match.
+        - f1_document_scope (answers only): f1 with enforced document scope match.
+        - sas_document_scope (answers only): sas with enforced document scope match.
+        - exact_match_document_and_context_scope: (answers only): exact_match with enforced document and context scope match.
+        - f1_document_and_context_scope (answers only): f1 with enforced document and context scope match.
+        - sas_document_and_context_scope (answers only): sas with enforced document and context scope match.
+        - gold_contexts: The contents of the gold documents.
+        - gold_id_match (documents only): A metric showing whether one of the gold document IDs matches the document.
+        - context_match (documents only): A metric showing whether one of the gold contexts matches the document content.
+        - answer_match (documents only): A metric showing whether the document contains the answer.
+        - gold_id_or_answer_match (documents only): A Boolean operation specifying that there should be either `'gold_id_match' OR 'answer_match'`.
+        - gold_id_and_answer_match (documents only): A Boolean operation specifying that there should be both `'gold_id_match' AND 'answer_match'`.
+        - gold_id_or_context_match (documents only): A Boolean operation specifying that there should be either `'gold_id_match' OR 'context_match'`.
+        - gold_id_and_context_match (documents only): A Boolean operation specifying that there should be both `'gold_id_match' AND 'context_match'`.
+        - gold_id_and_context_and_answer_match (documents only): A Boolean operation specifying that there should be `'gold_id_match' AND 'context_match' AND 'answer_match'`.
+        - context_and_answer_match (documents only): A Boolean operation specifying that there should be both `'context_match' AND 'answer_match'`.
+        - rank: A rank or 1-based-position in the result list.
+        - document_id: The ID of the document that has been retrieved or that contained the answer.
+        - gold_document_ids: The IDs of the documents to be retrieved.
+        - custom_document_id: The custom ID of the document (specified by `custom_document_id_field`) that has been retrieved or that contained the answer.
+        - gold_custom_document_ids: The custom documents IDs (specified by `custom_document_id_field`) to be retrieved.
+        - offsets_in_document (answers only): The position or offsets within the document where the answer was found.
+        - gold_offsets_in_documents (answers only): The position or offsets of the gold answer within the document.
+        - gold_answers_exact_match (answers only): exact_match values per gold_answer.
+        - gold_answers_f1 (answers only): f1 values per gold_answer.
+        - gold_answers_sas (answers only): sas values per gold answer.
+        - gold_documents_id_match: The document ID match per gold label (if `custom_document_id_field` has been specified, custom IDs are used).
+        - gold_contexts_similarity: Context similarity per gold label.
+        - gold_answers_match (documents only): Specifies whether the document contains an answer per gold label.
+        - type: Possible values: 'answer' or 'document'.
+        - node: The node name
+        - eval_mode: Specifies whether the evaluation was executed in integrated or isolated mode.
+                     Check pipeline.eval()'s add_isolated_node_eval parameter for more information.
 
-        :param node_results: the evaluation Dataframes per pipeline node
+        :param node_results: The evaluation Dataframes per pipeline node.
         """
         self.node_results: Dict[str, pd.DataFrame] = {} if node_results is None else node_results
 
@@ -737,64 +736,63 @@ class EvaluationResult:
         """
         Calculates proper metrics for each node.
 
-        For document returning nodes default metrics are:
-        - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
-        - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_%28information_retrieval%29#Mean_average_precision)
-        - ndcg (Normalized Discounted Cumulative Gain: see https://en.wikipedia.org/wiki/Discounted_cumulative_gain)
+        For Nodes that return Documents, the default metrics are:
+        - mrr (`Mean Reciprocal Rank <https://en.wikipedia.org/wiki/Mean_reciprocal_rank>`_)
+        - map (`Mean Average Precision <https://en.wikipedia.org/wiki/Evaluation_measures_%28information_retrieval%29#Mean_average_precision>`_)
+        - ndcg (`Normalized Discounted Cumulative Gain <https://en.wikipedia.org/wiki/Discounted_cumulative_gain>`_)
         - precision (Precision: How many of the returned documents were relevant?)
         - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
         - recall_single_hit (Recall for Question Answering: How many of the queries returned at least one relevant document?)
 
-        For answer returning nodes default metrics are:
+        For Nodes that return answers, the default metrics are:
         - exact_match (How many of the queries returned the exact answer?)
-        - f1 (How well do the returned results overlap with any gold answer on token basis?)
-        - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+        - f1 (How well do the returned results overlap with any gold answer on a token basis?)
+        - sas, if a SAS model has been provided when calling `pipeline.eval()` (How semantically similar is the prediction to the gold answers?)
 
-        Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
-        E.g. top_1_f1 for reader nodes can be calculated by setting simulated_top_k_reader=1.
+        During the eval run, you can simulate lower top_k values for Reader and Retriever than the actual values.
+        For example, you can calculate `top_1_f1` for Reader nodes by setting `simulated_top_k_reader=1`.
 
-        Results for reader nodes with applied simulated_top_k_retriever should be considered with caution
-        as there are situations the result can heavily differ from an actual eval run with corresponding top_k_retriever.
+        If you applied `simulated_top_k_retriever` to a Reader node, you should treat the results with caution as they can differ from an actual eval run with a corresponding `top_k_retriever` heavily.
 
-        :param simulated_top_k_reader: simulates top_k param of reader
-        :param simulated_top_k_retriever: simulates top_k param of retriever.
-            remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
-        :param eval_mode: the input on which the node was evaluated on.
-            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
-            However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
-            you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
-            For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
-            Values can be 'integrated', 'isolated'.
-            Default value is 'integrated'.
-        :param document_scope: criterion for deciding whether documents are relevant or not.
+        :param simulated_top_k_reader: Simulates the `top_k` parameter of the Reader.
+        :param simulated_top_k_retriever: Simulates the `top_k` parameter of the Retriever.  
+            Note: There might be a discrepancy between simulated Reader metrics and an actual Pipeline run with Retriever `top_k`.
+        :param eval_mode: The input the Node was evaluated on.  
+            Usually a Node gets evaluated on the prediction provided by its predecessor Nodes in the Pipeline (`value='integrated'`).
+            However, as the quality of the Node can heavily depend on the Node's input and thus the predecessor's quality,
+            you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your Node.
+            For example, when evaluating the Reader, use `value='isolated'` to simulate a perfect Retriever in an ExtractiveQAPipeline.
+            Possible values are: `integrated`, `isolated`.
+            The default value is `integrated`.
+        :param document_scope: A criterion for deciding whether documents are relevant or not.
             You can select between:
-            - 'document_id': Document's id or custom id must match.
-                    Typical use case: Document Retrieval
-            - 'context': Document's content must match.
-                    Typical use case: Document-independent Passage Retrieval
-            - 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
-                    Typical use case: Document-specific Passage Retrieval
-            - 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
-                    Typical use case: Document Retrieval having sparse context labels
-            - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
-                    Typical use case: Question Answering
-            - 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
+            - 'document_id': Specifies that the Document ID must match. You can also specify that a custom document ID must match. To do this, use the `custom_document_id_field` for `pipeline.eval()`.
+                    A typical use case is Document Retrieval.
+            - 'context': Specifies that the content of the Document must match.
+                    A typical use case is Document-Independent Passage Retrieval.
+            - 'document_id_and_context': A Boolean operation specifying that both `'document_id' AND 'context'` must match.
+                    A typical use case is Document-Specific Passage Retrieval.
+            - 'document_id_or_context': A Boolean operation specifying that either `'document_id' OR 'context'` must match.
+                    A typical use case is Document Retrieval having sparse context labels.
+            - 'answer': Specifies that the Document contents must include the answer. The selected `answer_scope` is enforced.
+                    A typical use case is Question Answering.
+            - 'document_id_or_answer' (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
-            Default value is 'document_id_or_answer'.
-        :param answer_scope: scope in which a matching answer is considered as correct.
+            The default value is 'document_id_or_answer'.
+        :param answer_scope: Specifies the scope in which a matching answer is considered as correct.
             You can select between:
-            - 'any' (default): any matching answer is considered as correct.
+            - 'any' (default): Any matching answer is considered as correct.
                     For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
-                    Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
-            - 'context': answer is only considered as correct if its context matches as well.
+                    Select this for Document Retrieval and Passage Retrieval evaluations to use different `document_scope` values.
+            - 'context': The answer is only considered as correct if its context matches as well.
                     `document_scope` must be 'answer' or 'document_id_or_answer'.
-            - 'document_id': answer is only considered as correct if its document (id) matches as well.
+            - 'document_id': The answer is only considered as correct if its document (ID) matches as well.
                     `document_scope` must be 'answer' or 'document_id_or_answer'.
-            - 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
+            - 'document_id_and_context': The answer is only considered as correct if its document (ID) and its context match as well.
                     `document_scope` must be 'answer' or 'document_id_or_answer'.
-            Default value is 'any'.
+            The default value is 'any'.
         """
         return {
             node: self._calculate_node_metrics(
