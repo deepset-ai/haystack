@@ -632,25 +632,25 @@ def no_answer_reader(request):
 
 @pytest.fixture
 def prediction(reader, docs):
-        prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     return prediction
 
 
 @pytest.fixture
 def batch_prediction_single_query_single_doc_list(reader, docs):
-        prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=docs, top_k=5)
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=docs, top_k=5)
     return prediction
 
 
 @pytest.fixture
 def batch_prediction_single_query_multiple_doc_lists(reader, docs):
-        prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
     return prediction
 
 
 @pytest.fixture
 def batch_prediction_multiple_queries_single_doc_list(reader, docs):
-        prediction = reader.predict_batch(
+    prediction = reader.predict_batch(
         queries=["Who lives in Berlin?", "Who lives in New York?"], documents=docs, top_k=5
     )
     return prediction
@@ -658,7 +658,7 @@ def batch_prediction_multiple_queries_single_doc_list(reader, docs):
 
 @pytest.fixture
 def batch_prediction_multiple_queries_multiple_doc_lists(reader, docs):
-        prediction = reader.predict_batch(
+    prediction = reader.predict_batch(
         queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[docs, docs], top_k=5
     )
     return prediction
@@ -666,7 +666,7 @@ def batch_prediction_multiple_queries_multiple_doc_lists(reader, docs):
 
 @pytest.fixture
 def no_answer_prediction(no_answer_reader, docs):
-        prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
+    prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
     return prediction
 
 
