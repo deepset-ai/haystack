@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Optional
 
 import re
 import os
-import copy
 import json
 import logging
 from pathlib import Path
