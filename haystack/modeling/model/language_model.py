@@ -1597,7 +1597,7 @@ class DebertaV2(LanguageModel):
         """
         Load a pretrained model by supplying
 
-        * the name of a remote model on s3 ("google/electra-base-discriminator" ...)
+        * a remote name from Huggingface's modelhub ("microsoft/deberta-v3-base" ...)
         * OR a local path of a model trained via transformers ("some_dir/huggingface_model")
         * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
 
