@@ -799,7 +799,7 @@ class TableTextRetriever(BaseRetriever):
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields and text passage / table to a text pair that is
-                                  then  used to create the embedding.
+                                  then used to create the embedding.
                                   This is the approach used in the original paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
@@ -1468,6 +1468,7 @@ class EmbeddingRetriever(BaseRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
+        embed_meta_fields: List[str] = [],
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1503,6 +1504,11 @@ class EmbeddingRetriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param embed_meta_fields: Concatenate the provided meta fields and text passage / table to a text pair that is
+                                  then used to create the embedding.
+                                  This approach is also used in the TableTextRetriever paper and is likely to improve
+                                  performance if your titles contain meaningful information for retrieval
+                                  (topic, entities etc.).
         """
         super().__init__()
 
@@ -1540,6 +1546,7 @@ class EmbeddingRetriever(BaseRetriever):
             )
 
         self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
+        self.embed_meta_fields = embed_meta_fields
 
     def retrieve(
         self,
@@ -1806,24 +1813,27 @@ class EmbeddingRetriever(BaseRetriever):
         :param docs: List of documents to embed
         :return: Embeddings, one per input document
         """
-        docs = self._linearize_tables(docs)
+        docs = self._preprocess_documents(docs)
         return self.embedding_encoder.embed_documents(docs)
 
-    def _linearize_tables(self, docs: List[Document]) -> List[Document]:
+    def _preprocess_documents(self, docs: List[Document]) -> List[Document]:
         """
         Turns table documents into text documents by representing the table in csv format.
         This allows us to use text embedding models for table retrieval.
+        It also concatenates specified meta data fields with the text representations.
 
         :param docs: List of documents to linearize. If the document is not a table, it is returned as is.
-        :return: List of documents with linearized tables or original documents if they are not tables.
+        :return: List of documents with meta data + linearized tables or original documents if they are not tables.
         """
         linearized_docs = []
         for doc in docs:
+            doc = deepcopy(doc)
             if doc.content_type == "table":
-                doc = deepcopy(doc)
                 if isinstance(doc.content, pd.DataFrame):
                     doc.content = doc.content.to_csv(index=False)
                 else:
                     raise HaystackError("Documents of type 'table' need to have a pd.DataFrame as content field")
+            meta_data_fields = [doc.meta[key] for key in self.embed_meta_fields if key in doc.meta and doc.meta[key]]
+            doc.content = "\n".join(meta_data_fields + [doc.content])
             linearized_docs.append(doc)
         return linearized_docs

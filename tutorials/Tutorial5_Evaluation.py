@@ -188,7 +188,7 @@ def tutorial5_evaluation():
 
     advanced_eval_result = pipeline.eval(
         labels=eval_labels,
-        params={"Retriever": {"top_k": 1}},
+        params={"Retriever": {"top_k": 5}},
         sas_model_name_or_path="cross-encoder/stsb-roberta-large",
     )
 

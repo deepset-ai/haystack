@@ -12,6 +12,7 @@ class JoinDocuments(BaseComponent):
 
     The node allows multiple join modes:
     * concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
+                   The score is only determined by the last node that outputs the document.
     * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
              `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
     * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.

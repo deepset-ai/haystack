@@ -28,7 +28,7 @@ from haystack import Document, Answer
 from haystack.nodes.other.route_documents import RouteDocuments
 from haystack.nodes.other.join_answers import JoinAnswers
 
-from .conftest import (
+from ..conftest import (
     MOCK_DC,
     DC_API_ENDPOINT,
     DC_API_KEY,
@@ -467,6 +467,7 @@ def test_generate_code_imports():
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "retri_2 = TfidfRetriever(document_store=document_store)\n"
         "\n"
@@ -497,6 +498,7 @@ def test_generate_code_imports_no_pipeline_cls():
         "from haystack.nodes import BM25Retriever\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -524,6 +526,7 @@ def test_generate_code_comment():
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -717,6 +720,7 @@ def test_load_from_deepset_cloud_query():
     assert isinstance(retriever, BM25Retriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
     assert document_store == query_pipeline.get_document_store()
+    assert document_store.name == "DocumentStore"
 
     prediction = query_pipeline.run(query="man on horse", params={})
 
@@ -727,7 +731,7 @@ def test_load_from_deepset_cloud_query():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_load_from_deepset_cloud_indexing():
+def test_load_from_deepset_cloud_indexing(caplog):
     if MOCK_DC:
         with open(SAMPLES_PATH / "dc" / "pipeline_config.json", "r") as f:
             pipeline_config_yaml_response = json.load(f)
@@ -745,10 +749,10 @@ def test_load_from_deepset_cloud_indexing():
     document_store = indexing_pipeline.get_node("DocumentStore")
     assert isinstance(document_store, DeepsetCloudDocumentStore)
 
-    with pytest.raises(
-        Exception, match=".*NotImplementedError.*DeepsetCloudDocumentStore currently does not support writing documents"
-    ):
+    with caplog.at_level(logging.INFO):
         indexing_pipeline.run(file_paths=[SAMPLES_PATH / "docs" / "doc_1.txt"])
+        assert "Note that DeepsetCloudDocumentStore does not support write operations." in caplog.text
+        assert "Input to write_documents: {" in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
