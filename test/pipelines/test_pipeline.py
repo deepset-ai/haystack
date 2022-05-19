@@ -1497,7 +1497,6 @@ def test_pipeline_env_vars_do_not_modify_pipeline_config(monkeypatch):
     assert pipeline_config["components"][0]["params"]["replaceable"] == "init value"
 
 
-
 def test_parallel_paths_in_pipeline_graph():
     class A(RootNode):
         def run(self):
