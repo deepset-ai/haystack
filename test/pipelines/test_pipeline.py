@@ -1476,6 +1476,28 @@ def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
     assert new_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
 
 
+def test_pipeline_env_vars_do_not_modify_pipeline_config(monkeypatch):
+    class DummyNode(MockNode):
+        def __init__(self, replaceable: str):
+            self.replaceable = replaceable
+
+    monkeypatch.setenv("NODE_PARAMS_REPLACEABLE", "env value")
+
+    node = DummyNode(replaceable="init value")
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+
+    pipeline_config = pipeline.get_config()
+    original_pipeline_config = deepcopy(pipeline_config)
+
+    get_component_definitions(pipeline_config, overwrite_with_env_variables=True)
+
+    assert original_pipeline_config == pipeline_config
+    assert original_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
+    assert pipeline_config["components"][0]["params"]["replaceable"] == "init value"
+
+
+
 def test_parallel_paths_in_pipeline_graph():
     class A(RootNode):
         def run(self):

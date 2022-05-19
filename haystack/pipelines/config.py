@@ -66,9 +66,10 @@ def get_component_definitions(
                                          `_` sign must be used to specify nested hierarchical properties.
     """
     component_definitions = {}  # definitions of each component from the YAML.
-    for component_definition in pipeline_config["components"]:
-        name = component_definition["name"]
-        component_definitions[name] = {key: value for key, value in component_definition.items() if key != "name"}
+    for raw_component_definition in pipeline_config["components"]:
+        name = raw_component_definition["name"]
+        component_definition = {key: value for key, value in raw_component_definition.items() if key != "name"}
+        component_definitions[name] = component_definition
         if overwrite_with_env_variables:
             _overwrite_with_env_variables(component_name=name, component_definition=component_definition)
 
