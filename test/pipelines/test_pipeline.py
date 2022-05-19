@@ -1444,7 +1444,6 @@ def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
 
 
 def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
-
     class DummyNode(MockNode):
         def __init__(self, replaceable: str):
             self.replaceable = replaceable
