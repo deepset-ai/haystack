@@ -323,7 +323,6 @@ def docs_with_true_emb():
     ]
 
 
-
 @pytest.fixture(autouse=True)
 def gc_cleanup(request):
     """
@@ -522,7 +521,6 @@ def en_to_de_translator():
 @pytest.fixture
 def de_to_en_translator():
     return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
-
 
 
 @pytest.fixture
