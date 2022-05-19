@@ -9,7 +9,6 @@ from haystack.nodes.answer_generator import Seq2SeqGenerator
 from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 
 
-
 # Keeping few (retriever,document_store) combination to reduce test time
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.slow
