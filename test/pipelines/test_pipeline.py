@@ -1664,7 +1664,6 @@ def test_routedocuments_by_content_type():
 
 
 def test_routedocuments_by_metafield(docs):
-    docs = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in docs]
     route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
     result, _ = route_documents.run(docs)
     assert len(result["output_1"]) == 1
