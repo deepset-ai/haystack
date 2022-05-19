@@ -81,10 +81,10 @@ jobs:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
         folder:
-          - "node_tests"
-          - "pipeline_tests"
-          - "modeling_tests"
-          - "other_tests"
+          - "nodes"
+          - "pipelines"
+          - "modeling"
+          - "others"
 
     runs-on: ubuntu-20.04
     timeout-minutes: 20
@@ -114,10 +114,10 @@ jobs:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
         folder:
-          - "node_tests"
-          - "pipeline_tests"
-          - "modeling_tests"
-          #- "other_tests"
+          - "nodes"
+          - "pipelines"
+          - "modeling"
+          #- "others"
 
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
@@ -172,7 +172,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_store_tests/ --document_store_type=elasticsearch
+        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ --document_store_type=elasticsearch
   elasticsearch-tests-windows:
     needs:
      - mypy
@@ -203,7 +203,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_store_tests/ -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" --document_store_type=elasticsearch
+        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" --document_store_type=elasticsearch
   
 
   faiss-tests-linux:
@@ -230,7 +230,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_store_tests/ --document_store_type=faiss
+        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=faiss
   faiss-tests-windows:
     needs:
      - mypy
@@ -258,7 +258,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_store_tests/ --document_store_type=faiss
+        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=faiss
   milvus-tests-linux:
     needs:
      - mypy
@@ -289,7 +289,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_store_tests/ --document_store_type=milvus
+        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=milvus
 # FIXME: seems like we can't run containers on Windows
   # milvus-tests-windows:
   #   needs:
@@ -326,7 +326,7 @@ jobs:
   #     env:
   #       TOKENIZERS_PARALLELISM: 'false'
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_store_tests/ --document_store_type=milvus
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=milvus
 
 
   weaviate-tests-linux:
@@ -356,7 +356,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_store_tests/ --document_store_type=weaviate
+        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=weaviate
   
 # FIXME: seems like we can't run containers on Windows
   # weaviate-tests-windows:
@@ -390,7 +390,7 @@ jobs:
   #     env:
   #       TOKENIZERS_PARALLELISM: 'false'
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_store_tests/ --document_store_type=weaviate
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=weaviate
 
 
   pinecone-tests-linux:
@@ -418,7 +418,7 @@ jobs:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_store_tests/ --document_store_type=pinecone
+        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
   # FIXME very slow and very little platform dependency, so to evaluate
   # pinecone-tests-windows:
   #   needs:
@@ -449,7 +449,7 @@ jobs:
   #       TOKENIZERS_PARALLELISM: 'false'
   #       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_store_tests/ --document_store_type=pinecone
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=pinecone
 
 
   rest-and-ui-tests-linux:
@@ -526,10 +526,10 @@ jobs:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
         folder:
-          - "node_tests"
-          - "pipeline_tests"
-          - "modeling_tests"
-          - "other_tests"
+          - "nodes"
+          - "pipelines"
+          - "modeling"
+          - "others"
     runs-on: ubuntu-20.04
 
     steps:
@@ -587,10 +587,10 @@ jobs:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
         folder:
-          - "node_tests"
-          - "pipeline_tests"
-          - "modeling_tests"
-          - "other_tests"
+          - "nodes"
+          - "pipelines"
+          - "modeling"
+          - "others"
 
     steps:
     - uses: actions/checkout@v2
