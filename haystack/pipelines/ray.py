@@ -12,7 +12,12 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack.pipelines.config import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml
+from haystack.pipelines.config import (
+    get_component_definitions,
+    get_pipeline_definition,
+    read_pipeline_config_from_yaml,
+    validate_config,
+)
 from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
@@ -72,6 +77,8 @@ class RayPipeline(Pipeline):
         address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
     ):
+        validate_config(pipeline_config, strict_version_check=strict_version_check)
+
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
@@ -165,6 +172,7 @@ class RayPipeline(Pipeline):
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
+            strict_version_check=strict_version_check,
             address=address,
             ray_args=ray_args,
         )
