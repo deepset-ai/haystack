@@ -107,7 +107,7 @@ SQLDocumentStore.__getattribute__ = _sql_session_rollback
 
 
 def pytest_collection_modifyitems(config, items):
-        # add pytest markers for tests that are not explicitly marked but include some keywords
+    # add pytest markers for tests that are not explicitly marked but include some keywords
     name_to_markers = {
         "generator": [pytest.mark.generator],
         "summarizer": [pytest.mark.summarizer],
