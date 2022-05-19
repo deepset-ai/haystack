@@ -79,7 +79,7 @@ dict with content of the Document
 
 ```python
 @classmethod
-def from_dict(cls, dict, field_map={}, id_hash_keys=None)
+def from_dict(cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None) -> Document
 ```
 
 Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the

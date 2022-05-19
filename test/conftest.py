@@ -299,11 +299,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
 
 @pytest.fixture
 def docs(docs_all_formats) -> List[Document]:
-    return [
-        Document.from_dict(doc) 
-        if isinstance(doc, dict) else doc 
-        for doc in docs_all_formats
-    ]
+    return [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in docs_all_formats]
 
 
 @pytest.fixture
