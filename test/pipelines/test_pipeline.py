@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 import os
 import ssl
@@ -5,6 +6,7 @@ import json
 import platform
 import sys
 from typing import Tuple
+from pyparsing import original_text_for
 
 import pytest
 from requests import PreparedRequest
@@ -1439,6 +1441,32 @@ def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
     # If the object is getting copied, it will raise TypeError: cannot pickle 'SSLContext' object
     # `get_components_definitions()` should NOT copy objects to allow this usecase
     get_component_definitions(pipeline.get_config())
+
+
+def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
+
+    class DummyNode(MockNode):
+        def __init__(self, replaceable: str):
+            self.replaceable = replaceable
+
+    monkeypatch.setenv("NODE_PARAMS_REPLACEABLE", "env value")
+
+    node = DummyNode(replaceable="init value")
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+    original_component_config = deepcopy(node._component_config)
+
+    no_env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=False)
+    env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=True)
+    new_component_config = deepcopy(node._component_config)
+
+    assert no_env_defs != env_defs
+    assert no_env_defs["node"]["params"]["replaceable"] == "init value"
+    assert env_defs["node"]["params"]["replaceable"] == "env value"
+
+    assert original_component_config == new_component_config
+    assert original_component_config["params"]["replaceable"] == "init value"
+    assert new_component_config["params"]["replaceable"] == "init value"
 
 
 def test_parallel_paths_in_pipeline_graph():
