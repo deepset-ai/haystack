@@ -27,7 +27,7 @@ def test_routedocuments_by_content_type():
     assert result["output_2"][0].content_type == "table"
 
 
-def test_routedocuments_by_metafield(docs):
+def test_routedocuments_by_metafield(test_docs_xs):
     route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
     result, _ = route_documents.run(docs)
     assert len(result["output_1"]) == 1
