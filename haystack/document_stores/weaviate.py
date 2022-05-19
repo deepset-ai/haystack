@@ -726,8 +726,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             if not docs:
                 logger.warning(
                     "The query returned less documents than expected: this can happen when "
-                    "the value of QUERY_MAXIMUM_RESULTS is lower than the total number of "
-                    "documents stored."
+                    "the value of the QUERY_MAXIMUM_RESULTS environment variable is lower than "
+                    "the total number of documents stored. See Weaviate documentation for "
+                    "more details."
                 )
                 break
 
