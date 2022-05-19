@@ -122,7 +122,7 @@ def test_answer_attributes(prediction):
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("window_size", [10, 15, 20])
 def test_context_window_size(reader, docs, window_size):
-    
+
     assert isinstance(reader, FARMReader)
 
     old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
@@ -150,7 +150,7 @@ def test_context_window_size(reader, docs, window_size):
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("top_k", [2, 5, 10])
 def test_top_k(reader, docs, top_k):
-    
+
     assert isinstance(reader, FARMReader)
 
     old_top_k_per_candidate = reader.top_k_per_candidate
@@ -178,7 +178,6 @@ def test_farm_reader_update_params(docs):
         model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
     )
 
-    
     # original reader
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
