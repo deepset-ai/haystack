@@ -73,7 +73,7 @@ def test_output_batch_multiple_queries_multiple_doc_lists(batch_prediction_multi
     assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None
     assert no_answer_prediction["query"] == "What is the meaning of life?"
@@ -94,7 +94,7 @@ def test_no_answer_output(no_answer_prediction):
 # TODO checks to see that model is responsive to input arguments e.g. context_window_size - topk
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 def test_prediction_attributes(prediction):
     # TODO FARM's prediction also has no_ans_gap
     attributes_gold = ["query", "answers"]
@@ -102,7 +102,7 @@ def test_prediction_attributes(prediction):
         assert ag in prediction
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 def test_model_download_options():
     # download disabled and model is not cached locally
     with pytest.raises(OSError):
@@ -118,7 +118,7 @@ def test_answer_attributes(prediction):
         assert getattr(answer, ag, None) is not None
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("window_size", [10, 15, 20])
 def test_context_window_size(reader, test_docs_xs, window_size):
