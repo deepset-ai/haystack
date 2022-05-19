@@ -14,15 +14,15 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 # Install PDF converter
-RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.03.tar.gz && \
-    tar -xvf xpdf-tools-linux-4.03.tar.gz && cp xpdf-tools-linux-4.03/bin64/pdftotext /usr/local/bin
+RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && \
+    tar -xvf xpdf-tools-linux-4.04.tar.gz && cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
 # Copy Haystack code
 COPY haystack /home/user/haystack/
 # Copy package files & models
 COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
 # Copy REST API code
-COPY rest_api /home/user/rest_api
+COPY rest_api /home/user/rest_api/
 
 # Install package
 RUN pip install --upgrade pip
@@ -33,8 +33,8 @@ RUN pip freeze
 RUN python3 -c "from haystack.utils.docker import cache_models;cache_models()"
 
 # create folder for /file-upload API endpoint with write permissions, this might be adjusted depending on FILE_UPLOAD_PATH
-RUN mkdir -p /home/user/file-upload
-RUN chmod 777 /home/user/file-upload
+RUN mkdir -p /home/user/rest_api/file-upload
+RUN chmod 777 /home/user/rest_api/file-upload
 
 # optional : copy sqlite db if needed for testing
 #COPY qa.db /home/user/
@@ -43,6 +43,7 @@ RUN chmod 777 /home/user/file-upload
 #COPY data /home/user/data
 
 EXPOSE 8000
+ENV HAYSTACK_DOCKER_CONTAINER="HAYSTACK_CPU_CONTAINER"
 
 # cmd for running the API
-CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]
+CMD ["gunicorn", "rest_api.application:app", "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]

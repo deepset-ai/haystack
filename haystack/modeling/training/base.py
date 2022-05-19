@@ -1,16 +1,15 @@
 from typing import Optional, Union, Tuple, List, Callable
 
-from torch.optim.lr_scheduler import _LRScheduler
-
 import sys
 import shutil
 import logging
-import dill
-import numpy
-import torch
-from tqdm import tqdm
 from pathlib import Path
 
+import dill
+import numpy
+from tqdm import tqdm
+import torch
+from torch.optim.lr_scheduler import _LRScheduler
 from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel
 import torch.nn.functional as F
 from torch.optim import Optimizer
@@ -21,7 +20,7 @@ from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.model.language_model import DebertaV2
 from haystack.modeling.utils import GracefulKiller
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 try:
     from apex import amp
@@ -127,7 +126,7 @@ class Trainer:
         data_silo: DataSilo,
         epochs: int,
         n_gpu: int,
-        device,
+        device: torch.device,
         lr_schedule=None,
         evaluate_every: int = 100,
         eval_report: bool = True,
@@ -153,7 +152,7 @@ class Trainer:
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
-        :param device: The device on which the train, dev and test tensors should be hosted. Choose from "cpu" and "cuda".
+        :param device: The device on which the train, dev and test tensors should be hosted. Choose from torch.device("cpu") and torch.device("cuda").
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
@@ -163,7 +162,7 @@ class Trainer:
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
         :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
-        :param log_learning_rate: Whether to log learning rate to Mlflow
+        :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
                can be used to resume training. It is useful in frameworks like AWS SageMaker with Spot instances where
@@ -379,12 +378,9 @@ class Trainer:
         loss = self.adjust_loss(loss)
         if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0]:
             if self.local_rank in [-1, 0]:
-                MlLogger.log_metrics(
-                    {"Train_loss_total": float(loss.detach().cpu().numpy())},
-                    step=self.global_step,
-                )
+                tracker.track_metrics({"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step)
                 if self.log_learning_rate:
-                    MlLogger.log_metrics({"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step)
+                    tracker.track_metrics({"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step)
         if self.use_amp:
             with amp.scale_loss(loss, self.optimizer) as scaled_loss:
                 scaled_loss.backward()
@@ -411,7 +407,7 @@ class Trainer:
 
     def log_params(self):
         params = {"epochs": self.epochs, "n_gpu": self.n_gpu, "device": self.device}
-        MlLogger.log_params(params)
+        tracker.track_params(params)
 
     @classmethod
     def create_or_load_checkpoint(
@@ -664,8 +660,8 @@ class DistillationTrainer(Trainer):
         data_silo: DistillationDataSilo,
         epochs: int,
         n_gpu: int,
-        device: str,
-        lr_schedule: Optional["_LRScheduler"] = None,
+        device: torch.device,
+        lr_schedule: Optional[_LRScheduler] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
         use_amp: Optional[str] = None,
@@ -695,7 +691,7 @@ class DistillationTrainer(Trainer):
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
-        :param device: The device on which the train, dev and test tensors should be hosted. Choose from "cpu" and "cuda".
+        :param device: The device on which the train, dev and test tensors should be hosted. Choose from torch.device("cpu") and torch.device("cuda").
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
@@ -705,7 +701,7 @@ class DistillationTrainer(Trainer):
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
         :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
-        :param log_learning_rate: Whether to log learning rate to Mlflow
+        :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
                can be used to resume training. It is useful in frameworks like AWS SageMaker with Spot instances where
@@ -810,7 +806,7 @@ class TinyBERTDistillationTrainer(Trainer):
         epochs: int,
         n_gpu: int,
         device: torch.device,
-        lr_schedule: Optional["_LRScheduler"] = None,
+        lr_schedule: Optional[_LRScheduler] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
         use_amp: Optional[str] = None,
@@ -837,7 +833,7 @@ class TinyBERTDistillationTrainer(Trainer):
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
-        :param device: The device on which the train, dev and test tensors should be hosted. Choose from "cpu" and "cuda".
+        :param device: The device on which the train, dev and test tensors should be hosted. Choose from torch.device("cpu") and torch.device("cuda").
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
@@ -847,7 +843,7 @@ class TinyBERTDistillationTrainer(Trainer):
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
         :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
-        :param log_learning_rate: Whether to log learning rate to Mlflow
+        :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
                can be used to resume training. It is useful in frameworks like AWS SageMaker with Spot instances where

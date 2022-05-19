@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.modeling.visual import BUSH_SEP
 
 
@@ -20,11 +20,11 @@ class Evaluator:
     Handles evaluation of a given model over a specified dataset.
     """
 
-    def __init__(self, data_loader: torch.utils.data.DataLoader, tasks, device: str, report: bool = True):
+    def __init__(self, data_loader: torch.utils.data.DataLoader, tasks, device: torch.device, report: bool = True):
         """
         :param data_loader: The PyTorch DataLoader that will return batches of data from the evaluation dataset
         :param tesks:
-        :param device: The device on which the tensors should be processed. Choose from "cpu" and "cuda".
+        :param device: The device on which the tensors should be processed. Choose from torch.device("cpu") and torch.device("cuda").
         :param report: Whether an eval report should be generated (e.g. classification report per class).
         """
         self.data_loader = data_loader
@@ -33,7 +33,12 @@ class Evaluator:
         self.report = report
 
     def eval(
-        self, model: AdaptiveModel, return_preds_and_labels: bool = False, calibrate_conf_scores: bool = False
+        self,
+        model: AdaptiveModel,
+        return_preds_and_labels: bool = False,
+        calibrate_conf_scores: bool = False,
+        use_confidence_scores_for_ranking=True,
+        use_no_answer_legacy_confidence=False,
     ) -> List[Dict]:
         """
         Performs evaluation on a given model.
@@ -41,18 +46,23 @@ class Evaluator:
         :param model: The model on which to perform evaluation
         :param return_preds_and_labels: Whether to add preds and labels in the returned dicts of the
         :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
-        :return all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
+        :param use_confidence_scores_for_ranking: Whether to sort answers by confidence score (normalized between 0 and 1)(default) or by standard score (unbounded).
+        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
+                                                Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
+        :return: all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
                              and reports generated during evaluation.
         """
+        model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores_for_ranking
+        model.prediction_heads[0].use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
         model.eval()
 
         # init empty lists per prediction head
-        loss_all = [0 for _ in model.prediction_heads]  # type: List
-        preds_all = [[] for _ in model.prediction_heads]  # type: List
-        label_all = [[] for _ in model.prediction_heads]  # type: List
-        ids_all = [[] for _ in model.prediction_heads]  # type: List
-        passage_start_t_all = [[] for _ in model.prediction_heads]  # type: List
-        logits_all = [[] for _ in model.prediction_heads]  # type: List
+        loss_all: List = [0 for _ in model.prediction_heads]
+        preds_all: List = [[] for _ in model.prediction_heads]
+        label_all: List = [[] for _ in model.prediction_heads]
+        ids_all: List = [[] for _ in model.prediction_heads]
+        passage_start_t_all: List = [[] for _ in model.prediction_heads]
+        logits_all: List = [[] for _ in model.prediction_heads]
 
         for step, batch in enumerate(tqdm(self.data_loader, desc="Evaluating", mininterval=10)):
             batch = {key: batch[key].to(self.device) for key in batch}
@@ -147,13 +157,12 @@ class Evaluator:
         for head_num, head in enumerate(results):
             logger.info("\n _________ {} _________".format(head["task_name"]))
             for metric_name, metric_val in head.items():
-                # log with ML framework (e.g. Mlflow)
+                # log with experiment tracking framework (e.g. Mlflow)
                 if logging:
                     if not metric_name in ["preds", "labels"] and not metric_name.startswith("_"):
                         if isinstance(metric_val, numbers.Number):
-                            MlLogger.log_metrics(
-                                metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val},
-                                step=steps,
+                            tracker.track_metrics(
+                                metrics={f"{dataset_name}_{metric_name}_{head['task_name']}": metric_val}, step=steps
                             )
                 # print via standard python logger
                 if print:

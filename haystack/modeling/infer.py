@@ -21,7 +21,6 @@ from haystack.modeling.utils import (
 )
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
-from haystack.modeling.logger import MLFlowLogger
 from haystack.modeling.model.predictions import QAPred
 
 
@@ -74,8 +73,6 @@ class Inferencer:
         :return: An instance of the Inferencer.
 
         """
-        MLFlowLogger.disable()
-
         # Init device and distributed settings
         self.devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
 
@@ -128,7 +125,7 @@ class Inferencer:
         use_fast: bool = True,
         tokenizer_args: Dict = None,
         multithreading_rust: bool = True,
-        devices: Optional[List[Union[int, str, torch.device]]] = None,
+        devices: Optional[List[torch.device]] = None,
         use_auth_token: Union[bool, str] = None,
         **kwargs,
     ):
@@ -301,9 +298,7 @@ class Inferencer:
         """
         dicts = self.processor.file_to_dicts(file)
         preds_all = self.inference_from_dicts(
-            dicts,
-            return_json=return_json,
-            multiprocessing_chunksize=multiprocessing_chunksize,
+            dicts, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
         )
         return list(preds_all)
 
@@ -343,10 +338,7 @@ class Inferencer:
                 multiprocessing_chunksize = _chunk_size
 
             predictions = self._inference_with_multiprocessing(
-                dicts,
-                return_json,
-                aggregate_preds,
-                multiprocessing_chunksize,
+                dicts, return_json, aggregate_preds, multiprocessing_chunksize
             )
 
             self.processor.log_problematic(self.problematic_sample_ids)

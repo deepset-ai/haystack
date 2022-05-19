@@ -1,5 +1,5 @@
 {
-    "version": "0.9",
+    "version": "master",
     "name": "document_retrieval_1",
     "components": [
         {
@@ -11,7 +11,7 @@
         },
         {
             "name": "Retriever",
-            "type": "ElasticsearchRetriever",
+            "type": "BM25Retriever",
             "params": {
                 "document_store": "DocumentStore",
                 "top_k": 5
@@ -40,7 +40,6 @@
     "pipelines": [
         {
             "name": "query",
-            "type": "Query",
             "nodes": [
                 {
                     "name": "Retriever",
@@ -52,7 +51,6 @@
         },
         {
             "name": "indexing",
-            "type": "Indexing",
             "nodes": [
                 {
                     "name": "TextFileConverter",

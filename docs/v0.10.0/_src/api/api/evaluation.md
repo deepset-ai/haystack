@@ -122,5 +122,5 @@ Returns per QA pair a) the similarity of the most likely prediction (top 1) to a
                                  pointing to downloadable models.
 
 
-:return top_1_sas, top_k_sas
+:return: top_1_sas, top_k_sas
 

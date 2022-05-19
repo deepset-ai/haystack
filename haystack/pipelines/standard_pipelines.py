@@ -6,15 +6,15 @@ from typing import List, Optional, Dict, Any
 from functools import wraps
 
 from haystack.schema import Document, EvaluationResult, MultiLabel
-from haystack.nodes.answer_generator import BaseGenerator
-from haystack.nodes.other import Docs2Answers
-from haystack.nodes.reader import BaseReader
-from haystack.nodes.retriever import BaseRetriever
-from haystack.nodes.summarizer import BaseSummarizer
-from haystack.nodes.translator import BaseTranslator
-from haystack.nodes.question_generator import QuestionGenerator
-from haystack.document_stores import BaseDocumentStore
-from haystack.pipelines import Pipeline
+from haystack.nodes.answer_generator.base import BaseGenerator
+from haystack.nodes.other.docs2answers import Docs2Answers
+from haystack.nodes.reader.base import BaseReader
+from haystack.nodes.retriever.base import BaseRetriever
+from haystack.nodes.summarizer.base import BaseSummarizer
+from haystack.nodes.translator.base import BaseTranslator
+from haystack.nodes.question_generator.question_generator import QuestionGenerator
+from haystack.document_stores.base import BaseDocumentStore
+from haystack.pipelines.base import Pipeline
 
 
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ class BaseStandardPipeline(ABC):
                           method to process incoming data from predecessor node.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
-                       of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
-                       edge with a list of documents. It can be represented as ["ElasticsearchRetriever"].
+                       of node is sufficient. For instance, a 'BM25Retriever' node would always output a single
+                       edge with a list of documents. It can be represented as ["BM25Retriever"].
 
                        In cases when the predecessor node has multiple outputs, e.g., a "QueryClassifier", the output
                        must be specified explicitly as "QueryClassifier.output_2".
@@ -91,7 +91,7 @@ class BaseStandardPipeline(ABC):
         Here's a sample configuration:
 
             ```yaml
-            |   version: '0.8'
+            |   version: '1.0.0'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
@@ -100,7 +100,7 @@ class BaseStandardPipeline(ABC):
             |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
+            |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
             |        custom_query: null
@@ -450,12 +450,13 @@ class QuestionAnswerGenerationPipeline(BaseStandardPipeline):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             output, output_stream = fn(*args, **kwargs)
-            questions = output["generated_questions"][0]["questions"]
-            documents = output["documents"]
-            query_doc_list = []
-            for q in questions:
-                query_doc_list.append({"queries": q, "docs": documents})
-            kwargs["query_doc_list"] = query_doc_list
+            questions = []
+            documents = []
+            for generated_questions, doc in zip(output["generated_questions"], output["documents"]):
+                questions.extend(generated_questions["questions"])
+                documents.extend([[doc]] * len(generated_questions["questions"]))
+            kwargs["queries"] = questions
+            kwargs["documents"] = documents
             return kwargs, output_stream
 
         return wrapper

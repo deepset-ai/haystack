@@ -150,7 +150,7 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
        checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: save a train checkpoint after this many steps of training.
 - `checkpoints_to_keep`: maximum number of train checkpoints to save.
-:param caching whether or not to use caching for preprocessed dataset
+:param caching: whether or not to use caching for preprocessed dataset
 - `cache_path`: Path to cache the preprocessed dataset
 
 **Returns**:
@@ -215,7 +215,7 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
        checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: save a train checkpoint after this many steps of training.
 - `checkpoints_to_keep`: maximum number of train checkpoints to save.
-:param caching whether or not to use caching for preprocessed dataset and teacher logits
+:param caching: whether or not to use caching for preprocessed dataset and teacher logits
 - `cache_path`: Path to cache the preprocessed dataset and teacher logits
 - `distillation_loss_weight`: The weight of the distillation loss. A higher weight means the teacher outputs are more important.
 - `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named paramters student_logits and teacher_logits)

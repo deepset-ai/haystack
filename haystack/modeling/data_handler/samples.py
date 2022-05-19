@@ -8,7 +8,7 @@ from haystack.modeling.visual import SAMPLE
 logger = logging.getLogger(__name__)
 
 
-class Sample(object):
+class Sample:
     """A single training/test sample. This should contain the input and the label. Is initialized with
     the human readable clear_text. Over the course of data preprocessing, this object is populated
     with tokenized and featurized versions of the data."""
@@ -167,21 +167,21 @@ def get_passage_offsets(doc_offsets, doc_stride, passage_len_t, doc_text):
     return passage_spans
 
 
-def offset_to_token_idx(token_offsets, ch_idx):
+def offset_to_token_idx(token_offsets, ch_idx) -> Optional[int]:
     """Returns the idx of the token at the given character idx"""
     n_tokens = len(token_offsets)
     for i in range(n_tokens):
         if (i + 1 == n_tokens) or (token_offsets[i] <= ch_idx < token_offsets[i + 1]):
             return i
+    return None
 
 
 def offset_to_token_idx_vecorized(token_offsets, ch_idx):
     """Returns the idx of the token at the given character idx"""
     # case ch_idx is at end of tokens
     if ch_idx >= np.max(token_offsets):
-        # TODO check "+ 1" (it is needed for making end indices compliant with old offset_to_token_idx() function)
-        # check whether end token is incluse or exclusive
-        idx = np.argmax(token_offsets) + 1
+        # idx must be including
+        idx = np.argmax(token_offsets)
     # looking for the first occurence of token_offsets larger than ch_idx and taking one position to the left.
     # This is needed to overcome n special_tokens at start of sequence
     # and failsafe matching (the character start might not always coincide with a token offset, e.g. when starting at whitespace)

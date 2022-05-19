@@ -1,10 +1,9 @@
-from typing import Optional, List, Tuple, Dict, Union
+from typing import TYPE_CHECKING, Optional, List, Tuple, Dict, Union
 
 import hashlib
 import json
 import logging
 import random
-import math
 from contextlib import ExitStack
 from functools import partial
 from itertools import groupby
@@ -17,16 +16,14 @@ from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
 
+if TYPE_CHECKING:
+    from haystack.nodes import FARMReader
 
 logger = logging.getLogger(__name__)
 
@@ -140,9 +137,7 @@ class DataSilo:
 
         num_dicts = len(dicts)
         multiprocessing_chunk_size, num_cpus_used = calc_chunksize(
-            num_dicts=num_dicts,
-            max_processes=self.max_processes,
-            max_chunksize=self.max_multiprocessing_chunksize,
+            num_dicts=num_dicts, max_processes=self.max_processes, max_chunksize=self.max_multiprocessing_chunksize
         )
 
         with ExitStack() as stack:
@@ -383,11 +378,7 @@ class DataSilo:
         else:
             data_loader_test = None
 
-        self.loaders = {
-            "train": data_loader_train,
-            "dev": data_loader_dev,
-            "test": data_loader_test,
-        }
+        self.loaders = {"train": data_loader_train, "dev": data_loader_dev, "test": data_loader_test}
 
     def _create_dev_from_train(self):
         """
@@ -506,7 +497,7 @@ class DataSilo:
                 logger.info("Average passage length after clipping:          {}".format(ave_len[1]))
                 logger.info("Proportion passages clipped:                    {}".format(clipped[1]))
 
-        MlLogger.log_params(
+        tracker.track_params(
             {
                 "n_samples_train": self.counts["train"],
                 "n_samples_dev": self.counts["dev"],
@@ -594,10 +585,7 @@ class DataSiloForCrossVal:
         sampler_train = RandomSampler(trainset)
 
         self.data_loader_train = NamedDataLoader(
-            dataset=trainset,
-            sampler=sampler_train,
-            batch_size=self.batch_size,
-            tensor_names=self.tensor_names,
+            dataset=trainset, sampler=sampler_train, batch_size=self.batch_size, tensor_names=self.tensor_names
         )
         self.data_loader_dev = NamedDataLoader(
             dataset=devset,
@@ -611,11 +599,7 @@ class DataSiloForCrossVal:
             batch_size=self.batch_size,
             tensor_names=self.tensor_names,
         )
-        self.loaders = {
-            "train": self.data_loader_train,
-            "dev": self.data_loader_dev,
-            "test": self.data_loader_test,
-        }
+        self.loaders = {"train": self.data_loader_train, "dev": self.data_loader_dev, "test": self.data_loader_test}
 
     def get_data_loader(self, which):
         return self.loaders[which]
@@ -694,11 +678,7 @@ class DataSiloForCrossVal:
             documents.append(list(document))
 
         xval_split = cls._split_for_qa(
-            documents=documents,
-            id_index=id_index,
-            n_splits=n_splits,
-            shuffle=shuffle,
-            random_state=random_state,
+            documents=documents, id_index=id_index, n_splits=n_splits, shuffle=shuffle, random_state=random_state
         )
         silos = []
 
@@ -723,7 +703,7 @@ class DataSiloForCrossVal:
                 for key, question in groupby(doc, key=keyfunc):
                     # add all available answrs to train set
                     sample_list = list(question)
-                    neg_answer_idx = []
+                    neg_answer_idx: List[int] = []
                     for index, sample in enumerate(sample_list):
                         if sample[label_index][0][0] or sample[label_index][0][1]:
                             train_samples.append(sample)
@@ -734,7 +714,11 @@ class DataSiloForCrossVal:
                         train_samples.extend([sample_list[idx] for idx in neg_answer_idx])
                     else:
                         neg_answer_idx = random.sample(neg_answer_idx, n_neg_answers_per_question)
-                        train_samples.extend([sample_list[idx] for idx in neg_answer_idx])
+                        train_samples.extend(
+                            # For some reason pylint seems to be just wrong here. It's therefore silenced.
+                            # Check if the issue persists in case of a future refactoring.
+                            [sample_list[idx] for idx in neg_answer_idx]  # pylint: disable=invalid-sequence-index
+                        )
 
             ds_train = train_samples
             ds_test = [sample for document in test_set for sample in document]
@@ -747,7 +731,9 @@ class DataSiloForCrossVal:
     ):
         keyfunc = lambda x: x[id_index][1]
         if shuffle:
-            random.shuffle(documents, random_state)  # type: ignore
+            fixed_random = random.Random()
+            fixed_random.seed(random_state)
+            fixed_random.shuffle(documents)
 
         questions_per_doc = []
         for doc in documents:
@@ -796,7 +782,7 @@ class DistillationDataSilo(DataSilo):
         self,
         teacher_model: "FARMReader",
         teacher_batch_size: int,
-        device: str,
+        device: torch.device,
         processor: Processor,
         batch_size: int,
         eval_batch_size: Optional[int] = None,
@@ -895,7 +881,7 @@ class DistillationDataSilo(DataSilo):
             "max_seq_len": self.processor.max_seq_len,
             "dev_split": self.processor.dev_split,
             "tasks": self.processor.tasks,
-            "teacher_name_or_path": self.teacher.pipeline_config["params"]["model_name_or_path"],
+            "teacher_name_or_path": self.teacher.model_name_or_path,
             "data_silo_type": self.__class__.__name__,
         }
         checksum = get_dict_checksum(payload_dict)
