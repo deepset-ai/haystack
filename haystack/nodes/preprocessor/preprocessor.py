@@ -334,9 +334,9 @@ class PreProcessor(BasePreProcessor):
                 if len(txt) > 0:
                     text_splits.append(txt)
         elif split_by == "regex":
-            indices = [m.start(0) for m in re.finditer(pattern=self.split_regex_pattern, string=text)] # type: ignore
+            indices = [m.start(0) for m in re.finditer(pattern=self.split_regex_pattern, string=text)]  # type: ignore
             indices.insert(0, 0)
-            text_splits = [text[i:j] for i, j in zip(indices, indices[1:] + [None])] # type: ignore
+            text_splits = [text[i:j] for i, j in zip(indices, indices[1:] + [None])]  # type: ignore
         else:
             # create individual "elements" of passage, sentence, or word
             if split_by == "passage":
