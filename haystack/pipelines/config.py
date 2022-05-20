@@ -77,20 +77,21 @@ def get_component_definitions(
     if overwrite_with_env_variables:
         for component_def in pipeline_config["components"]:
             for key, value in os.environ.items():
-                if key.startswith( f"{component_def['name']}_params_".upper()):
+                if key.startswith(f"{component_def['name']}_params_".upper()):
                     try:
                         raw_pipeline_config = deepcopy(pipeline_config["components"])
                     except Exception as e:
                         raise PipelineError(
                             "Cannot overwrite the pipeline configuration with environment variables "
                             "if such config contains un-copiable objects.\n"
-                            f"Exception raised: {str(e)}") from e
+                            f"Exception raised: {str(e)}"
+                        ) from e
 
     for raw_component_definition in raw_pipeline_config:
         name = raw_component_definition["name"]
         component_definition = {key: value for key, value in raw_component_definition.items() if key != "name"}
         component_definitions[name] = component_definition
-        
+
         if overwrite_with_env_variables:
             for key, value in os.environ.items():
                 if key.startswith(f"{name}_params_".upper()):
