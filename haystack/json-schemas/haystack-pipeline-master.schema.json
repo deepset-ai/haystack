@@ -3182,6 +3182,10 @@
               "items": {
                 "type": "string"
               }
+            },
+            "split_regex": {
+              "title": "Split Regex",
+              "type": "string"
             }
           },
           "additionalProperties": false,
