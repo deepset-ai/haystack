@@ -370,7 +370,6 @@ class PreProcessor(BasePreProcessor):
 
         return documents
 
-
     def _find_and_remove_header_footer(
         self, text: str, n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
     ) -> str:
