@@ -22,10 +22,15 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
+from haystack.errors import DocumentStoreError
 
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
+
+
+class WeaviateDocumentStoreError(DocumentStoreError):
+    pass
 
 
 class WeaviateDocumentStore(BaseDocumentStore):
@@ -697,17 +702,37 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 query = query.with_where(filter_dict)
 
             if all_docs:
-                # .with_limit() must be used with .with_offset, of the latter won't work properly
-                #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.gql.html?highlight=offset#weaviate.gql.get.GetBuilder.with_offset
+                # Passing offset:0 raises an error, so we pass it only after the first round
+                # `.with_limit()` must be used with `.with_offset`, or the latter won't work properly
+                # https://weaviate-python-client.readthedocs.io/en/latest/weaviate.gql.html?highlight=offset#weaviate.gql.get.GetBuilder.with_offset
                 query = query.with_limit(100).with_offset(offset=len(all_docs))
 
-            result = query.do()
+            try:
+                result = query.do()
+            except Exception as e:
+                raise WeaviateDocumentStoreError(f"Weaviate raised an exception: {e}")
 
-            if result and "data" in result and "Get" in result.get("data"):
-                if result.get("data").get("Get").get(index):
-                    all_docs += result.get("data").get("Get").get(index)
-            else:
-                raise ValueError(f"Weaviate returned ad exception: {result}")
+            if "errors" in result:
+                raise WeaviateDocumentStoreError(f"Query results contain errors: {result['errors']}")
+
+            # If `query.do` didn't raise and `result` doesn't contain errors,
+            # we are good accessing data
+            docs = result.get("data").get("Get").get(index)
+
+            # `docs` can be empty if the query returned less documents than the actual
+            # number. This can happen when the number of document stored is greater
+            # than QUERY_MAXIMUM_RESULTS.
+            # See: https://weaviate.io/developers/weaviate/current/graphql-references/filters.html#offset-argument-pagination
+            if not docs:
+                logger.warning(
+                    "The query returned less documents than expected: this can happen when "
+                    "the value of the QUERY_MAXIMUM_RESULTS environment variable is lower than "
+                    "the total number of documents stored. See Weaviate documentation for "
+                    "more details."
+                )
+                break
+
+            all_docs += docs
 
         yield from all_docs
 
@@ -1156,7 +1181,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         logger.warning(
-            """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS:
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """

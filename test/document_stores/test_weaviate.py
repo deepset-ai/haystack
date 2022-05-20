@@ -1,8 +1,11 @@
+import uuid
+
 import numpy as np
 import pytest
+
 from haystack.schema import Document
 from ..conftest import get_document_store
-import uuid
+
 
 embedding_dim = 768
 
@@ -104,4 +107,15 @@ def test_query(document_store_with_docs):
     assert len(docs) == 1
 
     docs = document_store_with_docs.query(filters={"content": ["live"]})
+    assert len(docs) == 3
+
+
+@pytest.mark.weaviate
+def test_get_all_documents_unaffected_by_QUERY_MAXIMUM_RESULTS(document_store_with_docs, monkeypatch):
+    """
+    Ensure `get_all_documents` works no matter the value of QUERY_MAXIMUM_RESULTS
+    see https://github.com/deepset-ai/haystack/issues/2517
+    """
+    monkeypatch.setattr(document_store_with_docs, "get_document_count", lambda **kwargs: 13_000)
+    docs = document_store_with_docs.get_all_documents()
     assert len(docs) == 3
