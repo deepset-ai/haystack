@@ -3183,8 +3183,8 @@
                 "type": "string"
               }
             },
-            "split_regex": {
-              "title": "Split Regex",
+            "split_regex_pattern": {
+              "title": "Split Regex Pattern",
               "type": "string"
             }
           },
