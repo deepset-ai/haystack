@@ -327,6 +327,41 @@ class Answer:
         return cls.from_dict(data)
 
 
+
+@dataclass
+class AudioAnswer(Answer):
+    answer: Path
+    context: Optional[Path] = None
+    offsets_in_document: Optional[Any] = None
+    offsets_in_context: Optional[Any] = None
+
+    def __str__(self):
+        return f"<AudioAnswer: answer='{self.answer}', score={self.score}, context='{self.context}'>"
+
+    def __repr__(self):
+        return f"<AudioAnswer {asdict(self)}>"
+
+
+@dataclass
+class GeneratedAudioAnswer(AudioAnswer):
+    type: str = "text-to-speech"
+    answer_transcript: Optional[str] = None
+    context_transcript: Optional[str] = None
+
+    @classmethod
+    def from_text_answer(cls, answer_object: Answer, generated_audio_answer: Any, generated_audio_context: Optional[Any] = None):
+        answer_dict = answer_object.to_dict()
+        answer_dict = {key: value for key, value in answer_dict.items() if value}
+                
+        answer_dict["answer_transcript"] = answer_dict["answer"] 
+        answer_dict["context_transcript"] = answer_dict["context"]
+
+        answer_dict["answer"] = generated_audio_answer
+        answer_dict["context"] = generated_audio_context
+        
+        return cls(**answer_dict)
+
+
 @dataclass
 class Label:
     id: str
