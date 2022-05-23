@@ -766,15 +766,15 @@ class EvaluationResult:
             The default value is `integrated`.
         :param document_scope: A criterion for deciding whether documents are relevant or not.
             You can select between:
-            - 'document_id': Specifies that the Document ID must match. You can also specify that a custom document ID must match. To do this, use the `custom_document_id_field` for `pipeline.eval()`.
+            - 'document_id': Specifies that the document ID must match. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
                     A typical use case is Document Retrieval.
-            - 'context': Specifies that the content of the Document must match.
+            - 'context': Specifies that the content of the document must match. Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
                     A typical use case is Document-Independent Passage Retrieval.
             - 'document_id_and_context': A Boolean operation specifying that both `'document_id' AND 'context'` must match.
                     A typical use case is Document-Specific Passage Retrieval.
             - 'document_id_or_context': A Boolean operation specifying that either `'document_id' OR 'context'` must match.
                     A typical use case is Document Retrieval having sparse context labels.
-            - 'answer': Specifies that the Document contents must include the answer. The selected `answer_scope` is enforced.
+            - 'answer': Specifies that the document contents must include the answer. The selected `answer_scope` is enforced automatically.
                     A typical use case is Question Answering.
             - 'document_id_or_answer' (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
                     This is intended to be a proper default value in order to support both main use cases:
@@ -784,15 +784,13 @@ class EvaluationResult:
         :param answer_scope: Specifies the scope in which a matching answer is considered as correct.
             You can select between:
             - 'any' (default): Any matching answer is considered as correct.
-                    For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
-                    Select this for Document Retrieval and Passage Retrieval evaluations to use different `document_scope` values.
             - 'context': The answer is only considered as correct if its context matches as well.
-                    `document_scope` must be 'answer' or 'document_id_or_answer'.
-            - 'document_id': The answer is only considered as correct if its document (ID) matches as well.
-                    `document_scope` must be 'answer' or 'document_id_or_answer'.
-            - 'document_id_and_context': The answer is only considered as correct if its document (ID) and its context match as well.
-                    `document_scope` must be 'answer' or 'document_id_or_answer'.
+                    Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+            - 'document_id': The answer is only considered as correct if its document ID matches as well.
+                    You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+            - 'document_id_and_context': The answer is only considered as correct if its document ID and its context match as well.
             The default value is 'any'.
+            In Question Answering to get the very same definition of correctness for document metrics as for answer metrics, `document_scope` must be 'answer' or 'document_id_or_answer'.
         """
         return {
             node: self._calculate_node_metrics(
@@ -847,35 +845,33 @@ class EvaluationResult:
             For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
             Values can be 'integrated', 'isolated'.
             Default value is 'integrated'.
-        :param document_scope: criterion for deciding whether documents are relevant or not.
+        :param document_scope: A criterion for deciding whether documents are relevant or not.
             You can select between:
-            - 'document_id': Document's id or custom id must match.
-                    Typical use case: Document Retrieval
-            - 'context': Document's content must match.
-                    Typical use case: Document-independent Passage Retrieval
-            - 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
-                    Typical use case: Document-specific Passage Retrieval
-            - 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
-                    Typical use case: Document Retrieval having sparse context labels
-            - 'answer': Document's content must include the answer. The selected `answer_scope` will be enforced.
-                    Typical use case: Question Answering
-            - 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
+            - 'document_id': Specifies that the document ID must match. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+                    A typical use case is Document Retrieval.
+            - 'context': Specifies that the content of the document must match. Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+                    A typical use case is Document-Independent Passage Retrieval.
+            - 'document_id_and_context': A Boolean operation specifying that both `'document_id' AND 'context'` must match.
+                    A typical use case is Document-Specific Passage Retrieval.
+            - 'document_id_or_context': A Boolean operation specifying that either `'document_id' OR 'context'` must match.
+                    A typical use case is Document Retrieval having sparse context labels.
+            - 'answer': Specifies that the document contents must include the answer. The selected `answer_scope` is enforced automatically.
+                    A typical use case is Question Answering.
+            - 'document_id_or_answer' (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
                     This is intended to be a proper default value in order to support both main use cases:
                     - Document Retrieval
                     - Question Answering
-            Default value is 'document_id_or_answer'.
-        :param answer_scope: scope in which a matching answer is considered as correct.
+            The default value is 'document_id_or_answer'.
+        :param answer_scope: Specifies the scope in which a matching answer is considered as correct.
             You can select between:
-            - 'any' (default): any matching answer is considered as correct.
-                    For QA evalutions `document_scope` should be 'answer' or 'document_id_or_answer' (default).
-                    Select this for Document Retrieval and Passage Retrieval evaluations in order to use different `document_scope` values.
-            - 'context': answer is only considered as correct if its context matches as well.
-                    `document_scope` must be 'answer' or 'document_id_or_answer'.
-            - 'document_id': answer is only considered as correct if its document (id) matches as well.
-                    `document_scope` must be 'answer' or 'document_id_or_answer'.
-            - 'document_id_and_context': answer is only considered as correct if its document (id) and its context match as well.
-                    `document_scope` must be 'answer' or 'document_id_or_answer'.
-            Default value is 'any'.
+            - 'any' (default): Any matching answer is considered as correct.
+            - 'context': The answer is only considered as correct if its context matches as well.
+                    Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+            - 'document_id': The answer is only considered as correct if its document ID matches as well.
+                    You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+            - 'document_id_and_context': The answer is only considered as correct if its document ID and its context match as well.
+            The default value is 'any'.
+            In Question Answering to get the very same definition of correctness for document metrics as for answer metrics, `document_scope` must be 'answer' or 'document_id_or_answer'.
         """
         node_df = self.node_results[node]
         node_df = self._filter_eval_mode(node_df, eval_mode)
@@ -968,16 +964,17 @@ class EvaluationResult:
             "document_id_and_context": "document_id_and_context_and_answer",
         }
 
-        if answer_scope in answer_scope_to_doc_relevance_crit.keys() and document_scope not in [
-            "answer",
-            "document_id_or_answer",
-        ]:
-            raise ValueError(
-                f"The selected answer_scope '{answer_scope}' is not compatible with document_scope '{document_scope}'. "
-                f"document_scope must be one of {['answer', 'document_id_or_answer']}"
+        document_relevance_criterion: str = document_scope
+        if document_scope in ["answer", "document_id_or_answer"]:
+            document_relevance_criterion = answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)
+        elif answer_scope in answer_scope_to_doc_relevance_crit.keys():
+            logger.warning(
+                f"You specified a non-answer document_scope together with a non-default answer_scope. "
+                f"This may result in inconsistencies between answer and document metrics. "
+                f"To enforce the same definition of correctness for both, document_scope must be one of {['answer', 'document_id_or_answer']}."
             )
 
-        return answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)  # type: ignore[return-value]
+        return document_relevance_criterion  # type: ignore[return-value]
 
     def _calculate_node_metrics(
         self,
