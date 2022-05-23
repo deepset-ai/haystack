@@ -58,7 +58,7 @@ class RayPipeline(Pipeline):
     By default, RayPipelines create an instance of RayServe locally. To connect to an existing Ray instance,
     set the `address` parameter when creating the RayPipeline instance.
 
-    You can validate the YAML syntax of your Ray Pipelines. For more information, see [YAML File Definitions](https://haystack-website-git-fork-fstau-dev-287-search-deepset-overnice.vercel.app/components/pipelines#yaml-file-definitions).
+    YAML definitions of Ray pipelines are validated at load. For more information, see [YAML File Definitions](https://haystack-website-git-fork-fstau-dev-287-search-deepset-overnice.vercel.app/components/pipelines#yaml-file-definitions).
     """
 
     def __init__(self, address: str = None, ray_args: Optional[Dict[str, Any]] = None):
