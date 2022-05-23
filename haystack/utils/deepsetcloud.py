@@ -909,15 +909,15 @@ class FileClient:
 class EvaluationRunClient:
     def __init__(self, client: DeepsetCloudClient, workspace: Optional[str] = None):
         """
-        A client to manage deepset Cloud evaluation runs.    
+        A client to manage deepset Cloud evaluation runs.
 
         :param client: deepset Cloud client
         :param workspace: workspace in deepset Cloud
 
         """
         self.client = client
-        self.workspace = workspace    
-        
+        self.workspace = workspace
+
         self.pipeline_client = PipelineClient(client=client, workspace=workspace)
         self.evalset_client = EvaluationSetClient(client=client, workspace=workspace)
 
