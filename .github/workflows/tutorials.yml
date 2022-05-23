@@ -160,4 +160,12 @@ jobs:
         pip install pygraphviz
 
     - name: Run script
-      run: python ${{ matrix.script-path }}
+      run: |
+        set -e   # Fails on any error in the following loop
+        for script in ${{ matrix.script-path }};
+          echo 
+          echo "============================================================="
+          echo "Running $script (can take up to 15 minutes) ..."
+          echo "============================================================="
+          python ${{ matrix.script-path }}
+        done
