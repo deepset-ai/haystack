@@ -5,7 +5,7 @@ import os
 import json
 import logging
 from pathlib import Path
-from copy import deepcopy
+from copy import copy
 
 import yaml
 import networkx as nx
@@ -68,10 +68,9 @@ def get_component_definitions(
     """
     component_definitions = {}  # definitions of each component from the YAML.
 
-    raw_pipeline_config = pipeline_config["components"]
-
-    for raw_component_definition in raw_pipeline_config:
+    for raw_component_definition in pipeline_config["components"]:
         name = raw_component_definition["name"]
+        # We perform a shallow copy here because of https://github.com/deepset-ai/haystack/issues/2568
         component_definition = {key: copy(value) for key, value in raw_component_definition.items() if key != "name"}
         component_definitions[name] = component_definition
 
@@ -84,7 +83,6 @@ def get_component_definitions(
                     logger.info(
                         f"Param '{param_name}' of component '{name}' overwritten with environment variable '{key}' value '{value}'."
                     )
-
     return component_definitions
 
 
