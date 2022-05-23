@@ -42,7 +42,6 @@ jobs:
 
 
   # notebooks:
-  #   needs: notebooks-matrix
   #   runs-on: ubuntu-latest
   #   strategy:
   #     matrix:
@@ -92,7 +91,6 @@ jobs:
 
 
   scripts:
-    needs: scripts-matrix
     runs-on: ubuntu-latest
     strategy:
       matrix:
