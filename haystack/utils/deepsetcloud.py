@@ -1,3 +1,6 @@
+import json
+from mimetypes import guess_type
+from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 try:
@@ -131,6 +134,7 @@ class DeepsetCloudClient:
         query_params: dict = None,
         headers: dict = None,
         stream: bool = False,
+        files: Any = None,
         raise_on_error: bool = True,
     ):
         return self._execute_request(
@@ -140,6 +144,7 @@ class DeepsetCloudClient:
             json=json,
             data=data,
             stream=stream,
+            files=files,
             headers=headers,
             raise_on_error=raise_on_error,
         )
@@ -251,7 +256,7 @@ class DeepsetCloudClient:
 
     def _execute_auto_paging_request(
         self,
-        method: Literal["GET", "POST", "PUT", "HEAD"],
+        method: Literal["GET", "POST", "PUT", "HEAD", "DELETE"],
         url: str,
         json: dict = None,
         data: Any = None,
@@ -291,6 +296,7 @@ class DeepsetCloudClient:
         query_params: dict = None,
         headers: dict = None,
         stream: bool = False,
+        files: Any = None,
         raise_on_error: bool = True,
     ):
         if json is not None:
@@ -304,6 +310,7 @@ class DeepsetCloudClient:
             headers=headers,
             auth=BearerAuth(self.api_key),
             stream=stream,
+            files=files,
         )
         if raise_on_error and response.status_code > 299:
             raise DeepsetCloudError(
@@ -504,7 +511,12 @@ class PipelineClient:
             logger.warning(f"Unexpected response from updating pipeline config: {response}")
 
     def deploy(
-        self, pipeline_config_name: Optional[str] = None, workspace: str = None, headers: dict = None, timeout: int = 60
+        self,
+        pipeline_config_name: Optional[str] = None,
+        workspace: str = None,
+        headers: dict = None,
+        timeout: int = 60,
+        show_curl_message: bool = True,
     ):
         """
         Deploys the pipelines of a pipeline config on deepset Cloud.
@@ -518,6 +530,7 @@ class PipelineClient:
         :param headers: Headers to pass to API call
         :param timeout: The time in seconds to wait until deployment completes.
                         If the timeout is exceeded an error will be raised.
+        :param show_curl_message: Whether to print an additional message after successful deployment showing how to query the pipeline using curl.
         """
         status, changed = self._transition_pipeline_state(
             target_state=PipelineStatus.DEPLOYED,
@@ -527,11 +540,36 @@ class PipelineClient:
             headers=headers,
         )
 
+        if workspace is None:
+            workspace = self.workspace
+        if pipeline_config_name is None:
+            pipeline_config_name = self.pipeline_config_name
+
+        pipeline_url = f"{self.client.api_endpoint}/workspaces/{workspace}/pipelines/{pipeline_config_name}/search"
+
         if status == PipelineStatus.DEPLOYED:
             if changed:
                 logger.info(f"Pipeline config '{pipeline_config_name}' successfully deployed.")
             else:
                 logger.info(f"Pipeline config '{pipeline_config_name}' is already deployed.")
+            logger.info(
+                f"Search endpoint for pipeline config '{pipeline_config_name}' is up and running for you under {pipeline_url}"
+            )
+            if show_curl_message:
+                curl_cmd = (
+                    f"curl -X 'POST' \\\n"
+                    f"  '{pipeline_url}' \\\n"
+                    f"  -H 'accept: application/json' \\\n"
+                    f"  -H 'Authorization: Bearer <INSERT_TOKEN_HERE>' \\\n"
+                    f"  -H 'Content-Type: application/json' \\\n"
+                    f"  -d '{{\n"
+                    f'  "queries": [\n'
+                    f'    "Is there an answer to this question?"\n'
+                    f"  ]\n"
+                    f"}}'"
+                )
+                logger.info(f"Try it out using the following curl command:\n{curl_cmd}")
+
         elif status == PipelineStatus.DEPLOYED_UNHEALTHY:
             logger.warning(
                 f"Deployment of pipeline config '{pipeline_config_name}' succeeded. But '{pipeline_config_name}' is unhealthy."
@@ -801,10 +839,10 @@ class EvaluationSetClient:
         return self.client.build_workspace_url(workspace)
 
 
-class EvaluationRunClient:
+class FileClient:
     def __init__(self, client: DeepsetCloudClient, workspace: Optional[str] = None):
         """
-        A client to manage deepset Cloud evaluation runs.
+        A client to manage files on deepset Cloud.
 
         :param client: deepset Cloud client
         :param workspace: workspace in deepset Cloud
@@ -812,6 +850,74 @@ class EvaluationRunClient:
         """
         self.client = client
         self.workspace = workspace
+
+    def upload_files(
+        self,
+        file_paths: List[Path],
+        metas: Optional[List[Dict]] = None,
+        workspace: Optional[str] = None,
+        headers: dict = None,
+    ):
+        workspace_url = self._build_workspace_url(workspace)
+        files_url = f"{workspace_url}/files"
+        if metas is None:
+            metas = [{} for _ in file_paths]
+
+        file_ids = []
+        for file_path, meta in zip(file_paths, metas):
+            try:
+                mime_type = guess_type(str(file_path))
+                with open(file_path, "rb") as file:
+                    response_file_upload = self.client.post(
+                        url=files_url,
+                        files={"file": (file_path.name, file, mime_type)},
+                        data={"meta": json.dumps(meta)},
+                        headers=headers,
+                    )
+                file_id = response_file_upload.json().get("file_id")
+                file_ids.append(file_id)
+            except Exception as e:
+                logger.exception(f"Error uploading file {file_path}")
+
+        logger.info(f"Successfully uploaded {len(file_ids)} files.")
+
+    def delete_file(self, file_id: str, workspace: Optional[str] = None, headers: dict = None):
+        workspace_url = self._build_workspace_url(workspace)
+        file_url = f"{workspace_url}/files/{file_id}"
+        self.client.delete(url=file_url, headers=headers)
+
+    def list_files(
+        self,
+        name: Optional[str] = None,
+        meta_key: Optional[str] = None,
+        meta_value: Optional[str] = None,
+        workspace: Optional[str] = None,
+        headers: dict = None,
+    ) -> Generator:
+        workspace_url = self._build_workspace_url(workspace)
+        files_url = f"{workspace_url}/files"
+        query_params = {"name": name, "meta_key": meta_key, "meta_value": meta_value}
+        generator = self.client.get_with_auto_paging(url=files_url, headers=headers, query_params=query_params)
+        return generator
+
+    def _build_workspace_url(self, workspace: Optional[str] = None):
+        if workspace is None:
+            workspace = self.workspace
+        return self.client.build_workspace_url(workspace)
+
+
+class EvaluationRunClient:
+    def __init__(self, client: DeepsetCloudClient, workspace: Optional[str] = None):
+        """
+        A client to manage deepset Cloud evaluation runs.    
+
+        :param client: deepset Cloud client
+        :param workspace: workspace in deepset Cloud
+
+        """
+        self.client = client
+        self.workspace = workspace    
+        
         self.pipeline_client = PipelineClient(client=client, workspace=workspace)
         self.evalset_client = EvaluationSetClient(client=client, workspace=workspace)
 
@@ -999,6 +1105,22 @@ class DeepsetCloud:
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return EvaluationRunClient(client=client, workspace=workspace)
 
+    def get_file_client(
+        cls, api_key: Optional[str] = None, api_endpoint: Optional[str] = None, workspace: str = "default"
+    ) -> FileClient:
+        """
+        Creates a client to manage files on deepset Cloud.
+
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param workspace: workspace in deepset Cloud
+
+        """
+        client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
+        return FileClient(client=client, workspace=workspace)
+
 
 class DeepsetCloudExperiments:
     """
@@ -1007,9 +1129,8 @@ class DeepsetCloudExperiments:
     To start a new experiment run:
     1. Choose a pipeline to evaluate using `list_pipelines()`
     2. Choose a evaluation set using `list_evaluation_sets()`
-    3. Create a new run using `create_run()`
-    4. Start the run using `start_run()`
-    5. Track the run using `get_run()`
+    3. Create and start a new run using `create_and_start_run()`
+    4. Track the run using `get_run()`
     """
 
     @classmethod

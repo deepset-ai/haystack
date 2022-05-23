@@ -74,6 +74,7 @@ def generate_code(
         component_definitions=component_definitions,
         component_variable_names=component_variable_names,
         dependency_graph=component_dependency_graph,
+        pipeline_definition=pipeline_definition,
     )
     pipeline_code = _generate_pipeline_code(
         pipeline_definition=pipeline_definition,
@@ -109,7 +110,10 @@ def _generate_pipeline_code(
 
 
 def _generate_components_code(
-    component_definitions: Dict[str, Any], component_variable_names: Dict[str, str], dependency_graph: DiGraph
+    component_definitions: Dict[str, Any],
+    component_variable_names: Dict[str, str],
+    dependency_graph: DiGraph,
+    pipeline_definition: Dict[str, Any],
 ) -> str:
     code = ""
     declarations = {}
@@ -121,7 +125,11 @@ def _generate_components_code(
             for key, value in definition.get("params", {}).items()
         }
         init_args = ", ".join(f"{key}={value}" for key, value in param_value_dict.items())
-        declarations[name] = f"{variable_name} = {class_name}({init_args})"
+        declaration = f"{variable_name} = {class_name}({init_args})"
+        # set name of subcomponents explicitly if it's not the default name as it won't be set via Pipeline.add_node()
+        if name != class_name and name not in (node["name"] for node in pipeline_definition["nodes"]):
+            declaration = f'{declaration}\n{variable_name}.name = "{name}"'
+        declarations[name] = declaration
 
     ordered_components = nx.topological_sort(dependency_graph)
     ordered_declarations = [declarations[component] for component in ordered_components]
@@ -179,9 +187,13 @@ def print_eval_report(
         logger.warning("Pipelines with junctions are currently not supported.")
         return
 
+    answer_nodes = {node for node, df in eval_result.node_results.items() if len(df[df["type"] == "answer"]) > 0}
+    all_top_1_metrics = eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, simulated_top_k_reader=1)
+    answer_top_1_metrics = {node: metrics for node, metrics in all_top_1_metrics.items() if node in answer_nodes}
+
     calculated_metrics = {
         "": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col),
-        "_top_1": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, simulated_top_k_reader=1),
+        "_top_1": answer_top_1_metrics,
         " upper bound": eval_result.calculate_metrics(doc_relevance_col=doc_relevance_col, eval_mode="isolated"),
     }
 
@@ -242,7 +254,9 @@ def _format_wrong_examples_report(eval_result: EvaluationResult, n_wrong_example
         node: eval_result.wrong_examples(node, doc_relevance_col="gold_id_or_answer_match", n=n_wrong_examples)
         for node in eval_result.node_results.keys()
     }
-    examples_formatted = {node: "\n".join(map(_format_wrong_example, examples)) for node, examples in examples.items()}
+    examples_formatted = {
+        node: "\n".join(map(_format_wrong_example, examples)) for node, examples in examples.items() if any(examples)
+    }
 
     return "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
 

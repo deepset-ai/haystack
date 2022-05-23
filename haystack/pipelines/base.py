@@ -62,11 +62,9 @@ TRACKING_TOOL_TO_HEAD = {"mlflow": MLflowTrackingHead}
 
 class Pipeline:
     """
-    Pipeline brings together building blocks to build a complex search pipeline with Haystack & user-defined components.
+    Pipeline brings together building blocks to build a complex search pipeline with Haystack and user-defined components.
 
-    Under-the-hood, a pipeline is represented as a directed acyclic graph of component nodes. It enables custom query
-    flows with options to branch queries(eg, extractive qa vs keyword match query), merge candidate documents for a
-    Reader from multiple Retrievers, or re-ranking of candidate documents.
+    Under the hood, a Pipeline is represented as a directed acyclic graph of component nodes. You can use it for custom query flows with the option to branch queries (for example, extractive question answering and keyword match query), merge candidate documents for a Reader from multiple Retrievers, or re-ranking of candidate documents.
     """
 
     def __init__(self):
@@ -83,11 +81,31 @@ class Pipeline:
 
     @property
     def components(self) -> Dict[str, BaseComponent]:
-        return {
-            name: attributes["component"]
-            for name, attributes in self.graph.nodes.items()
-            if not isinstance(attributes["component"], RootNode)
-        }
+        """
+        Returns all components used by this pipeline.
+        Note that this also includes such components that are being utilized by other components only and are not being used as a pipeline node directly.
+        """
+        all_components = self._find_all_components()
+        return {component.name: component for component in all_components if component.name is not None}
+
+    def _find_all_components(self, seed_components: List[BaseComponent] = None) -> Set[BaseComponent]:
+        """
+        Finds all components given the provided seed components.
+        Components are found by traversing the provided seed components and their utilized components.
+        If seed_components is None, the node components (except the root node) of the pipeline will be used as seed components.
+        """
+        if seed_components is None:
+            seed_components = [
+                attributes["component"]
+                for attributes in self.graph.nodes.values()
+                if not isinstance(attributes["component"], RootNode)
+            ]
+
+        distinct_components = set(seed_components)
+        for component in seed_components:
+            sub_components = self._find_all_components(component.utilized_components)
+            distinct_components.update(sub_components)
+        return distinct_components
 
     def to_code(
         self, pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False
@@ -299,6 +317,7 @@ class Pipeline:
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         timeout: int = 60,
+        show_curl_message: bool = True,
     ):
         """
         Deploys the pipelines of a pipeline config on Deepset Cloud.
@@ -317,9 +336,10 @@ class Pipeline:
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param timeout: The time in seconds to wait until deployment completes.
                         If the timeout is exceeded an error will be raised.
+        :param show_curl_message: Whether to print an additional message after successful deployment showing how to query the pipeline using curl.
         """
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        client.deploy(pipeline_config_name=pipeline_config_name, timeout=timeout)
+        client.deploy(pipeline_config_name=pipeline_config_name, timeout=timeout, show_curl_message=show_curl_message)
 
     @classmethod
     def undeploy_on_deepset_cloud(
@@ -375,11 +395,15 @@ class Pipeline:
                 )
             self.graph = _init_pipeline_graph(root_node_name=candidate_roots[0])
 
-        component_definitions = get_component_definitions(pipeline_config=self.get_config())
-
-        # Check for duplicates before adding the definition
-        if name in component_definitions.keys():
+        # Check for duplicate names before adding the component
+        # Note that the very same component must be addable multiple times:
+        # E.g. for indexing pipelines it's common to add a retriever first and a document store afterwards.
+        # The document store is already being used by the retriever however.
+        # Thus the very same document store will be added twice, first as a subcomponent of the retriever and second as a first level node.
+        if name in self.components.keys() and self.components[name] != component:
             raise PipelineConfigError(f"A node named '{name}' is already in the pipeline. Choose another name.")
+
+        component_definitions = get_component_definitions(pipeline_config=self.get_config())
         component_definitions[name] = component._component_config
 
         # Name any nested component before adding them
@@ -426,21 +450,20 @@ class Pipeline:
         debug: Optional[bool] = None,
     ):
         """
-        Runs the pipeline, one node at a time.
+        Runs the Pipeline, one node at a time.
 
-        :param query: The search query (for query pipelines only)
-        :param file_paths: The files to index (for indexing pipelines only)
-        :param labels:
-        :param documents:
-        :param meta:
+        :param query: The search query (for query pipelines only).
+        :param file_paths: The files to index (for indexing pipelines only).
+        :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
+        :param documents: A list of Document objects to be processed by the Pipeline Nodes.
+        :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
         :param params: Dictionary of parameters to be dispatched to the nodes.
-                       If you want to pass a param to all nodes, you can just use: {"top_k":10}
-                       If you want to pass it to targeted nodes, you can do:
-                       {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-        :param debug: Whether the pipeline should instruct nodes to collect debug information
-                      about their execution. By default these include the input parameters
-                      they received and the output they generated. All debug information can
-                      then be found in the dict returned by this method under the key "_debug"
+                       To pass a parameter to all Nodes, use: `{"top_k": 10}`.
+                       To pass a parameter to targeted Nodes, run:
+                        `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
+        :param debug: Specifies whether the Pipeline should instruct Nodes to collect debug information
+                      about their execution. By default, this information includes the input parameters
+                      the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
         # validate the node names
         self._validate_node_names_in_params(params=params)
@@ -542,22 +565,31 @@ class Pipeline:
         debug: Optional[bool] = None,
     ):
         """
-        Runs the pipeline in batch mode, one node at a time.
+        Runs the Pipeline in a batch mode, one node at a time. The batch mode means that the Pipeline can take more than one query as input. You can use this method for query pipelines only. When used with an indexing pipeline, it calls the pipeline `run()` method.
 
-        :param queries: Single search query or list of search queries (for query pipelines only)
-        :param file_paths: The files to index (for indexing pipelines only). Providing file_paths will result in
-                           calling the Pipeline's run method instead of run_batch
-        :param labels:
-        :param documents:
-        :param meta:
+        Here's what this method returns for Retriever-Reader pipelines:
+        - Single query: Retrieves top-k relevant Docments and returns a list of answers for each retrieved Document.
+        - A list of queries: Retrieves top-k relevant Documents for each query and returns a list of answers for each query.
+
+        Here's what this method returns for Reader-only pipelines:
+        - Single query + a list of Documents: Applies the query to each Document individually and returns answers    for each single Document.
+        - Single query + a list of lists of Documents: Applies the query to each list of Documents and returns aggregated answers for each list of Documents.
+        - A list of queries + a list of Documents: Applies each query to each Document individually and returns answers for each query-document pair.
+        - A list of queries + a list of lists of Documents: Applies each query to its corresponding Document list and aggregates answers for each list of Documents.
+
+
+        :param queries: Single search query or list of search queries (for query pipelines only).
+        :param file_paths: The files to index (for indexing pipelines only). If you provide `file_paths` the                Pipeline's `run` method instead of `run_batch` is called.
+        :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
+        :param documents: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
+        :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
         :param params: Dictionary of parameters to be dispatched to the nodes.
-                       If you want to pass a param to all nodes, you can just use: {"top_k":10}
-                       If you want to pass it to targeted nodes, you can do:
-                       {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-        :param debug: Whether the pipeline should instruct nodes to collect debug information
-                      about their execution. By default these include the input parameters
-                      they received and the output they generated. All debug information can
-                      then be found in the dict returned by this method under the key "_debug"
+                       To pass a parameter to all Nodes, use: `{"top_k":10}`.
+                       To pass a parameter to targeted Nodes, run:
+                        `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
+        :param debug: Specifies whether the Pipeline should instruct Nodes to collect debug information
+                      about their execution. By default, this information includes the input parameters
+                      the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
         if file_paths is not None or meta is not None:
             logger.info(
@@ -1405,7 +1437,9 @@ class Pipeline:
                         value
                     ]  # substitute reference (string) with the component object.
 
-            component_instance = BaseComponent._create_instance(component_type, component_params)
+            component_instance = BaseComponent._create_instance(
+                component_type=component_type, component_params=component_params, name=name
+            )
             components[name] = component_instance
             return component_instance
 

@@ -249,6 +249,12 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                 "type": "string",
                 "const": version,
             },
+            "extras": {
+                "title": "Additional properties group",
+                "description": "To be specified only if contains special pipelines (for example, if this is a Ray pipeline)",
+                "type": "string",
+                "enum": ["ray"],
+            },
             "components": {
                 "title": "Components",
                 "description": "Component nodes and their configurations, to later be used in the pipelines section. Define here all the building blocks for the pipelines.",
@@ -283,6 +289,11 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                                         "type": "array",
                                         "items": {"type": "string"},
                                     },
+                                    "replicas": {
+                                        "title": "replicas",
+                                        "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
+                                        "type": "integer",
+                                    },
                                 },
                                 "required": ["name", "inputs"],
                                 "additionalProperties": False,
@@ -298,6 +309,18 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         },
         "required": ["version", "components", "pipelines"],
         "additionalProperties": False,
+        "oneOf": [
+            {
+                "not": {"required": ["extras"]},
+                "properties": {
+                    "pipelines": {
+                        "title": "Pipelines",
+                        "items": {"properties": {"nodes": {"items": {"not": {"required": ["replicas"]}}}}},
+                    }
+                },
+            },
+            {"properties": {"extras": {"enum": ["ray"]}}, "required": ["extras"]},
+        ],
         "definitions": schema_definitions,
     }
     return pipeline_schema

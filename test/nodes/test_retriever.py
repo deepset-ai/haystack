@@ -17,7 +17,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from .conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH
 
 
 @pytest.fixture()
