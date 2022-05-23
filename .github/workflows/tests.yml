@@ -140,6 +140,7 @@ jobs:
         choco install xpdf-utils
         choco install openjdk11
         refreshenv
+        
     - name: Install Haystack
       run: pip install .
 
