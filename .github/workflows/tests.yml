@@ -19,7 +19,7 @@ env:
 jobs:
 
   mypy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
 
     - uses: actions/checkout@v2
@@ -51,8 +51,10 @@ jobs:
         mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
         echo "=== ui/ ==="
         mypy ui --exclude=ui/build/ --exclude=ui/test/
+  
+  
   pylint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
 
@@ -86,7 +88,7 @@ jobs:
           - "modeling"
           - "others"
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
@@ -106,6 +108,8 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
+  
+  
   unit-tests-windows:
     needs:
      - mypy
@@ -150,20 +154,21 @@ jobs:
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
 
     - name: Setup Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
         docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
+
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
 
     - name: Install Haystack
       run: pip install .
@@ -173,6 +178,8 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ --document_store_type=elasticsearch
+
+
   elasticsearch-tests-windows:
     needs:
      - mypy
@@ -182,11 +189,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
 
     - name: Set up Elasticsearch and pdftotext
       run: |
@@ -199,6 +201,11 @@ jobs:
     - name: Install Haystack
       run: pip install .
 
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+      with:
+        prefix: windows
+
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
@@ -210,7 +217,7 @@ jobs:
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') || !github.event.pull_request.draft
 
     steps:
@@ -231,6 +238,8 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=faiss
+
+
   faiss-tests-windows:
     needs:
      - mypy
@@ -259,11 +268,13 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=faiss
+
+
   milvus-tests-linux:
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') || !github.event.pull_request.draft
 
     steps:
@@ -290,6 +301,8 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=milvus
+
+
 # FIXME: seems like we can't run containers on Windows
   # milvus-tests-windows:
   #   needs:
@@ -333,7 +346,7 @@ jobs:
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') || !github.event.pull_request.draft
 
     steps:
@@ -397,7 +410,7 @@ jobs:
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
 
     steps:
@@ -419,6 +432,7 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
+
   # FIXME very slow and very little platform dependency, so to evaluate
   # pinecone-tests-windows:
   #   needs:
@@ -457,7 +471,7 @@ jobs:
       - unit-tests-linux
       - elasticsearch-tests-linux
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') || !github.event.pull_request.draft
 
     steps:
@@ -530,7 +544,7 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -542,12 +556,14 @@ jobs:
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
         docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
+
     - name: Run Milvus
       run: |
         cd ../../   # Avoid causing permission issues on hashFiles later by creating unreadable folders like "volumes"
         wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
         sudo docker-compose up -d
         sudo docker-compose ps
+
     - name: Run Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
 
@@ -575,6 +591,8 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration" test/${{ matrix.folder }}
+
+
   integration-tests-windows:
     needs: 
      - unit-tests-windows
@@ -595,11 +613,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
-
     - name: Set up Elasticsearch and pdftotext
       run: |
         choco install xpdf-utils
@@ -609,6 +622,12 @@ jobs:
         choco install elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+      with:
+        prefix: windows
+
     - name: Install Haystack
       run: pip install .
 
@@ -618,6 +637,8 @@ jobs:
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
+ 
+ 
   # This CI action mirrors autoformat.yml, with the difference that it
   # runs on Haystack's end. If the contributor hasn't run autoformat.yml, 
   # then this check will fail.
