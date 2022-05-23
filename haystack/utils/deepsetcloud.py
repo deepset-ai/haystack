@@ -1,3 +1,6 @@
+import json
+from mimetypes import guess_type
+from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 try:
@@ -131,6 +134,7 @@ class DeepsetCloudClient:
         query_params: dict = None,
         headers: dict = None,
         stream: bool = False,
+        files: Any = None,
         raise_on_error: bool = True,
     ):
         return self._execute_request(
@@ -140,6 +144,7 @@ class DeepsetCloudClient:
             json=json,
             data=data,
             stream=stream,
+            files=files,
             headers=headers,
             raise_on_error=raise_on_error,
         )
@@ -211,9 +216,26 @@ class DeepsetCloudClient:
             auto_paging_page_size=auto_paging_page_size,
         )
 
+    def delete(
+        self,
+        url: str,
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+    ):
+        return self._execute_request(
+            method="DELETE",
+            url=url,
+            query_params=query_params,
+            headers=headers,
+            stream=stream,
+            raise_on_error=raise_on_error,
+        )
+
     def _execute_auto_paging_request(
         self,
-        method: Literal["GET", "POST", "PUT", "HEAD"],
+        method: Literal["GET", "POST", "PUT", "HEAD", "DELETE"],
         url: str,
         json: dict = None,
         data: Any = None,
@@ -246,13 +268,14 @@ class DeepsetCloudClient:
 
     def _execute_request(
         self,
-        method: Literal["GET", "POST", "PUT", "HEAD"],
+        method: Literal["GET", "POST", "PUT", "HEAD", "DELETE"],
         url: str,
         json: dict = None,
         data: Any = None,
         query_params: dict = None,
         headers: dict = None,
         stream: bool = False,
+        files: Any = None,
         raise_on_error: bool = True,
     ):
         if json is not None:
@@ -266,6 +289,7 @@ class DeepsetCloudClient:
             headers=headers,
             auth=BearerAuth(self.api_key),
             stream=stream,
+            files=files,
         )
         if raise_on_error and response.status_code > 299:
             raise DeepsetCloudError(
@@ -789,6 +813,73 @@ class EvaluationSetClient:
         return self.client.build_workspace_url(workspace)
 
 
+class FileClient:
+    def __init__(self, client: DeepsetCloudClient, workspace: Optional[str] = None):
+        """
+        A client to manage files on deepset Cloud.
+
+        :param client: deepset Cloud client
+        :param workspace: workspace in deepset Cloud
+
+        """
+        self.client = client
+        self.workspace = workspace
+
+    def upload_files(
+        self,
+        file_paths: List[Path],
+        metas: Optional[List[Dict]] = None,
+        workspace: Optional[str] = None,
+        headers: dict = None,
+    ):
+        workspace_url = self._build_workspace_url(workspace)
+        files_url = f"{workspace_url}/files"
+        if metas is None:
+            metas = [{} for _ in file_paths]
+
+        file_ids = []
+        for file_path, meta in zip(file_paths, metas):
+            try:
+                mime_type = guess_type(str(file_path))
+                with open(file_path, "rb") as file:
+                    response_file_upload = self.client.post(
+                        url=files_url,
+                        files={"file": (file_path.name, file, mime_type)},
+                        data={"meta": json.dumps(meta)},
+                        headers=headers,
+                    )
+                file_id = response_file_upload.json().get("file_id")
+                file_ids.append(file_id)
+            except Exception as e:
+                logger.exception(f"Error uploading file {file_path}")
+
+        logger.info(f"Successfully uploaded {len(file_ids)} files.")
+
+    def delete_file(self, file_id: str, workspace: Optional[str] = None, headers: dict = None):
+        workspace_url = self._build_workspace_url(workspace)
+        file_url = f"{workspace_url}/files/{file_id}"
+        self.client.delete(url=file_url, headers=headers)
+
+    def list_files(
+        self,
+        name: Optional[str] = None,
+        meta_key: Optional[str] = None,
+        meta_value: Optional[str] = None,
+        workspace: Optional[str] = None,
+        headers: dict = None,
+    ) -> Generator:
+        workspace_url = self._build_workspace_url(workspace)
+        files_url = f"{workspace_url}/files"
+        query_params = {"name": name, "meta_key": meta_key, "meta_value": meta_value}
+        generator = self.client.get_with_auto_paging(url=files_url, headers=headers, query_params=query_params)
+        return generator
+
+    def _build_workspace_url(self, workspace: Optional[str] = None):
+        if workspace is None:
+            workspace = self.workspace
+        return self.client.build_workspace_url(workspace)
+
+
 class DeepsetCloud:
     """
     A facade to communicate with deepset Cloud.
@@ -859,3 +950,20 @@ class DeepsetCloud:
         """
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return EvaluationSetClient(client=client, workspace=workspace, evaluation_set=evaluation_set)
+
+    @classmethod
+    def get_file_client(
+        cls, api_key: Optional[str] = None, api_endpoint: Optional[str] = None, workspace: str = "default"
+    ) -> FileClient:
+        """
+        Creates a client to manage files on deepset Cloud.
+
+        :param api_key: Secret value of the API key.
+                        If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+        :param workspace: workspace in deepset Cloud
+
+        """
+        client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
+        return FileClient(client=client, workspace=workspace)
