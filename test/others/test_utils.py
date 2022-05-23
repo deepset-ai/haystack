@@ -336,3 +336,58 @@ def test_upload_file_to_deepset_cloud_file_fails(caplog):
         assert f"Successfully uploaded 2 files." in caplog.text
         assert f"Error uploading file" in caplog.text
         assert f"my-error" in caplog.text
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_delete_file_to_deepset_cloud():
+    if MOCK_DC:
+        responses.add(method=responses.DELETE, url=f"{DC_API_ENDPOINT}/workspaces/default/files/abc", status=200)
+
+    client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    client.delete_file(file_id="abc")
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_list_files_on_deepset_cloud():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/files",
+            json={
+                "data": [
+                    {
+                        "characters": -1,
+                        "created_at": "2022-05-19T15:40:07.538162+00:00",
+                        "file_id": "b6cdd48b-3db5-488b-a44d-4240c12a96d5",
+                        "languages": [],
+                        "meta": {},
+                        "name": "sample_pdf_1.pdf",
+                        "params": {"id_hash_keys": ["content", "meta"]},
+                        "size": 44524,
+                        "url": "/api/v1/workspaces/e282219f-19b2-41ff-927e-bda4e6e67418/files/b6cdd48b-3db5-488b-a44d-4240c12a96d5",
+                    },
+                    {
+                        "characters": -1,
+                        "created_at": "2022-05-23T12:39:53.393716+00:00",
+                        "file_id": "51e9c2af-5676-453d-9b71-db9a560ae266",
+                        "languages": [],
+                        "meta": {"file_id": "sample_pdf_2.pdf"},
+                        "name": "sample_pdf_2.pdf",
+                        "params": {"id_hash_keys": ["content", "meta"]},
+                        "size": 26093,
+                        "url": "/api/v1/workspaces/e282219f-19b2-41ff-927e-bda4e6e67418/files/51e9c2af-5676-453d-9b71-db9a560ae266",
+                    },
+                ],
+                "has_more": False,
+                "total": 2,
+            },
+            status=200,
+        )
+
+    client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    files = [f for f in client.list_files()]
+    assert len(files) == 2
+    assert files[0]["name"] == "sample_pdf_1.pdf"
+    assert files[1]["name"] == "sample_pdf_2.pdf"

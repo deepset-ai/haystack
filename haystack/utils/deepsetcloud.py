@@ -216,6 +216,23 @@ class DeepsetCloudClient:
             auto_paging_page_size=auto_paging_page_size,
         )
 
+    def delete(
+        self,
+        url: str,
+        query_params: dict = None,
+        headers: dict = None,
+        stream: bool = False,
+        raise_on_error: bool = True,
+    ):
+        return self._execute_request(
+            method="DELETE",
+            url=url,
+            query_params=query_params,
+            headers=headers,
+            stream=stream,
+            raise_on_error=raise_on_error,
+        )
+
     def _execute_auto_paging_request(
         self,
         method: Literal["GET", "POST", "PUT", "HEAD"],
@@ -806,6 +823,25 @@ class FileClient:
                 logger.exception(f"Error uploading file {file_path}")
 
         logger.info(f"Successfully uploaded {len(file_ids)} files.")
+
+    def delete_file(self, file_id: str, workspace: Optional[str] = None, headers: dict = None):
+        workspace_url = self._build_workspace_url(workspace)
+        file_url = f"{workspace_url}/files/{file_id}"
+        self.client.delete(url=file_url, headers=headers)
+
+    def list_files(
+        self,
+        name: Optional[str] = None,
+        meta_key: Optional[str] = None,
+        meta_value: Optional[str] = None,
+        workspace: Optional[str] = None,
+        headers: dict = None,
+    ) -> Generator:
+        workspace_url = self._build_workspace_url(workspace)
+        files_url = f"{workspace_url}/files"
+        query_params = {"name": name, "meta_key": meta_key, "meta_value": meta_value}
+        generator = self.client.get_with_auto_paging(url=files_url, headers=headers, query_params=query_params)
+        return generator
 
     def _build_workspace_url(self, workspace: Optional[str] = None):
         if workspace is None:
