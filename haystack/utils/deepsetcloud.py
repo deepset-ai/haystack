@@ -1105,6 +1105,7 @@ class DeepsetCloud:
         client = DeepsetCloudClient(api_key=api_key, api_endpoint=api_endpoint)
         return EvaluationRunClient(client=client, workspace=workspace)
 
+    @classmethod
     def get_file_client(
         cls, api_key: Optional[str] = None, api_endpoint: Optional[str] = None, workspace: str = "default"
     ) -> FileClient:
@@ -1128,7 +1129,7 @@ class DeepsetCloudExperiments:
 
     To start a new experiment run:
     1. Choose a pipeline to evaluate using `list_pipelines()`
-    2. Choose a evaluation set using `list_evaluation_sets()`
+    2. Choose an evaluation set using `list_evaluation_sets()`
     3. Create and start a new run using `create_and_start_run()`
     4. Track the run using `get_run()`
     """
