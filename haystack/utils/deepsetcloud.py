@@ -235,7 +235,7 @@ class DeepsetCloudClient:
 
     def _execute_auto_paging_request(
         self,
-        method: Literal["GET", "POST", "PUT", "HEAD"],
+        method: Literal["GET", "POST", "PUT", "HEAD", "DELETE"],
         url: str,
         json: dict = None,
         data: Any = None,
@@ -268,7 +268,7 @@ class DeepsetCloudClient:
 
     def _execute_request(
         self,
-        method: Literal["GET", "POST", "PUT", "HEAD"],
+        method: Literal["GET", "POST", "PUT", "HEAD", "DELETE"],
         url: str,
         json: dict = None,
         data: Any = None,
