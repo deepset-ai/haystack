@@ -1,4 +1,5 @@
 version: ignore
+extras: ray
 
 components:
   - name: DocumentStore
@@ -37,7 +38,6 @@ components:
 
 pipelines:
   - name: ray_query_pipeline
-    type: RayPipeline
     nodes:
       - name: ESRetriever
         replicas: 2
