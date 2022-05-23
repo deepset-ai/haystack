@@ -155,10 +155,10 @@ jobs:
     - name: Run script
       run: |
         set -e   # Fails on any error in the following loop
-        for script in ${{ matrix.script-path }};
+        for script in ${{ matrix.script-path }}; do
           echo ""
           echo "============================================================="
           echo "Running $script (can take up to 15 minutes) ..."
           echo "============================================================="
-          python ${{ matrix.script-path }}
+          python $script
         done
