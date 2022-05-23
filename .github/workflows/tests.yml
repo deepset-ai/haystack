@@ -65,23 +65,10 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
-    - name: Get modified files
-      uses: jitterbit/get-changed-files@v1
-      id: modified_files
-        
-    # Pylint can take minutes to run on the entire codebase. Let's limit the number of files
-    # it checks to the ones that have been modified in this PR
     - name: Pylint
       run: |
-        for changed_file in ${{ steps.modified_files.outputs.added_modified }}; do
-          if [[ "$changed_file" =~ (haystack|rest_api|ui)/.*.py ]]; then
-            FILES_TO_LINT="$FILES_TO_LINT ${changed_file}";
-          fi
-        done
+        pylint -ry -j 0 haystack/ rest_api/ ui/
 
-        echo $FILES_TO_LINT
-        
-        pylint -ry -j 0 $FILES_TO_LINT
 
   unit-tests-linux:
     needs:
