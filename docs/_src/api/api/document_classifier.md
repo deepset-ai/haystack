@@ -125,18 +125,18 @@ or an entailment.
 def predict(documents: List[Document], batch_size: Optional[int] = None) -> List[Document]
 ```
 
-Returns documents containing classification result in meta field.
+Returns documents containing classification result in a meta field.
 
 Documents are updated in place.
 
 **Arguments**:
 
-- `documents`: List of Document to classify
-- `batch_size`: Number of Documents to classify at a time.
+- `documents`: A list of Documents to classify.
+- `batch_size`: The number of Documents to classify at a time.
 
 **Returns**:
 
-List of Document enriched with meta information
+A list of Documents enriched with meta information.
 
 <a id="transformers.TransformersDocumentClassifier.predict_batch"></a>
 

@@ -14,7 +14,7 @@ env:
   ENVIRONMENT: production
   TEMPLATE_FILE: .github/workflows/demo/ec2-autoscaling-group.yaml
   VPC_STACK: haystack-demo-production-vpc
-  INSTANCE_TYPE: p3.2xlarge
+  INSTANCE_TYPE: g4dn.2xlarge
 
 permissions:
   id-token: write

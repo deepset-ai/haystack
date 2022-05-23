@@ -136,12 +136,12 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
 
     def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         """
-        Returns documents containing classification result in meta field.
+        Returns documents containing classification result in a meta field.
         Documents are updated in place.
 
-        :param documents: List of Document to classify
-        :param batch_size: Number of Documents to classify at a time.
-        :return: List of Document enriched with meta information
+        :param documents: A list of Documents to classify.
+        :param batch_size: The number of Documents to classify at a time.
+        :return: A list of Documents enriched with meta information.
         """
         if batch_size is None:
             batch_size = self.batch_size
