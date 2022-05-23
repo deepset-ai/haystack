@@ -70,31 +70,15 @@ def get_component_definitions(
 
     raw_pipeline_config = pipeline_config["components"]
 
-    # If there is at least one env var that needs to be applied to this config,
-    # then try to deep-copy it to avoid mutating the input pipeline_config unexpectedly.
-    # In some cases however the deepcopy can break auth objects (like SSL context),
-    # so we should avoid it as much as possible.
-    if overwrite_with_env_variables:
-        for component_def in pipeline_config["components"]:
-            for key, value in os.environ.items():
-                if key.startswith(f"{component_def['name']}_params_".upper()):
-                    try:
-                        raw_pipeline_config = deepcopy(pipeline_config["components"])
-                    except Exception as e:
-                        raise PipelineError(
-                            "Cannot overwrite the pipeline configuration with environment variables "
-                            "if such config contains un-copiable objects.\n"
-                            f"Exception raised: {str(e)}"
-                        ) from e
-
     for raw_component_definition in raw_pipeline_config:
         name = raw_component_definition["name"]
-        component_definition = {key: value for key, value in raw_component_definition.items() if key != "name"}
+        component_definition = {key: copy(value) for key, value in raw_component_definition.items() if key != "name"}
         component_definitions[name] = component_definition
 
         if overwrite_with_env_variables:
             for key, value in os.environ.items():
-                if key.startswith(f"{name}_params_".upper()):
+                env_prefix = f"{name}_params_".upper()
+                if key.startswith(env_prefix):
                     param_name = key.replace(env_prefix, "").lower()
                     component_definition["params"][param_name] = value
                     logger.info(
