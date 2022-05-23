@@ -156,7 +156,7 @@ jobs:
       run: |
         set -e   # Fails on any error in the following loop
         for script in ${{ matrix.script-path }};
-          echo 
+          echo ""
           echo "============================================================="
           echo "Running $script (can take up to 15 minutes) ..."
           echo "============================================================="
