@@ -18,6 +18,8 @@ disable = [
   # To keep
   "fixme",
   "c-extension-no-member",
+  "wrong-spelling-in-comment",
+  "wrong-spelling-in-docstring",
 
   # To review:
   "missing-docstring",

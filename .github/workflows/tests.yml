@@ -43,6 +43,7 @@ jobs:
         # Run mypy --install-types haystack locally to ensure the list is still up to date
         # mypy --install-types --non-interactive .
         pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
+    
     - name: Mypy
       run: |
         echo "=== haystack/ ==="
@@ -72,9 +73,15 @@ jobs:
         pip install .[all]
         pip install rest_api/
         pip install ui/
+
+    - uses: jitterbit/get-changed-files@v1
+      id: modified_files
+        
+    # Pylint can take minutes to run on the entire codebase. Let's limit the number of files
+    # it checks to the ones that have been modified in this PR
     - name: Pylint
       run: |
-        pylint -ry -j 0 haystack/ rest_api/ ui/
+        pylint -ry -j 0 ${{ steps.modified_files.outputs.added_modified }}
 
 
   unit-tests-linux:
