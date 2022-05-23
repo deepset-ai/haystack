@@ -73,8 +73,12 @@ jobs:
     # it checks to the ones that have been modified in this PR
     - name: Pylint
       run: |
-        pylint -ry -j 0 ${{ steps.modified_files.outputs.added_modified }}
-
+        for changed_file in ${{ steps.modified_files.outputs.added_modified }}; do
+          if [[ "$changed_file" =~ (haystack|rest_api|ui)/.*.py ]]; then
+            FILES_TO_LINT="$FILES_TO_LINT ${changed_file}";
+          fi
+        done
+        pylint -ry -j 0 $FILES_TO_LINT
 
   unit-tests-linux:
     needs:
