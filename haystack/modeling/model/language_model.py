@@ -1578,11 +1578,11 @@ class BigBird(LanguageModel):
 
 class DebertaV2(LanguageModel):
     """
-    This is a wrapper around the DebertaV2 model from HuggingFace's transformers library.
+    This is a wrapper around the DebertaV2 model from Hugging Face's transformers library.
     It is also compatible with DebertaV3 as DebertaV3 only changes the pretraining procedure.
 
     NOTE:
-    - DebertaV2 does not output the pooled_output. An additional pooler is initialized.
+    - DebertaV2 does not output the `pooled_output`. An additional pooler is initialized.
     """
 
     def __init__(self):
@@ -1595,13 +1595,13 @@ class DebertaV2(LanguageModel):
     @silence_transformers_logs
     def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
         """
-        Load a pretrained model by supplying
+        Load a pretrained model by supplying one of the following:
 
-        * a remote name from Huggingface's modelhub ("microsoft/deberta-v3-base" ...)
-        * OR a local path of a model trained via transformers ("some_dir/huggingface_model")
-        * OR a local path of a model trained via Haystack ("some_dir/haystack_model")
+        * A remote name from the Hugging Face's model hub (for example: microsoft/deberta-v3-base)
+        * A local path of a model trained using transformers (for example: some_dir/huggingface_model)
+        * A local path of a model trained using Haystack (for example: some_dir/haystack_model)
 
-        :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
+        :param pretrained_model_name_or_path: The path to the saved pretrained model or the name of the model.
         """
         debertav2 = cls()
         if "haystack_lm_name" in kwargs:
@@ -1646,11 +1646,11 @@ class DebertaV2(LanguageModel):
         """
         Perform the forward pass of the DebertaV2 model.
 
-        :param input_ids: The ids of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len]
-        :param padding_mask: A mask that assigns a 1 to valid input tokens and 0 to padding tokens
-           of shape [batch_size, max_seq_len]
-        :param output_hidden_states: Whether to output hidden states in addition to the embeddings
-        :param output_attentions: Whether to output attentions in addition to the embeddings
+        :param input_ids: The IDs of each token in the input sequence. Is a tensor of shape [batch_size, max_seq_len].
+        :param padding_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
+           of shape [batch_size, max_seq_len].
+        :param output_hidden_states: When set to `True`, outputs hidden states in addition to the embeddings.
+        :param output_attentions: When set to `True`, outputs attentions in addition to the embeddings.
         :return: Embeddings for each token in the input sequence.
         """
         output_tuple = self.model(input_ids, token_type_ids=segment_ids, attention_mask=padding_mask, return_dict=False)
