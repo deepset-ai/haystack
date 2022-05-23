@@ -317,6 +317,7 @@ class Pipeline:
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         timeout: int = 60,
+        show_curl_message: bool = True,
     ):
         """
         Deploys the pipelines of a pipeline config on Deepset Cloud.
@@ -335,9 +336,10 @@ class Pipeline:
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param timeout: The time in seconds to wait until deployment completes.
                         If the timeout is exceeded an error will be raised.
+        :param show_curl_message: Whether to print an additional message after successful deployment showing how to query the pipeline using curl.
         """
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        client.deploy(pipeline_config_name=pipeline_config_name, timeout=timeout)
+        client.deploy(pipeline_config_name=pipeline_config_name, timeout=timeout, show_curl_message=show_curl_message)
 
     @classmethod
     def undeploy_on_deepset_cloud(

@@ -466,7 +466,12 @@ class PipelineClient:
             logger.warning(f"Unexpected response from updating pipeline config: {response}")
 
     def deploy(
-        self, pipeline_config_name: Optional[str] = None, workspace: str = None, headers: dict = None, timeout: int = 60
+        self,
+        pipeline_config_name: Optional[str] = None,
+        workspace: str = None,
+        headers: dict = None,
+        timeout: int = 60,
+        show_curl_message: bool = True,
     ):
         """
         Deploys the pipelines of a pipeline config on deepset Cloud.
@@ -480,6 +485,7 @@ class PipelineClient:
         :param headers: Headers to pass to API call
         :param timeout: The time in seconds to wait until deployment completes.
                         If the timeout is exceeded an error will be raised.
+        :param show_curl_message: Whether to print an additional message after successful deployment showing how to query the pipeline using curl.
         """
         status, changed = self._transition_pipeline_state(
             target_state=PipelineStatus.DEPLOYED,
@@ -489,11 +495,36 @@ class PipelineClient:
             headers=headers,
         )
 
+        if workspace is None:
+            workspace = self.workspace
+        if pipeline_config_name is None:
+            pipeline_config_name = self.pipeline_config_name
+
+        pipeline_url = f"{self.client.api_endpoint}/workspaces/{workspace}/pipelines/{pipeline_config_name}/search"
+
         if status == PipelineStatus.DEPLOYED:
             if changed:
                 logger.info(f"Pipeline config '{pipeline_config_name}' successfully deployed.")
             else:
                 logger.info(f"Pipeline config '{pipeline_config_name}' is already deployed.")
+            logger.info(
+                f"Search endpoint for pipeline config '{pipeline_config_name}' is up and running for you under {pipeline_url}"
+            )
+            if show_curl_message:
+                curl_cmd = (
+                    f"curl -X 'POST' \\\n"
+                    f"  '{pipeline_url}' \\\n"
+                    f"  -H 'accept: application/json' \\\n"
+                    f"  -H 'Authorization: Bearer <INSERT_TOKEN_HERE>' \\\n"
+                    f"  -H 'Content-Type: application/json' \\\n"
+                    f"  -d '{{\n"
+                    f'  "queries": [\n'
+                    f'    "Is there an answer to this question?"\n'
+                    f"  ]\n"
+                    f"}}'"
+                )
+                logger.info(f"Try it out using the following curl command:\n{curl_cmd}")
+
         elif status == PipelineStatus.DEPLOYED_UNHEALTHY:
             logger.warning(
                 f"Deployment of pipeline config '{pipeline_config_name}' succeeded. But '{pipeline_config_name}' is unhealthy."
