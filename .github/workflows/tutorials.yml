@@ -21,50 +21,74 @@ on:
 
 jobs:
 
-  notebooks-matrix:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - id: notebooks-matrix
-        run: echo "::set-output name=matrix::$(find tutorials/ -name "*.ipynb" | jq -SR . | jq -cs .)"
-    outputs:
-      matrix: ${{ steps.notebooks-matrix.outputs.matrix }}
+  # notebooks-matrix:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - id: notebooks-matrix
+  #       run: echo "::set-output name=matrix::$(find tutorials/ -name "*.ipynb" | jq -SR . | jq -cs .)"
+  #   outputs:
+  #     matrix: ${{ steps.notebooks-matrix.outputs.matrix }}
 
 
-  scripts-matrix:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - id: scripts-matrix
-        run: echo "::set-output name=matrix::$(find tutorials/ -name "*.py" | jq -SR . | jq -cs .)"
-    outputs:
-      matrix: ${{ steps.scripts-matrix.outputs.matrix }}
+  # scripts-matrix:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - id: scripts-matrix
+  #       run: echo "::set-output name=matrix::$(find tutorials/ -name "*.py" | jq -SR . | jq -cs .)"
+  #   outputs:
+  #     matrix: ${{ steps.scripts-matrix.outputs.matrix }}
 
 
-  notebooks:
-    needs: notebooks-matrix
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        notebook-path: ${{fromJson(needs.notebooks-matrix.outputs.matrix)}}
-      fail-fast: false
+  # notebooks:
+  #   needs: notebooks-matrix
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       notebook-path: #${{fromJson(needs.notebooks-matrix.outputs.matrix)}}
+  #       script-path:
+  #         # This lasts about 40 mins
+  #         - [
+  #             "tutorials/Tutorial1_Basic_QA_Pipeline.ipynb",                         #  2 mins
+  #             # Tutorial 2 takes over a hour withouth GPU
+  #             "tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb",   #  3 mins
+  #             "tutorials/Tutorial4_FAQ_style_QA.ipynb",                              #  2 mins
+  #             "tutorials/Tutorial5_Evaluation.ipynb",                                # 12 mins
+  #             "tutorials/TTutorial6_Better_Retrieval_via_DPR.ipynb",                 # 12 mins
+  #             "tutorials/Tutorial7_RAG_Generator.ipynb"                              #  6 mins
+  #           ]
+  #         - [
+  #             "tutorials/Tutorial8_Preprocessing.ipynb",     # 2 mins
+  #             # Tutorial 9 takes over a hour without GPU
+  #             "tutorials/Tutorial10_Knowledge_Graph.ipynb",  # ? mins
+  #             "tutorials/Tutorial11_Pipelines.ipynb",        # ? mins
+  #             "tutorials/Tutorial12_LFQA.ipynb"              # 13 mins
+  #           ]
+  #         - [
+  #             # Tutorial 13 takes over a hour without GPU
+  #             "tutorials/Tutorial14_Query_Classifier.ipynb",                    # ? mins
+  #             "tutorials/Tutorial15_TableQA.ipynb",                             # 10 mins
+  #             "tutorials/Tutorial16_Document_Classifier_at_Index_Time.ipynb ",  # ? mins
+  #           ]
+  #     fail-fast: false
 
-    steps:
-    - uses: actions/checkout@v2
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.7
+  #   - name: Set up Python 3.7
+  #     uses: actions/setup-python@v2
+  #     with:
+  #       python-version: 3.7
 
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+  #   - name: Install pdftotext
+  #     run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Run notebook
-      run: |
-        pip install ipython nbformat
-        sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${{ matrix.notebook-path }}"
+  #   - name: Run notebook
+  #     run: |
+  #       pip install ipython nbformat
+  #       sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${{ matrix.notebook-path }}"
 
 
   scripts:
@@ -72,7 +96,30 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        script-path: ${{fromJson(needs.scripts-matrix.outputs.matrix)}}
+        script-path:
+        # This lasts about 40 mins
+        - [
+            "tutorials/Tutorial1_Basic_QA_Pipeline.py",                         #  2 mins
+            # Tutorial 2 takes over a hour withouth GPU
+            "tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py",   #  3 mins
+            "tutorials/Tutorial4_FAQ_style_QA.py",                              #  2 mins
+            "tutorials/Tutorial5_Evaluation.py",                                # 12 mins
+            "tutorials/TTutorial6_Better_Retrieval_via_DPR.py",                 # 12 mins
+            "tutorials/Tutorial7_RAG_Generator.py"                              #  6 mins
+          ]
+        - [
+            "tutorials/Tutorial8_Preprocessing.py",     # 2 mins
+            # Tutorial 9 takes over a hour without GPU
+            "tutorials/Tutorial10_Knowledge_Graph.py",  # ? mins
+            "tutorials/Tutorial11_Pipelines.py",        # ? mins
+            "tutorials/Tutorial12_LFQA.py"              # 13 mins
+          ]
+        - [
+            # Tutorial 13 takes over a hour without GPU
+            "tutorials/Tutorial14_Query_Classifier.py",                    # ? mins
+            "tutorials/Tutorial15_TableQA.py",                             # 10 mins
+            "tutorials/Tutorial16_Document_Classifier_at_Index_Time.py ",  # ? mins
+          ]
       fail-fast: false
 
     steps:
@@ -96,6 +143,9 @@ jobs:
     - name: Run Apache Tika
       run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
 
+    - name: Run GraphDB
+      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
+
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
@@ -109,6 +159,7 @@ jobs:
         pip install --upgrade pip
         pip install .[all]
         pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+        pip install pygraphviz
 
     - name: Run script
       run: python ${{ matrix.script-path }}
