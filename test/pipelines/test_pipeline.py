@@ -981,7 +981,7 @@ def test_undeploy_on_deepset_cloud_non_existing_pipeline():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_deploy_on_deepset_cloud():
+def test_deploy_on_deepset_cloud(caplog):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -1000,9 +1000,48 @@ def test_deploy_on_deepset_cloud():
                 status=200,
             )
 
-    Pipeline.deploy_on_deepset_cloud(
-        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
-    )
+    with caplog.at_level(logging.INFO):
+        pipeline_url = f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/search"
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+        assert "Pipeline config 'test_new_non_existing_pipeline' successfully deployed." in caplog.text
+        assert pipeline_url in caplog.text
+        assert "curl" in caplog.text
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_no_curl_message(caplog):
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with caplog.at_level(logging.INFO):
+        pipeline_url = f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/search"
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+            show_curl_message=False,
+        )
+        assert "Pipeline config 'test_new_non_existing_pipeline' successfully deployed." in caplog.text
+        assert pipeline_url in caplog.text
+        assert "curl" not in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
