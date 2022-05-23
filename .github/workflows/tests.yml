@@ -75,6 +75,8 @@ jobs:
     - name: Pylint
       run: |
         pylint -ry -j 0 haystack/ rest_api/ ui/
+
+
   unit-tests-linux:
     needs:
      - mypy
@@ -107,7 +109,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not graphdband not integration" test/${{ matrix.folder }} --document_store_type=memory
   
   
   unit-tests-windows:
@@ -140,7 +142,7 @@ jobs:
         choco install xpdf-utils
         choco install openjdk11
         refreshenv
-        
+
     - name: Install Haystack
       run: pip install .
 
