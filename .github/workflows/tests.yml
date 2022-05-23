@@ -78,6 +78,9 @@ jobs:
             FILES_TO_LINT="$FILES_TO_LINT ${changed_file}";
           fi
         done
+
+        echo $FILES_TO_LINT
+        
         pylint -ry -j 0 $FILES_TO_LINT
 
   unit-tests-linux:
