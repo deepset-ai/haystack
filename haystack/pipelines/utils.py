@@ -74,6 +74,7 @@ def generate_code(
         component_definitions=component_definitions,
         component_variable_names=component_variable_names,
         dependency_graph=component_dependency_graph,
+        pipeline_definition=pipeline_definition,
     )
     pipeline_code = _generate_pipeline_code(
         pipeline_definition=pipeline_definition,
@@ -109,7 +110,10 @@ def _generate_pipeline_code(
 
 
 def _generate_components_code(
-    component_definitions: Dict[str, Any], component_variable_names: Dict[str, str], dependency_graph: DiGraph
+    component_definitions: Dict[str, Any],
+    component_variable_names: Dict[str, str],
+    dependency_graph: DiGraph,
+    pipeline_definition: Dict[str, Any],
 ) -> str:
     code = ""
     declarations = {}
@@ -121,7 +125,11 @@ def _generate_components_code(
             for key, value in definition.get("params", {}).items()
         }
         init_args = ", ".join(f"{key}={value}" for key, value in param_value_dict.items())
-        declarations[name] = f"{variable_name} = {class_name}({init_args})"
+        declaration = f"{variable_name} = {class_name}({init_args})"
+        # set name of subcomponents explicitly if it's not the default name as it won't be set via Pipeline.add_node()
+        if name != class_name and name not in (node["name"] for node in pipeline_definition["nodes"]):
+            declaration = f'{declaration}\n{variable_name}.name = "{name}"'
+        declarations[name] = declaration
 
     ordered_components = nx.topological_sort(dependency_graph)
     ordered_declarations = [declarations[component] for component in ordered_components]

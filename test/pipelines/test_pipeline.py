@@ -467,6 +467,7 @@ def test_generate_code_imports():
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "retri_2 = TfidfRetriever(document_store=document_store)\n"
         "\n"
@@ -497,6 +498,7 @@ def test_generate_code_imports_no_pipeline_cls():
         "from haystack.nodes import BM25Retriever\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -524,6 +526,7 @@ def test_generate_code_comment():
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -717,6 +720,7 @@ def test_load_from_deepset_cloud_query():
     assert isinstance(retriever, BM25Retriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
     assert document_store == query_pipeline.get_document_store()
+    assert document_store.name == "DocumentStore"
 
     prediction = query_pipeline.run(query="man on horse", params={})
 
@@ -977,7 +981,7 @@ def test_undeploy_on_deepset_cloud_non_existing_pipeline():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_deploy_on_deepset_cloud():
+def test_deploy_on_deepset_cloud(caplog):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -996,9 +1000,48 @@ def test_deploy_on_deepset_cloud():
                 status=200,
             )
 
-    Pipeline.deploy_on_deepset_cloud(
-        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
-    )
+    with caplog.at_level(logging.INFO):
+        pipeline_url = f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/search"
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+        assert "Pipeline config 'test_new_non_existing_pipeline' successfully deployed." in caplog.text
+        assert pipeline_url in caplog.text
+        assert "curl" in caplog.text
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_no_curl_message(caplog):
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with caplog.at_level(logging.INFO):
+        pipeline_url = f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/search"
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+            show_curl_message=False,
+        )
+        assert "Pipeline config 'test_new_non_existing_pipeline' successfully deployed." in caplog.text
+        assert pipeline_url in caplog.text
+        assert "curl" not in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)

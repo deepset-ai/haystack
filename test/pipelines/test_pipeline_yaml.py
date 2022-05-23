@@ -491,6 +491,9 @@ def test_load_yaml_custom_component_referencing_other_node_in_init(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert isinstance(pipeline.get_node("custom_node"), CustomNode)
+    assert isinstance(pipeline.get_node("custom_node").other_node, OtherNode)
+    assert pipeline.get_node("custom_node").name == "custom_node"
+    assert pipeline.get_node("custom_node").other_node.name == "other_node"
 
 
 def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
