@@ -95,29 +95,22 @@ jobs:
     strategy:
       matrix:
         script-path:
-        # This lasts about 40 mins
-        - [
-            "tutorials/Tutorial1_Basic_QA_Pipeline.py",                         #  2 mins
-            # Tutorial 2 takes over a hour withouth GPU
-            "tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py",   #  3 mins
-            "tutorials/Tutorial4_FAQ_style_QA.py",                              #  2 mins
-            "tutorials/Tutorial5_Evaluation.py",                                # 12 mins
-            "tutorials/TTutorial6_Better_Retrieval_via_DPR.py",                 # 12 mins
-            "tutorials/Tutorial7_RAG_Generator.py"                              #  6 mins
-          ]
-        - [
-            "tutorials/Tutorial8_Preprocessing.py",     # 2 mins
-            # Tutorial 9 takes over a hour without GPU
-            "tutorials/Tutorial10_Knowledge_Graph.py",  # ? mins
-            "tutorials/Tutorial11_Pipelines.py",        # ? mins
-            "tutorials/Tutorial12_LFQA.py"              # 13 mins
-          ]
-        - [
-            # Tutorial 13 takes over a hour without GPU
-            "tutorials/Tutorial14_Query_Classifier.py",                    # ? mins
-            "tutorials/Tutorial15_TableQA.py",                             # 10 mins
-            "tutorials/Tutorial16_Document_Classifier_at_Index_Time.py ",  # ? mins
-          ]
+        - "tutorials/Tutorial1_Basic_QA_Pipeline.py \
+           tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py \
+           tutorials/Tutorial4_FAQ_style_QA.py \
+           tutorials/Tutorial5_Evaluation.py \
+           tutorials/TTutorial6_Better_Retrieval_via_DPR.py \
+           tutorials/Tutorial7_RAG_Generator.py"
+
+        - "tutorials/Tutorial8_Preprocessing.py \
+           tutorials/Tutorial10_Knowledge_Graph.py \
+           tutorials/Tutorial11_Pipelines.py \
+           tutorials/Tutorial12_LFQA.py"
+
+        - "tutorials/Tutorial14_Query_Classifier.py \
+           tutorials/Tutorial15_TableQA.py \
+           tutorials/Tutorial16_Document_Classifier_at_Index_Time.py"
+
       fail-fast: false
 
     steps:
