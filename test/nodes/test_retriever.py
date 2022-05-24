@@ -1,8 +1,10 @@
 import logging
 import time
+from math import isclose
 
 import numpy as np
 import pandas as pd
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 import pytest
 from pathlib import Path
@@ -19,36 +21,6 @@ from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderToken
 
 from ..conftest import SAMPLES_PATH
 
-
-@pytest.fixture()
-def docs():
-    documents = [
-        Document(
-            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
-            meta={"name": "0"},
-            id="1",
-        ),
-        Document(
-            content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
-            id="2",
-        ),
-        Document(
-            content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
-            meta={"name": "1"},
-            id="3",
-        ),
-        Document(
-            content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
-            meta={"name": "2"},
-            id="4",
-        ),
-        Document(
-            content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
-            meta={},
-            id="5",
-        ),
-    ]
-    return documents
 
 
 # TODO check if we this works with only "memory" arg
@@ -191,30 +163,21 @@ def test_elasticsearch_custom_query():
     "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_dpr_embedding(document_store, retriever, docs):
-
+def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs):
     document_store.return_embedding = True
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever=retriever)
-    time.sleep(1)
+    #time.sleep(1)
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
 
-    # always normalize vector as faiss returns normalized vectors and other document stores do not
-    doc_1 = document_store.get_document_by_id("1").embedding
-    doc_1 /= np.linalg.norm(doc_1)
-    assert len(doc_1) == 768
-    assert abs(doc_1[0] - (-0.0250)) < 0.001
-    doc_2 = document_store.get_document_by_id("2").embedding
-    doc_2 /= np.linalg.norm(doc_2)
-    assert abs(doc_2[0] - (-0.0314)) < 0.001
-    doc_3 = document_store.get_document_by_id("3").embedding
-    doc_3 /= np.linalg.norm(doc_3)
-    assert abs(doc_3[0] - (-0.0200)) < 0.001
-    doc_4 = document_store.get_document_by_id("4").embedding
-    doc_4 /= np.linalg.norm(doc_4)
-    assert abs(doc_4[0] - (-0.0070)) < 0.001
-    doc_5 = document_store.get_document_by_id("5").embedding
-    doc_5 /= np.linalg.norm(doc_5)
-    assert abs(doc_5[0] - (-0.0049)) < 0.001
+    expected_values = [0.004824, 0.0109665, 0.008921, 0.007801, -0.006259]
+    for doc, expected_value in zip(docs, expected_values):
+        embedding = doc.embedding
+        # always normalize vector as faiss returns normalized vectors and other document stores do not
+        embedding /= np.linalg.norm(embedding)
+        assert len(embedding) == 768
+        assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
 @pytest.mark.slow
@@ -231,14 +194,14 @@ def test_retribert_embedding(document_store, retriever, docs):
     document_store.return_embedding = True
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever=retriever)
-    time.sleep(1)
+    #time.sleep(1)
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
 
-    assert len(document_store.get_document_by_id("1").embedding) == 128
-    assert abs(document_store.get_document_by_id("1").embedding[0]) < 0.6
-    assert abs(document_store.get_document_by_id("2").embedding[0]) < 0.03
-    assert abs(document_store.get_document_by_id("3").embedding[0]) < 0.095
-    assert abs(document_store.get_document_by_id("4").embedding[0]) < 0.3
-    assert abs(document_store.get_document_by_id("5").embedding[0]) < 0.32
+    expected_values = [0.67040485, 0.7178848, 0.6866518, 0.28742933, 0.71808386]
+    for doc, expected_value in zip(docs, expected_values):
+        assert len(doc.embedding) == 128
+        assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
 
 
 @pytest.mark.slow
