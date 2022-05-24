@@ -1812,13 +1812,12 @@ def test_batch_querying_single_query(document_store_with_docs):
         SAMPLES_PATH / "pipeline" / "test.haystack-pipeline.yml", pipeline_name="query_pipeline"
     )
     query_pipeline.components["ESRetriever"].document_store = document_store_with_docs
-    result = query_pipeline.run_batch(queries="Who lives in Berlin?")
-    # As we have a single query as input, this Pipeline will retrieve a list of relevant documents, apply the reader to
-    # each of the documents and return the predicted answers for each document
+    result = query_pipeline.run_batch(queries=["Who lives in Berlin?"])
     assert isinstance(result["answers"], list)
     assert isinstance(result["answers"][0], list)
     assert isinstance(result["answers"][0][0], Answer)
-    assert len(result["answers"]) == 5  # Predictions for 5 docs, as top-k is set to 5 for the retriever
+    assert len(result["answers"]) == 1  # Predictions for 1 collection of docs (single query)
+    assert len(result["answers"][0]) == 5  # Reader top-k set to 5
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)

@@ -40,7 +40,7 @@ def test_extractor_batch_single_query(document_store_with_docs):
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run_batch(
-        queries="Who lives in Berlin?", params={"ESRetriever": {"top_k": 1}, "Reader": {"top_k": 1}}
+        queries=["Who lives in Berlin?"], params={"ESRetriever": {"top_k": 1}, "Reader": {"top_k": 1}}
     )
     entities = [entity["word"] for entity in prediction["answers"][0][0].meta["entities"]]
     assert "Carla" in entities

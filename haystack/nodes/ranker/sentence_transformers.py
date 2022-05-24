@@ -125,7 +125,7 @@ class SentenceTransformersRanker(BaseRanker):
 
     def predict_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -136,7 +136,7 @@ class SentenceTransformersRanker(BaseRanker):
         Returns lists of Documents sorted by (desc.) similarity with the corresponding queries.
 
 
-        - If you provide a single query...
+        - If you provide a list containing a single query...
 
             - ... and a single list of Documents, the single list of Documents will be re-ranked based on the
               supplied query.
@@ -144,7 +144,7 @@ class SentenceTransformersRanker(BaseRanker):
               supplied query.
 
 
-        - If you provide a list of queries...
+        - If you provide a list of multiple queries...
 
             - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
               its corresponding query.
@@ -215,50 +215,36 @@ class SentenceTransformersRanker(BaseRanker):
             return result
 
     def _preprocess_batch_queries_and_docs(
-        self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]
+        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
     ) -> Tuple[List[int], List[str], List[Document], bool]:
         number_of_docs = []
         all_queries = []
         all_docs: List[Document] = []
         single_list_of_docs = False
 
-        # Query case 1: single query
-        if isinstance(queries, str):
-            query = queries
-            # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
-            if len(documents) > 0 and isinstance(documents[0], Document):
-                number_of_docs = [len(documents)]
-                all_queries = [query] * len(documents)
-                all_docs = documents  # type: ignore
-                single_list_of_docs = True
+        # Docs case 1: single list of Documents -> rerank single list of Documents based on single query
+        if len(documents) > 0 and isinstance(documents[0], Document):
+            if len(queries) != 1:
+                raise HaystackError("Number of queries must be 1 if a single list of Documents is provided.")
+            query = queries[0]
+            number_of_docs = [len(documents)]
+            all_queries = [query] * len(documents)
+            all_docs = documents  # type: ignore
+            single_list_of_docs = True
 
-            # Docs case 2: list of lists of Documents -> rerank each list of Documents based on single query
-            elif len(documents) > 0 and isinstance(documents[0], list):
-                for docs in documents:
-                    if not isinstance(docs, list):
-                        raise HaystackError(f"docs was of type {type(docs)}, but expected a list of Documents.")
-                    number_of_docs.append(len(docs))
-                    all_queries.extend([query] * len(docs))
-                    all_docs.extend(docs)
-
-        # Query case 2: list of queries
-        elif isinstance(queries, list) and len(queries) > 0 and isinstance(queries[0], str):
-            # Docs case 1: single list of Documents -> Not applicable
-            if len(documents) > 0 and isinstance(documents[0], Document):
-                raise HaystackError(
-                    "A list of lists of Documents needs to be provided if a list of queries is provided."
-                )
-
-            # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
-            if len(documents) > 0 and isinstance(documents[0], list):
-                if len(queries) != len(documents):
-                    raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, cur_docs in zip(queries, documents):
-                    if not isinstance(cur_docs, list):
-                        raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
-                    number_of_docs.append(len(cur_docs))
-                    all_queries.extend([query] * len(cur_docs))
-                    all_docs.extend(cur_docs)
+        # Docs case 2: list of lists of Documents -> rerank each list of Documents based on corresponding query
+        # If queries contains a single query, apply it to each list of Documents
+        if len(documents) > 0 and isinstance(documents[0], list):
+            if len(queries) == 1:
+                queries = queries * len(documents)
+            if len(queries) != len(documents):
+                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            for query, cur_docs in zip(queries, documents):
+                if not isinstance(cur_docs, list):
+                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                number_of_docs.append(len(cur_docs))
+                all_queries.extend([query] * len(cur_docs))
+                all_docs.extend(cur_docs)
 
         return number_of_docs, all_queries, all_docs, single_list_of_docs
 
