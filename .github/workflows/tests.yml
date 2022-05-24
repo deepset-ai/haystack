@@ -148,7 +148,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
   
 
   elasticsearch-tests-linux:
@@ -211,7 +211,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" --document_store_type=elasticsearch
+        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} --document_store_type=elasticsearch
   
 
   faiss-tests-linux:
@@ -268,7 +268,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=faiss
+        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=faiss
 
 
   milvus-tests-linux:
@@ -340,7 +340,7 @@ jobs:
   #     env:
   #       TOKENIZERS_PARALLELISM: 'false'
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=milvus
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=milvus
 
 
   weaviate-tests-linux:
@@ -404,7 +404,7 @@ jobs:
   #     env:
   #       TOKENIZERS_PARALLELISM: 'false'
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=weaviate
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
 
 
   pinecone-tests-linux:
@@ -464,7 +464,7 @@ jobs:
   #       TOKENIZERS_PARALLELISM: 'false'
   #       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/document_stores/ --document_store_type=pinecone
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
 
 
   rest-and-ui-tests-linux:
@@ -528,7 +528,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" rest_api/ ui/
+        pytest ${{ env.PYTEST_PARAMS }} ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} rest_api/ ui/
   
 
   integration-tests-linux:
@@ -637,7 +637,7 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
       # FIXME many tests are disabled here!
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" -k "${{ env.SUITES_EXCLUDED_FROM_WINDOWS }}" test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
+        pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
  
  
   # This CI action mirrors autoformat.yml, with the difference that it
