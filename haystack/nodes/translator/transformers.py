@@ -149,7 +149,7 @@ class TransformersTranslator(BaseTranslator):
 
     def translate_batch(
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
         batch_size: Optional[int] = None,
     ) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]:
@@ -170,13 +170,10 @@ class TransformersTranslator(BaseTranslator):
 
         # Translate queries
         if queries:
-            if isinstance(queries, str):
-                translated = self.run(query=queries)
-            else:
-                translated = []
-                for query in queries:
-                    cur_translation = self.run(query=query)
-                    translated.append(cur_translation)
+            translated = []
+            for query in queries:
+                cur_translation = self.run(query=query)
+                translated.append(cur_translation)
 
         # Translate docs / answers
         elif documents:

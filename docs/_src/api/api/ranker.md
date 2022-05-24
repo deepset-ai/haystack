@@ -136,7 +136,7 @@ List of Document
 #### SentenceTransformersRanker.predict\_batch
 
 ```python
-def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
 ```
 
 Use loaded ranker model to re-rank the supplied lists of Documents.
@@ -144,7 +144,7 @@ Use loaded ranker model to re-rank the supplied lists of Documents.
 Returns lists of Documents sorted by (desc.) similarity with the corresponding queries.
 
 
-- If you provide a single query...
+- If you provide a list containing a single query...
 
     - ... and a single list of Documents, the single list of Documents will be re-ranked based on the
       supplied query.
@@ -152,7 +152,7 @@ Returns lists of Documents sorted by (desc.) similarity with the corresponding q
       supplied query.
 
 
-- If you provide a list of queries...
+- If you provide a list of multiple queries...
 
     - ... you need to provide a list of lists of Documents. Each list of Documents will be re-ranked based on
       its corresponding query.

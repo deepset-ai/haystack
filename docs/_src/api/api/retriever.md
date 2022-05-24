@@ -280,19 +280,23 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BM25Retriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+def retrieve_batch(queries: List[str], filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
-- `queries`: Single query string or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions.
 Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
@@ -435,7 +439,12 @@ def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
 #### TfidfRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str, filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -457,15 +466,14 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TfidfRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+def retrieve_batch(queries: List[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
@@ -662,24 +670,23 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### DensePassageRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+def retrieve_batch(queries: List[str], filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
                 List[Dict[str, Union[Dict, List, str, int, float, bool]]],
             ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
-- `queries`: Single query string or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions. Can be a single filter that will be applied to each query or a list of filters
 (one filter per query).
@@ -941,24 +948,23 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TableTextRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+def retrieve_batch(queries: List[str], filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
                 List[Dict[str, Union[Dict, List, str, int, float, bool]]],
             ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
-- `queries`: Single query string or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions. Can be a single filter that will be applied to each query or a list of filters
 (one filter per query).
@@ -1297,24 +1303,23 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### EmbeddingRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+def retrieve_batch(queries: List[str], filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
                 List[Dict[str, Union[Dict, List, str, int, float, bool]]],
             ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
-- `queries`: Single query string or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions. Can be a single filter that will be applied to each query or a list of filters
 (one filter per query).
@@ -1476,16 +1481,16 @@ Translate a text query to SPARQL and execute it on the knowledge graph to retrie
 #### Text2SparqlRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], top_k: Optional[int] = None)
+def retrieve_batch(queries: List[str], top_k: Optional[int] = None)
 ```
 
-Translate a single query or a list of queries to SPARQL and execute it on the knowledge graph to retrieve
+Translate a list of queries to SPARQL and execute it on the knowledge graph to retrieve
 
-a list of answers / list of lists of answers.
+a list of lists of answers (one per query).
 
 **Arguments**:
 
-- `query`: Single text query or list of queries that shall be translated to SPARQL and then executed on the
+- `queries`: List of queries that shall be translated to SPARQL and then executed on the
 knowledge graph.
 - `top_k`: How many SPARQL queries to generate per text query.
 
