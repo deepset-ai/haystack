@@ -177,8 +177,8 @@ jobs:
         # Cache the GoT data
         mkdir data
         mkdir data/tutorials
-        wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip -q
         cd data/tutorials
+        wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip -q
         unzip wiki_gameofthrones_txt1.zip
         rm wiki_gameofthrones_txt1.zip
         find . -name '[1-9][1-9][0-9]_*.txt' -delete
