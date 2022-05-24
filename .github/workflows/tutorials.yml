@@ -161,6 +161,7 @@ jobs:
     - name: Run tutorials
       run: |
         export LAUNCH_GRAPHDB=0
+        export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
 
         # Cache the GoT data
         mkdir data
