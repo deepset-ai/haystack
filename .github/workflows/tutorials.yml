@@ -157,20 +157,8 @@ jobs:
         pip install pygraphviz
         pip install ipython nbformat
 
-    # - name: Run notebooks
-    #   run: |
-    #     export LAUNCH_GRAPHDB=0
-    #     set -e   # Fails on any error in the following loop
-    #     for script in ${{ matrix.script-path }}; do
-    #       echo ""
-    #       echo "============================================================="
-    #       echo "Running $script ..."
-    #       echo "============================================================="
-    #       echo ""
-    #       sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script.ipynb"
-    #     done
 
-    - name: Run scripts
+    - name: Run tutorials
       run: |
         export LAUNCH_GRAPHDB=0
 
@@ -189,11 +177,15 @@ jobs:
 
         set -e   # Fails on any error in the following loop
         for i in ${!array[@]}; do
-          echo ""
-          echo "============================================================="
-          echo "Running ${array[$i]} ..."
-          echo "============================================================="
-          echo ""
           cp -r data/tutorials data/tutorial$((i+1))
+          echo ""
+          echo "#############################################################"
+          echo "  Running ${array[$i]} ..."
+          echo "#############################################################"
+          echo ""
+          echo "==================== Script ================================="
           python tutorials/Tutorial${array[$i]}.py
+          echo ""
+          echo "==================== Notebook ================================"
+          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script.ipynb"
         done
