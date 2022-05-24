@@ -96,23 +96,26 @@ jobs:
       fail-fast: false
       matrix:
         script-path:
-        - "tutorials/Tutorial1_Basic_QA_Pipeline \
-           tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch \
-           tutorials/Tutorial4_FAQ_style_QA \
-           tutorials/Tutorial5_Evaluation"
+           # 2 is very long
+        - "1_Basic_QA_Pipeline \
+           3_Basic_QA_Pipeline_without_Elasticsearch \
+           4_FAQ_style_QA \
+           5_Evaluation"
 
-        - "tutorials/Tutorial6_Better_Retrieval_via_DPR \
-           tutorials/Tutorial7_RAG_Generator"
+        - "6_Better_Retrieval_via_DPR \
+           7_RAG_Generator"
 
-        - "tutorials/Tutorial8_Preprocessing \
-           tutorials/Tutorial10_Knowledge_Graph"
+          # 9 is very long
+        - "8_Preprocessing \
+           10_Knowledge_Graph"
 
-        - "tutorials/Tutorial11_Pipelines \
-           tutorials/Tutorial12_LFQA"
+        - "11_Pipelines \
+           12_LFQA"
 
-        - "tutorials/Tutorial14_Query_Classifier \
-           tutorials/Tutorial15_TableQA \
-           tutorials/Tutorial16_Document_Classifier_at_Index_Time"
+          # 13 is very long
+        - "14_Query_Classifier \
+           15_TableQA \
+           16_Document_Classifier_at_Index_Time"
 
     steps:
     - uses: actions/checkout@v2
@@ -191,5 +194,5 @@ jobs:
           echo "============================================================="
           echo ""
           cp data/tutorials data/tutorial$i
-          python ${array[$i]}.py
+          python tutorials/Tutorial${array[$i]}.py
         done
