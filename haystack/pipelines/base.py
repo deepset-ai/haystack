@@ -674,24 +674,21 @@ class Pipeline:
                 else:
                     next_nodes = self.get_next_nodes(node_id, stream_id)
                     for n in next_nodes:
-                        if queue.get(n):  # concatenate inputs if it's a join node
-                            existing_input = queue[n]
-                            if "inputs" not in existing_input.keys():
-                                updated_input: Dict = {"inputs": [existing_input, node_output], "params": params}
+                        if self.graph.nodes[n]["component"]._takes_multiple_inputs():  # concatenate inputs if it's a join node
+                            if n not in queue:
+                                new_input = {"inputs": [], "params": params}
                                 if queries:
-                                    updated_input["queries"] = queries
+                                    new_input["queries"] = queries
                                 if file_paths:
-                                    updated_input["file_paths"] = file_paths
+                                    new_input["file_paths"] = file_paths
                                 if labels:
-                                    updated_input["labels"] = labels
+                                    new_input["labels"] = labels
                                 if documents:
-                                    updated_input["documents"] = documents
+                                    new_input["documents"] = documents
                                 if meta:
-                                    updated_input["meta"] = meta
-                            else:
-                                existing_input["inputs"].append(node_output)
-                                updated_input = existing_input
-                            queue[n] = updated_input
+                                    new_input["meta"] = meta
+                            new_input["inputs"].append(node_output)
+                            queue[n] = new_input
                         else:
                             queue[n] = node_output
                 i = 0
