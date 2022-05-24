@@ -2,7 +2,7 @@ import logging
 from abc import ABC
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from functools import wraps
 
 from haystack.schema import Document, EvaluationResult, MultiLabel
@@ -192,6 +192,22 @@ class BaseStandardPipeline(ABC):
             eval_result=eval_result, n_wrong_examples=n_wrong_examples, metrics_filter=metrics_filter
         )
 
+    def run_batch(self, queries: List[str], params: Optional[dict] = None, debug: Optional[bool] = None):
+        """
+        Run a batch of queries through the pipeline.
+
+        :param queries: List of query strings.
+        :param params: Parameters for the individual nodes of the pipeline. For instance,
+                       `params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}`
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+                      about their execution. By default these include the input parameters
+                      they received and the output they generated.
+                      All debug information can then be found in the dict returned
+                      by this method under the key "_debug"
+        """
+        output = self.pipeline.run_batch(queries=queries, params=params, debug=debug)
+        return output
+
 
 class ExtractiveQAPipeline(BaseStandardPipeline):
     """
@@ -330,6 +346,45 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
             results = output
         return results
 
+    def run_batch(self, queries: List[str], params: Optional[dict] = None, debug: Optional[bool] = None):
+        """
+        Run a batch of queries through the pipeline.
+
+        :param queries: List of query strings.
+        :param params: Parameters for the individual nodes of the pipeline. For instance,
+                       `params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}`
+        :param debug: Whether the pipeline should instruct nodes to collect debug information
+                      about their execution. By default these include the input parameters
+                      they received and the output they generated.
+                      All debug information can then be found in the dict returned
+                      by this method under the key "_debug"
+        """
+        output = self.pipeline.run_batch(queries=queries, params=params, debug=debug)
+
+        # Convert to answer format to allow "drop-in replacement" for other QA pipelines
+        if self.return_in_answer_format:
+            results: Dict = {"queries": queries, "answers": []}
+            docs = deepcopy(output["documents"])
+            for query, cur_docs in zip(queries, docs):
+                cur_answers = []
+                for doc in cur_docs:
+                    cur_answer = {
+                        "query": query,
+                        "answer": doc.content,
+                        "document_id": doc.id,
+                        "context": doc.meta.pop("context"),
+                        "score": None,
+                        "offset_start": None,
+                        "offset_end": None,
+                        "meta": doc.meta,
+                    }
+                    cur_answers.append(cur_answer)
+
+                results["answers"].append(cur_answers)
+        else:
+            results = output
+        return results
+
 
 class FAQPipeline(BaseStandardPipeline):
     """
@@ -399,6 +454,10 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         output = self.pipeline.run(**kwargs)
         return output
 
+    def run_batch(self, **kwargs):
+        output = self.pipeline.run_batch(**kwargs)
+        return output
+
 
 class QuestionGenerationPipeline(BaseStandardPipeline):
     """
@@ -412,6 +471,11 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
 
     def run(self, documents, params: Optional[dict] = None, debug: Optional[bool] = None):
         output = self.pipeline.run(documents=documents, params=params, debug=debug)
+        return output
+
+    def run_batch(self, documents: Union[List[Document], List[List[Document]]], params: Optional[dict] = None,  # type: ignore
+                  debug: Optional[bool] = None):
+        output = self.pipeline.run_batch(documents=documents, params=params, debug=debug)
         return output
 
 
@@ -479,6 +543,24 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         self.document_store = document_store
 
     def run(self, document_ids: List[str], top_k: int = 5):
+        """
+        :param document_ids: document ids
+        :param top_k: How many documents id to return against single document
+        """
+        similar_documents: list = []
+        self.document_store.return_embedding = True  # type: ignore
+
+        for document in self.document_store.get_documents_by_id(ids=document_ids):
+            similar_documents.append(
+                self.document_store.query_by_embedding(
+                    query_emb=document.embedding, return_embedding=False, top_k=top_k
+                )
+            )
+
+        self.document_store.return_embedding = False  # type: ignore
+        return similar_documents
+
+    def run_batch(self, document_ids: List[str], top_k: int = 5):  # type: ignore
         """
         :param document_ids: document ids
         :param top_k: How many documents id to return against single document
