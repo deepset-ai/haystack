@@ -90,28 +90,29 @@ jobs:
   #       sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${{ matrix.notebook-path }}"
 
 
-  scripts:
+  tutorials:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         script-path:
-        - "tutorials/Tutorial1_Basic_QA_Pipeline.py \
-           tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py \
-           tutorials/Tutorial4_FAQ_style_QA.py \
-           tutorials/Tutorial5_Evaluation.py \
-           tutorials/Tutorial6_Better_Retrieval_via_DPR.py \
-           tutorials/Tutorial7_RAG_Generator.py"
+        - "tutorials/Tutorial1_Basic_QA_Pipeline \
+           tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch \
+           tutorials/Tutorial4_FAQ_style_QA \
+           tutorials/Tutorial5_Evaluation"
 
-        - "tutorials/Tutorial8_Preprocessing.py \
-           tutorials/Tutorial10_Knowledge_Graph.py \
-           tutorials/Tutorial11_Pipelines.py \
-           tutorials/Tutorial12_LFQA.py"
+        - "tutorials/Tutorial6_Better_Retrieval_via_DPR \
+           tutorials/Tutorial7_RAG_Generator"
 
-        - "tutorials/Tutorial14_Query_Classifier.py \
-           tutorials/Tutorial15_TableQA.py \
-           tutorials/Tutorial16_Document_Classifier_at_Index_Time.py"
+        - "tutorials/Tutorial8_Preprocessing \
+           tutorials/Tutorial10_Knowledge_Graph"
 
-      fail-fast: false
+        - "tutorials/Tutorial11_Pipelines \
+           tutorials/Tutorial12_LFQA"
+
+        - "tutorials/Tutorial14_Query_Classifier \
+           tutorials/Tutorial15_TableQA \
+           tutorials/Tutorial16_Document_Classifier_at_Index_Time"
 
     steps:
     - uses: actions/checkout@v2
@@ -151,6 +152,7 @@ jobs:
         pip install .[all]
         pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
         pip install pygraphviz
+        pip install ipython nbformat
 
     - name: Run script
       run: |
@@ -159,7 +161,8 @@ jobs:
         for script in ${{ matrix.script-path }}; do
           echo ""
           echo "============================================================="
-          echo "Running $script (can take up to 15 minutes) ..."
+          echo "Running $script (can take up to 30 minutes) ..."
           echo "============================================================="
-          python $script
+          python $script.py
+          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script.ipynb"
         done
