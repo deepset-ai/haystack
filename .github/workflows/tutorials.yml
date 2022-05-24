@@ -161,8 +161,9 @@ jobs:
         for script in ${{ matrix.script-path }}; do
           echo ""
           echo "============================================================="
-          echo "Running $script (can take up to 30 minutes) ..."
+          echo "Running $script ..."
           echo "============================================================="
+          echo ""
           python $script.py
           sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script.ipynb"
         done
