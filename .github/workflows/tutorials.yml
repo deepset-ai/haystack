@@ -178,8 +178,9 @@ jobs:
         for script in ${{ matrix.script-path }}; do
 
           # These ones don't use GoT data
-          if [[ "$script" != "8_Preprocessing" ]]; then
-            cp -r data/tutorials data/tutorial${script:0:1}
+          if [[ "$script" != "8_Preprocessing" ]] && [[ "$script" != "4_FAQ" ]]; then
+            split_on_underscore=(${script//_/ })
+            cp -r data/tutorials data/tutorial${split_on_underscore[0]}
           fi
         
           echo ""
