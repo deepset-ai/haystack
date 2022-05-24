@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Optional, List
 
 import logging
 from transformers import BartForConditionalGeneration, BartTokenizer
@@ -61,19 +61,16 @@ class Text2SparqlRetriever(BaseGraphRetriever):
         results = [self.format_result(result) for result in results]
         return results
 
-    def retrieve_batch(self, queries: Union[str, List[str]], top_k: Optional[int] = None):
+    def retrieve_batch(self, queries: List[str], top_k: Optional[int] = None):
         """
-        Translate a single query or a list of queries to SPARQL and execute it on the knowledge graph to retrieve
-        a list of answers / list of lists of answers.
+        Translate a list of queries to SPARQL and execute it on the knowledge graph to retrieve
+        a list of lists of answers (one per query).
 
-        :param query: Single text query or list of queries that shall be translated to SPARQL and then executed on the
-                      knowledge graph.
+        :param queries: List of queries that shall be translated to SPARQL and then executed on the
+                        knowledge graph.
         :param top_k: How many SPARQL queries to generate per text query.
         """
         # TODO: This method currently just calls the retrieve method multiple times, so there is room for improvement.
-
-        if isinstance(queries, str):
-            return self.run(query=queries, top_k=top_k)
 
         results = []
         for query in queries:

@@ -1054,7 +1054,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
     def query_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -1067,15 +1067,14 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
         scale_score: bool = True,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
 
-        This method lets you find relevant documents for a single query string (output: List of Documents), or a
-        a list of query strings (output: List of Lists of Documents).
+        This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
 
-        :param queries: Single query or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. Can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
@@ -1160,11 +1159,6 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if headers is None:
             headers = {}
 
-        single_query = False
-        if not isinstance(queries, list):
-            single_query = True
-            queries = [queries]
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -1199,10 +1193,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             ]
             all_documents.append(cur_documents)
 
-        if single_query:
-            return cur_documents
-        else:
-            return all_documents
+        return all_documents
 
     def _construct_query_body(
         self,

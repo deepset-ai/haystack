@@ -310,13 +310,13 @@ the Nodes received and the output they generated. You can then find all debug in
 #### Pipeline.run\_batch
 
 ```python
-def run_batch(queries: Optional[Union[str, List[str]]] = None, file_paths: Optional[List[str]] = None, labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None, documents: Optional[Union[List[Document], List[List[Document]]]] = None, meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run_batch(queries: List[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None, documents: Optional[Union[List[Document], List[List[Document]]]] = None, meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 Runs the Pipeline in a batch mode, one node at a time. The batch mode means that the Pipeline can take more than one query as input. You can use this method for query pipelines only. When used with an indexing pipeline, it calls the pipeline `run()` method.
 
 Here's what this method returns for Retriever-Reader pipelines:
-- Single query: Retrieves top-k relevant Docments and returns a list of answers for each retrieved Document.
+- Single query: Retrieves top-k relevant Documents and returns a list of answers for each retrieved Document.
 - A list of queries: Retrieves top-k relevant Documents for each query and returns a list of answers for each query.
 
 Here's what this method returns for Reader-only pipelines:
@@ -327,13 +327,13 @@ Here's what this method returns for Reader-only pipelines:
 
 **Arguments**:
 
-- `queries`: Single search query or list of search queries (for query pipelines only).
-- `file_paths`: The files to index (for indexing pipelines only). If you provide `file_paths` the                Pipeline's `run` method instead of `run_batch` is called.
+- `queries`: List of search queries (for query pipelines only).
+- `file_paths`: The files to index (for indexing pipelines only). If you provide `file_paths` the Pipeline's `run` method instead of `run_batch` is called.
 - `labels`: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
 - `documents`: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
 - `meta`: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
 - `params`: Dictionary of parameters to be dispatched to the nodes.
-To pass a parameter to all Nodes, use: `{"top_k":10}`.
+To pass a parameter to all Nodes, use: `{"top_k": 10}`.
 To pass a parameter to targeted Nodes, run:
  `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
 - `debug`: Specifies whether the Pipeline should instruct Nodes to collect debug information

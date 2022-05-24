@@ -83,10 +83,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         else:
             return {}, "output_2"
 
-    def run_batch(self, queries: Union[str, List[str]], batch_size: Optional[int] = None):  # type: ignore
-        if isinstance(queries, str):
-            return self.run(queries)
-
+    def run_batch(self, queries: List[str], batch_size: Optional[int] = None):  # type: ignore
         if batch_size is None:
             batch_size = self.batch_size
 
