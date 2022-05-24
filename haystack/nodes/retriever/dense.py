@@ -6,6 +6,7 @@ from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
+
 import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
@@ -589,6 +590,9 @@ class DensePassageRetriever(BaseRetriever):
         save_dir: str = "../saved_models/dpr",
         query_encoder_save_dir: str = "query_encoder",
         passage_encoder_save_dir: str = "passage_encoder",
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
     ):
         """
         train a DensePassageRetrieval model
@@ -626,6 +630,9 @@ class DensePassageRetriever(BaseRetriever):
         :param save_dir: directory where models are saved
         :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
         :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
+
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
+        If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
         """
         self.processor.embed_title = embed_title
         self.processor.data_dir = Path(data_dir)
@@ -669,7 +676,7 @@ class DensePassageRetriever(BaseRetriever):
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer(
+        trainer = Trainer.create_or_load_checkpoint(
             model=self.model,
             optimizer=optimizer,
             data_silo=data_silo,
@@ -679,6 +686,9 @@ class DensePassageRetriever(BaseRetriever):
             evaluate_every=evaluate_every,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp,
+            checkpoint_root_dir=Path(checkpoint_root_dir),
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
@@ -1278,6 +1288,9 @@ class TableTextRetriever(BaseRetriever):
         query_encoder_save_dir: str = "query_encoder",
         passage_encoder_save_dir: str = "passage_encoder",
         table_encoder_save_dir: str = "table_encoder",
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
     ):
         """
         Train a TableTextRetrieval model.
@@ -1357,7 +1370,7 @@ class TableTextRetriever(BaseRetriever):
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer(
+        trainer = Trainer.create_or_load_checkpoint(
             model=self.model,
             optimizer=optimizer,
             data_silo=data_silo,
@@ -1367,6 +1380,9 @@ class TableTextRetriever(BaseRetriever):
             evaluate_every=evaluate_every,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp,
+            checkpoint_root_dir=Path(checkpoint_root_dir),
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
