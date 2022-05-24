@@ -473,8 +473,12 @@ class QuestionGenerationPipeline(BaseStandardPipeline):
         output = self.pipeline.run(documents=documents, params=params, debug=debug)
         return output
 
-    def run_batch(self, documents: Union[List[Document], List[List[Document]]], params: Optional[dict] = None,  # type: ignore
-                  debug: Optional[bool] = None):
+    def run_batch(
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        params: Optional[dict] = None,  # type: ignore
+        debug: Optional[bool] = None,
+    ):
         output = self.pipeline.run_batch(documents=documents, params=params, debug=debug)
         return output
 
