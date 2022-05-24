@@ -1187,49 +1187,49 @@ class Pipeline:
         for key, df in eval_result.node_results.items():
             desired_col_order = [
                 "multilabel_id",  # generic
-                "query",
-                "filters",
+                "query",  # generic
+                "filters",  # generic
                 "gold_answers",  # answer-specific
-                "answer",
+                "answer",  # answer-specific
                 "context",  # generic
                 "exact_match",  # answer-specific
-                "f1",
-                "sas",
-                "exact_match_context_scope",
-                "f1_context_scope",
-                "sas_context_scope",
-                "exact_match_document_id_scope",
-                "f1_document_id_scope",
-                "sas_document_id_scope",
-                "exact_match_document_and_context_scope",
-                "f1_document_and_context_scope",
-                "sas_document_and_context_scope",
+                "f1",  # answer-specific
+                "sas",  # answer-specific
+                "exact_match_context_scope",  # answer-specific
+                "f1_context_scope",  # answer-specific
+                "sas_context_scope",  # answer-specific
+                "exact_match_document_id_scope",  # answer-specific
+                "f1_document_id_scope",  # answer-specific
+                "sas_document_id_scope",  # answer-specific
+                "exact_match_document_and_context_scope",  # answer-specific
+                "f1_document_and_context_scope",  # answer-specific
+                "sas_document_and_context_scope",  # answer-specific
                 "gold_contexts",  # generic
                 "gold_id_match",  # doc-specific
-                "context_match",
-                "answer_match",
-                "gold_id_or_answer_match",
-                "gold_id_and_answer_match",
-                "gold_id_or_context_match",
-                "gold_id_and_context_match",
-                "gold_id_and_context_and_answer_match",
-                "context_and_answer_match",
+                "context_match",  # doc-specific
+                "answer_match",  # doc-specific
+                "gold_id_or_answer_match",  # doc-specific
+                "gold_id_and_answer_match",  # doc-specific
+                "gold_id_or_context_match",  # doc-specific
+                "gold_id_and_context_match",  # doc-specific
+                "gold_id_and_context_and_answer_match",  # doc-specific
+                "context_and_answer_match",  # doc-specific
                 "rank",  # generic
-                "document_id",
-                "gold_document_ids",
-                "custom_document_id",
-                "gold_custom_document_ids",
+                "document_id",  # generic
+                "gold_document_ids",  # generic
+                "custom_document_id",  # generic
+                "gold_custom_document_ids",  # generic
                 "offsets_in_document",  # answer-specific
-                "gold_offsets_in_documents",
-                "gold_answers_exact_match",
-                "gold_answers_f1",
-                "gold_answers_sas",
-                "gold_documents_id_match",
-                "gold_contexts_similarity",
-                "gold_answers_match",
+                "gold_offsets_in_documents",  # answer-specific
+                "gold_answers_exact_match",  # answer-specific
+                "gold_answers_f1",  # answer-specific
+                "gold_answers_sas",  # answer-specific
+                "gold_documents_id_match",  # generic
+                "gold_contexts_similarity",  # generic
+                "gold_answers_match",  # doc-specific
                 "type",  # generic
-                "node",
-                "eval_mode",
+                "node",  # generic
+                "eval_mode",  # generic
             ]
             eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
 
