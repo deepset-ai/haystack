@@ -1,7 +1,9 @@
 from typing import List, Optional, Dict
 
+import time
 import logging
 from pathlib import Path
+import subprocess
 from html.parser import HTMLParser
 
 import requests
@@ -12,6 +14,30 @@ from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
+TIKA_CONTAINER_NAME = "tika"
+
+
+def launch_tika(sleep=15, delete_existing=False):
+    # Start a Tika server via Docker
+
+    logger.debug("Starting Tika ...")
+    # This line is needed since it is not possible to start a new docker container with the name tika if there is a stopped image with the same name
+    # docker rm only succeeds if the container is stopped, not if it is running
+    if delete_existing:
+        _ = subprocess.run([f"docker rm --force {TIKA_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
+    status = subprocess.run(
+        [
+            f"docker start {TIKA_CONTAINER_NAME} > /dev/null 2>&1 || docker run -p 9998:9998  --name {TIKA_CONTAINER_NAME} apache/tika:1.24.1"
+        ],
+        shell=True,
+    )
+    if status.returncode:
+        logger.warning(
+            "Tried to start Tika through Docker but this failed. "
+            "It is likely that there is already an existing Tika instance running. "
+        )
+    else:
+        time.sleep(sleep)
 
 
 class TikaXHTMLParser(HTMLParser):

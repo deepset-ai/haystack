@@ -1,14 +1,18 @@
+from copy import deepcopy
 from pathlib import Path
 import os
+import ssl
 import json
 import platform
 import sys
 from typing import Tuple
+from pyparsing import original_text_for
 
 import pytest
 from requests import PreparedRequest
 import responses
 import logging
+from transformers import pipeline
 import yaml
 import pandas as pd
 
@@ -19,7 +23,7 @@ from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.pipelines import Pipeline, RootNode
-from haystack.pipelines.config import validate_config_strings
+from haystack.pipelines.config import validate_config_strings, get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
 from haystack.nodes import PreProcessor, TextConverter
@@ -28,7 +32,7 @@ from haystack import Document, Answer
 from haystack.nodes.other.route_documents import RouteDocuments
 from haystack.nodes.other.join_answers import JoinAnswers
 
-from .conftest import (
+from ..conftest import (
     MOCK_DC,
     DC_API_ENDPOINT,
     DC_API_KEY,
@@ -467,6 +471,7 @@ def test_generate_code_imports():
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "retri_2 = TfidfRetriever(document_store=document_store)\n"
         "\n"
@@ -497,6 +502,7 @@ def test_generate_code_imports_no_pipeline_cls():
         "from haystack.nodes import BM25Retriever\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -524,6 +530,7 @@ def test_generate_code_comment():
         "from haystack.pipelines import Pipeline\n"
         "\n"
         "document_store = ElasticsearchDocumentStore()\n"
+        'document_store.name = "DocumentStore"\n'
         "retri = BM25Retriever(document_store=document_store)\n"
         "\n"
         "p = Pipeline()\n"
@@ -717,6 +724,7 @@ def test_load_from_deepset_cloud_query():
     assert isinstance(retriever, BM25Retriever)
     assert isinstance(document_store, DeepsetCloudDocumentStore)
     assert document_store == query_pipeline.get_document_store()
+    assert document_store.name == "DocumentStore"
 
     prediction = query_pipeline.run(query="man on horse", params={})
 
@@ -727,7 +735,7 @@ def test_load_from_deepset_cloud_query():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_load_from_deepset_cloud_indexing():
+def test_load_from_deepset_cloud_indexing(caplog):
     if MOCK_DC:
         with open(SAMPLES_PATH / "dc" / "pipeline_config.json", "r") as f:
             pipeline_config_yaml_response = json.load(f)
@@ -745,10 +753,10 @@ def test_load_from_deepset_cloud_indexing():
     document_store = indexing_pipeline.get_node("DocumentStore")
     assert isinstance(document_store, DeepsetCloudDocumentStore)
 
-    with pytest.raises(
-        Exception, match=".*NotImplementedError.*DeepsetCloudDocumentStore currently does not support writing documents"
-    ):
+    with caplog.at_level(logging.INFO):
         indexing_pipeline.run(file_paths=[SAMPLES_PATH / "docs" / "doc_1.txt"])
+        assert "Note that DeepsetCloudDocumentStore does not support write operations." in caplog.text
+        assert "Input to write_documents: {" in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -977,7 +985,7 @@ def test_undeploy_on_deepset_cloud_non_existing_pipeline():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
-def test_deploy_on_deepset_cloud():
+def test_deploy_on_deepset_cloud(caplog):
     if MOCK_DC:
         responses.add(
             method=responses.POST,
@@ -996,9 +1004,48 @@ def test_deploy_on_deepset_cloud():
                 status=200,
             )
 
-    Pipeline.deploy_on_deepset_cloud(
-        pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
-    )
+    with caplog.at_level(logging.INFO):
+        pipeline_url = f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/search"
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+        assert "Pipeline config 'test_new_non_existing_pipeline' successfully deployed." in caplog.text
+        assert pipeline_url in caplog.text
+        assert "curl" in caplog.text
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_deploy_on_deepset_cloud_no_curl_message(caplog):
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+
+    with caplog.at_level(logging.INFO):
+        pipeline_url = f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/search"
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline",
+            api_endpoint=DC_API_ENDPOINT,
+            api_key=DC_API_KEY,
+            show_curl_message=False,
+        )
+        assert "Pipeline config 'test_new_non_existing_pipeline' successfully deployed." in caplog.text
+        assert pipeline_url in caplog.text
+        assert "curl" not in caplog.text
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -1418,6 +1465,75 @@ def test_graph_validation_duplicate_node():
     pipeline.add_node(name="node", component=node, inputs=["Query"])
     with pytest.raises(PipelineConfigError, match="'node' is already in the pipeline"):
         pipeline.add_node(name="node", component=other_node, inputs=["Query"])
+
+
+# See https://github.com/deepset-ai/haystack/issues/2568
+def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
+    class DummyNode(MockNode):
+        def __init__(self, uncopiable: ssl.SSLContext):
+            self.uncopiable = uncopiable
+
+    node = DummyNode(uncopiable=ssl.SSLContext())
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+
+    # If the object is getting copied, it will raise TypeError: cannot pickle 'SSLContext' object
+    # `get_components_definitions()` should NOT copy objects to allow this usecase
+    get_component_definitions(pipeline.get_config())
+
+
+def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
+    class DummyNode(MockNode):
+        def __init__(self, replaceable: str):
+            self.replaceable = replaceable
+
+    monkeypatch.setenv("NODE_PARAMS_REPLACEABLE", "env value")
+
+    node = DummyNode(replaceable="init value")
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+
+    original_component_config = deepcopy(node._component_config)
+    original_pipeline_config = deepcopy(pipeline.get_config())
+
+    no_env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=False)
+    env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=True)
+
+    new_component_config = deepcopy(node._component_config)
+    new_pipeline_config = deepcopy(pipeline.get_config())
+
+    assert no_env_defs != env_defs
+    assert no_env_defs["node"]["params"]["replaceable"] == "init value"
+    assert env_defs["node"]["params"]["replaceable"] == "env value"
+
+    assert original_component_config == new_component_config
+    assert original_component_config["params"]["replaceable"] == "init value"
+    assert new_component_config["params"]["replaceable"] == "init value"
+
+    assert original_pipeline_config == new_pipeline_config
+    assert original_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
+    assert new_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
+
+
+def test_pipeline_env_vars_do_not_modify_pipeline_config(monkeypatch):
+    class DummyNode(MockNode):
+        def __init__(self, replaceable: str):
+            self.replaceable = replaceable
+
+    monkeypatch.setenv("NODE_PARAMS_REPLACEABLE", "env value")
+
+    node = DummyNode(replaceable="init value")
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+
+    pipeline_config = pipeline.get_config()
+    original_pipeline_config = deepcopy(pipeline_config)
+
+    get_component_definitions(pipeline_config, overwrite_with_env_variables=True)
+
+    assert original_pipeline_config == pipeline_config
+    assert original_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
+    assert pipeline_config["components"][0]["params"]["replaceable"] == "init value"
 
 
 def test_parallel_paths_in_pipeline_graph():
