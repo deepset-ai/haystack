@@ -1,3 +1,4 @@
+import os
 import logging
 import subprocess
 import time
@@ -23,7 +24,7 @@ def tutorial10_knowledge_graph():
     s3_url = "https://fandom-qa.s3-eu-west-1.amazonaws.com/saved_models/hp_v3.4.zip"
     fetch_archive_from_http(url=s3_url, output_dir=model_dir)
 
-    LAUNCH_GRAPHDB = True
+    LAUNCH_GRAPHDB = os.environ.get('LAUNCH_GRAPHDB', True)
 
     # Start a GraphDB server
     if LAUNCH_GRAPHDB:

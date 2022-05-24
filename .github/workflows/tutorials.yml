@@ -135,7 +135,7 @@ jobs:
       run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
 
     - name: Run GraphDB
-      run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
+      run: docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11
 
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
@@ -154,6 +154,7 @@ jobs:
 
     - name: Run script
       run: |
+        export LAUNCH_GRAPHDB=0
         set -e   # Fails on any error in the following loop
         for script in ${{ matrix.script-path }}; do
           echo ""
