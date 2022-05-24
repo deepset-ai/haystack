@@ -1,3 +1,4 @@
+import logging
 import pytest
 import sys
 from haystack.document_stores.base import BaseDocumentStore
@@ -670,7 +671,7 @@ def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever_with_docs):
+def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever_with_docs, caplog):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(
         labels=EVAL_LABELS,
@@ -680,20 +681,26 @@ def test_extractive_qa_eval_answer_document_scope_combinations(reader, retriever
     )
 
     # valid values for non default answer_scopes
-    metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
-    metrics = eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
+    with caplog.at_level(logging.WARNING):
+        metrics = eval_result.calculate_metrics(document_scope="document_id_or_answer", answer_scope="context")
+        metrics = eval_result.calculate_metrics(document_scope="answer", answer_scope="context")
+        assert "You specified a non-answer document_scope together with a non-default answer_scope" not in caplog.text
 
-    with pytest.raises(ValueError, match="selected answer_scope '.*' is not compatible with document_scope"):
+    with caplog.at_level(logging.WARNING):
         metrics = eval_result.calculate_metrics(document_scope="document_id", answer_scope="context")
+        assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
-    with pytest.raises(ValueError, match="selected answer_scope '.*' is not compatible with document_scope"):
+    with caplog.at_level(logging.WARNING):
         metrics = eval_result.calculate_metrics(document_scope="context", answer_scope="context")
+        assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
-    with pytest.raises(ValueError, match="selected answer_scope '.*' is not compatible with document_scope"):
+    with caplog.at_level(logging.WARNING):
         metrics = eval_result.calculate_metrics(document_scope="document_id_and_context", answer_scope="context")
+        assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
-    with pytest.raises(ValueError, match="selected answer_scope '.*' is not compatible with document_scope"):
+    with caplog.at_level(logging.WARNING):
         metrics = eval_result.calculate_metrics(document_scope="document_id_or_context", answer_scope="context")
+        assert "You specified a non-answer document_scope together with a non-default answer_scope" in caplog.text
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
