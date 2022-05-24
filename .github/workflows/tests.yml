@@ -15,10 +15,10 @@ on:
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
   SUITES_EXCLUDED_FROM_WINDOWS: 
-    --ignore=test/pipelines/test_ray.py \
-    --ignore=test/document_stores/test_knowledge_graph.py \
-    --ignore=test/nodes/test_connector.py \
-    --ignore=test/nodes/test_summarizer_translation.py \
+    --ignore=test/pipelines/test_ray.py 
+    --ignore=test/document_stores/test_knowledge_graph.py 
+    --ignore=test/nodes/test_connector.py 
+    --ignore=test/nodes/test_summarizer_translation.py 
     --ignore=test/nodes/test_summarizer.py
 
 jobs:
