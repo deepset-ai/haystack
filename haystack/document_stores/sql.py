@@ -377,7 +377,7 @@ class SQLDocumentStore(BaseDocumentStore):
             return
         # Make sure we comply to Document class format
         document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
-        
+
         document_objects = self._handle_duplicate_documents(
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )

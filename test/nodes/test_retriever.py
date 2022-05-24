@@ -22,7 +22,6 @@ from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderToken
 from ..conftest import SAMPLES_PATH
 
 
-
 # TODO check if we this works with only "memory" arg
 @pytest.mark.parametrize(
     "retriever_with_docs,document_store_with_docs",
@@ -167,7 +166,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs):
     document_store.return_embedding = True
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever=retriever)
-    #time.sleep(1)
+    # time.sleep(1)
     docs = document_store.get_all_documents()
     docs = sorted(docs, key=lambda d: d.id)
 
@@ -194,7 +193,7 @@ def test_retribert_embedding(document_store, retriever, docs):
     document_store.return_embedding = True
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever=retriever)
-    #time.sleep(1)
+    # time.sleep(1)
     docs = document_store.get_all_documents()
     docs = sorted(docs, key=lambda d: d.id)
 

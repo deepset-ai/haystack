@@ -86,7 +86,7 @@ List of paths where the crawled webpages got stored
 #### Crawler.run
 
 ```python
-def run(output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, overwrite_existing_files: Optional[bool] = None, return_documents: Optional[bool] = False, id_hash_keys: Optional[List[str]] = None) -> Tuple[Dict, str]
+def run(output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, overwrite_existing_files: Optional[bool] = None, return_documents: Optional[bool] = False, id_hash_keys: Optional[List[str]] = None) -> Tuple[Dict[str, Union[Document, Path]], str]
 ```
 
 Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
