@@ -187,5 +187,5 @@ jobs:
           python tutorials/Tutorial${array[$i]}.py
           echo ""
           echo "==================== Notebook ================================"
-          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script.ipynb"
+          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${array[$i]}.ipynb"
         done
