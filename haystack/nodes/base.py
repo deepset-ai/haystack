@@ -250,9 +250,10 @@ class BaseComponent(ABC):
             for param_key, parameter in inspect.signature(class_).parameters.items()
         }
         return component_signature
-    
+
     def _takes_multiple_inputs(self):
         return "inputs" in inspect.signature(self.run).parameters
+
 
 class RootNode(BaseComponent):
     """
