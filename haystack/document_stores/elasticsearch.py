@@ -2168,8 +2168,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         method: dict = {"space_type": space_type, "name": "hnsw", "engine": "nmslib"}
 
         if self.index_type == "flat":
-            # use default parameters
-            pass
+            # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
+            # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
+            method["parameters"] = {"ef_construction": 512, "m": 16}
         elif self.index_type == "hnsw":
             method["parameters"] = {"ef_construction": 80, "m": 64}
         else:
