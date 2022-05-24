@@ -204,16 +204,16 @@ def print_eval_report(
                     - Document Retrieval
                     - Question Answering
             The default value is 'document_id_or_answer'.
-        :param answer_scope: Specifies the scope in which a matching answer is considered as correct.
+        :param answer_scope: Specifies the scope in which a matching answer is considered correct.
             You can select between:
-            - 'any' (default): Any matching answer is considered as correct.
-            - 'context': The answer is only considered as correct if its context matches as well.
+            - 'any' (default): Any matching answer is considered correct.
+            - 'context': The answer is only considered correct if its context matches as well.
                     Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
-            - 'document_id': The answer is only considered as correct if its document ID matches as well.
+            - 'document_id': The answer is only considered correct if its document ID matches as well.
                     You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
-            - 'document_id_and_context': The answer is only considered as correct if its document ID and its context match as well.
+            - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
-            In Question Answering to get the very same definition of correctness for document metrics as for answer metrics, `document_scope` must be 'answer' or 'document_id_or_answer'.
+            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to `answer` or `document_id_or_answer`.
     """
     if any(degree > 1 for node, degree in graph.out_degree):
         logger.warning("Pipelines with junctions are currently not supported.")

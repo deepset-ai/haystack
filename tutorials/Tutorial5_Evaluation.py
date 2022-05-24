@@ -41,6 +41,7 @@ def tutorial5_evaluation():
     # We first delete the custom tutorial indices to not have duplicate elements
     # and also split our documents into shorter passages using the PreProcessor
     preprocessor = PreProcessor(
+        split_by="word",
         split_length=200,
         split_overlap=0,
         split_respect_sentence_boundary=False,
@@ -204,21 +205,31 @@ def tutorial5_evaluation():
     pipeline.print_eval_report(eval_result_with_upper_bounds)
 
     # ## Advanced Label Scopes
-    # Usually answers are considered as correct if the predicted answer matches the gold answer in the labels. Documents are considered correct if the predicted document ID matches the gold document ID in the labels. Sometimes these simple definitions of "correctness" are not sufficient. There are cases where you want to further specify the "scope" within which an answer or a document is considered as correct. For this reason `EvaluationResult.calculate_metrics()` offers the parameters `answer_scope` and `document_scope`.
+    # Answers are considered correct if the predicted answer matches the gold answer in the labels.
+    # Documents are considered correct if the predicted document ID matches the gold document ID in the labels.
+    # Sometimes, these simple definitions of "correctness" are not sufficient.
+    # There are cases where you want to further specify the "scope" within which an answer or a document is considered correct.
+    # For this reason, `EvaluationResult.calculate_metrics()` offers the parameters `answer_scope` and `document_scope`.
     #
-    # For example imagine you want to ensure that an answer is only considered as correct if it stems from a specific context of surrounding words. This is especially useful if your answer is very short, like a date (e.g. "2011") or a place (e.g. "Berlin"). This short answer might easily appear in multiple completely different contexts. Some of those contexts might perfectly fit the actual question and answer it. Some others might not: they don't relate to the question at all but still contain the answer string. In that case you might want to ensure that only those answers that stem from the correct context should actually be considered as a correct answer. To do that, you specify `answer_scope="context"` in `calculate_metrics()`.
+    # Say you want to ensure that an answer is only considered correct if it stems from a specific context of surrounding words.
+    # This is especially useful if your answer is very short, like a date (for example, "2011") or a place ("Berlin").
+    # Such short answer might easily appear in multiple completely different contexts.
+    # Some of those contexts might perfectly fit the actual question and answer it.
+    # Some others might not: they don't relate to the question at all but still contain the answer string.
+    # In that case, you might want to ensure that only answers that stem from the correct context are considered correct.
+    # To do that, specify `answer_scope="context"` in `calculate_metrics()`.
     #
-    # There are the following values for `answer_scope`:
-    # - `any` (default): Any matching answer is considered as correct.
-    # - `context`: The answer is only considered as correct if its context matches as well. Uses fuzzy matching (see `pipeline.eval()`'s `context_matching` params).
-    # - `document_id`: The answer is only considered as correct if its document ID matches as well. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
-    # - `document_id_and_context`: The answer is only considered as correct if its document ID and its context match as well.
+    # `answer_scope` takes the following values:
+    # - `any` (default): Any matching answer is considered correct.
+    # - `context`: The answer is only considered correct if its context matches as well. It uses fuzzy matching (see `context_matching` parameters of `pipeline.eval()`).
+    # - `document_id`: The answer is only considered correct if its document ID matches as well. You can specify a custom document ID through the `custom_document_id_field` parameter of `pipeline.eval()`.
+    # - `document_id_and_context`: The answer is only considered correct if its document ID and its context match as well.
     #
-    # In Question Answering to get the very same definition of correctness for document metrics as for answer metrics, `document_scope` must be 'answer' or 'document_id_or_answer'.
+    # In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to `answer` or `document_id_or_answer`.
     #
-    # There are the following values for `document_scope`:
-    # - `document_id`: Specifies that the document ID must match. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
-    # - `context`: Specifies that the content of the document must match. Uses fuzzy matching (see `pipeline.eval()`'s `context_matching` params).
+    # `document_scope` takes the following values:
+    # - `document_id`: Specifies that the document ID must match. You can specify a custom document ID through the `custom_document_id_field` parameter of `pipeline.eval()`.
+    # - `context`: Specifies that the content of the document must match. It uses fuzzy matching (see the `context_matching` parameters of `pipeline.eval()`).
     # - `document_id_and_context`: A Boolean operation specifying that both `'document_id' AND 'context'` must match.
     # - `document_id_or_context`: A Boolean operation specifying that either `'document_id' OR 'context'` must match.
     # - `answer`: Specifies that the document contents must include the answer. The selected `answer_scope` is enforced.
@@ -235,7 +246,7 @@ def tutorial5_evaluation():
 
     document_store.get_all_documents()[0]
 
-    # Let's try Document Retrieval on a file level (i.e. it's sufficient if the correct file identified by its name (e.g. 'Book of Life') was retrieved)
+    # Let's try Document Retrieval on a file level (it's sufficient if the correct file identified by its name (for example, 'Book of Life') was retrieved).
     eval_result_custom_doc_id = pipeline.eval(
         labels=eval_labels, params={"Retriever": {"top_k": 5}}, custom_document_id_field="name"
     )
@@ -246,7 +257,7 @@ def tutorial5_evaluation():
     print(f'Retriever - Precision: {metrics["Retriever"]["precision"]}')
     print(f'Retriever - Mean Average Precision: {metrics["Retriever"]["map"]}')
 
-    # Let's enforce the context again
+    # Let's enforce the context again:
     metrics = eval_result_custom_doc_id.calculate_metrics(document_scope="document_id_and_context")
     print(f'Retriever - Recall (single relevant document): {metrics["Retriever"]["recall_single_hit"]}')
     print(f'Retriever - Recall (multiple relevant documents): {metrics["Retriever"]["recall_multi_hit"]}')
