@@ -676,7 +676,9 @@ class Pipeline:
                 else:
                     next_nodes = self.get_next_nodes(node_id, stream_id)
                     for n in next_nodes:
-                        if self.graph.nodes[n]["component"]._takes_multiple_inputs():  # concatenate inputs if it's a join node
+                        if self.graph.nodes[n][
+                            "component"
+                        ]._takes_multiple_inputs():  # concatenate inputs if it's a join node
                             if n not in queue:
                                 new_input = {"inputs": [], "params": params}
                                 if queries:
