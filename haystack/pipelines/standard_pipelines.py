@@ -180,7 +180,7 @@ class BaseStandardPipeline(ABC):
         If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
 
         You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
-        Some of these scopes require additional information that already needs to be specified during `eval()`: 
+        Some of these scopes require additional information that already needs to be specified during `eval()`:
         - `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
         - `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
 
