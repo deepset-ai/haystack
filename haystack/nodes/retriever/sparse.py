@@ -215,22 +215,26 @@ class BM25Retriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        queries: List[str],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
 
-        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-        lists of Documents (one per query) is returned.
+        Returns a list of lists of Documents (one per query).
 
-        :param queries: Single query string or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions.
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
@@ -458,7 +462,12 @@ class TfidfRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -523,20 +532,19 @@ class TfidfRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
 
-        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-        lists of Documents (one per query) is returned.
+        Returns a list of lists of Documents (one per query).
 
         :param queries: Single query string or list of queries.
         :param filters: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
@@ -592,10 +600,7 @@ class TfidfRetriever(BaseRetriever):
                 cur_documents.append(Document(id=meta["document_id"], content=para, meta=meta.get("meta", {})))
             all_documents.append(cur_documents)
 
-        if isinstance(queries, str):
-            return all_documents[0]
-        else:
-            return all_documents
+        return all_documents
 
     def fit(self):
         """
