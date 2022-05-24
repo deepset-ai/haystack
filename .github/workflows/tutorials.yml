@@ -175,6 +175,7 @@ jobs:
         export LAUNCH_GRAPHDB=0
 
         # Cache the GoT data
+        mkdir data
         mkdir data/tutorials
         wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip -q
         cd data/tutorials
