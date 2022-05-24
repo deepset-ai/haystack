@@ -194,6 +194,6 @@ jobs:
           echo "Running ${array[$i]} ..."
           echo "============================================================="
           echo ""
-          cp -r data/tutorials data/tutorial$i
+          cp -r data/tutorials data/tutorial$((i+1))
           python tutorials/Tutorial${array[$i]}.py
         done
