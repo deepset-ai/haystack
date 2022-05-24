@@ -790,7 +790,7 @@ class EvaluationResult:
                     You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
-            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to `answer` or `document_id_or_answer`.
+            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
         """
         return {
             node: self._calculate_node_metrics(
@@ -871,7 +871,7 @@ class EvaluationResult:
                     You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
-            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to `answer` or `document_id_or_answer`.
+            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
         """
         node_df = self.node_results[node]
         node_df = self._filter_eval_mode(node_df, eval_mode)

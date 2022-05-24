@@ -213,7 +213,7 @@ def print_eval_report(
                     You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
-            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to `answer` or `document_id_or_answer`.
+            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
     """
     if any(degree > 1 for node, degree in graph.out_degree):
         logger.warning("Pipelines with junctions are currently not supported.")
