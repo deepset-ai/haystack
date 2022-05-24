@@ -8,6 +8,36 @@ from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.reader.farm import FARMReader
 
 
+
+@pytest.fixture
+def batch_prediction_single_query_single_doc_list(reader, docs):
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=docs, top_k=5)
+    return prediction
+
+
+@pytest.fixture
+def batch_prediction_single_query_multiple_doc_lists(reader, docs):
+    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
+    return prediction
+
+
+@pytest.fixture
+def batch_prediction_multiple_queries_single_doc_list(reader, docs):
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=docs, top_k=5
+    )
+    return prediction
+
+
+@pytest.fixture
+def batch_prediction_multiple_queries_multiple_doc_lists(reader, docs):
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[docs, docs], top_k=5
+    )
+    return prediction
+
+
+
 def test_reader_basic(reader):
     assert reader is not None
     assert isinstance(reader, BaseReader)

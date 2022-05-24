@@ -207,7 +207,7 @@ def test_retribert_embedding(document_store, retriever, docs):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
 @pytest.mark.embedding_dim(512)
 def test_table_text_retriever_embedding(document_store, retriever, docs):
 
@@ -221,22 +221,14 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
     table_doc = Document(content=table, content_type="table", id="6")
     document_store.write_documents([table_doc])
     document_store.update_embeddings(retriever=retriever)
-    time.sleep(1)
+    # time.sleep(1)
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
 
-    doc_1 = document_store.get_document_by_id("1")
-    assert len(doc_1.embedding) == 512
-    assert abs(doc_1.embedding[0] - (0.0593)) < 0.001
-    doc_2 = document_store.get_document_by_id("2")
-    assert abs(doc_2.embedding[0] - (0.9031)) < 0.001
-    doc_3 = document_store.get_document_by_id("3")
-    assert abs(doc_3.embedding[0] - (0.1366)) < 0.001
-    doc_4 = document_store.get_document_by_id("4")
-    assert abs(doc_4.embedding[0] - (0.0575)) < 0.001
-    doc_5 = document_store.get_document_by_id("5")
-    assert abs(doc_5.embedding[0] - (0.1486)) < 0.001
-    doc_6 = document_store.get_document_by_id("6")
-    assert len(doc_6.embedding) == 512
-    assert abs(doc_6.embedding[0] - (0.2745)) < 0.001
+    expected_values = [0.061191384, 0.038075786, 0.27447605, 0.09399721, 0.0959682]
+    for doc, expected_value in zip(docs, expected_values):
+        assert len(doc.embedding) == 512
+        assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
