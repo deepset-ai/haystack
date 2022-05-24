@@ -233,7 +233,7 @@ class Crawler(BaseComponent):
             filter_urls=filter_urls,
             overwrite_existing_files=overwrite_existing_files,
         )
-        results: Dict[str, Union[List[Document], List[Path]] ] = {}
+        results: Dict[str, Union[List[Document], List[Path]]] = {}
         if return_documents:
             crawled_data = []
             for _file in file_paths:
