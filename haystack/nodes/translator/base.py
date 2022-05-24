@@ -29,7 +29,7 @@ class BaseTranslator(BaseComponent):
     @abstractmethod
     def translate_batch(
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
         batch_size: Optional[int] = None,
     ) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]:
@@ -75,7 +75,7 @@ class BaseTranslator(BaseComponent):
 
     def run_batch(  # type: ignore
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
         answers: Optional[Union[List[Answer], List[List[Answer]]]] = None,
         batch_size: Optional[int] = None,

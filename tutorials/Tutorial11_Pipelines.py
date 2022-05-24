@@ -164,9 +164,6 @@ def tutorial11_pipelines():
                 return {}, "output_1"
 
         def run_batch(self, queries):
-            if isinstance(queries, str):
-                return self.run(queries)
-
             split = {"output_1": {"queries": []}, "output_2": {"queries": []}}
             for query in queries:
                 if "?" in query:

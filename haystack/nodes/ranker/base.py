@@ -25,7 +25,7 @@ class BaseRanker(BaseComponent):
     @abstractmethod
     def predict_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -48,7 +48,7 @@ class BaseRanker(BaseComponent):
 
     def run_batch(  # type: ignore
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -57,13 +57,9 @@ class BaseRanker(BaseComponent):
         predict_batch = self.timing(self.predict_batch, "query_time")
         results = predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
 
-        if isinstance(queries, str):
-            document_ids = [doc.id for doc in results]
+        for doc_list in results:
+            document_ids = [doc.id for doc in doc_list]
             logger.debug(f"Ranked documents with IDs: {document_ids}")
-        else:
-            for doc_list in results:
-                document_ids = [doc.id for doc in doc_list]
-                logger.debug(f"Ranked documents with IDs: {document_ids}")
 
         output = {"documents": results}
 

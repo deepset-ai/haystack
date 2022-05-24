@@ -12,7 +12,12 @@ except:
     ray = None  # type: ignore
     serve = None  # type: ignore
 
-from haystack.pipelines.config import get_component_definitions, get_pipeline_definition, read_pipeline_config_from_yaml
+from haystack.pipelines.config import (
+    get_component_definitions,
+    get_pipeline_definition,
+    read_pipeline_config_from_yaml,
+    validate_config,
+)
 from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
@@ -21,14 +26,13 @@ from haystack.errors import PipelineError
 
 class RayPipeline(Pipeline):
     """
-    Ray (https://ray.io) is a framework for distributed computing.
+    [Ray](https://ray.io) is a framework for distributed computing.
 
-    Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
+    With Ray, you can distribute a Pipeline's components across a cluster of machines. The individual components of a
     Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
-    of the Reader and a single replica for the Retriever. It enables efficient resource utilization by horizontally
-    scaling Components.
+    of the Reader and a single replica for the Retriever. This way, you can use your resources more efficiently by horizontally scaling Components.
 
-    To set the number of replicas, add  `replicas` in the YAML config for the node in a pipeline:
+    To set the number of replicas, add  `replicas` in the YAML configuration for the node in a pipeline:
 
             ```yaml
             |    components:
@@ -43,18 +47,23 @@ class RayPipeline(Pipeline):
             |              inputs: [ Query ]
             ```
 
-    A RayPipeline can only be created with a YAML Pipeline config.
-    >>> from haystack.pipeline import RayPipeline
-    >>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
-    >>> pipeline.run(query="What is the capital of Germany?")
+    A Ray Pipeline can only be created with a YAML Pipeline configuration.
 
-    By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
+    ```python
+    from haystack.pipeline import RayPipeline
+    pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
+    pipeline.run(query="What is the capital of Germany?")
+    ```
+
+    By default, RayPipelines create an instance of RayServe locally. To connect to an existing Ray instance,
     set the `address` parameter when creating the RayPipeline instance.
+
+    YAML definitions of Ray pipelines are validated at load. For more information, see [YAML File Definitions](https://haystack-website-git-fork-fstau-dev-287-search-deepset-overnice.vercel.app/components/pipelines#yaml-file-definitions).
     """
 
     def __init__(self, address: str = None, ray_args: Optional[Dict[str, Any]] = None):
         """
-        :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+        :param address: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
         :param kwargs: Optional parameters for initializing Ray.
         """
         ray_args = ray_args or {}
@@ -72,6 +81,8 @@ class RayPipeline(Pipeline):
         address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
     ):
+        validate_config(pipeline_config, strict_version_check=strict_version_check)
+
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
@@ -165,6 +176,7 @@ class RayPipeline(Pipeline):
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
+            strict_version_check=strict_version_check,
             address=address,
             ray_args=ray_args,
         )

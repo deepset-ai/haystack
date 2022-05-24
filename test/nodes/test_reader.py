@@ -28,7 +28,7 @@ def test_output(prediction):
 def test_output_batch_single_query_single_doc_list(batch_prediction_single_query_single_doc_list):
     prediction = batch_prediction_single_query_single_doc_list
     assert prediction is not None
-    assert prediction["queries"] == "Who lives in Berlin?"
+    assert prediction["queries"] == ["Who lives in Berlin?"]
     # Expected output: List of lists of answers
     assert isinstance(prediction["answers"], list)
     assert isinstance(prediction["answers"][0], list)
@@ -39,7 +39,7 @@ def test_output_batch_single_query_single_doc_list(batch_prediction_single_query
 def test_output_batch_single_query_multiple_doc_lists(batch_prediction_single_query_multiple_doc_lists):
     prediction = batch_prediction_single_query_multiple_doc_lists
     assert prediction is not None
-    assert prediction["queries"] == "Who lives in Berlin?"
+    assert prediction["queries"] == ["Who lives in Berlin?"]
     # Expected output: List of lists of answers
     assert isinstance(prediction["answers"], list)
     assert isinstance(prediction["answers"][0], list)

@@ -6,6 +6,7 @@ from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
+
 import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
@@ -312,7 +313,7 @@ class DensePassageRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -324,15 +325,14 @@ class DensePassageRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
 
-        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-        lists of Documents (one per query) is returned.
+        Returns a list of lists of Documents (one per query).
 
-        :param queries: Single query string or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. Can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
@@ -413,11 +413,6 @@ class DensePassageRetriever(BaseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        single_query = False
-        if isinstance(queries, str):
-            queries = [queries]
-            single_query = True
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -425,7 +420,7 @@ class DensePassageRetriever(BaseRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [{}] * len(queries)
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
@@ -435,10 +430,7 @@ class DensePassageRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
             )
-            if single_query:
-                return []  # type: ignore
-            else:
-                return [[] * len(queries)]  # type: ignore
+            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []
@@ -455,10 +447,7 @@ class DensePassageRetriever(BaseRetriever):
             )
             documents.append(cur_docs)
 
-        if single_query:
-            return documents[0]
-        else:
-            return documents
+        return documents
 
     def _get_predictions(self, dicts):
         """
@@ -589,6 +578,9 @@ class DensePassageRetriever(BaseRetriever):
         save_dir: str = "../saved_models/dpr",
         query_encoder_save_dir: str = "query_encoder",
         passage_encoder_save_dir: str = "passage_encoder",
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
     ):
         """
         train a DensePassageRetrieval model
@@ -626,6 +618,9 @@ class DensePassageRetriever(BaseRetriever):
         :param save_dir: directory where models are saved
         :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
         :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
+
+        Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
+        If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
         """
         self.processor.embed_title = embed_title
         self.processor.data_dir = Path(data_dir)
@@ -669,7 +664,7 @@ class DensePassageRetriever(BaseRetriever):
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer(
+        trainer = Trainer.create_or_load_checkpoint(
             model=self.model,
             optimizer=optimizer,
             data_silo=data_silo,
@@ -679,6 +674,9 @@ class DensePassageRetriever(BaseRetriever):
             evaluate_every=evaluate_every,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp,
+            checkpoint_root_dir=Path(checkpoint_root_dir),
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
@@ -970,7 +968,7 @@ class TableTextRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -982,15 +980,14 @@ class TableTextRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
 
-        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-        lists of Documents (one per query) is returned.
+        Returns a list of lists of Documents (one per query).
 
-        :param queries: Single query string or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. Can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
@@ -1071,11 +1068,6 @@ class TableTextRetriever(BaseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        single_query = False
-        if isinstance(queries, str):
-            queries = [queries]
-            single_query = True
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -1083,7 +1075,7 @@ class TableTextRetriever(BaseRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [{}] * len(queries)
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
@@ -1093,10 +1085,7 @@ class TableTextRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
             )
-            if single_query:
-                return []  # type: ignore
-            else:
-                return [[] * len(queries)]  # type: ignore
+            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []
@@ -1113,10 +1102,7 @@ class TableTextRetriever(BaseRetriever):
             )
             documents.append(cur_docs)
 
-        if single_query:
-            return documents[0]
-        else:
-            return documents
+        return documents
 
     def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
         """
@@ -1278,6 +1264,9 @@ class TableTextRetriever(BaseRetriever):
         query_encoder_save_dir: str = "query_encoder",
         passage_encoder_save_dir: str = "passage_encoder",
         table_encoder_save_dir: str = "table_encoder",
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
     ):
         """
         Train a TableTextRetrieval model.
@@ -1357,7 +1346,7 @@ class TableTextRetriever(BaseRetriever):
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
-        trainer = Trainer(
+        trainer = Trainer.create_or_load_checkpoint(
             model=self.model,
             optimizer=optimizer,
             data_silo=data_silo,
@@ -1367,6 +1356,9 @@ class TableTextRetriever(BaseRetriever):
             evaluate_every=evaluate_every,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
             use_amp=use_amp,
+            checkpoint_root_dir=Path(checkpoint_root_dir),
+            checkpoint_every=checkpoint_every,
+            checkpoints_to_keep=checkpoints_to_keep,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
@@ -1645,7 +1637,7 @@ class EmbeddingRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -1657,15 +1649,14 @@ class EmbeddingRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
 
-        If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-        lists of Documents (one per query) is returned.
+        Returns a list of lists of Documents (one per query).
 
-        :param queries: Single query string or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. Can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
@@ -1746,11 +1737,6 @@ class EmbeddingRetriever(BaseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        single_query = False
-        if isinstance(queries, str):
-            queries = [queries]
-            single_query = True
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -1758,7 +1744,7 @@ class EmbeddingRetriever(BaseRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [{}] * len(queries)
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
@@ -1768,10 +1754,7 @@ class EmbeddingRetriever(BaseRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
             )
-            if single_query:
-                return []  # type: ignore
-            else:
-                return [[] * len(queries)]  # type: ignore
+            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs = []
@@ -1788,10 +1771,7 @@ class EmbeddingRetriever(BaseRetriever):
             )
             documents.append(cur_docs)
 
-        if single_query:
-            return documents[0]
-        else:
-            return documents
+        return documents
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
         """

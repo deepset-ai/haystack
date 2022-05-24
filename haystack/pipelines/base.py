@@ -317,6 +317,7 @@ class Pipeline:
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         timeout: int = 60,
+        show_curl_message: bool = True,
     ):
         """
         Deploys the pipelines of a pipeline config on Deepset Cloud.
@@ -335,9 +336,10 @@ class Pipeline:
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
         :param timeout: The time in seconds to wait until deployment completes.
                         If the timeout is exceeded an error will be raised.
+        :param show_curl_message: Whether to print an additional message after successful deployment showing how to query the pipeline using curl.
         """
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        client.deploy(pipeline_config_name=pipeline_config_name, timeout=timeout)
+        client.deploy(pipeline_config_name=pipeline_config_name, timeout=timeout, show_curl_message=show_curl_message)
 
     @classmethod
     def undeploy_on_deepset_cloud(
@@ -554,7 +556,7 @@ class Pipeline:
 
     def run_batch(  # type: ignore
         self,
-        queries: Optional[Union[str, List[str]]] = None,
+        queries: List[str] = None,
         file_paths: Optional[List[str]] = None,
         labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
@@ -566,7 +568,7 @@ class Pipeline:
         Runs the Pipeline in a batch mode, one node at a time. The batch mode means that the Pipeline can take more than one query as input. You can use this method for query pipelines only. When used with an indexing pipeline, it calls the pipeline `run()` method.
 
         Here's what this method returns for Retriever-Reader pipelines:
-        - Single query: Retrieves top-k relevant Docments and returns a list of answers for each retrieved Document.
+        - Single query: Retrieves top-k relevant Documents and returns a list of answers for each retrieved Document.
         - A list of queries: Retrieves top-k relevant Documents for each query and returns a list of answers for each query.
 
         Here's what this method returns for Reader-only pipelines:
@@ -576,13 +578,13 @@ class Pipeline:
         - A list of queries + a list of lists of Documents: Applies each query to its corresponding Document list and aggregates answers for each list of Documents.
 
 
-        :param queries: Single search query or list of search queries (for query pipelines only).
-        :param file_paths: The files to index (for indexing pipelines only). If you provide `file_paths` the                Pipeline's `run` method instead of `run_batch` is called.
+        :param queries: List of search queries (for query pipelines only).
+        :param file_paths: The files to index (for indexing pipelines only). If you provide `file_paths` the Pipeline's `run` method instead of `run_batch` is called.
         :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
         :param documents: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
         :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
         :param params: Dictionary of parameters to be dispatched to the nodes.
-                       To pass a parameter to all Nodes, use: `{"top_k":10}`.
+                       To pass a parameter to all Nodes, use: `{"top_k": 10}`.
                        To pass a parameter to targeted Nodes, run:
                         `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
         :param debug: Specifies whether the Pipeline should instruct Nodes to collect debug information

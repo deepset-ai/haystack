@@ -234,7 +234,7 @@ class MockRetriever(BaseRetriever):
     def retrieve(self, query: str, top_k: int):
         pass
 
-    def retrieve_batch(self, queries: Union[str, List[str]], top_k: int):
+    def retrieve_batch(self, queries: List[str], top_k: int):
         pass
 
 

@@ -280,7 +280,7 @@ class Crawler(BaseComponent):
         self, base_url: str, filter_urls: Optional[List] = None, existed_links: List = None
     ) -> set:
         self.driver.get(base_url)
-        a_elements = self.driver.find_elements_by_tag_name("a")
+        a_elements = self.driver.find_elements_by_xpath("//a[@href]")
         sub_links = set()
         if not (existed_links and base_url in existed_links):
             if filter_urls:
