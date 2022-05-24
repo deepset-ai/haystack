@@ -1,5 +1,5 @@
-from pathlib import Path
 import os
+import subprocess
 
 import pytest
 
@@ -17,15 +17,16 @@ from ..conftest import SAMPLES_PATH
 
 
 @pytest.mark.tika
-@pytest.mark.parametrize(
-    # "Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter]
-    "Converter",
-    [PDFToTextOCRConverter],
-)
+@pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter, PDFToTextOCRConverter])
 def test_convert(Converter):
     converter = Converter()
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]["documents"][0]
     pages = document.content.split("\f")
+
+    assert (
+        len(pages) != 1 and pages[0] != ""
+    ), f'{type(converter).__name__} did return a single empty page indicating a potential issue with your installed poppler version. Try installing via "conda install -c conda-forge poppler" and check test_pdftoppm_command_format()'
+
     assert len(pages) == 4  # the sample PDF file has four pages.
     assert pages[0] != ""  # the page 1 of PDF contains text.
     assert pages[2] == ""  # the page 3 of PDF file is empty.
@@ -35,7 +36,21 @@ def test_convert(Converter):
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
-@pytest.mark.parametrize("Converter", [PDFToTextConverter])  # TODO PDFToTextOCRConverter should pass this test too
+def test_pdftoppm_command_format():
+    # Haystack's PDFToTextOCRConverter uses pdf2image, which calls pdftoppm internally.
+    # Some installations of pdftoppm are incompatible with Haystack and won't raise an error but just return empty converted documents
+    # This test runs pdftoppm directly to check whether pdftoppm accepts the command format that pdf2image uses in Haystack
+    proc = subprocess.Popen(
+        ["pdftoppm", f"{SAMPLES_PATH}/pdf/sample_pdf_1.pdf"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    out, err = proc.communicate()
+    # If usage info of pdftoppm is sent to stderr then it's because Haystack's pdf2image uses an incompatible command format
+    assert (
+        not err
+    ), 'Your installation of poppler is incompatible with Haystack. Try installing via "conda install -c conda-forge poppler"'
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_encoding(Converter):
     converter = Converter()
 
@@ -46,7 +61,7 @@ def test_pdf_encoding(Converter):
     assert "ɪ" not in document.content
 
 
-@pytest.mark.parametrize("Converter", [PDFToTextConverter])  # TODO PDFToTextOCRConverter should pass this test too
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_ligatures(Converter):
     converter = Converter()
 
