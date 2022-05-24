@@ -661,9 +661,9 @@ class EvaluationResult:
         - exact_match_document_scope (answers only): exact_match with enforced document scope match.
         - f1_document_scope (answers only): f1 with enforced document scope match.
         - sas_document_scope (answers only): sas with enforced document scope match.
-        - exact_match_document_and_context_scope: (answers only): exact_match with enforced document and context scope match.
-        - f1_document_and_context_scope (answers only): f1 with enforced document and context scope match.
-        - sas_document_and_context_scope (answers only): sas with enforced document and context scope match.
+        - exact_match_document_id_and_context_scope: (answers only): exact_match with enforced document and context scope match.
+        - f1_document_id_and_context_scope (answers only): f1 with enforced document and context scope match.
+        - sas_document_id_and_context_scope (answers only): sas with enforced document and context scope match.
         - gold_contexts: The contents of the gold documents.
         - gold_id_match (documents only): A metric showing whether one of the gold document IDs matches the document.
         - context_match (documents only): A metric showing whether one of the gold contexts matches the document content.

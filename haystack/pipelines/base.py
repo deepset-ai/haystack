@@ -1178,7 +1178,7 @@ class Pipeline:
                             if doc_match == 1.0
                         )
                     )
-                    df["sas_document_and_context_scope"] = df.map_rows(
+                    df["sas_document_id_and_context_scope"] = df.map_rows(
                         lambda row: max(
                             sas
                             for sas, sim, doc_match in zip(
@@ -1208,9 +1208,9 @@ class Pipeline:
                 "exact_match_document_id_scope",  # answer-specific
                 "f1_document_id_scope",  # answer-specific
                 "sas_document_id_scope",  # answer-specific
-                "exact_match_document_and_context_scope",  # answer-specific
-                "f1_document_and_context_scope",  # answer-specific
-                "sas_document_and_context_scope",  # answer-specific
+                "exact_match_document_id_and_context_scope",  # answer-specific
+                "f1_document_id_and_context_scope",  # answer-specific
+                "sas_document_id_and_context_scope",  # answer-specific
                 "gold_contexts",  # generic
                 "gold_id_match",  # doc-specific
                 "context_match",  # doc-specific
@@ -1392,7 +1392,7 @@ class Pipeline:
                 )
 
                 # answer_scope: document_id_and_context
-                df_answers["exact_match_document_and_context_scope"] = df_answers.map_rows(
+                df_answers["exact_match_document_id_and_context_scope"] = df_answers.map_rows(
                     lambda row: max(
                         f1
                         for f1, sim, doc_match in zip(
@@ -1403,7 +1403,7 @@ class Pipeline:
                         if sim > context_matching_threshold and doc_match == 1.0
                     )
                 )
-                df_answers["f1_document_and_context_scope"] = df_answers.map_rows(
+                df_answers["f1_document_id_and_context_scope"] = df_answers.map_rows(
                     lambda row: max(
                         f1
                         for f1, sim, doc_match in zip(
