@@ -1,5 +1,6 @@
-from pathlib import Path
 import os
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -130,6 +131,7 @@ def test_azure_converter():
         assert docs[1].content.startswith("A sample PDF file")
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
 def test_parsr_converter():
     converter = ParsrConverter()
 
