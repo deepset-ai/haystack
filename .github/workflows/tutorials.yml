@@ -154,19 +154,6 @@ jobs:
         pip install pygraphviz
         pip install ipython nbformat
 
-    - name: Run scripts
-      run: |
-        export LAUNCH_GRAPHDB=0
-        set -e   # Fails on any error in the following loop
-        for script in ${{ matrix.script-path }}; do
-          echo ""
-          echo "============================================================="
-          echo "Running $script ..."
-          echo "============================================================="
-          echo ""
-          python $script.py
-        done
-
     - name: Run notebooks
       run: |
         export LAUNCH_GRAPHDB=0
@@ -178,4 +165,17 @@ jobs:
           echo "============================================================="
           echo ""
           sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script.ipynb"
+        done
+
+    - name: Run scripts
+      run: |
+        export LAUNCH_GRAPHDB=0
+        set -e   # Fails on any error in the following loop
+        for script in ${{ matrix.script-path }}; do
+          echo ""
+          echo "============================================================="
+          echo "Running $script ..."
+          echo "============================================================="
+          echo ""
+          python $script.py
         done
