@@ -123,13 +123,14 @@ Print the evaluation results
 #### semantic\_answer\_similarity
 
 ```python
-def semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2", batch_size: int = 32, use_gpu: bool = True) -> Tuple[List[float], List[float]]
+def semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2", batch_size: int = 32, use_gpu: bool = True) -> Tuple[List[float], List[float], List[List[float]]]
 ```
 
 Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
 
 Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
                     b) the highest similarity of all predictions to gold labels
+                    c) a matrix consisting of the similarities of all the predicitions compared to all gold labels
 
 **Arguments**:
 
@@ -143,5 +144,5 @@ Falls back to CPU if no GPU is available.
 
 **Returns**:
 
-top_1_sas, top_k_sas
+top_1_sas, top_k_sas, pred_label_matrix
 

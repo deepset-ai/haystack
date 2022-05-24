@@ -204,6 +204,67 @@ def tutorial5_evaluation():
     )
     pipeline.print_eval_report(eval_result_with_upper_bounds)
 
+    # ## Advanced Label Scopes
+    # Answers are considered correct if the predicted answer matches the gold answer in the labels.
+    # Documents are considered correct if the predicted document ID matches the gold document ID in the labels.
+    # Sometimes, these simple definitions of "correctness" are not sufficient.
+    # There are cases where you want to further specify the "scope" within which an answer or a document is considered correct.
+    # For this reason, `EvaluationResult.calculate_metrics()` offers the parameters `answer_scope` and `document_scope`.
+    #
+    # Say you want to ensure that an answer is only considered correct if it stems from a specific context of surrounding words.
+    # This is especially useful if your answer is very short, like a date (for example, "2011") or a place ("Berlin").
+    # Such short answer might easily appear in multiple completely different contexts.
+    # Some of those contexts might perfectly fit the actual question and answer it.
+    # Some others might not: they don't relate to the question at all but still contain the answer string.
+    # In that case, you might want to ensure that only answers that stem from the correct context are considered correct.
+    # To do that, specify `answer_scope="context"` in `calculate_metrics()`.
+    #
+    # `answer_scope` takes the following values:
+    # - `any` (default): Any matching answer is considered correct.
+    # - `context`: The answer is only considered correct if its context matches as well. It uses fuzzy matching (see `context_matching` parameters of `pipeline.eval()`).
+    # - `document_id`: The answer is only considered correct if its document ID matches as well. You can specify a custom document ID through the `custom_document_id_field` parameter of `pipeline.eval()`.
+    # - `document_id_and_context`: The answer is only considered correct if its document ID and its context match as well.
+    #
+    # In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to `answer` or `document_id_or_answer`.
+    #
+    # `document_scope` takes the following values:
+    # - `document_id`: Specifies that the document ID must match. You can specify a custom document ID through the `custom_document_id_field` parameter of `pipeline.eval()`.
+    # - `context`: Specifies that the content of the document must match. It uses fuzzy matching (see the `context_matching` parameters of `pipeline.eval()`).
+    # - `document_id_and_context`: A Boolean operation specifying that both `'document_id' AND 'context'` must match.
+    # - `document_id_or_context`: A Boolean operation specifying that either `'document_id' OR 'context'` must match.
+    # - `answer`: Specifies that the document contents must include the answer. The selected `answer_scope` is enforced.
+    # - `document_id_or_answer` (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
+    metrics = saved_eval_result.calculate_metrics(answer_scope="context")
+    print(f'Retriever - Recall (single relevant document): {metrics["Retriever"]["recall_single_hit"]}')
+    print(f'Retriever - Recall (multiple relevant documents): {metrics["Retriever"]["recall_multi_hit"]}')
+    print(f'Retriever - Mean Reciprocal Rank: {metrics["Retriever"]["mrr"]}')
+    print(f'Retriever - Precision: {metrics["Retriever"]["precision"]}')
+    print(f'Retriever - Mean Average Precision: {metrics["Retriever"]["map"]}')
+
+    print(f'Reader - F1-Score: {metrics["Reader"]["f1"]}')
+    print(f'Reader - Exact Match: {metrics["Reader"]["exact_match"]}')
+
+    document_store.get_all_documents()[0]
+
+    # Let's try Document Retrieval on a file level (it's sufficient if the correct file identified by its name (for example, 'Book of Life') was retrieved).
+    eval_result_custom_doc_id = pipeline.eval(
+        labels=eval_labels, params={"Retriever": {"top_k": 5}}, custom_document_id_field="name"
+    )
+    metrics = eval_result_custom_doc_id.calculate_metrics(document_scope="document_id")
+    print(f'Retriever - Recall (single relevant document): {metrics["Retriever"]["recall_single_hit"]}')
+    print(f'Retriever - Recall (multiple relevant documents): {metrics["Retriever"]["recall_multi_hit"]}')
+    print(f'Retriever - Mean Reciprocal Rank: {metrics["Retriever"]["mrr"]}')
+    print(f'Retriever - Precision: {metrics["Retriever"]["precision"]}')
+    print(f'Retriever - Mean Average Precision: {metrics["Retriever"]["map"]}')
+
+    # Let's enforce the context again:
+    metrics = eval_result_custom_doc_id.calculate_metrics(document_scope="document_id_and_context")
+    print(f'Retriever - Recall (single relevant document): {metrics["Retriever"]["recall_single_hit"]}')
+    print(f'Retriever - Recall (multiple relevant documents): {metrics["Retriever"]["recall_multi_hit"]}')
+    print(f'Retriever - Mean Reciprocal Rank: {metrics["Retriever"]["mrr"]}')
+    print(f'Retriever - Precision: {metrics["Retriever"]["precision"]}')
+    print(f'Retriever - Mean Average Precision: {metrics["Retriever"]["map"]}')
+
     ## Evaluation of Individual Components
     # Sometimes you might want to evaluate individual components,
     # for example, if you don't have a pipeline but only a retriever or a reader with a model that you trained yourself.
@@ -219,11 +280,10 @@ def tutorial5_evaluation():
     ## Retriever Mean Avg Precision rewards retrievers that give relevant documents a higher rank
     print("Retriever Mean Avg Precision:", retriever_eval_results["map"])
 
-    # Just as a sanity check, we can compare the recall from `retriever.eval()`
-    # with the multi hit recall from `pipeline.eval(add_isolated_node_eval=True)`.
-    # These two recall metrics are only comparable since we chose to filter out no_answer samples when generating eval_labels and setting doc_relevance_col to `"gold_id_match"`.
-    # Per default `calculate_metrics()` has doc_relevance_col set to `"gold_id_or_answer_match"` which interprets documents as relevant if they either match the gold_id or contain the answer.
-    metrics = eval_result_with_upper_bounds.calculate_metrics(doc_relevance_col="gold_id_match")
+    # Just as a sanity check, we can compare the recall from `retriever.eval()` with the multi hit recall from `pipeline.eval(add_isolated_node_eval=True)`.
+    # These two recall metrics are only comparable since we chose to filter out no_answer samples when generating eval_labels and setting document_scope to `"document_id"`.
+    # Per default `calculate_metrics()` has document_scope set to `"document_id_or_answer"` which interprets documents as relevant if they either match the gold document ID or contain the answer.
+    metrics = eval_result_with_upper_bounds.calculate_metrics(document_scope="document_id")
     print(metrics["Retriever"]["recall_multi_hit"])
 
     # Evaluate Reader on its own
