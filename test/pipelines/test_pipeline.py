@@ -1,14 +1,18 @@
+from copy import deepcopy
 from pathlib import Path
 import os
+import ssl
 import json
 import platform
 import sys
 from typing import Tuple
+from pyparsing import original_text_for
 
 import pytest
 from requests import PreparedRequest
 import responses
 import logging
+from transformers import pipeline
 import yaml
 import pandas as pd
 
@@ -19,7 +23,7 @@ from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.pipelines import Pipeline, RootNode
-from haystack.pipelines.config import validate_config_strings
+from haystack.pipelines.config import validate_config_strings, get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
 from haystack.nodes import PreProcessor, TextConverter
@@ -1461,6 +1465,75 @@ def test_graph_validation_duplicate_node():
     pipeline.add_node(name="node", component=node, inputs=["Query"])
     with pytest.raises(PipelineConfigError, match="'node' is already in the pipeline"):
         pipeline.add_node(name="node", component=other_node, inputs=["Query"])
+
+
+# See https://github.com/deepset-ai/haystack/issues/2568
+def test_pipeline_nodes_can_have_uncopiable_objects_as_args():
+    class DummyNode(MockNode):
+        def __init__(self, uncopiable: ssl.SSLContext):
+            self.uncopiable = uncopiable
+
+    node = DummyNode(uncopiable=ssl.SSLContext())
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+
+    # If the object is getting copied, it will raise TypeError: cannot pickle 'SSLContext' object
+    # `get_components_definitions()` should NOT copy objects to allow this usecase
+    get_component_definitions(pipeline.get_config())
+
+
+def test_pipeline_env_vars_do_not_modify__component_config(monkeypatch):
+    class DummyNode(MockNode):
+        def __init__(self, replaceable: str):
+            self.replaceable = replaceable
+
+    monkeypatch.setenv("NODE_PARAMS_REPLACEABLE", "env value")
+
+    node = DummyNode(replaceable="init value")
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+
+    original_component_config = deepcopy(node._component_config)
+    original_pipeline_config = deepcopy(pipeline.get_config())
+
+    no_env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=False)
+    env_defs = get_component_definitions(pipeline.get_config(), overwrite_with_env_variables=True)
+
+    new_component_config = deepcopy(node._component_config)
+    new_pipeline_config = deepcopy(pipeline.get_config())
+
+    assert no_env_defs != env_defs
+    assert no_env_defs["node"]["params"]["replaceable"] == "init value"
+    assert env_defs["node"]["params"]["replaceable"] == "env value"
+
+    assert original_component_config == new_component_config
+    assert original_component_config["params"]["replaceable"] == "init value"
+    assert new_component_config["params"]["replaceable"] == "init value"
+
+    assert original_pipeline_config == new_pipeline_config
+    assert original_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
+    assert new_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
+
+
+def test_pipeline_env_vars_do_not_modify_pipeline_config(monkeypatch):
+    class DummyNode(MockNode):
+        def __init__(self, replaceable: str):
+            self.replaceable = replaceable
+
+    monkeypatch.setenv("NODE_PARAMS_REPLACEABLE", "env value")
+
+    node = DummyNode(replaceable="init value")
+    pipeline = Pipeline()
+    pipeline.add_node(component=node, name="node", inputs=["Query"])
+
+    pipeline_config = pipeline.get_config()
+    original_pipeline_config = deepcopy(pipeline_config)
+
+    get_component_definitions(pipeline_config, overwrite_with_env_variables=True)
+
+    assert original_pipeline_config == pipeline_config
+    assert original_pipeline_config["components"][0]["params"]["replaceable"] == "init value"
+    assert pipeline_config["components"][0]["params"]["replaceable"] == "init value"
 
 
 def test_parallel_paths_in_pipeline_graph():
