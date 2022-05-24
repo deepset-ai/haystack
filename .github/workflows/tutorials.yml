@@ -169,7 +169,7 @@ jobs:
         wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip -q
         unzip wiki_gameofthrones_txt1.zip
         rm wiki_gameofthrones_txt1.zip
-        find . -name '[1-9][1-9][0-9]_*.txt' -delete
+        find . -name '[1-9][0-9][0-9]_*.txt' -delete
         find . -name '[0-9]_*.txt' -delete
         cd ../../
 
@@ -183,9 +183,9 @@ jobs:
           echo "  Running ${array[$i]} ..."
           echo "#############################################################"
           echo ""
-          echo "==================== Script ================================="
+          echo "====== tutorials/Tutorial${array[$i]}.py ===================="
           python tutorials/Tutorial${array[$i]}.py
           echo ""
-          echo "==================== Notebook ================================"
-          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${array[$i]}.ipynb"
+          echo "====== tutorials/Tutorial${array[$i]}.ipynb ================="
+          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run tutorials/Tutorial${array[$i]}.ipynb"
         done
