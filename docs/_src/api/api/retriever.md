@@ -280,19 +280,23 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BM25Retriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+def retrieve_batch(queries: List[str], filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
-- `queries`: Single query string or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions.
 Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
@@ -435,7 +439,12 @@ def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
 #### TfidfRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str, filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -457,15 +466,14 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TfidfRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+def retrieve_batch(queries: List[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
@@ -662,24 +670,23 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### DensePassageRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+def retrieve_batch(queries: List[str], filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
                 List[Dict[str, Union[Dict, List, str, int, float, bool]]],
             ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
-- `queries`: Single query string or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions. Can be a single filter that will be applied to each query or a list of filters
 (one filter per query).
@@ -794,7 +801,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### DensePassageRetriever.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder")
+def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3)
 ```
 
 train a DensePassageRetrieval model
@@ -835,6 +842,8 @@ For more information, refer to: https://nvidia.github.io/apex/amp.html
 - `save_dir`: directory where models are saved
 - `query_encoder_save_dir`: directory inside save_dir where query_encoder model files are saved
 - `passage_encoder_save_dir`: directory inside save_dir where passage_encoder model files are saved
+Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
+If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
 <a id="dense.DensePassageRetriever.save"></a>
 
@@ -939,24 +948,23 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TableTextRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+def retrieve_batch(queries: List[str], filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
                 List[Dict[str, Union[Dict, List, str, int, float, bool]]],
             ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
-- `queries`: Single query string or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions. Can be a single filter that will be applied to each query or a list of filters
 (one filter per query).
@@ -1074,7 +1082,7 @@ Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
 #### TableTextRetriever.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder")
+def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3)
 ```
 
 Train a TableTextRetrieval model.
@@ -1295,24 +1303,23 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### EmbeddingRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[
+def retrieve_batch(queries: List[str], filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
                 List[Dict[str, Union[Dict, List, str, int, float, bool]]],
             ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> Union[List[Document], List[List[Document]]]
+        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
 
 that are most relevant to the supplied queries.
 
-If you supply a single query, a single list of Documents is returned. If you supply a list of queries, a list of
-lists of Documents (one per query) is returned.
+Returns a list of lists of Documents (one per query).
 
 **Arguments**:
 
-- `queries`: Single query string or list of queries.
+- `queries`: List of query strings.
 - `filters`: Optional filters to narrow down the search space to documents whose metadata fulfill certain
 conditions. Can be a single filter that will be applied to each query or a list of filters
 (one filter per query).
@@ -1474,16 +1481,16 @@ Translate a text query to SPARQL and execute it on the knowledge graph to retrie
 #### Text2SparqlRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], top_k: Optional[int] = None)
+def retrieve_batch(queries: List[str], top_k: Optional[int] = None)
 ```
 
-Translate a single query or a list of queries to SPARQL and execute it on the knowledge graph to retrieve
+Translate a list of queries to SPARQL and execute it on the knowledge graph to retrieve
 
-a list of answers / list of lists of answers.
+a list of lists of answers (one per query).
 
 **Arguments**:
 
-- `query`: Single text query or list of queries that shall be translated to SPARQL and then executed on the
+- `queries`: List of queries that shall be translated to SPARQL and then executed on the
 knowledge graph.
 - `top_k`: How many SPARQL queries to generate per text query.
 

@@ -310,13 +310,13 @@ the Nodes received and the output they generated. You can then find all debug in
 #### Pipeline.run\_batch
 
 ```python
-def run_batch(queries: Optional[Union[str, List[str]]] = None, file_paths: Optional[List[str]] = None, labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None, documents: Optional[Union[List[Document], List[List[Document]]]] = None, meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run_batch(queries: List[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None, documents: Optional[Union[List[Document], List[List[Document]]]] = None, meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
 ```
 
 Runs the Pipeline in a batch mode, one node at a time. The batch mode means that the Pipeline can take more than one query as input. You can use this method for query pipelines only. When used with an indexing pipeline, it calls the pipeline `run()` method.
 
 Here's what this method returns for Retriever-Reader pipelines:
-- Single query: Retrieves top-k relevant Docments and returns a list of answers for each retrieved Document.
+- Single query: Retrieves top-k relevant Documents and returns a list of answers for each retrieved Document.
 - A list of queries: Retrieves top-k relevant Documents for each query and returns a list of answers for each query.
 
 Here's what this method returns for Reader-only pipelines:
@@ -327,13 +327,13 @@ Here's what this method returns for Reader-only pipelines:
 
 **Arguments**:
 
-- `queries`: Single search query or list of search queries (for query pipelines only).
-- `file_paths`: The files to index (for indexing pipelines only). If you provide `file_paths` the                Pipeline's `run` method instead of `run_batch` is called.
+- `queries`: List of search queries (for query pipelines only).
+- `file_paths`: The files to index (for indexing pipelines only). If you provide `file_paths` the Pipeline's `run` method instead of `run_batch` is called.
 - `labels`: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
 - `documents`: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
 - `meta`: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
 - `params`: Dictionary of parameters to be dispatched to the nodes.
-To pass a parameter to all Nodes, use: `{"top_k":10}`.
+To pass a parameter to all Nodes, use: `{"top_k": 10}`.
 To pass a parameter to targeted Nodes, run:
  `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
 - `debug`: Specifies whether the Pipeline should instruct Nodes to collect debug information
@@ -375,7 +375,14 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 
 ```python
 @classmethod
-def execute_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evaluation_set_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evaluation_set_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False) -> EvaluationResult
+def execute_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evaluation_set_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evaluation_set_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, reuse_index: bool = False, custom_document_id_field: Optional[str] = None, document_scope: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
@@ -458,6 +465,43 @@ values "integrated" or "isolated" in the column "eval_mode" and the evaluation r
 - `reuse_index`: Whether to reuse existing non-empty index and to keep the index after evaluation.
 If True the index will be kept after evaluation and no indexing will take place if index has already documents. Otherwise it will be deleted immediately afterwards.
 Defaults to False.
+- `custom_document_id_field`: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+- `document_scope`: A criterion for deciding whether documents are relevant or not.
+You can select between:
+- 'document_id': Specifies that the document ID must match. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+        A typical use case is Document Retrieval.
+- 'context': Specifies that the content of the document must match. Uses fuzzy matching (see `context_matching_...` params).
+        A typical use case is Document-Independent Passage Retrieval.
+- 'document_id_and_context': A Boolean operation specifying that both `'document_id' AND 'context'` must match.
+        A typical use case is Document-Specific Passage Retrieval.
+- 'document_id_or_context': A Boolean operation specifying that either `'document_id' OR 'context'` must match.
+        A typical use case is Document Retrieval having sparse context labels.
+- 'answer': Specifies that the document contents must include the answer. The selected `answer_scope` is enforced automatically.
+        A typical use case is Question Answering.
+- 'document_id_or_answer' (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
+        This is intended to be a proper default value in order to support both main use cases:
+        - Document Retrieval
+        - Question Answering
+The default value is 'document_id_or_answer'.
+- `answer_scope`: Specifies the scope in which a matching answer is considered correct.
+You can select between:
+- 'any' (default): Any matching answer is considered correct.
+- 'context': The answer is only considered correct if its context matches as well.
+        Uses fuzzy matching (see `context_matching_...` params).
+- 'document_id': The answer is only considered correct if its document ID matches as well.
+        You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+- 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
+The default value is 'any'.
+In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
+- `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
+Returns 0.0 otherwise.
+- `context_matching_boost_split_overlaps`: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+we cut the context on the same side, recalculate the score and take the mean of both.
+Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+- `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
 
 <a id="base.Pipeline.eval"></a>
 
@@ -465,12 +509,19 @@ Defaults to False.
 
 ```python
 @send_event
-def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False) -> EvaluationResult
+def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
 
 and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+
+You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+Some of these scopes require additional information that already needs to be specified during `eval()`:
+- `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
+- `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
 
 **Arguments**:
 
@@ -502,6 +553,16 @@ The isolated evaluation calculates the upper bound of each node's evaluation met
 To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
 The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
 values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+- `custom_document_id_field`: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+- `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
+Returns 0.0 otherwise.
+- `context_matching_boost_split_overlaps`: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+we cut the context on the same side, recalculate the score and take the mean of both.
+Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+- `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
 
 <a id="base.Pipeline.get_nodes_by_class"></a>
 
@@ -699,7 +760,14 @@ Returns a configuration for the Pipeline that can be used with `Pipeline.load_fr
 #### Pipeline.print\_eval\_report
 
 ```python
-def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None)
+def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None, document_scope: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any")
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -709,6 +777,33 @@ Prints evaluation report containing a metrics funnel and worst queries for furth
 - `eval_result`: The evaluation result, can be obtained by running eval().
 - `n_wrong_examples`: The number of worst queries to show.
 - `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
+- `document_scope`: A criterion for deciding whether documents are relevant or not.
+You can select between:
+- 'document_id': Specifies that the document ID must match. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+        A typical use case is Document Retrieval.
+- 'context': Specifies that the content of the document must match. Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+        A typical use case is Document-Independent Passage Retrieval.
+- 'document_id_and_context': A Boolean operation specifying that both `'document_id' AND 'context'` must match.
+        A typical use case is Document-Specific Passage Retrieval.
+- 'document_id_or_context': A Boolean operation specifying that either `'document_id' OR 'context'` must match.
+        A typical use case is Document Retrieval having sparse context labels.
+- 'answer': Specifies that the document contents must include the answer. The selected `answer_scope` is enforced automatically.
+        A typical use case is Question Answering.
+- 'document_id_or_answer' (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
+        This is intended to be a proper default value in order to support both main use cases:
+        - Document Retrieval
+        - Question Answering
+The default value is 'document_id_or_answer'.
+- `answer_scope`: Specifies the scope in which a matching answer is considered correct.
+You can select between:
+- 'any' (default): Any matching answer is considered correct.
+- 'context': The answer is only considered correct if its context matches as well.
+        Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+- 'document_id': The answer is only considered correct if its document ID matches as well.
+        You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+- 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
+The default value is 'any'.
+In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
 
 <a id="base._HaystackBeirRetrieverAdapter"></a>
 
@@ -750,14 +845,13 @@ See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
 class RayPipeline(Pipeline)
 ```
 
-Ray (https://ray.io) is a framework for distributed computing.
+[Ray](https://ray.io) is a framework for distributed computing.
 
-Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
+With Ray, you can distribute a Pipeline's components across a cluster of machines. The individual components of a
 Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
-of the Reader and a single replica for the Retriever. It enables efficient resource utilization by horizontally
-scaling Components.
+of the Reader and a single replica for the Retriever. This way, you can use your resources more efficiently by horizontally scaling Components.
 
-To set the number of replicas, add  `replicas` in the YAML config for the node in a pipeline:
+To set the number of replicas, add  `replicas` in the YAML configuration for the node in a pipeline:
 
         ```yaml
         |    components:
@@ -772,13 +866,18 @@ To set the number of replicas, add  `replicas` in the YAML config for the node i
         |              inputs: [ Query ]
         ```
 
-A RayPipeline can only be created with a YAML Pipeline config.
->>> from haystack.pipeline import RayPipeline
->>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
->>> pipeline.run(query="What is the capital of Germany?")
+A Ray Pipeline can only be created with a YAML Pipeline configuration.
 
-By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
+```python
+from haystack.pipeline import RayPipeline
+pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
+pipeline.run(query="What is the capital of Germany?")
+```
+
+By default, RayPipelines create an instance of RayServe locally. To connect to an existing Ray instance,
 set the `address` parameter when creating the RayPipeline instance.
+
+YAML definitions of Ray pipelines are validated at load. For more information, see [YAML File Definitions](https://haystack-website-git-fork-fstau-dev-287-search-deepset-overnice.vercel.app/components/pipelines#yaml-file-definitions).
 
 <a id="ray.RayPipeline.__init__"></a>
 
@@ -790,7 +889,7 @@ def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
 
 **Arguments**:
 
-- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+- `address`: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
 
 <a id="ray.RayPipeline.load_from_yaml"></a>
@@ -1100,12 +1199,19 @@ Instance of DocumentStore or None
 #### BaseStandardPipeline.eval
 
 ```python
-def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, add_isolated_node_eval: bool = False) -> EvaluationResult
+def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
 
 and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+
+You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+Some of these scopes require additional information that already needs to be specified during `eval()`:
+- `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
+- `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
 
 **Arguments**:
 
@@ -1114,7 +1220,70 @@ and putting together all data that is needed for evaluation, e.g. calculating me
 params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
 - `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
 should be path or string pointing to downloadable models.
+- `sas_batch_size`: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+- `sas_use_gpu`: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+Falls back to CPU if no GPU is available.
 - `add_isolated_node_eval`: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
+- `custom_document_id_field`: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+- `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
+Returns 0.0 otherwise.
+- `context_matching_boost_split_overlaps`: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+we cut the context on the same side, recalculate the score and take the mean of both.
+Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+- `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+
+<a id="standard_pipelines.BaseStandardPipeline.print_eval_report"></a>
+
+#### BaseStandardPipeline.print\_eval\_report
+
+```python
+def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None, document_scope: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any")
+```
+
+Prints evaluation report containing a metrics funnel and worst queries for further analysis.
+
+**Arguments**:
+
+- `eval_result`: The evaluation result, can be obtained by running eval().
+- `n_wrong_examples`: The number of worst queries to show.
+- `metrics_filter`: The metrics to show per node. If None all metrics will be shown.
+- `document_scope`: A criterion for deciding whether documents are relevant or not.
+You can select between:
+- 'document_id': Specifies that the document ID must match. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+        A typical use case is Document Retrieval.
+- 'context': Specifies that the content of the document must match. Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+        A typical use case is Document-Independent Passage Retrieval.
+- 'document_id_and_context': A Boolean operation specifying that both `'document_id' AND 'context'` must match.
+        A typical use case is Document-Specific Passage Retrieval.
+- 'document_id_or_context': A Boolean operation specifying that either `'document_id' OR 'context'` must match.
+        A typical use case is Document Retrieval having sparse context labels.
+- 'answer': Specifies that the document contents must include the answer. The selected `answer_scope` is enforced automatically.
+        A typical use case is Question Answering.
+- 'document_id_or_answer' (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
+        This is intended to be a proper default value in order to support both main use cases:
+        - Document Retrieval
+        - Question Answering
+The default value is 'document_id_or_answer'.
+- `answer_scope`: Specifies the scope in which a matching answer is considered correct.
+You can select between:
+- 'any' (default): Any matching answer is considered correct.
+- 'context': The answer is only considered correct if its context matches as well.
+        Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+- 'document_id': The answer is only considered correct if its document ID matches as well.
+        You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+- 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
+The default value is 'any'.
+In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
 
 <a id="standard_pipelines.ExtractiveQAPipeline"></a>
 

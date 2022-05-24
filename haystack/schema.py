@@ -109,7 +109,7 @@ class Document:
         self.embedding = embedding
 
         # Create a unique ID (either new one, or one from user input)
-        if id:
+        if id is not None:
             self.id: str = str(id)
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
@@ -490,9 +490,9 @@ class MultiLabel:
     answers: List[str]
     no_answer: bool
     document_ids: List[str]
-    document_contents: List[str]
-    gold_offsets_in_contexts: List[Dict]
-    gold_offsets_in_documents: List[Dict]
+    contexts: List[str]
+    offsets_in_contexts: List[Dict]
+    offsets_in_documents: List[Dict]
 
     def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
@@ -533,20 +533,20 @@ class MultiLabel:
         # which equals the no_answers representation of reader nodes.
         if self.no_answer:
             self.answers = [""]
-            self.gold_offsets_in_documents: List[dict] = []
-            self.gold_offsets_in_contexts: List[dict] = []
+            self.offsets_in_documents: List[dict] = []
+            self.offsets_in_contexts: List[dict] = []
         else:
             answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
             self.answers = [answer.answer for answer in answered]
-            self.gold_offsets_in_documents = []
-            self.gold_offsets_in_contexts = []
+            self.offsets_in_documents = []
+            self.offsets_in_contexts = []
             for answer in answered:
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
-                        self.gold_offsets_in_documents.append({"start": span.start, "end": span.end})
+                        self.offsets_in_documents.append({"start": span.start, "end": span.end})
                 if answer.offsets_in_context is not None:
                     for span in answer.offsets_in_context:
-                        self.gold_offsets_in_contexts.append({"start": span.start, "end": span.end})
+                        self.offsets_in_contexts.append({"start": span.start, "end": span.end})
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.
@@ -557,7 +557,7 @@ class MultiLabel:
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
         self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.document_contents = [l.document.content for l in self.labels if not l.no_answer]
+        self.contexts = [l.document.content for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         if any(isinstance(getattr(l, key), dict) for l in self.labels):
@@ -626,12 +626,11 @@ class NumpyEncoder(json.JSONEncoder):
 class EvaluationResult:
     def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
         """
-        Convenience class to store, pass and interact with results of a pipeline evaluation run (e.g. pipeline.eval()).
+        A convenience class to store, pass, and interact with results of a pipeline evaluation run (for example `pipeline.eval()`).
         Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
         convenience methods to work with them.
-        For example, you can calculate eval metrics, get detailed reports or simulate different top_k settings.
+        For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
-        Example:
         ```python
         | eval_results = pipeline.eval(...)
         |
@@ -643,35 +642,57 @@ class EvaluationResult:
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
-        Rows are enriched with basic infos like rank, query, type or node.
-        Additional answer or document specific evaluation infos like gold labels
-        and metrics depicting whether the row matches the gold labels are included, too.
+        Rows are enriched with basic information like rank, query, type, or node.
+        Additional answer or document-specific evaluation information, like gold labels
+        and metrics showing whether the row matches the gold labels, are included, too.
         The DataFrames have the following schema:
-        - multilabel_id: the id of the multilabel, which is unique for the pair of query and filters
-        - query: the query
-        - filters: the filters used with the query
-        - gold_answers (answers only): the answers to be given
-        - answer (answers only): the answer
-        - context (answers only): the surrounding context of the answer within the document
-        - exact_match (answers only): metric depicting if the answer exactly matches the gold label
-        - f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
-        - sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
-        - gold_document_contents (documents only): the contents of the gold documents
-        - content (documents only): the content of the document
-        - gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
-        - answer_match (documents only): metric depicting whether the document contains the answer
-        - gold_id_or_answer_match (documents only): metric depicting whether one of the former two conditions are met
-        - rank: rank or 1-based-position in result list
-        - document_id: the id of the document that has been retrieved or that contained the answer
-        - gold_document_ids: the documents to be retrieved
-        - offsets_in_document (answers only): the position or offsets within the document the answer was found
-        - gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
-        - type: 'answer' or 'document'
-        - node: the node name
-        - eval_mode: evaluation mode depicting whether the evaluation was executed in integrated or isolated mode.
-                     Check pipeline.eval()'s add_isolated_node_eval param for more information.
+        - multilabel_id: The ID of the multilabel, which is unique for the pair of query and filters.
+        - query: The actual query string.
+        - filters: The filters used with the query.
+        - gold_answers (answers only): The expected answers.
+        - answer (answers only): The actual answer.
+        - context: The content of the document (the surrounding context of the answer for QA).
+        - exact_match (answers only): A metric showing if the answer exactly matches the gold label.
+        - f1 (answers only): A metric showing how well the answer overlaps with the gold label on a token basis.
+        - sas (answers only, optional): A metric showing how well the answer matches the gold label on a semantic basis.
+        - exact_match_context_scope (answers only): exact_match with enforced context match.
+        - f1_context_scope (answers only): f1 with enforced context scope match.
+        - sas_context_scope (answers only): sas with enforced context scope match.
+        - exact_match_document_scope (answers only): exact_match with enforced document scope match.
+        - f1_document_scope (answers only): f1 with enforced document scope match.
+        - sas_document_scope (answers only): sas with enforced document scope match.
+        - exact_match_document_id_and_context_scope: (answers only): exact_match with enforced document and context scope match.
+        - f1_document_id_and_context_scope (answers only): f1 with enforced document and context scope match.
+        - sas_document_id_and_context_scope (answers only): sas with enforced document and context scope match.
+        - gold_contexts: The contents of the gold documents.
+        - gold_id_match (documents only): A metric showing whether one of the gold document IDs matches the document.
+        - context_match (documents only): A metric showing whether one of the gold contexts matches the document content.
+        - answer_match (documents only): A metric showing whether the document contains the answer.
+        - gold_id_or_answer_match (documents only): A Boolean operation specifying that there should be either `'gold_id_match' OR 'answer_match'`.
+        - gold_id_and_answer_match (documents only): A Boolean operation specifying that there should be both `'gold_id_match' AND 'answer_match'`.
+        - gold_id_or_context_match (documents only): A Boolean operation specifying that there should be either `'gold_id_match' OR 'context_match'`.
+        - gold_id_and_context_match (documents only): A Boolean operation specifying that there should be both `'gold_id_match' AND 'context_match'`.
+        - gold_id_and_context_and_answer_match (documents only): A Boolean operation specifying that there should be `'gold_id_match' AND 'context_match' AND 'answer_match'`.
+        - context_and_answer_match (documents only): A Boolean operation specifying that there should be both `'context_match' AND 'answer_match'`.
+        - rank: A rank or 1-based-position in the result list.
+        - document_id: The ID of the document that has been retrieved or that contained the answer.
+        - gold_document_ids: The IDs of the documents to be retrieved.
+        - custom_document_id: The custom ID of the document (specified by `custom_document_id_field`) that has been retrieved or that contained the answer.
+        - gold_custom_document_ids: The custom documents IDs (specified by `custom_document_id_field`) to be retrieved.
+        - offsets_in_document (answers only): The position or offsets within the document where the answer was found.
+        - gold_offsets_in_documents (answers only): The position or offsets of the gold answer within the document.
+        - gold_answers_exact_match (answers only): exact_match values per gold_answer.
+        - gold_answers_f1 (answers only): f1 values per gold_answer.
+        - gold_answers_sas (answers only): sas values per gold answer.
+        - gold_documents_id_match: The document ID match per gold label (if `custom_document_id_field` has been specified, custom IDs are used).
+        - gold_contexts_similarity: Context similarity per gold label.
+        - gold_answers_match (documents only): Specifies whether the document contains an answer per gold label.
+        - type: Possible values: 'answer' or 'document'.
+        - node: The node name
+        - eval_mode: Specifies whether the evaluation was executed in integrated or isolated mode.
+                     Check pipeline.eval()'s add_isolated_node_eval parameter for more information.
 
-        :param node_results: the evaluation Dataframes per pipeline node
+        :param node_results: The evaluation Dataframes per pipeline node.
         """
         self.node_results: Dict[str, pd.DataFrame] = {} if node_results is None else node_results
 
@@ -701,51 +722,83 @@ class EvaluationResult:
         self,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_or_answer_match",
-        eval_mode: str = "integrated",
+        document_scope: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer",
+        eval_mode: Literal["integrated", "isolated"] = "integrated",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> Dict[str, Dict[str, float]]:
         """
         Calculates proper metrics for each node.
 
-        For document returning nodes default metrics are:
-        - mrr (Mean Reciprocal Rank: see https://en.wikipedia.org/wiki/Mean_reciprocal_rank)
-        - map (Mean Average Precision: see https://en.wikipedia.org/wiki/Evaluation_measures_%28information_retrieval%29#Mean_average_precision)
-        - ndcg (Normalized Discounted Cumulative Gain: see https://en.wikipedia.org/wiki/Discounted_cumulative_gain)
+        For Nodes that return Documents, the default metrics are:
+        - mrr (`Mean Reciprocal Rank <https://en.wikipedia.org/wiki/Mean_reciprocal_rank>`_)
+        - map (`Mean Average Precision <https://en.wikipedia.org/wiki/Evaluation_measures_%28information_retrieval%29#Mean_average_precision>`_)
+        - ndcg (`Normalized Discounted Cumulative Gain <https://en.wikipedia.org/wiki/Discounted_cumulative_gain>`_)
         - precision (Precision: How many of the returned documents were relevant?)
         - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
         - recall_single_hit (Recall for Question Answering: How many of the queries returned at least one relevant document?)
 
-        For answer returning nodes default metrics are:
+        For Nodes that return answers, the default metrics are:
         - exact_match (How many of the queries returned the exact answer?)
-        - f1 (How well do the returned results overlap with any gold answer on token basis?)
-        - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+        - f1 (How well do the returned results overlap with any gold answer on a token basis?)
+        - sas, if a SAS model has been provided when calling `pipeline.eval()` (How semantically similar is the prediction to the gold answers?)
 
-        Lower top_k values for reader and retriever than the actual values during the eval run can be simulated.
-        E.g. top_1_f1 for reader nodes can be calculated by setting simulated_top_k_reader=1.
+        During the eval run, you can simulate lower top_k values for Reader and Retriever than the actual values.
+        For example, you can calculate `top_1_f1` for Reader nodes by setting `simulated_top_k_reader=1`.
 
-        Results for reader nodes with applied simulated_top_k_retriever should be considered with caution
-        as there are situations the result can heavily differ from an actual eval run with corresponding top_k_retriever.
+        If you applied `simulated_top_k_retriever` to a Reader node, you should treat the results with caution as they can differ from an actual eval run with a corresponding `top_k_retriever` heavily.
 
-        :param simulated_top_k_reader: simulates top_k param of reader
-        :param simulated_top_k_retriever: simulates top_k param of retriever.
-            remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
-        :param doc_relevance_col: column in the underlying eval table that contains the relevance criteria for documents.
-            Values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'.
-            Default value is 'gold_id_or_answer_match'.
-        :param eval_mode: the input on which the node was evaluated on.
-            Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
-            However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
-            you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your node.
-            For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
-            Values can be 'integrated', 'isolated'.
-            Default value is 'integrated'.
+        :param simulated_top_k_reader: Simulates the `top_k` parameter of the Reader.
+        :param simulated_top_k_retriever: Simulates the `top_k` parameter of the Retriever.
+            Note: There might be a discrepancy between simulated Reader metrics and an actual Pipeline run with Retriever `top_k`.
+        :param eval_mode: The input the Node was evaluated on.
+            Usually a Node gets evaluated on the prediction provided by its predecessor Nodes in the Pipeline (`value='integrated'`).
+            However, as the quality of the Node can heavily depend on the Node's input and thus the predecessor's quality,
+            you might want to simulate a perfect predecessor in order to get an independent upper bound of the quality of your Node.
+            For example, when evaluating the Reader, use `value='isolated'` to simulate a perfect Retriever in an ExtractiveQAPipeline.
+            Possible values are: `integrated`, `isolated`.
+            The default value is `integrated`.
+        :param document_scope: A criterion for deciding whether documents are relevant or not.
+            You can select between:
+            - 'document_id': Specifies that the document ID must match. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+                    A typical use case is Document Retrieval.
+            - 'context': Specifies that the content of the document must match. Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+                    A typical use case is Document-Independent Passage Retrieval.
+            - 'document_id_and_context': A Boolean operation specifying that both `'document_id' AND 'context'` must match.
+                    A typical use case is Document-Specific Passage Retrieval.
+            - 'document_id_or_context': A Boolean operation specifying that either `'document_id' OR 'context'` must match.
+                    A typical use case is Document Retrieval having sparse context labels.
+            - 'answer': Specifies that the document contents must include the answer. The selected `answer_scope` is enforced automatically.
+                    A typical use case is Question Answering.
+            - 'document_id_or_answer' (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
+                    This is intended to be a proper default value in order to support both main use cases:
+                    - Document Retrieval
+                    - Question Answering
+            The default value is 'document_id_or_answer'.
+        :param answer_scope: Specifies the scope in which a matching answer is considered correct.
+            You can select between:
+            - 'any' (default): Any matching answer is considered correct.
+            - 'context': The answer is only considered correct if its context matches as well.
+                    Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+            - 'document_id': The answer is only considered correct if its document ID matches as well.
+                    You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+            - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
+            The default value is 'any'.
+            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
         """
         return {
             node: self._calculate_node_metrics(
                 df,
                 simulated_top_k_reader=simulated_top_k_reader,
                 simulated_top_k_retriever=simulated_top_k_retriever,
-                doc_relevance_col=doc_relevance_col,
+                document_scope=document_scope,
+                answer_scope=answer_scope,
                 eval_mode=eval_mode,
             )
             for node, df in self.node_results.items()
@@ -757,10 +810,18 @@ class EvaluationResult:
         n: int = 3,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_match",
+        document_scope: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer",
         document_metric: str = "recall_single_hit",
         answer_metric: str = "f1",
-        eval_mode: str = "integrated",
+        eval_mode: Literal["integrated", "isolated"] = "integrated",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> List[Dict]:
         """
         Returns the worst performing queries.
@@ -773,8 +834,6 @@ class EvaluationResult:
         :param simulated_top_k_reader: simulates top_k param of reader
         :param simulated_top_k_retriever: simulates top_k param of retriever.
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
-        :param doc_relevance_col: column that contains the relevance criteria for documents.
-            values can be: 'gold_id_match', 'answer_match', 'gold_id_or_answer_match'
         :param document_metric: the document metric worst queries are calculated with.
             values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
         :param document_metric: the answer metric worst queries are calculated with.
@@ -786,6 +845,33 @@ class EvaluationResult:
             For example when evaluating the reader use value='isolated' to simulate a perfect retriever in an ExtractiveQAPipeline.
             Values can be 'integrated', 'isolated'.
             Default value is 'integrated'.
+        :param document_scope: A criterion for deciding whether documents are relevant or not.
+            You can select between:
+            - 'document_id': Specifies that the document ID must match. You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+                    A typical use case is Document Retrieval.
+            - 'context': Specifies that the content of the document must match. Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+                    A typical use case is Document-Independent Passage Retrieval.
+            - 'document_id_and_context': A Boolean operation specifying that both `'document_id' AND 'context'` must match.
+                    A typical use case is Document-Specific Passage Retrieval.
+            - 'document_id_or_context': A Boolean operation specifying that either `'document_id' OR 'context'` must match.
+                    A typical use case is Document Retrieval having sparse context labels.
+            - 'answer': Specifies that the document contents must include the answer. The selected `answer_scope` is enforced automatically.
+                    A typical use case is Question Answering.
+            - 'document_id_or_answer' (default): A Boolean operation specifying that either `'document_id' OR 'answer'` must match.
+                    This is intended to be a proper default value in order to support both main use cases:
+                    - Document Retrieval
+                    - Question Answering
+            The default value is 'document_id_or_answer'.
+        :param answer_scope: Specifies the scope in which a matching answer is considered correct.
+            You can select between:
+            - 'any' (default): Any matching answer is considered correct.
+            - 'context': The answer is only considered correct if its context matches as well.
+                    Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+            - 'document_id': The answer is only considered correct if its document ID matches as well.
+                    You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+            - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
+            The default value is 'any'.
+            In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
         """
         node_df = self.node_results[node]
         node_df = self._filter_eval_mode(node_df, eval_mode)
@@ -796,6 +882,7 @@ class EvaluationResult:
                 answers,
                 simulated_top_k_reader=simulated_top_k_reader,
                 simulated_top_k_retriever=simulated_top_k_retriever,
+                answer_scope=answer_scope,
             )
             worst_df = metrics_df.sort_values(by=[answer_metric]).head(n)
             wrong_examples = []
@@ -818,8 +905,13 @@ class EvaluationResult:
 
         documents = node_df[node_df["type"] == "document"]
         if len(documents) > 0:
+            document_relevance_criterion = self._get_document_relevance_criterion(
+                document_scope=document_scope, answer_scope=answer_scope
+            )
             metrics_df = self._build_document_metrics_df(
-                documents, simulated_top_k_retriever=simulated_top_k_retriever, doc_relevance_col=doc_relevance_col
+                documents,
+                simulated_top_k_retriever=simulated_top_k_retriever,
+                document_relevance_criterion=document_relevance_criterion,
             )
             worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
             wrong_examples = []
@@ -831,15 +923,7 @@ class EvaluationResult:
                     "filters": query_documents["filters"].iloc[0],
                     "metrics": metrics.to_dict(),
                     "documents": query_documents.drop(
-                        [
-                            "node",
-                            "query",
-                            "multilabel_id",
-                            "filters",
-                            "type",
-                            "gold_document_ids",
-                            "gold_document_contents",
-                        ],
+                        ["node", "query", "multilabel_id", "filters", "type", "gold_document_ids", "gold_contexts"],
                         axis=1,
                     ).to_dict(orient="records"),
                     "gold_document_ids": query_documents["gold_document_ids"].iloc[0],
@@ -849,22 +933,81 @@ class EvaluationResult:
 
         return []
 
+    def _get_document_relevance_criterion(
+        self,
+        document_scope: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
+    ) -> Literal[
+        "document_id",
+        "context",
+        "document_id_and_context",
+        "document_id_or_context",
+        "answer",
+        "context_and_answer",
+        "document_id_and_answer",
+        "document_id_and_context_and_answer",
+        "document_id_or_answer",
+    ]:
+        """
+        Combines document_scope and answer_scope to create the document_relevance_criterion.
+        """
+        answer_scope_to_doc_relevance_crit = {
+            "context": "context_and_answer",
+            "document_id": "document_id_and_answer",
+            "document_id_and_context": "document_id_and_context_and_answer",
+        }
+
+        document_relevance_criterion: str = document_scope
+        if document_scope in ["answer", "document_id_or_answer"]:
+            document_relevance_criterion = answer_scope_to_doc_relevance_crit.get(answer_scope, document_scope)
+        elif answer_scope in answer_scope_to_doc_relevance_crit.keys():
+            logger.warning(
+                f"You specified a non-answer document_scope together with a non-default answer_scope. "
+                f"This may result in inconsistencies between answer and document metrics. "
+                f"To enforce the same definition of correctness for both, document_scope must be one of {['answer', 'document_id_or_answer']}."
+            )
+
+        return document_relevance_criterion  # type: ignore[return-value]
+
     def _calculate_node_metrics(
         self,
         df: pd.DataFrame,
         simulated_top_k_reader: int = -1,
         simulated_top_k_retriever: int = -1,
-        doc_relevance_col: str = "gold_id_match",
+        document_scope: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer",
         eval_mode: str = "integrated",
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> Dict[str, float]:
         df = self._filter_eval_mode(df, eval_mode)
 
         answer_metrics = self._calculate_answer_metrics(
-            df, simulated_top_k_reader=simulated_top_k_reader, simulated_top_k_retriever=simulated_top_k_retriever
+            df,
+            simulated_top_k_reader=simulated_top_k_reader,
+            simulated_top_k_retriever=simulated_top_k_retriever,
+            answer_scope=answer_scope,
         )
 
+        document_relevance_criterion = self._get_document_relevance_criterion(
+            document_scope=document_scope, answer_scope=answer_scope
+        )
         document_metrics = self._calculate_document_metrics(
-            df, simulated_top_k_retriever=simulated_top_k_retriever, doc_relevance_col=doc_relevance_col
+            df,
+            simulated_top_k_retriever=simulated_top_k_retriever,
+            document_relevance_criterion=document_relevance_criterion,
         )
 
         return {**answer_metrics, **document_metrics}
@@ -877,35 +1020,47 @@ class EvaluationResult:
         return df
 
     def _calculate_answer_metrics(
-        self, df: pd.DataFrame, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1
+        self,
+        df: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1,
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> Dict[str, float]:
         answers = df[df["type"] == "answer"]
         if len(answers) == 0:
             return {}
 
         metrics_df = self._build_answer_metrics_df(
-            answers, simulated_top_k_reader=simulated_top_k_reader, simulated_top_k_retriever=simulated_top_k_retriever
+            answers,
+            simulated_top_k_reader=simulated_top_k_reader,
+            simulated_top_k_retriever=simulated_top_k_retriever,
+            answer_scope=answer_scope,
         )
 
         return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
 
     def _build_answer_metrics_df(
-        self, answers: pd.DataFrame, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1
+        self,
+        answers: pd.DataFrame,
+        simulated_top_k_reader: int = -1,
+        simulated_top_k_retriever: int = -1,
+        answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> pd.DataFrame:
         """
-        Builds a dataframe containing answer metrics (columns) per query (index).
+        Builds a dataframe containing answer metrics (columns) per multilabel (index).
         Answer metrics are:
         - exact_match (Did the query exactly return any gold answer? -> 1.0 or 0.0)
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
         - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
+        multilabel_ids = answers["multilabel_id"].unique()
         # simulate top k retriever
         if simulated_top_k_retriever != -1:
             documents = self._get_documents_df()
 
             top_k_documents = documents[documents["rank"] <= simulated_top_k_retriever]
             simulated_answers = []
-            for multilabel_id in answers["multilabel_id"].unique():
+            for multilabel_id in multilabel_ids:
                 top_k_document_ids = top_k_documents[top_k_documents["multilabel_id"] == multilabel_id][
                     "document_id"
                 ].unique()
@@ -924,17 +1079,22 @@ class EvaluationResult:
             answers = answers[answers["rank"] <= simulated_top_k_reader]
 
         # build metrics df
-        metrics = []
+        answer_metrics = ["exact_match", "f1", "sas"]
+        df_records = []
 
-        for multilabel_id in answers["multilabel_id"].unique():
+        for multilabel_id in multilabel_ids:
             query_df = answers[answers["multilabel_id"] == multilabel_id]
+            metric_to_scoped_col = {
+                metric: f"{metric}_{answer_scope}_scope" if answer_scope != "any" else metric
+                for metric in answer_metrics
+                if metric in query_df.columns
+            }
+            query_metrics = {
+                metric: query_df[col].max() if any(query_df) else 0.0 for metric, col in metric_to_scoped_col.items()
+            }
+            df_records.append(query_metrics)
 
-            metrics_cols = set(query_df.columns).intersection(["exact_match", "f1", "sas"])
-
-            query_metrics = {metric: query_df[metric].max() if len(query_df) > 0 else 0.0 for metric in metrics_cols}
-            metrics.append(query_metrics)
-
-        metrics_df = pd.DataFrame.from_records(metrics, index=answers["multilabel_id"].unique())
+        metrics_df = pd.DataFrame.from_records(df_records, index=multilabel_ids)
         return metrics_df
 
     def _get_documents_df(self):
@@ -948,20 +1108,48 @@ class EvaluationResult:
         return documents_df
 
     def _calculate_document_metrics(
-        self, df: pd.DataFrame, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match"
+        self,
+        df: pd.DataFrame,
+        simulated_top_k_retriever: int = -1,
+        document_relevance_criterion: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "context_and_answer",
+            "document_id_and_answer",
+            "document_id_and_context_and_answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer",
     ) -> Dict[str, float]:
         documents = df[df["type"] == "document"]
         if len(documents) == 0:
             return {}
 
         metrics_df = self._build_document_metrics_df(
-            documents, simulated_top_k_retriever=simulated_top_k_retriever, doc_relevance_col=doc_relevance_col
+            documents,
+            simulated_top_k_retriever=simulated_top_k_retriever,
+            document_relevance_criterion=document_relevance_criterion,
         )
 
         return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
 
     def _build_document_metrics_df(
-        self, documents: pd.DataFrame, simulated_top_k_retriever: int = -1, doc_relevance_col: str = "gold_id_match"
+        self,
+        documents: pd.DataFrame,
+        simulated_top_k_retriever: int = -1,
+        document_relevance_criterion: Literal[
+            "document_id",
+            "context",
+            "document_id_and_context",
+            "document_id_or_context",
+            "answer",
+            "context_and_answer",
+            "document_id_and_answer",
+            "document_id_and_context_and_answer",
+            "document_id_or_answer",
+        ] = "document_id_or_answer",
     ) -> pd.DataFrame:
         """
         Builds a dataframe containing document metrics (columns) per pair of query and gold document ids (index).
@@ -971,6 +1159,32 @@ class EvaluationResult:
         - precision (Precision: How many of the returned documents were relevant?)
         - recall_multi_hit (Recall according to Information Retrieval definition: How many of the relevant documents were retrieved per query?)
         - recall_single_hit (Recall for Question Answering: Did the query return at least one relevant document? -> 1.0 or 0.0)
+
+        :param documents: document eval dataframe
+        :param simulated_top_k_retriever: simulates top_k param of retriever.
+        :param document_relevance_criterion: criterion for deciding whether documents are relevant or not.
+            You can select between:
+            - 'document_id': Document's id or custom id must match.
+                    Typical use case: Document Retrieval
+            - 'context': Document's content must match.
+                    Typical use case: Document-independent Passage Retrieval
+            - 'document_id_and_context': boolean operation `'document_id' AND 'context'`.
+                    Typical use case: Document-specific Passage Retrieval
+            - 'document_id_or_context': boolean operation `'document_id' OR 'context'`.
+                    Typical use case: Document Retrieval having sparse context labels
+            - 'answer': Document's content must include the answer.
+                    Typical use case: Question Answering
+            - 'document_id_or_answer' (default): boolean operation `'document_id' OR 'answer'`.
+                    This is intended to be a proper default value in order to support both main use cases:
+                    - Document Retrieval
+                    - Question Answering
+            - 'context_and_answer': boolean operation `'context' AND 'answer'`.
+                    Typical use case: Question Answering with context-specific answers (see answer_scope='context')
+            - 'document_id_and_answer': boolean operation `'document_id' AND 'answer'`.
+                    Typical use case: Question Answering with document-specific answers (see answer_scope='document_id')
+            - 'document_id_and_context_and_answer': boolean operation `'document_id' AND 'context' and 'answer'`.
+                    Typical use case: Question Answering with document-and-context-specific answers (see answer_scope='document_id_and_context')
+            Default value is 'document_id_or_answer'.
         """
         if simulated_top_k_retriever != -1:
             documents = documents[documents["rank"] <= simulated_top_k_retriever]
@@ -982,12 +1196,13 @@ class EvaluationResult:
             gold_ids = list(query_df["gold_document_ids"].iloc[0])
             retrieved = len(query_df)
 
-            relevance_criteria_ids = list(query_df[query_df[doc_relevance_col] == 1]["document_id"].values)
-            num_relevants = len(set(gold_ids + relevance_criteria_ids))
-            num_retrieved_relevants = query_df[doc_relevance_col].values.sum()
-            rank_retrieved_relevants = query_df[query_df[doc_relevance_col] == 1]["rank"].values
+            relevance_criterion_col = f"{document_relevance_criterion.replace('document_id', 'gold_id')}_match"
+            relevance_criterion_ids = list(query_df[query_df[relevance_criterion_col] == 1]["document_id"].values)
+            num_relevants = len(set(gold_ids + relevance_criterion_ids))
+            num_retrieved_relevants = query_df[relevance_criterion_col].values.sum()
+            rank_retrieved_relevants = query_df[query_df[relevance_criterion_col] == 1]["rank"].values
             avp_retrieved_relevants = [
-                query_df[doc_relevance_col].values[: int(rank)].sum() / rank for rank in rank_retrieved_relevants
+                query_df[relevance_criterion_col].values[: int(rank)].sum() / rank for rank in rank_retrieved_relevants
             ]
 
             avg_precision = np.sum(avp_retrieved_relevants) / num_relevants if num_relevants > 0 else 0.0
@@ -1040,8 +1255,20 @@ class EvaluationResult:
         """
         load_dir = load_dir if isinstance(load_dir, Path) else Path(load_dir)
         csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
-        cols_to_convert = ["gold_document_ids", "gold_document_contents", "gold_answers", "gold_offsets_in_documents"]
+        cols_to_convert = [
+            "gold_document_ids",
+            "gold_contexts",
+            "gold_answers",
+            "gold_offsets_in_documents",
+            "gold_answers_exact_match",
+            "gold_answers_f1",
+            "gold_answers_document_id_match",
+            "gold_context_similarity",
+        ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
         node_results = {file.stem: pd.read_csv(file, header=0, converters=converters) for file in csv_files}
+        # backward compatibility mappings
+        for df in node_results.values():
+            df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
         result = cls(node_results)
         return result

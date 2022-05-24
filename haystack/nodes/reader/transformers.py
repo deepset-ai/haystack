@@ -151,7 +151,7 @@ class TransformersReader(BaseReader):
 
     def predict_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
@@ -159,13 +159,13 @@ class TransformersReader(BaseReader):
         """
         Use loaded QA model to find answers for the queries in the Documents.
 
-        - If you provide a single query...
+        - If you provide a list containing a single query...
 
             - ... and a single list of Documents, the query will be applied to each Document individually.
             - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
               will be aggregated per Document list.
 
-        - If you provide a list of queries...
+        - If you provide a list of multiple queries...
 
             - ... and a single list of Documents, each query will be applied to each Document individually.
             - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
@@ -183,7 +183,7 @@ class TransformersReader(BaseReader):
         if batch_size is None:
             batch_size = self.batch_size
 
-        inputs, number_of_docs, all_docs, single_query, single_doc_list = self._preprocess_batch_queries_and_docs(
+        inputs, number_of_docs, all_docs, single_doc_list = self._preprocess_batch_queries_and_docs(
             queries=queries, documents=documents
         )
 
@@ -230,7 +230,7 @@ class TransformersReader(BaseReader):
             results["no_ans_gaps"].append(max_no_ans_gap)
 
         # Group answers by question in case of list of queries and single doc list
-        if not single_query and single_doc_list:
+        if single_doc_list and len(queries) > 1:
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
             for i in range(0, len(results["answers"]), answers_per_query):
@@ -303,20 +303,18 @@ class TransformersReader(BaseReader):
         return answers, max_no_ans_gap
 
     def _preprocess_batch_queries_and_docs(
-        self, queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]]
-    ) -> Tuple[List[SquadExample], List[int], Dict[str, Document], bool, bool]:
+        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
+    ) -> Tuple[List[SquadExample], List[int], Dict[str, Document], bool]:
         # Convert input to transformers format
         inputs = []
         number_of_docs = []
         all_docs = {}
+        single_doc_list = False
 
-        # Query case 1: single query
-        if isinstance(queries, str):
-            single_query = True
-            query = queries
-            # Docs case 1: single list of Documents -> apply single query to all Documents
-            if len(documents) > 0 and isinstance(documents[0], Document):
-                single_doc_list = True
+        # Docs case 1: single list of Documents -> apply each query to all Documents
+        if len(documents) > 0 and isinstance(documents[0], Document):
+            single_doc_list = True
+            for query in queries:
                 for doc in documents:
                     number_of_docs.append(1)
                     if not isinstance(doc, Document):
@@ -326,53 +324,24 @@ class TransformersReader(BaseReader):
                     all_docs[doc.id] = doc
                     inputs.append(cur)
 
-            # Docs case 2: list of lists of Documents -> apply single query to each list of Documents
-            elif len(documents) > 0 and isinstance(documents[0], list):
-                single_doc_list = False
-                for docs in documents:
-                    if not isinstance(docs, list):
-                        raise HaystackError(f"docs was of type {type(docs)}, but expected a list of Documents.")
-                    number_of_docs.append(len(docs))
-                    for doc in docs:
-                        cur = self.model.create_sample(question=query, context=doc.content)
-                        cur.doc_id = doc.id
-                        all_docs[doc.id] = doc
-                        inputs.append(cur)
+        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
+        # contains only one query, apply it to each list of Documents
+        elif len(documents) > 0 and isinstance(documents[0], list):
+            single_doc_list = False
+            if len(queries) == 1:
+                queries = queries * len(documents)
+            if len(queries) != len(documents):
+                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            for query, cur_docs in zip(queries, documents):
+                if not isinstance(cur_docs, list):
+                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                number_of_docs.append(len(cur_docs))
+                for doc in cur_docs:
+                    if not isinstance(doc, Document):
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                    cur = self.model.create_sample(question=query, context=doc.content)
+                    cur.doc_id = doc.id
+                    all_docs[doc.id] = doc
+                    inputs.append(cur)
 
-        # Query case 2: list of queries
-        elif isinstance(queries, list) and len(queries) > 0 and isinstance(queries[0], str):
-            single_query = False
-            # Docs case 1: single list of Documents -> apply each query to all Documents
-            if len(documents) > 0 and isinstance(documents[0], Document):
-                single_doc_list = True
-                for query in queries:
-                    for doc in documents:
-                        number_of_docs.append(1)
-                        if not isinstance(doc, Document):
-                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-                        cur = self.model.create_sample(question=query, context=doc.content)
-                        cur.doc_id = doc.id
-                        all_docs[doc.id] = doc
-                        inputs.append(cur)
-
-            # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents
-            elif len(documents) > 0 and isinstance(documents[0], list):
-                single_doc_list = False
-                if len(queries) != len(documents):
-                    raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-                for query, cur_docs in zip(queries, documents):
-                    if not isinstance(cur_docs, list):
-                        raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
-                    number_of_docs.append(len(cur_docs))
-                    for doc in cur_docs:
-                        if not isinstance(doc, Document):
-                            raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-                        cur = self.model.create_sample(question=query, context=doc.content)
-                        cur.doc_id = doc.id
-                        all_docs[doc.id] = doc
-                        inputs.append(cur)
-
-        else:
-            raise HaystackError(f"'queries' was of type {type(queries)} but must be of type str or List[str].")
-
-        return inputs, number_of_docs, all_docs, single_query, single_doc_list
+        return inputs, number_of_docs, all_docs, single_doc_list
