@@ -750,14 +750,13 @@ See https://github.com/beir-cellar/beir/blob/main/beir/retrieval/evaluation.py.
 class RayPipeline(Pipeline)
 ```
 
-Ray (https://ray.io) is a framework for distributed computing.
+[Ray](https://ray.io) is a framework for distributed computing.
 
-Ray allows distributing a Pipeline's components across a cluster of machines. The individual components of a
+With Ray, you can distribute a Pipeline's components across a cluster of machines. The individual components of a
 Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
-of the Reader and a single replica for the Retriever. It enables efficient resource utilization by horizontally
-scaling Components.
+of the Reader and a single replica for the Retriever. This way, you can use your resources more efficiently by horizontally scaling Components.
 
-To set the number of replicas, add  `replicas` in the YAML config for the node in a pipeline:
+To set the number of replicas, add  `replicas` in the YAML configuration for the node in a pipeline:
 
         ```yaml
         |    components:
@@ -772,13 +771,18 @@ To set the number of replicas, add  `replicas` in the YAML config for the node i
         |              inputs: [ Query ]
         ```
 
-A RayPipeline can only be created with a YAML Pipeline config.
->>> from haystack.pipeline import RayPipeline
->>> pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
->>> pipeline.run(query="What is the capital of Germany?")
+A Ray Pipeline can only be created with a YAML Pipeline configuration.
 
-By default, RayPipelines creates an instance of RayServe locally. To connect to an existing Ray instance,
+```python
+from haystack.pipeline import RayPipeline
+pipeline = RayPipeline.load_from_yaml(path="my_pipelines.yaml", pipeline_name="my_query_pipeline")
+pipeline.run(query="What is the capital of Germany?")
+```
+
+By default, RayPipelines create an instance of RayServe locally. To connect to an existing Ray instance,
 set the `address` parameter when creating the RayPipeline instance.
+
+YAML definitions of Ray pipelines are validated at load. For more information, see [YAML File Definitions](https://haystack-website-git-fork-fstau-dev-287-search-deepset-overnice.vercel.app/components/pipelines#yaml-file-definitions).
 
 <a id="ray.RayPipeline.__init__"></a>
 
@@ -790,7 +794,7 @@ def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
 
 **Arguments**:
 
-- `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+- `address`: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
 
 <a id="ray.RayPipeline.load_from_yaml"></a>
