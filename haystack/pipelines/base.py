@@ -1061,6 +1061,13 @@ class Pipeline:
         Evaluates the pipeline by running the pipeline once per query in debug mode
         and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
+        If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+
+        You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+        Some of these scopes require additional information that already needs to be specified during `eval()`: 
+        - `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
+        - `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
+
         :param labels: The labels to evaluate on
         :param documents: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
         :param params: Dictionary of parameters to be dispatched to the nodes.

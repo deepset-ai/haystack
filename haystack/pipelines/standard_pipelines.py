@@ -177,6 +177,13 @@ class BaseStandardPipeline(ABC):
         Evaluates the pipeline by running the pipeline once per query in debug mode
         and putting together all data that is needed for evaluation, e.g. calculating metrics.
 
+        If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+
+        You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+        Some of these scopes require additional information that already needs to be specified during `eval()`: 
+        - `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
+        - `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
+
         :param labels: The labels to evaluate on
         :param params: Params for the `retriever` and `reader`. For instance,
                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
@@ -186,6 +193,9 @@ class BaseStandardPipeline(ABC):
         :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
                             Falls back to CPU if no GPU is available.
         :param add_isolated_node_eval: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
+        :param custom_document_id_field: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+                                         This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+                                         If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
         :param context_matching_min_length: The minimum string length context and candidate need to have in order to be scored.
                            Returns 0.0 otherwise.
         :param context_matching_boost_split_overlaps: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
