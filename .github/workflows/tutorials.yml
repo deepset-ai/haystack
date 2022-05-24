@@ -174,19 +174,17 @@ jobs:
         find . -name '[0-9]_*.txt' -delete
         cd ../../
 
-        array=(${{ matrix.script-path }})
-
         set -e   # Fails on any error in the following loop
-        for i in ${!array[@]}; do
-          cp -r data/tutorials data/tutorial$((i+1))
+        for script in ${{ matrix.script-path }}; do
+          cp -r data/tutorials data/tutorial${script:0:1}
           echo ""
           echo "#############################################################"
-          echo "  Running ${array[$i]} ..."
+          echo "  Running $script ..."
           echo "#############################################################"
           echo ""
-          echo "====== tutorials/Tutorial${array[$i]}.py ===================="
-          python tutorials/Tutorial${array[$i]}.py
+          echo "====== Tutorial$script.py ===================="
+          python tutorials/Tutorial$script.py
           echo ""
-          echo "====== tutorials/Tutorial${array[$i]}.ipynb ================="
-          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run tutorials/Tutorial${array[$i]}.ipynb"
+          echo "====== Tutorial$script.ipynb ================="
+          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run tutorials/Tutorial$script.ipynb"
         done
