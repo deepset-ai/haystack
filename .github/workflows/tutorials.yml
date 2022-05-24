@@ -99,7 +99,7 @@ jobs:
            tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py \
            tutorials/Tutorial4_FAQ_style_QA.py \
            tutorials/Tutorial5_Evaluation.py \
-           tutorials/TTutorial6_Better_Retrieval_via_DPR.py \
+           tutorials/Tutorial6_Better_Retrieval_via_DPR.py \
            tutorials/Tutorial7_RAG_Generator.py"
 
         - "tutorials/Tutorial8_Preprocessing.py \
