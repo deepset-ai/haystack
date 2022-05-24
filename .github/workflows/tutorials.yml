@@ -176,7 +176,12 @@ jobs:
 
         set -e   # Fails on any error in the following loop
         for script in ${{ matrix.script-path }}; do
-          cp -r data/tutorials data/tutorial${script:0:1}
+
+          # These ones don't use GoT data
+          if [[ "$script" != "8_Preprocessing" ]]; then
+            cp -r data/tutorials data/tutorial${script:0:1}
+          fi
+        
           echo ""
           echo "#############################################################"
           echo "  Running $script ..."
