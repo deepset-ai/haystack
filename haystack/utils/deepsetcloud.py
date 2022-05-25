@@ -923,43 +923,34 @@ class EvaluationRunClient:
 
     def create_eval_run(
         self,
+        eval_run_name: str,
         workspace: Optional[str] = None,
         pipeline_config_name: Optional[str] = None,
         headers: dict = None,
         evaluation_set: Optional[str] = None,
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
+        comment: Optional[str] = None,
     ) -> Dict[str, Any]:
-        pipeline_info = self.pipeline_client.get_pipeline_config_info(
-            workspace=workspace, pipeline_config_name=pipeline_config_name, headers=headers
-        )
-        if pipeline_info is None:
-            raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
-        pipeline_id = pipeline_info["pipeline_id"]
-        evalset = next(
-            self.evalset_client._get_evaluation_sets(workspace=workspace, evaluation_set_filter=evaluation_set)
-        )
-        if evalset is None:
-            raise DeepsetCloudError(f"Evaluation set '{evaluation_set}' does not exist.")
-        evalset_id = evalset["evaluation_set_id"]
-
         workspace_url = self._build_workspace_url(workspace)
-        eval_run_url = f"{workspace_url}/eval_run"
+        eval_run_url = f"{workspace_url}/eval_runs"
         response = self.client.post(
             eval_run_url,
             json={
-                "pipeline_id": pipeline_id,
-                "evaluation_set_id": evalset_id,
+                "pipeline_name": pipeline_config_name,
+                "evaluation_set_name": evaluation_set,
                 "debug": debug,
                 "eval_mode": 0 if eval_mode == "integrated" else 1,
+                "comment": comment,
+                "name": eval_run_name,
             },
             headers=headers,
         )
         return response.json()["data"]
 
-    def get_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None) -> Dict[str, Any]:
+    def get_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: dict = None) -> Dict[str, Any]:
         workspace_url = self._build_workspace_url(workspace)
-        eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}"
+        eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}"
         response = self.client.get(eval_run_url, headers=headers)
         return response.json()
 
@@ -969,45 +960,43 @@ class EvaluationRunClient:
         response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
         return [eval_run for eval_run in response]
 
-    def delete_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None):
+    def delete_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: dict = None):
         workspace_url = self._build_workspace_url(workspace)
-        eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}"
+        eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}"
         response = self.client.delete(eval_run_url, headers=headers)
         if response.status_code == 204:
-            logger.info(f"Eval run '{eval_run_id}' deleted.")
+            logger.info(f"Eval run '{eval_run_name}' deleted.")
 
-    def start_eval_run(self, eval_run_id: str, workspace: Optional[str] = None, headers: dict = None):
+    def start_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: dict = None):
         workspace_url = self._build_workspace_url(workspace)
-        eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}/start"
+        eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}/start"
         response = self.client.post(eval_run_url, headers=headers)
         if response.status_code == 204:
-            logger.info(f"Eval run '{eval_run_id}' has been started.")
+            logger.info(f"Eval run '{eval_run_name}' has been started.")
 
     def update_eval_run(
         self,
-        eval_run_id: str,
+        eval_run_name: str,
         workspace: Optional[str] = None,
         pipeline_config_name: Optional[str] = None,
         headers: dict = None,
         evaluation_set: Optional[str] = None,
+        eval_mode: Literal["integrated", "isolated"] = "integrated",
+        debug: bool = False,
+        comment: Optional[str] = None,
     ) -> Dict[str, Any]:
-        pipeline_info = self.pipeline_client.get_pipeline_config_info(
-            workspace=workspace, pipeline_config_name=pipeline_config_name, headers=headers
-        )
-        if pipeline_info is None:
-            raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist.")
-        pipeline_id = pipeline_info["pipeline_id"]
-        evalset = next(
-            self.evalset_client._get_evaluation_sets(workspace=workspace, evaluation_set_filter=evaluation_set)
-        )
-        if evalset is None:
-            raise DeepsetCloudError(f"Evaluation set '{evaluation_set}' does not exist.")
-        evalset_id = evalset["evaluation_set_id"]
-
         workspace_url = self._build_workspace_url(workspace)
-        eval_run_url = f"{workspace_url}/eval_run/{eval_run_id}"
+        eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}"
         response = self.client.patch(
-            eval_run_url, json={"pipeline_id": pipeline_id, "evaluation_set_id": evalset_id}, headers=headers
+            eval_run_url,
+            json={
+                "pipeline_name": pipeline_config_name,
+                "evaluation_set_name": evaluation_set,
+                "debug": debug,
+                "eval_mode": 0 if eval_mode == "integrated" else 1,
+                "comment": comment,
+            },
+            headers=headers,
         )
         return response.json()["data"]
 
@@ -1185,6 +1174,7 @@ class DeepsetCloudExperiments:
     @classmethod
     def create_run(
         cls,
+        eval_run_name: str,
         workspace: str = "default",
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
@@ -1192,64 +1182,22 @@ class DeepsetCloudExperiments:
         evaluation_set: Optional[str] = None,
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
+        comment: Optional[str] = None,
     ) -> Dict[str, Any]:
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.create_eval_run(
-            pipeline_config_name=pipeline_config_name, evaluation_set=evaluation_set, eval_mode=eval_mode, debug=debug
+            eval_run_name=eval_run_name,
+            pipeline_config_name=pipeline_config_name,
+            evaluation_set=evaluation_set,
+            eval_mode=eval_mode,
+            debug=debug,
+            comment=comment,
         )
 
     @classmethod
     def update_run(
         cls,
-        eval_run_id: str,
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        pipeline_config_name: Optional[str] = None,
-        evaluation_set: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        return client.update_eval_run(
-            eval_run_id=eval_run_id, pipeline_config_name=pipeline_config_name, evaluation_set=evaluation_set
-        )
-
-    @classmethod
-    def get_run(
-        cls,
-        eval_run_id: str,
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        return client.get_eval_run(eval_run_id=eval_run_id)
-
-    @classmethod
-    def delete_run(
-        cls,
-        eval_run_id: str,
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-    ):
-        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        return client.delete_eval_run(eval_run_id=eval_run_id)
-
-    @classmethod
-    def start_run(
-        cls,
-        eval_run_id: str,
-        workspace: str = "default",
-        api_key: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-    ):
-        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
-        client.start_eval_run(eval_run_id=eval_run_id)
-        logger.info("You can check run progess by inspecting the `status` field returned from `get_run()`.")
-
-    @classmethod
-    def create_and_start_run(
-        cls,
+        eval_run_name: str,
         workspace: str = "default",
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
@@ -1257,8 +1205,67 @@ class DeepsetCloudExperiments:
         evaluation_set: Optional[str] = None,
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
+        comment: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.update_eval_run(
+            eval_run_name=eval_run_name,
+            pipeline_config_name=pipeline_config_name,
+            evaluation_set=evaluation_set,
+            eval_mode=eval_mode,
+            debug=debug,
+            comment=comment,
+        )
+
+    @classmethod
+    def get_run(
+        cls,
+        eval_run_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.get_eval_run(eval_run_name=eval_run_name)
+
+    @classmethod
+    def delete_run(
+        cls,
+        eval_run_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
     ):
-        create_response = cls.create_run(
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        return client.delete_eval_run(eval_run_name=eval_run_name)
+
+    @classmethod
+    def start_run(
+        cls,
+        eval_run_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+    ):
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        client.start_eval_run(eval_run_name=eval_run_name)
+        logger.info("You can check run progess by inspecting the `status` field returned from `get_run()`.")
+
+    @classmethod
+    def create_and_start_run(
+        cls,
+        eval_run_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        pipeline_config_name: Optional[str] = None,
+        evaluation_set: Optional[str] = None,
+        eval_mode: Literal["integrated", "isolated"] = "integrated",
+        debug: bool = False,
+        comment: Optional[str] = None,
+    ):
+        cls.create_run(
+            eval_run_name=eval_run_name,
             workspace=workspace,
             api_key=api_key,
             api_endpoint=api_endpoint,
@@ -1266,6 +1273,6 @@ class DeepsetCloudExperiments:
             evaluation_set=evaluation_set,
             eval_mode=eval_mode,
             debug=debug,
+            comment=comment,
         )
-        eval_run_id = create_response["eval_run_id"]
-        cls.start_run(eval_run_id=eval_run_id, workspace=workspace, api_key=api_key, api_endpoint=api_endpoint)
+        cls.start_run(eval_run_name=eval_run_name, workspace=workspace, api_key=api_key, api_endpoint=api_endpoint)
