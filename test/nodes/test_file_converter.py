@@ -38,6 +38,8 @@ def test_convert(Converter):
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
+# Marked as integration because it uses poppler, which is not installed in the unit tests suite
+@pytest.mark.integration
 def test_pdftoppm_command_format():
     # Haystack's PDFToTextOCRConverter uses pdf2image, which calls pdftoppm internally.
     # Some installations of pdftoppm are incompatible with Haystack and won't raise an error but just return empty converted documents
