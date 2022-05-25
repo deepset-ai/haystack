@@ -104,9 +104,9 @@ jobs:
 
     - name: Run tutorials
       run: |
-        export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
-        export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
-        set -e                       # Fails on any error in the following loop
+        LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
+        TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
+        set -e                # Fails on any error in the following loop
 
         for script in ${{ matrix.script-path }}; do
 
@@ -124,18 +124,17 @@ jobs:
           echo "#############################################################"
           echo "  Running $script ..."
           echo "#############################################################"
+          
           echo ""
           echo "====== Tutorial$script.py ===================="
           echo ""
           python tutorials/Tutorial$script.py
-
           rm faiss_document_store.db  # If the tutorial uses FAISS
 
           echo ""
           echo "====== Tutorial$script.ipynb ================="
           echo ""
           sudo ${{ env.pythonLocation }}/bin/ipython -c "%run tutorials/Tutorial$script.ipynb"
-
           rm faiss_document_store.db  # If the tutorial uses FAISS
 
         done
