@@ -645,7 +645,7 @@ jobs:
   # then this check will fail.
   code-and-docs-check:
     runs-on: ubuntu-latest
-    needs: integration-tests-linux
+    #needs: integration-tests-linux
     steps:
 
       - uses: actions/checkout@v2
