@@ -665,7 +665,7 @@ jobs:
       # Get any additional commit that might have been pushed in the meantime
       - name: Pull changes (if any)
         run: |
-          git config pull.ff only
+          git config pull.rebase false
           git pull origin ${{ github.head_ref }}
 
       - name: Code and Docs Updates
