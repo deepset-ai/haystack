@@ -427,7 +427,7 @@ def test_create_eval_run():
                         "created_at": "2022-05-24T12:13:16.445857+00:00",
                         "eval_mode": 0,
                         "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
-                        "name": "my-eval-run-1", 
+                        "name": "my-eval-run-1",
                         "comment": "this is my first run",
                         "tags": ["my-experiment-1"],
                         "eval_run_labels": [],
@@ -444,19 +444,19 @@ def test_create_eval_run():
                             "normal_discounted_cummulative_gain": None,
                             "precision": None,
                             "recall_multi_hit": None,
-                            "recall_single_hit": None
+                            "recall_single_hit": None,
                         },
                         "parameters": {
                             "debug": False,
                             "eval_mode": 0,
                             "evaluation_set_name": "my-eval-set-1",
-                            "pipeline_name": "my-pipeline-1"
+                            "pipeline_name": "my-pipeline-1",
                         },
-                        "status": 1
+                        "status": 1,
                     }
                 ],
                 "has_more": False,
-                "total": 1
+                "total": 1,
             },
             status=200,
         )
@@ -465,36 +465,36 @@ def test_create_eval_run():
             method=responses.GET,
             url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
             json={
-                    "created_at": "2022-05-24T12:13:16.445857+00:00",
-                    "eval_mode": 0,
-                    "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
-                    "name": "my-eval-run-1", 
-                    "comment": "this is my first run",
-                    "tags": ["my-experiment-1"],
-                    "eval_run_labels": [],
-                    "logs": {},
-                    "metrics": {
-                        "integrated_exact_match": None,
-                        "integrated_f1": None,
-                        "integrated_sas": None,
-                        "isolated_exact_match": None,
-                        "isolated_f1": None,
-                        "isolated_sas": None,
-                        "mean_average_precision": None,
-                        "mean_reciprocal_rank": None,
-                        "normal_discounted_cummulative_gain": None,
-                        "precision": None,
-                        "recall_multi_hit": None,
-                        "recall_single_hit": None
-                    },
-                    "parameters": {
-                        "debug": False,
-                        "eval_mode": 0,
-                        "evaluation_set_name": "my-eval-set-1",
-                        "pipeline_name": "my-pipeline-1"
-                    },
-                    "status": 1
+                "created_at": "2022-05-24T12:13:16.445857+00:00",
+                "eval_mode": 0,
+                "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                "name": "my-eval-run-1",
+                "comment": "this is my first run",
+                "tags": ["my-experiment-1"],
+                "eval_run_labels": [],
+                "logs": {},
+                "metrics": {
+                    "integrated_exact_match": None,
+                    "integrated_f1": None,
+                    "integrated_sas": None,
+                    "isolated_exact_match": None,
+                    "isolated_f1": None,
+                    "isolated_sas": None,
+                    "mean_average_precision": None,
+                    "mean_reciprocal_rank": None,
+                    "normal_discounted_cummulative_gain": None,
+                    "precision": None,
+                    "recall_multi_hit": None,
+                    "recall_single_hit": None,
                 },
+                "parameters": {
+                    "debug": False,
+                    "eval_mode": 0,
+                    "evaluation_set_name": "my-eval-set-1",
+                    "pipeline_name": "my-pipeline-1",
+                },
+                "status": 1,
+            },
             status=200,
         )
 
