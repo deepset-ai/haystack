@@ -96,11 +96,13 @@ jobs:
         mkdir data
         mkdir data/tutorials
         cd data/tutorials
-        wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip -q
+        wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip -q &> /dev/null
         unzip wiki_gameofthrones_txt1.zip
         rm wiki_gameofthrones_txt1.zip
         find . -name '[0-9][0-9][0-9]_*.txt' -delete
         find . -name '[0-9][0-9]_*.txt' -delete
+        echo "Dataset:"
+        ll
         cd ../../
 
 
