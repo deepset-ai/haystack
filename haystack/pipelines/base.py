@@ -1323,8 +1323,8 @@ class Pipeline:
                 df_answers["gold_contexts_similarity"] = df_answers.map_rows(
                     lambda row: [
                         calculate_context_similarity(
-                            gold_context,
-                            row["context"] or "",
+                            str(gold_context),  # could be dataframe
+                            str(row["context"]) if row["context"] is not None else "",  # could be dataframe
                             min_length=context_matching_min_length,
                             boost_split_overlaps=context_matching_boost_split_overlaps,
                         )
