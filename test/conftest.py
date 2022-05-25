@@ -299,6 +299,11 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
 def docs(docs_all_formats) -> List[Document]:
     return [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in docs_all_formats]
 
+@pytest.fixture
+def docs_with_ids(docs) -> List[Document]:
+    for id, doc in enumerate(docs):
+        doc.id = id
+    return docs
 
 @pytest.fixture
 def docs_with_random_emb(docs) -> List[Document]:
