@@ -141,6 +141,8 @@ def tutorial15_tableqa():
     passages = read_texts(f"{doc_dir}/texts.json")
     document_store.write_documents(passages)
 
+    document_store.update_embeddings(retriever=retriever, update_existing_embeddings=False)
+
     # Example query whose answer resides in a text passage
     predictions = text_table_qa_pipeline.run(query="Which country does the film Macaroni come from?")
     # We can see both text passages and tables as contexts of the predicted answers.
