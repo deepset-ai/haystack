@@ -140,3 +140,6 @@ jobs:
         done
 
         rm -rf data/
+
+        # causes permission errors on Post Cache
+        sudo rm -f /home/runner/work/haystack/haystack/elasticsearch-7.9.2/config/jvm.options.d'
