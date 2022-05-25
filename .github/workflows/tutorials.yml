@@ -126,8 +126,16 @@ jobs:
           echo "#############################################################"
           echo ""
           echo "====== Tutorial$script.py ===================="
+          echo ""
           python tutorials/Tutorial$script.py
+
+          rm faiss_document_store.db  # If the tutorial uses FAISS
+
           echo ""
           echo "====== Tutorial$script.ipynb ================="
+          echo ""
           sudo ${{ env.pythonLocation }}/bin/ipython -c "%run tutorials/Tutorial$script.ipynb"
+
+          rm faiss_document_store.db  # If the tutorial uses FAISS
+
         done
