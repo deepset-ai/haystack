@@ -167,7 +167,7 @@ def test_elasticsearch_custom_query():
     "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs):
+def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_ids):
     document_store.return_embedding = True
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever=retriever)
@@ -190,7 +190,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs):
 )
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
-def test_retribert_embedding(document_store, retriever, docs):
+def test_retribert_embedding(document_store, retriever, docs_with_ids):
     if isinstance(document_store, WeaviateDocumentStore):
         # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
         # We need 128 here and therefore initialize a new WeaviateDocumentStore.
