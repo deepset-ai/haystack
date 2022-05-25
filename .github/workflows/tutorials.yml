@@ -42,12 +42,12 @@ jobs:
            10_Knowledge_Graph \
            11_Pipelines"
 
-        - "12_LFQA"
-
           # 13 is very long
-        - "14_Query_Classifier \
+        - "12_LFQA \
+           14_Query_Classifier"
+
+        - "15_TableQA \
            16_Document_Classifier_at_Index_Time"
-          #15_TableQA \
            
 
     steps:
