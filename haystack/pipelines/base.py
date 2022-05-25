@@ -533,7 +533,7 @@ class Pipeline:
                             "component"
                         ]._takes_multiple_inputs():  # concatenate inputs if it's a join node
                             if n not in queue:
-                                new_input = {"inputs": [], "params": params}
+                                new_input: Dict[str, Any] = {"inputs": [], "params": params}
                                 if query:
                                     new_input["query"] = query
                                 if file_paths:
@@ -678,7 +678,7 @@ class Pipeline:
                     for n in next_nodes:
                         if self.graph.nodes[n]["component"]._takes_multiple_inputs():  # concatenate inputs if it's a join node
                             if n not in queue:
-                                new_input = {"inputs": [], "params": params}
+                                new_input: Dict[str, Any] = {"inputs": [], "params": params}
                                 if queries:
                                     new_input["queries"] = queries
                                 if file_paths:
