@@ -169,7 +169,7 @@ def test_elasticsearch_custom_query():
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_ids):
     document_store.return_embedding = True
-    document_store.write_documents(docs)
+    document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
     # time.sleep(1)
     docs = document_store.get_all_documents()
@@ -196,7 +196,7 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         # We need 128 here and therefore initialize a new WeaviateDocumentStore.
         document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=128, recreate_index=True)
     document_store.return_embedding = True
-    document_store.write_documents(docs)
+    document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
     # time.sleep(1)
     docs = document_store.get_all_documents()
