@@ -29,10 +29,10 @@ jobs:
         script-path:
            # 2 is very long
         - "1_Basic_QA_Pipeline \
-           3_Basic_QA_Pipeline_without_Elasticsearch"
+           3_Basic_QA_Pipeline_without_Elasticsearch \
+           4_FAQ_style_QA"
 
-        - "4_FAQ_style_QA \
-           5_Evaluation"
+        - "5_Evaluation"
 
         - "6_Better_Retrieval_via_DPR \
            7_RAG_Generator"
@@ -144,4 +144,4 @@ jobs:
         rm -rf data/
 
         # causes permission errors on Post Cache
-        sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/config/jvm.options.d
+        sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
