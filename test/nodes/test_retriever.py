@@ -45,10 +45,13 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     # test without filters
-    res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
-    assert res[0].content == "My name is Carla and I live in Berlin"
-    assert len(res) == 5
-    assert res[0].meta["name"] == "filename1"
+    # NOTE: FilterRetriever simply returns all documents matching a filter,
+    # so without filters applied it does nothing
+    if not isinstance(retriever_with_docs, FilterRetriever):
+        res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
+        assert res[0].content == "My name is Carla and I live in Berlin"
+        assert len(res) == 5
+        assert res[0].meta["name"] == "filename1"
 
     # test with filters
     if not isinstance(document_store_with_docs, (FAISSDocumentStore, MilvusDocumentStore)) and not isinstance(
