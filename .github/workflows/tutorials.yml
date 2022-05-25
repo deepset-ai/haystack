@@ -21,75 +21,6 @@ on:
 
 jobs:
 
-  # notebooks-matrix:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - id: notebooks-matrix
-  #       run: echo "::set-output name=matrix::$(find tutorials/ -name "*.ipynb" | jq -SR . | jq -cs .)"
-  #   outputs:
-  #     matrix: ${{ steps.notebooks-matrix.outputs.matrix }}
-
-
-  # scripts-matrix:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - id: scripts-matrix
-  #       run: echo "::set-output name=matrix::$(find tutorials/ -name "*.py" | jq -SR . | jq -cs .)"
-  #   outputs:
-  #     matrix: ${{ steps.scripts-matrix.outputs.matrix }}
-
-
-  # notebooks:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       notebook-path: #${{fromJson(needs.notebooks-matrix.outputs.matrix)}}
-  #       script-path:
-  #         # This lasts about 40 mins
-  #         - [
-  #             "tutorials/Tutorial1_Basic_QA_Pipeline.ipynb",                         #  2 mins
-  #             # Tutorial 2 takes over a hour withouth GPU
-  #             "tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb",   #  3 mins
-  #             "tutorials/Tutorial4_FAQ_style_QA.ipynb",                              #  2 mins
-  #             "tutorials/Tutorial5_Evaluation.ipynb",                                # 12 mins
-  #             "tutorials/TTutorial6_Better_Retrieval_via_DPR.ipynb",                 # 12 mins
-  #             "tutorials/Tutorial7_RAG_Generator.ipynb"                              #  6 mins
-  #           ]
-  #         - [
-  #             "tutorials/Tutorial8_Preprocessing.ipynb",     # 2 mins
-  #             # Tutorial 9 takes over a hour without GPU
-  #             "tutorials/Tutorial10_Knowledge_Graph.ipynb",  # ? mins
-  #             "tutorials/Tutorial11_Pipelines.ipynb",        # ? mins
-  #             "tutorials/Tutorial12_LFQA.ipynb"              # 13 mins
-  #           ]
-  #         - [
-  #             # Tutorial 13 takes over a hour without GPU
-  #             "tutorials/Tutorial14_Query_Classifier.ipynb",                    # ? mins
-  #             "tutorials/Tutorial15_TableQA.ipynb",                             # 10 mins
-  #             "tutorials/Tutorial16_Document_Classifier_at_Index_Time.ipynb ",  # ? mins
-  #           ]
-  #     fail-fast: false
-
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-  #   - name: Set up Python 3.7
-  #     uses: actions/setup-python@v2
-  #     with:
-  #       python-version: 3.7
-
-  #   - name: Install pdftotext
-  #     run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-  #   - name: Run notebook
-  #     run: |
-  #       pip install ipython nbformat
-  #       sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${{ matrix.notebook-path }}"
-
-
   tutorials:
     runs-on: ubuntu-latest
     strategy:
@@ -180,7 +111,7 @@ jobs:
         for script in ${{ matrix.script-path }}; do
 
           # These ones don't use GoT data
-          if [[ "$script" != "4_FAQ_style_QA" ]] && [[ "$script" != "8_Preprocessing" ]]  && [[ "$script" != "10_Knowledge_Graph" ]]; then
+          if [[ "$script" != "4_FAQ_style_QA" ]] && [[ "$script" != "5_Evaluation" ]] && [[ "$script" != "8_Preprocessing" ]] && [[ "$script" != "10_Knowledge_Graph" ]]; then
 
             # Copy the reduced GoT data into a folder named after the tutorial 
             # to trigger the caching mechanism of `fetch_archive_from_http`
