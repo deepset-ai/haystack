@@ -918,9 +918,6 @@ class EvaluationRunClient:
         self.client = client
         self.workspace = workspace
 
-        self.pipeline_client = PipelineClient(client=client, workspace=workspace)
-        self.evalset_client = EvaluationSetClient(client=client, workspace=workspace)
-
     def create_eval_run(
         self,
         eval_run_name: str,
@@ -931,6 +928,7 @@ class EvaluationRunClient:
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
         comment: Optional[str] = None,
+        tags: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs"
@@ -943,6 +941,7 @@ class EvaluationRunClient:
                 "eval_mode": 0 if eval_mode == "integrated" else 1,
                 "comment": comment,
                 "name": eval_run_name,
+                "tags": tags,
             },
             headers=headers,
         )
@@ -956,7 +955,7 @@ class EvaluationRunClient:
 
     def get_eval_runs(self, workspace: Optional[str] = None, headers: dict = None) -> List[Dict[str, Any]]:
         workspace_url = self._build_workspace_url(workspace)
-        eval_run_url = f"{workspace_url}/eval_run"
+        eval_run_url = f"{workspace_url}/eval_runs"
         response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
         return [eval_run for eval_run in response]
 
