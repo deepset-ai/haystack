@@ -33,7 +33,7 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader):
     table = pd.DataFrame(data)
 
     query = "When was Di Caprio born?"
-    prediction = table_reader.predict_batch(queries=query, documents=[Document(content=table, content_type="table")])
+    prediction = table_reader.predict_batch(queries=[query], documents=[Document(content=table, content_type="table")])
     # Expected output: List of lists of answers
     assert isinstance(prediction["answers"], list)
     assert isinstance(prediction["answers"][0], list)
@@ -51,7 +51,9 @@ def test_table_reader_batch_single_query_multiple_doc_lists(table_reader):
     table = pd.DataFrame(data)
 
     query = "When was Di Caprio born?"
-    prediction = table_reader.predict_batch(queries=query, documents=[[Document(content=table, content_type="table")]])
+    prediction = table_reader.predict_batch(
+        queries=[query], documents=[[Document(content=table, content_type="table")]]
+    )
     # Expected output: List of lists of answers
     assert isinstance(prediction["answers"], list)
     assert isinstance(prediction["answers"][0], list)
