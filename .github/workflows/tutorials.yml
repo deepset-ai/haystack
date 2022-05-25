@@ -115,7 +115,7 @@ jobs:
         for script in ${{ matrix.script-path }}; do
 
           # These ones don't use GoT data
-          if [[ "$script" != "4_FAQ_style_QA" ]] && [[ "$script" != "5_Evaluation" ]] && [[ "$script" != "7_RAG_Generator" ]] && [[ "$script" != "8_Preprocessing" ]] && [[ "$script" != "10_Knowledge_Graph" ]] && [[ "$script" != "15_TableQA" ]]; then
+          if [[ "$script" != "4_FAQ_style_QA" ]] && [[ "$script" != "5_Evaluation" ]] && [[ "$script" != "7_RAG_Generator" ]] && [[ "$script" != "8_Preprocessing" ]] && [[ "$script" != "10_Knowledge_Graph" ]] && [[ "$script" != "15_TableQA" ]] && [[ "$script" != "16_Document_Classifier_at_Index_Time" ]]; then
 
             # Copy the reduced GoT data into a folder named after the tutorial 
             # to trigger the caching mechanism of `fetch_archive_from_http`
