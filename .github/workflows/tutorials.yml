@@ -11,13 +11,7 @@ on:
       - '**/*.toml'
       - '**/*.ipynb'
   pull_request:
-    # branches:
-    #   - master
-    # paths:
-    #   - '**/*.py'
-    #   - '**/*.cfg'
-    #   - '**/*.toml'
-    #   - '**/*.ipynb'
+
 
 jobs:
 
@@ -30,7 +24,8 @@ jobs:
            # 2 is very long
         - "1_Basic_QA_Pipeline \
            3_Basic_QA_Pipeline_without_Elasticsearch \
-           4_FAQ_style_QA"
+           4_FAQ_style_QA \
+           16_Document_Classifier_at_Index_Time"
 
         - "5_Evaluation"
 
@@ -46,8 +41,7 @@ jobs:
         - "12_LFQA \
            14_Query_Classifier"
 
-        - "15_TableQA \
-           16_Document_Classifier_at_Index_Time"
+        - "15_TableQA"
            
 
     steps:
