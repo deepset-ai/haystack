@@ -40,6 +40,7 @@ def test_convert(Converter):
 
 # Marked as integration because it uses poppler, which is not installed in the unit tests suite
 @pytest.mark.integration
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Poppler not installed on Windows CI")
 def test_pdftoppm_command_format():
     # Haystack's PDFToTextOCRConverter uses pdf2image, which calls pdftoppm internally.
     # Some installations of pdftoppm are incompatible with Haystack and won't raise an error but just return empty converted documents
