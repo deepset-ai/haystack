@@ -29,8 +29,9 @@ jobs:
         script-path:
            # 2 is very long
         - "1_Basic_QA_Pipeline \
-           3_Basic_QA_Pipeline_without_Elasticsearch \
-           4_FAQ_style_QA \
+           3_Basic_QA_Pipeline_without_Elasticsearch"
+
+        - "4_FAQ_style_QA \
            5_Evaluation"
 
         - "6_Better_Retrieval_via_DPR \
