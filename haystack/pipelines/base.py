@@ -194,14 +194,12 @@ class Pipeline:
         for component_config in pipeline_config["components"]:
             if component_config["type"] == "DeepsetCloudDocumentStore":
                 params = component_config.get("params", {})
-                params.update(
-                    {
-                        "api_key": api_key,
-                        "api_endpoint": api_endpoint,
-                        "workspace": workspace,
-                        "index": pipeline_config_name,
-                    }
-                )
+                params["index"] = pipeline_config_name
+                params["workspace"] = workspace
+                if api_endpoint is not None:
+                    params["api_endpoint"] = api_endpoint
+                if api_key is not None:
+                    params["api_key"] = api_key
                 component_config["params"] = params
 
         del pipeline_config["name"]  # Would fail validation otherwise
