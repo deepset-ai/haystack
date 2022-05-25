@@ -661,9 +661,12 @@ jobs:
           pip install .[all]
           pip install rest_api/
           pip install ui/
+
       # Get any additional commit that might have been pushed in the meantime
       - name: Pull changes (if any)
-        run: git pull origin ${{ github.head_ref }}
+        run: |
+          git config pull.ff only
+          git pull origin ${{ github.head_ref }}
 
       - name: Code and Docs Updates
         run: ./.github/utils/code_and_docs.sh
