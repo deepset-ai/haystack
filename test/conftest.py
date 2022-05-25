@@ -171,6 +171,7 @@ def pytest_collection_modifyitems(config, items):
 # or a unittest.mock.MagicMock object (https://docs.python.org/3/library/unittest.mock.html)
 #
 
+
 class MockNode(BaseComponent):
     outgoing_edges = 1
 
@@ -262,6 +263,7 @@ class MockReader(BaseReader):
 #
 # Document collections
 #
+
 
 @pytest.fixture
 def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
