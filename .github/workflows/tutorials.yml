@@ -157,12 +157,8 @@ jobs:
         pip install pygraphviz
         pip install ipython nbformat
 
-
-    - name: Run tutorials
+    - name: Reduce GoT dataset
       run: |
-        export LAUNCH_GRAPHDB=0
-        export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
-
         # Cache the GoT data
         mkdir data
         mkdir data/tutorials
@@ -174,13 +170,23 @@ jobs:
         find . -name '[0-9]_*.txt' -delete
         cd ../../
 
-        set -e   # Fails on any error in the following loop
+
+    - name: Run tutorials
+      run: |
+        export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
+        export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
+        set -e                       # Fails on any error in the following loop
+
         for script in ${{ matrix.script-path }}; do
 
           # These ones don't use GoT data
-          if [[ "$script" != "8_Preprocessing" ]] && [[ "$script" != "4_FAQ" ]]; then
+          if [[ "$script" != "4_FAQ_style_QA" ]] && [[ "$script" != "8_Preprocessing" ]]  && [[ "$script" != "10_Knowledge_Graph" ]]; then
+
+            # Copy the reduced GoT data into a folder named after the tutorial 
+            # to trigger the caching mechanism of `fetch_archive_from_http`
             split_on_underscore=(${script//_/ })
             cp -r data/tutorials data/tutorial${split_on_underscore[0]}
+
           fi
         
           echo ""
