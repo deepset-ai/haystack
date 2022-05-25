@@ -569,15 +569,4 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         :param document_ids: document ids
         :param top_k: How many documents id to return against single document
         """
-        similar_documents: list = []
-        self.document_store.return_embedding = True  # type: ignore
-
-        for document in self.document_store.get_documents_by_id(ids=document_ids):
-            similar_documents.append(
-                self.document_store.query_by_embedding(
-                    query_emb=document.embedding, return_embedding=False, top_k=top_k
-                )
-            )
-
-        self.document_store.return_embedding = False  # type: ignore
-        return similar_documents
+        return self.run(document_ids=document_ids, top_k=top_k)
