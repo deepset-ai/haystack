@@ -980,19 +980,22 @@ class EvaluationRunClient:
         pipeline_config_name: Optional[str] = None,
         headers: dict = None,
         evaluation_set: Optional[str] = None,
-        eval_mode: Literal["integrated", "isolated"] = "integrated",
-        debug: bool = False,
+        eval_mode: Literal["integrated", "isolated", None] = None,
+        debug: Optional[bool] = None,
         comment: Optional[str] = None,
     ) -> Dict[str, Any]:
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}"
+        eval_mode_param = None
+        if eval_mode is not None:
+            eval_mode_param = 0 if eval_mode == "integrated" else 1
         response = self.client.patch(
             eval_run_url,
             json={
                 "pipeline_name": pipeline_config_name,
                 "evaluation_set_name": evaluation_set,
                 "debug": debug,
-                "eval_mode": 0 if eval_mode == "integrated" else 1,
+                "eval_mode": eval_mode_param,
                 "comment": comment,
             },
             headers=headers,
