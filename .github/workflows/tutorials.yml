@@ -38,10 +38,10 @@ jobs:
 
           # 9 is very long
         - "8_Preprocessing \
-           10_Knowledge_Graph"
+           10_Knowledge_Graph \
+           11_Pipelines"
 
-        - "11_Pipelines \
-           12_LFQA"
+        - "12_LFQA"
 
           # 13 is very long
         - "14_Query_Classifier \
