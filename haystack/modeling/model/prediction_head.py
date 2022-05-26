@@ -14,7 +14,7 @@ from scipy.special import expit
 
 from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.model.predictions import QACandidate, QAPred
-from haystack.modeling.utils import try_get, all_gather_list
+from haystack.modeling.utils import try_get, all_gather_list, torch_int_div
 
 
 logger = logging.getLogger(__name__)
@@ -480,7 +480,7 @@ class QuestionAnsweringHead(PredictionHead):
 
         # The returned indices are then converted back to the original dimensionality of the matrix.
         # sorted_candidates.shape : (batch_size, max_seq_len^2, 2)
-        start_indices = flat_sorted_indices // max_seq_len
+        start_indices = torch_int_div(flat_sorted_indices, max_seq_len)
         end_indices = flat_sorted_indices % max_seq_len
         sorted_candidates = torch.cat((start_indices, end_indices), dim=2)
 
