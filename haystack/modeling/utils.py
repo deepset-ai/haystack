@@ -110,6 +110,17 @@ def flatten_list(nested_list):
         else:
             yield sublist
 
+            
+# Fix from: https://github.com/huggingface/transformers/pull/15180
+def torch_int_div(tensor1, tensor2):
+    """
+    A function that performs integer division across different versions of PyTorch.
+    """
+    if version.parse(torch.__version__) < version.parse("1.8.0"):
+        return tensor1 // tensor2
+    else:
+        return torch.div(tensor1, tensor2, rounding_mode="floor")
+    
 
 def try_get(keys, dictionary):
     try:
