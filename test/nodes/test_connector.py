@@ -9,67 +9,30 @@ import pytest
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
 
-
-TEST_HOME_PAGE = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Test Home Page for Crawler</title>
-</head>
-<body>
-    <p>test page content</p>
-    <a href="BASE_URL/page1">page 1</a>
-    <a href="BASE_URL/page2">page 2</a>
-</body>
-</html>
-"""
-
-TEST_PAGE1 = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Test Page 1 for Crawler</title>
-</head>
-<body>
-    <p>test page 1 content</p>
-    <a href="BASE_URL">home</a>
-    <a href="BASE_URL/page2">page 2</a>
-</body>
-</html>
-"""
-TEST_PAGE2 = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Test Page 2 for Crawler</title>
-</head>
-<body>
-    <p>test page 2 content</p>
-    <a href="BASE_URL">home</a>
-    <a href="BASE_URL/page1">page 1</a>
-</body>
-</html>
-"""
+from ..conftest import SAMPLES_PATH
 
 
 @pytest.fixture(scope="session")
 def test_url():
-    tmpdir = Path(tempfile.mkdtemp())
-    base_url = tmpdir / "haystack_test_webpages"
-    os.mkdir(base_url)
+    return f"file://{SAMPLES_PATH.absolute()}/crawler"
 
-    with open(base_url / "index.html", "w") as page:
-        page.write(TEST_HOME_PAGE.replace("BASE_URL", str(base_url)))
 
-    with open(base_url / "page1.html", "w") as page:
-        page.write(TEST_PAGE1.replace("BASE_URL", str(base_url)))
+def content_match(crawler: Crawler, base_url: str, page_name: str, crawled_page: Path):
+    """
+    :param crawler: the tested Crawler object
+    :param base_url: the URL from test_url fixture
+    :param page_name: the expected page
+    :param crawled_page: the output of Crawler (one element of the paths list)
+    """
+    path_to_page_1 = f"{base_url}/{page_name}.html"
+    crawler.driver.get(path_to_page_1)
+    body = crawler.driver.find_element_by_tag_name("body")
+    expected_crawled_content = body.text
 
-    with open(base_url / "page2.html", "w") as page:
-        page.write(TEST_PAGE2.replace("BASE_URL", str(base_url)))
+    with open(crawled_page, 'r') as crawled_file:
+        page_data = json.load(crawled_file)
+        return page_data["content"] == expected_crawled_content
 
-    yield f"file://{base_url.absolute()}"
-
-    shutil.rmtree(tmpdir)
 
 
 #
@@ -112,24 +75,32 @@ def test_crawler_depth_0_single_url(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
     paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
     assert len(paths) == 1
+    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
 
 
 def test_crawler_depth_0_many_urls(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
-    _urls = [test_url + "/index.html", test_url + "/page1.html", test_url + "/page2.html"]
+    _urls = [test_url + "/index.html", test_url + "/page1.html"]
     paths = crawler.crawl(urls=_urls, crawler_depth=0)
-    assert len(paths) == 3
+    assert len(paths) == 2
+    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
+    assert content_match(crawler=crawler, base_url=test_url, page_name="page1", crawled_page=paths[1])
 
 
 def test_crawler_depth_1_single_url(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
     paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=1)
     assert len(paths) == 3
+    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
+    assert content_match(crawler=crawler, base_url=test_url, page_name="page1", crawled_page=paths[1])
+    assert content_match(crawler=crawler, base_url=test_url, page_name="page2", crawled_page=paths[2])
 
 
 def test_crawler_output_file_structure(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
     paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
+    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
+
     with open(paths[0].absolute(), "r") as doc_file:
         data = json.load(doc_file)
         assert "content" in data
@@ -141,25 +112,12 @@ def test_crawler_output_file_structure(test_url, tmp_path):
 def test_crawler_filter_urls(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
 
-    print(crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1))
-    assert len(crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)) == 1
+    paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
+    assert len(paths) == 1
+    assert content_match(crawler=crawler, base_url=test_url, page_name="page1", crawled_page=paths[0])
+    
     assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page3"], crawler_depth=1)
     assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
-
-
-def test_crawler_content(test_url, tmp_path):
-    expected_results = [
-        {"url": test_url + "/index.html", "partial_content": "test page content"},
-        {"url": test_url + "/page1.html", "partial_content": "test page 1 content"},
-        {"url": test_url + "/page2.html", "partial_content": "test page 2 content"},
-    ]
-
-    crawler = Crawler(output_dir=tmp_path)
-    for result in expected_results:
-        paths = crawler.crawl(urls=[result["url"]], crawler_depth=0)
-        with open(paths[0].absolute(), "r") as read_file:
-            content = json.load(read_file)
-            assert result["partial_content"] in content["content"]
 
 
 def test_crawler_return_document(test_url, tmp_path):
