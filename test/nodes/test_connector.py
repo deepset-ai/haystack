@@ -118,7 +118,7 @@ def test_crawler_filter_urls(test_url, tmp_path):
     # Note: filter_urls can exclude pages listed in `urls` as well
     paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
     assert len(paths) == 1
-    assert content_match(crawler, test_url + "/index.html", paths[0])
+    assert content_match(crawler, test_url + "/page1.html", paths[0])
     
     assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
 
