@@ -2,15 +2,11 @@ name: Tutorials
 
 on:
   workflow_dispatch:  # Activate this workflow manually
-  push:
-    branches:
-      - master
-    paths:
-      - '**/*.py'
-      - '**/*.cfg'
-      - '**/*.toml'
-      - '**/*.ipynb'
   pull_request:
+    paths:
+      - 'tutorials/*.*'
+  schedule:
+    - cron: '0 0 * * *'
 
 
 jobs:
