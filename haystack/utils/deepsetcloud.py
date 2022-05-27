@@ -448,7 +448,7 @@ class PipelineClient:
 
         :param client: deepset Cloud client
         :param workspace: Specifies the name of the workspace for which you want to create the client.
-        :param pipeline_config_name: name of the pipeline_config in deepset Cloud workspace
+        :param pipeline_config_name: Name of the pipeline_config in deepset Cloud workspace.
 
         """
         self.client = client
@@ -458,6 +458,13 @@ class PipelineClient:
     def get_pipeline_config(
         self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None, headers: dict = None
     ) -> dict:
+        """
+        Gets the config from a pipeline on deepset Cloud.
+
+        :param pipeline_config_name: Name of the pipeline_config in deepset Cloud workspace.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+        :param headers: Headers to pass to API call.
+        """
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         pipeline_config_url = f"{pipeline_url}/json"
         response = self.client.get(url=pipeline_config_url, headers=headers).json()
@@ -466,6 +473,13 @@ class PipelineClient:
     def get_pipeline_config_info(
         self, workspace: Optional[str] = None, pipeline_config_name: Optional[str] = None, headers: dict = None
     ) -> Optional[dict]:
+        """
+        Gets information about a pipeline on deepset Cloud.
+
+        :param pipeline_config_name: Name of the pipeline_config in deepset Cloud workspace.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+        :param headers: Headers to pass to API call.
+        """
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         response = self.client.get(url=pipeline_url, headers=headers, raise_on_error=False)
         if response.status_code == 200:
@@ -478,6 +492,29 @@ class PipelineClient:
             )
 
     def list_pipeline_configs(self, workspace: Optional[str] = None, headers: dict = None) -> Generator:
+        """
+        Lists all pipelines available on deepset Cloud.
+
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+        :param headers: Headers to pass to API call.
+
+        Returns:
+            Generator of dictionaries: List[dict]
+            each dictionary: {
+                        "name": str -> `pipeline_config_name` to be used in `load_from_deepset_cloud()`,
+                        "..." -> additional pipeline meta information
+                        }
+            example:
+                    [{'name': 'my_super_nice_pipeline_config',
+                        'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
+                        'status': 'DEPLOYED',
+                        'created_at': '2022-02-01T09:57:03.803991+00:00',
+                        'deleted': False,
+                        'is_default': False,
+                        'indexing': {'status': 'IN_PROGRESS',
+                        'pending_file_count': 3,
+                        'total_file_count': 31}}]
+        """
         workspace_url = self._build_workspace_url(workspace)
         pipelines_url = f"{workspace_url}/pipelines"
         generator = self.client.get_with_auto_paging(url=pipelines_url, headers=headers)
@@ -490,6 +527,14 @@ class PipelineClient:
         workspace: Optional[str] = None,
         headers: dict = None,
     ):
+        """
+        Saves a pipeline config to deepset Cloud.
+
+        :param config: The pipeline config to save.
+        :param pipeline_config_name: Name of the pipeline_config in deepset Cloud workspace.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+        :param headers: Headers to pass to API call.
+        """
         config["name"] = pipeline_config_name
         workspace_url = self._build_workspace_url(workspace=workspace)
         pipelines_url = f"{workspace_url}/pipelines"
@@ -504,6 +549,14 @@ class PipelineClient:
         workspace: Optional[str] = None,
         headers: dict = None,
     ):
+        """
+        Updates a pipeline config on deepset Cloud.
+
+        :param config: The pipeline config to save.
+        :param pipeline_config_name: Name of the pipeline_config in deepset Cloud workspace.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+        :param headers: Headers to pass to API call.
+        """
         config["name"] = pipeline_config_name
         pipeline_url = self._build_pipeline_url(workspace=workspace, pipeline_config_name=pipeline_config_name)
         yaml_url = f"{pipeline_url}/yaml"
@@ -526,9 +579,9 @@ class PipelineClient:
         If timeout exceeds a TimeoutError will be raised.
         If deployment fails a DeepsetCloudError will be raised.
 
-        :param pipeline_config_name: name of the config file inside the deepset Cloud workspace.
+        :param pipeline_config_name: Name of the config file inside the deepset Cloud workspace.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
-        :param headers: Headers to pass to API call
+        :param headers: Headers to pass to API call.
         :param timeout: The time in seconds to wait until deployment completes.
                         If the timeout is exceeded an error will be raised.
         :param show_curl_message: Whether to print an additional message after successful deployment showing how to query the pipeline using curl.
@@ -596,7 +649,7 @@ class PipelineClient:
         If timeout exceeds a TimeoutError will be raised.
         If deployment fails a DeepsetCloudError will be raised.
 
-        :param pipeline_config_name: name of the config file inside the deepset Cloud workspace.
+        :param pipeline_config_name: Name of the config file inside the deepset Cloud workspace.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
         :param headers: Headers to pass to API call
         :param timeout: The time in seconds to wait until undeployment completes.
@@ -637,8 +690,8 @@ class PipelineClient:
         """
         Transitions the pipeline config state to desired target_state on deepset Cloud.
 
-        :param target_state: the target state of the Pipeline config.
-        :param pipeline_config_name: name of the config file inside the deepset Cloud workspace.
+        :param target_state: The target state of the Pipeline config.
+        :param pipeline_config_name: Name of the config file inside the deepset Cloud workspace.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
         :param headers: Headers to pass to API call
         :param timeout: The time in seconds to wait until undeployment completes.
@@ -747,9 +800,7 @@ class EvaluationSetClient:
         :return: list of Label
         """
         try:
-            evaluation_sets_response = next(
-                self._get_evaluation_sets(evaluation_set_filter=evaluation_set, workspace=workspace)
-            )
+            evaluation_sets_response = next(self._get_evaluation_sets(name_filter=evaluation_set, workspace=workspace))
         except StopIteration:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
@@ -790,9 +841,7 @@ class EvaluationSetClient:
         if not evaluation_set:
             evaluation_set = self.evaluation_set
         try:
-            evaluation_sets_response = next(
-                self._get_evaluation_sets(evaluation_set_filter=evaluation_set, workspace=workspace)
-            )
+            evaluation_sets_response = next(self._get_evaluation_sets(name_filter=evaluation_set, workspace=workspace))
         except StopIteration:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
@@ -812,15 +861,13 @@ class EvaluationSetClient:
 
         return [eval_set for eval_set in evaluation_sets_response]
 
-    def _get_evaluation_sets(
-        self, evaluation_set_filter: Optional[str] = None, workspace: Optional[str] = None
-    ) -> Generator:
+    def _get_evaluation_sets(self, name_filter: Optional[str] = None, workspace: Optional[str] = None) -> Generator:
         url = self._build_workspace_url(workspace=workspace)
         evaluation_set_url = f"{url}/evaluation_sets"
 
         query_params = {}
-        if evaluation_set_filter is not None:
-            query_params["name"] = evaluation_set_filter
+        if name_filter is not None:
+            query_params["name"] = name_filter
 
         for response in self.client.get_with_auto_paging(url=evaluation_set_url, query_params=query_params):
             yield response
@@ -847,7 +894,6 @@ class FileClient:
 
         :param client: deepset Cloud client
         :param workspace: Specifies the name of the workspace for which you want to create the client.
-
         """
         self.client = client
         self.workspace = workspace
@@ -859,6 +905,15 @@ class FileClient:
         workspace: Optional[str] = None,
         headers: dict = None,
     ):
+        """
+        Uploads files to the deepset Cloud workspace.
+
+        :param file_paths: File paths to upload (for example .txt or .pdf files)
+        :param metas: Metadata of the files to upload
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the FileClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         files_url = f"{workspace_url}/files"
         if metas is None:
@@ -883,6 +938,14 @@ class FileClient:
         logger.info(f"Successfully uploaded {len(file_ids)} files.")
 
     def delete_file(self, file_id: str, workspace: Optional[str] = None, headers: dict = None):
+        """
+        Delete a file from the deepset Cloud workspace.
+
+        :param file_id: The id of the file to be deleted. Use `list_files` to retrieve the id of a file.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the FileClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         file_url = f"{workspace_url}/files/{file_id}"
         self.client.delete(url=file_url, headers=headers)
@@ -895,6 +958,17 @@ class FileClient:
         workspace: Optional[str] = None,
         headers: dict = None,
     ) -> Generator:
+        """
+        List all files in the given deepset Cloud workspace.
+        You can filter by name or by meta values.
+
+        :param name: The name or part of the name of the file.
+        :param meta_key: The key of the metadata of the file to be filtered for.
+        :param meta_value: The value of the metadata of the file to be filtered for.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the FileClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         files_url = f"{workspace_url}/files"
         query_params = {"name": name, "meta_key": meta_key, "meta_value": meta_value}
@@ -914,7 +988,6 @@ class EvaluationRunClient:
 
         :param client: deepset Cloud client
         :param workspace: Specifies the name of the workspace for which you want to create the client.
-
         """
         self.client = client
         self.workspace = workspace
@@ -931,6 +1004,20 @@ class EvaluationRunClient:
         comment: Optional[str] = None,
         tags: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
+        """
+        Creates an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param pipeline_config_name: The name of the pipeline to evaluate.
+        :param evaluation_set: The name of the evaluation set to use.
+        :param eval_mode: The evaluation mode to use.
+        :param debug: Wheter to enable debug output.
+        :param comment: Comment to add about to the evaluation run.
+        :param tags: Tags to add to the evaluation run.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs"
         response = self.client.post(
@@ -949,18 +1036,41 @@ class EvaluationRunClient:
         return response.json()["data"]
 
     def get_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: dict = None) -> Dict[str, Any]:
+        """
+        Gets the evaluation run and shows its parameters and metrics.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}"
         response = self.client.get(eval_run_url, headers=headers)
         return response.json()
 
     def get_eval_runs(self, workspace: Optional[str] = None, headers: dict = None) -> List[Dict[str, Any]]:
+        """
+        Gets all evaluation runs and shows its parameters and metrics.
+
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs"
         response = self.client.get_with_auto_paging(eval_run_url, headers=headers)
         return [eval_run for eval_run in response]
 
     def delete_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: dict = None):
+        """
+        Deletes an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}"
         response = self.client.delete(eval_run_url, headers=headers)
@@ -968,6 +1078,14 @@ class EvaluationRunClient:
             logger.info(f"Evaluation run '{eval_run_name}' deleted.")
 
     def start_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: dict = None):
+        """
+        Starts an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}/start"
         response = self.client.post(eval_run_url, headers=headers)
@@ -985,6 +1103,20 @@ class EvaluationRunClient:
         debug: Optional[bool] = None,
         comment: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """
+        Updates an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run to update.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the FileClient's default workspace is used.
+        :param pipeline_config_name: The name of the pipeline to evaluate.
+        :param evaluation_set: The name of the evaluation set to use.
+        :param eval_mode: The evaluation mode to use.
+        :param debug: Wheter to enable debug output.
+        :param comment: Comment to add about to the evaluation run.
+        :param tags: Tags to add to the evaluation run.
+        :param headers: Headers to pass to API call
+        """
         workspace_url = self._build_workspace_url(workspace)
         eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}"
         eval_mode_param = None
@@ -1170,6 +1302,29 @@ class DeepsetCloudExperiments:
     def list_evaluation_sets(
         cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
     ) -> List[dict]:
+        """
+        Lists all evaluation sets available on deepset Cloud.
+
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
+
+        Returns:
+            list of dictionaries: List[dict]
+            each dictionary: {
+                        "name": str -> `evaluation_set` to be used in `create_run()`,
+                        "..." -> additional pipeline meta information
+                        }
+            example:
+                    [{'evaluation_set_id': 'fb084729-57ad-4b57-9f78-ec0eb4d29c9f',
+                        'name': 'my-question-answering-evaluation-set',
+                        'created_at': '2022-05-06T09:54:14.830529+00:00',
+                        'matched_labels': 234,
+                        'total_labels': 234}]
+        """
         client = DeepsetCloud.get_evaluation_set_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.get_evaluation_sets()
 
@@ -1177,6 +1332,49 @@ class DeepsetCloudExperiments:
     def get_runs(
         cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None
     ) -> List[dict]:
+        """
+        Gets all evaluation runs.
+
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
+
+        Returns:
+            list of dictionaries: List[dict]
+            example:
+                    [{'eval_run_name': 'my-eval-run-1',
+                        'parameters': {
+                            'pipeline_name': 'my-pipeline-1_696bc5d0-ee65-46c1-a308-059507bc353b',
+                            'evaluation_set_name': 'my-eval-set-name',
+                            'debug': False,
+                            'eval_mode': 0
+                        },
+                        'metrics': {
+                            'isolated_exact_match': 0.45,
+                            'isolated_f1': 0.89,
+                            'isolated_sas': 0.91,
+                            'integrated_exact_match': 0.39,
+                            'integrated_f1': 0.76,
+                            'integrated_sas': 0.78,
+                            'mean_reciprocal_rank': 0.77,
+                            'mean_average_precision': 0.78,
+                            'recall_single_hit': 0.91,
+                            'recall_multi_hit': 0.91,
+                            'normal_discounted_cummulative_gain': 0.83,
+                            'precision': 0.52
+                        },
+                        'logs': {},
+                        'status': 1,
+                        'eval_mode': 0,
+                        'eval_run_labels': [],
+                        'created_at': '2022-05-24T12:13:16.445857+00:00',
+                        'comment': 'This is a comment about thiseval run',
+                        'tags': ['experiment-1', 'experiment-2', 'experiment-3']
+                        }]
+        """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.get_eval_runs()
 
@@ -1193,6 +1391,20 @@ class DeepsetCloudExperiments:
         debug: bool = False,
         comment: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """
+        Creates an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param pipeline_config_name: The name of the pipeline to evaluate. Use `list_pipelines()` to list all available pipelines.
+        :param evaluation_set: The name of the evaluation set to use. Use `list_evaluation_sets()` to list all available evaluation sets.
+        :param eval_mode: The evaluation mode to use.
+        :param debug: Wheter to enable debug output.
+        :param comment: Comment to add about to the evaluation run.
+        :param tags: Tags to add to the evaluation run.
+        :param headers: Headers to pass to API call
+        """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.create_eval_run(
             eval_run_name=eval_run_name,
@@ -1216,6 +1428,20 @@ class DeepsetCloudExperiments:
         debug: bool = False,
         comment: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """
+        Updates an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run to update.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the FileClient's default workspace is used.
+        :param pipeline_config_name: The name of the pipeline to evaluate. Use `list_pipelines()` to list all available pipelines.
+        :param evaluation_set: The name of the evaluation set to use. Use `list_evaluation_sets()` to list all available evaluation sets.
+        :param eval_mode: The evaluation mode to use.
+        :param debug: Wheter to enable debug output.
+        :param comment: Comment to add about to the evaluation run.
+        :param tags: Tags to add to the evaluation run.
+        :param headers: Headers to pass to API call
+        """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.update_eval_run(
             eval_run_name=eval_run_name,
@@ -1234,6 +1460,14 @@ class DeepsetCloudExperiments:
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """
+        Gets the evaluation run and shows its parameters and metrics.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.get_eval_run(eval_run_name=eval_run_name)
 
@@ -1245,6 +1479,14 @@ class DeepsetCloudExperiments:
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
     ):
+        """
+        Deletes an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.delete_eval_run(eval_run_name=eval_run_name)
 
@@ -1256,6 +1498,14 @@ class DeepsetCloudExperiments:
         api_key: Optional[str] = None,
         api_endpoint: Optional[str] = None,
     ):
+        """
+        Starts an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         client.start_eval_run(eval_run_name=eval_run_name)
         logger.info("You can check run progess by inspecting the `status` field returned from `get_run()`.")
@@ -1273,6 +1523,20 @@ class DeepsetCloudExperiments:
         debug: bool = False,
         comment: Optional[str] = None,
     ):
+        """
+        Creates and starts an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param pipeline_config_name: The name of the pipeline to evaluate. Use `list_pipelines()` to list all available pipelines.
+        :param evaluation_set: The name of the evaluation set to use. Use `list_evaluation_sets()` to list all available evaluation sets.
+        :param eval_mode: The evaluation mode to use.
+        :param debug: Wheter to enable debug output.
+        :param comment: Comment to add about to the evaluation run.
+        :param tags: Tags to add to the evaluation run.
+        :param headers: Headers to pass to API call
+        """
         cls.create_run(
             eval_run_name=eval_run_name,
             workspace=workspace,
