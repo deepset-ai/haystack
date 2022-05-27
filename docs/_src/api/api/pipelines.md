@@ -1285,6 +1285,27 @@ You can select between:
 The default value is 'any'.
 In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
 
+<a id="standard_pipelines.BaseStandardPipeline.run_batch"></a>
+
+#### BaseStandardPipeline.run\_batch
+
+```python
+def run_batch(queries: List[str], params: Optional[dict] = None, debug: Optional[bool] = None)
+```
+
+Run a batch of queries through the pipeline.
+
+**Arguments**:
+
+- `queries`: List of query strings.
+- `params`: Parameters for the individual nodes of the pipeline. For instance,
+`params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}`
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated.
+All debug information can then be found in the dict returned
+by this method under the key "_debug"
+
 <a id="standard_pipelines.ExtractiveQAPipeline"></a>
 
 ## ExtractiveQAPipeline
@@ -1454,6 +1475,27 @@ they received and the output they generated.
 All debug information can then be found in the dict returned
 by this method under the key "_debug"
 
+<a id="standard_pipelines.SearchSummarizationPipeline.run_batch"></a>
+
+#### SearchSummarizationPipeline.run\_batch
+
+```python
+def run_batch(queries: List[str], params: Optional[dict] = None, debug: Optional[bool] = None)
+```
+
+Run a batch of queries through the pipeline.
+
+**Arguments**:
+
+- `queries`: List of query strings.
+- `params`: Parameters for the individual nodes of the pipeline. For instance,
+`params={"Retriever": {"top_k": 10}, "Summarizer": {"generate_single_summary": True}}`
+- `debug`: Whether the pipeline should instruct nodes to collect debug information
+about their execution. By default these include the input parameters
+they received and the output they generated.
+All debug information can then be found in the dict returned
+by this method under the key "_debug"
+
 <a id="standard_pipelines.FAQPipeline"></a>
 
 ## FAQPipeline
@@ -1585,6 +1627,19 @@ This pipeline can be helpful if you already show a relevant document to your end
 
 ```python
 def run(document_ids: List[str], top_k: int = 5)
+```
+
+**Arguments**:
+
+- `document_ids`: document ids
+- `top_k`: How many documents id to return against single document
+
+<a id="standard_pipelines.MostSimilarDocumentsPipeline.run_batch"></a>
+
+#### MostSimilarDocumentsPipeline.run\_batch
+
+```python
+def run_batch(document_ids: List[str], top_k: int = 5)
 ```
 
 **Arguments**:
