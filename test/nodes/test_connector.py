@@ -31,6 +31,7 @@ def content_match(crawler: Crawler, base_url: str, page_name: str, crawled_page:
 
     with open(crawled_page, 'r') as crawled_file:
         page_data = json.load(crawled_file)
+        print(page_data, expected_crawled_content)
         return page_data["content"] == expected_crawled_content
 
 
@@ -112,11 +113,15 @@ def test_crawler_output_file_structure(test_url, tmp_path):
 def test_crawler_filter_urls(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
 
+    paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["index"], crawler_depth=1)
+    assert len(paths) == 1
+    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
+
+    # Note: filter_urls can exclude pages listed in `urls` as well
     paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
     assert len(paths) == 1
     assert content_match(crawler=crawler, base_url=test_url, page_name="page1", crawled_page=paths[0])
     
-    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page3"], crawler_depth=1)
     assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
 
 
