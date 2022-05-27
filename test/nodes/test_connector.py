@@ -17,21 +17,19 @@ def test_url():
     return f"file://{SAMPLES_PATH.absolute()}/crawler"
 
 
-def content_match(crawler: Crawler, base_url: str, page_name: str, crawled_page: Path):
+def content_match(crawler: Crawler, url: str, crawled_page: Path):
     """
     :param crawler: the tested Crawler object
     :param base_url: the URL from test_url fixture
     :param page_name: the expected page
     :param crawled_page: the output of Crawler (one element of the paths list)
     """
-    path_to_page_1 = f"{base_url}/{page_name}.html"
-    crawler.driver.get(path_to_page_1)
+    crawler.driver.get(url)
     body = crawler.driver.find_element_by_tag_name("body")
     expected_crawled_content = body.text
 
     with open(crawled_page, 'r') as crawled_file:
         page_data = json.load(crawled_file)
-        print(page_data, expected_crawled_content)
         return page_data["content"] == expected_crawled_content
 
 
@@ -76,7 +74,7 @@ def test_crawler_depth_0_single_url(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
     paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
     assert len(paths) == 1
-    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
+    assert content_match(crawler, test_url + "/index.html", paths[0])
 
 
 def test_crawler_depth_0_many_urls(test_url, tmp_path):
@@ -84,23 +82,23 @@ def test_crawler_depth_0_many_urls(test_url, tmp_path):
     _urls = [test_url + "/index.html", test_url + "/page1.html"]
     paths = crawler.crawl(urls=_urls, crawler_depth=0)
     assert len(paths) == 2
-    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
-    assert content_match(crawler=crawler, base_url=test_url, page_name="page1", crawled_page=paths[1])
+    assert content_match(crawler, test_url + "/index.html", paths[0])
+    assert content_match(crawler, test_url + "/page1.html", paths[1])
 
 
 def test_crawler_depth_1_single_url(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
     paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=1)
     assert len(paths) == 3
-    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
-    assert content_match(crawler=crawler, base_url=test_url, page_name="page1", crawled_page=paths[1])
-    assert content_match(crawler=crawler, base_url=test_url, page_name="page2", crawled_page=paths[2])
+    assert content_match(crawler, test_url + "/index.html", paths[0])
+    assert content_match(crawler, test_url + "/page1.html", paths[1])
+    assert content_match(crawler, test_url + "/page2.html", paths[2])
 
 
 def test_crawler_output_file_structure(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
     paths = crawler.crawl(urls=[test_url + "/index.html"], crawler_depth=0)
-    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
+    assert content_match(crawler, test_url + "/index.html", paths[0])
 
     with open(paths[0].absolute(), "r") as doc_file:
         data = json.load(doc_file)
@@ -115,12 +113,12 @@ def test_crawler_filter_urls(test_url, tmp_path):
 
     paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["index"], crawler_depth=1)
     assert len(paths) == 1
-    assert content_match(crawler=crawler, base_url=test_url, page_name="index", crawled_page=paths[0])
+    assert content_match(crawler, test_url + "/index.html", paths[0])
 
     # Note: filter_urls can exclude pages listed in `urls` as well
     paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
     assert len(paths) == 1
-    assert content_match(crawler=crawler, base_url=test_url, page_name="page1", crawled_page=paths[0])
+    assert content_match(crawler, test_url + "/index.html", paths[0])
     
     assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
 
