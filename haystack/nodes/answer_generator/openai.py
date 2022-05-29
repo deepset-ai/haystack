@@ -5,6 +5,7 @@ import requests
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Answer, Document
 
+
 class OpenAIAnswerGenerator(BaseGenerator):
     """
     Uses the GPT-3 models from the OpenAI API to generate answers based on supplied documents (e.g. from any retriever in Haystack).
