@@ -106,7 +106,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
 
         res = json.loads(response.text)
-        answers: List[Answers] = [Answer(answer=a, type="generative" ) for a in res["answers"]]
+        answers: List[Answer] = [Answer(answer=a, type="generative" ) for a in res["answers"]]
         result = {"query": query, "answers": answers}
 
         return result
@@ -119,5 +119,3 @@ class OpenAIAnswerGenerator(BaseGenerator):
             batch_size: Optional[int] = None,
     ):
         raise NotImplementedError("predict_batch() is not yet implemented for OpenAIAnswerGenerator")
-
-        return results
