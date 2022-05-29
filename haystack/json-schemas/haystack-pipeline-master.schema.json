@@ -116,6 +116,9 @@
             "$ref": "#/definitions/MarkdownConverterComponent"
           },
           {
+            "$ref": "#/definitions/OpenAIAnswerGeneratorComponent"
+          },
+          {
             "$ref": "#/definitions/PDFToTextConverterComponent"
           },
           {
@@ -2905,6 +2908,81 @@
               }
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "OpenAIAnswerGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "OpenAIAnswerGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "model": {
+              "title": "Model",
+              "default": "curie",
+              "type": "string"
+            },
+            "search_model": {
+              "title": "Search Model",
+              "default": "ada",
+              "type": "string"
+            },
+            "max_tokens": {
+              "title": "Max Tokens",
+              "default": 7,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 5,
+              "type": "integer"
+            },
+            "temperature": {
+              "title": "Temperature",
+              "default": 0,
+              "type": "integer"
+            },
+            "examples_context": {
+              "title": "Examples Context",
+              "type": "string"
+            },
+            "examples": {
+              "title": "Examples",
+              "type": "array",
+              "items": {}
+            },
+            "stop_words": {
+              "title": "Stop Words",
+              "type": "array",
+              "items": {}
+            }
+          },
+          "required": [
+            "api_key"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
