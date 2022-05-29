@@ -1,6 +1,6 @@
 from typing import Optional, List, Union
-import requests
 import json
+import requests
 
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Answer, Document
