@@ -1,9 +1,9 @@
-from haystack.nodes.answer_generator import BaseGenerator
-from haystack import Answer, Document
 from typing import Optional, List, Union
 import requests
-
 import json
+
+from haystack.nodes.answer_generator import BaseGenerator
+from haystack import Answer, Document
 
 class OpenAIAnswerGenerator(BaseGenerator):
     """
@@ -20,7 +20,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         temperature: int = 0,
         examples_context: Optional[str] = None,
         examples: Optional[List] = None,
-        stop_words: Optional[List] = None
+        stop_words: Optional[List] = None,
     ):
 
         """
@@ -41,7 +41,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         if not examples_context:
             examples_context = "In 2017, U.S. life expectancy was 78.6 years."
         if not examples:
-            examples = [["What is human life expectancy in the United States?","78 years."]]
+            examples = [["What is human life expectancy in the United States?", "78 years."]]
         if not stop_words:
             stop_words = ["\n", "<|endoftext|>"]
 
@@ -53,7 +53,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.examples = examples
         self.api_key = api_key
         self.stop_words = stop_words
-
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
@@ -88,34 +87,31 @@ class OpenAIAnswerGenerator(BaseGenerator):
         url = "https://api.openai.com/v1/answers"
 
         payload = {
-                  "documents": inputs,
-                  "question": query,
-                  "search_model": self.search_model,
-                  "model": self.model,
-                  "examples_context": self.examples_context,
-                  "examples": self.examples,
-                  "max_tokens": self.max_tokens,
-                  "stop": self.stop_words,
-                  "n": self.top_k
-                }
-
-        headers = {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json'
+            "documents": inputs,
+            "question": query,
+            "search_model": self.search_model,
+            "model": self.model,
+            "examples_context": self.examples_context,
+            "examples": self.examples,
+            "max_tokens": self.max_tokens,
+            "stop": self.stop_words,
+            "n": self.top_k,
         }
+
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
 
         res = json.loads(response.text)
-        answers: List[Answer] = [Answer(answer=a, type="generative" ) for a in res["answers"]]
+        answers: List[Answer] = [Answer(answer=a, type="generative") for a in res["answers"]]
         result = {"query": query, "answers": answers}
 
         return result
 
     def predict_batch(
-            self,
-            queries: List[str],
-            documents: Union[List[Document], List[List[Document]]],
-            top_k: Optional[int] = None,
-            batch_size: Optional[int] = None,
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
     ):
         raise NotImplementedError("predict_batch() is not yet implemented for OpenAIAnswerGenerator")
