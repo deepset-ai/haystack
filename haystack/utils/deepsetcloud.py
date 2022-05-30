@@ -799,13 +799,12 @@ class EvaluationSetClient:
 
         :return: list of Label
         """
-        try:
-            evaluation_sets_response = next(self._get_evaluation_sets(name_filter=evaluation_set, workspace=workspace))
-        except StopIteration:
+        evaluation_set_response = self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+        if evaluation_set_response is None:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
         labels = self._get_labels_from_evaluation_set(
-            workspace=workspace, evaluation_set_id=evaluation_sets_response["evaluation_set_id"]
+            workspace=workspace, evaluation_set_id=evaluation_set_response["evaluation_set_id"]
         )
 
         return [
@@ -840,12 +839,12 @@ class EvaluationSetClient:
         """
         if not evaluation_set:
             evaluation_set = self.evaluation_set
-        try:
-            evaluation_sets_response = next(self._get_evaluation_sets(name_filter=evaluation_set, workspace=workspace))
-        except StopIteration:
+
+        evaluation_set_response = self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+        if evaluation_set is None:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
-        return evaluation_sets_response["total_labels"]
+        return evaluation_set_response["total_labels"]
 
     def get_evaluation_sets(self, workspace: Optional[str] = None) -> List[dict]:
         """
@@ -861,16 +860,31 @@ class EvaluationSetClient:
 
         return [eval_set for eval_set in evaluation_sets_response]
 
-    def _get_evaluation_sets(self, name_filter: Optional[str] = None, workspace: Optional[str] = None) -> Generator:
+    def _get_evaluation_sets(self, workspace: Optional[str] = None) -> Generator:
+        url = self._build_workspace_url(workspace=workspace)
+        evaluation_set_url = f"{url}/evaluation_sets"
+        return self.client.get_with_auto_paging(url=evaluation_set_url)
+
+    def _get_evaluation_set(
+        self, evaluation_set: Optional[str] = None, workspace: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         url = self._build_workspace_url(workspace=workspace)
         evaluation_set_url = f"{url}/evaluation_sets"
 
+        # evaluation_sets resource uses ids instead of names,
+        # so we have to query by name (which works as a contains filter) and take the first entry with matching name
         query_params = {}
-        if name_filter is not None:
-            query_params["name"] = name_filter
+        if evaluation_set is not None:
+            query_params["name"] = evaluation_set
 
-        for response in self.client.get_with_auto_paging(url=evaluation_set_url, query_params=query_params):
-            yield response
+        matches = [
+            entry
+            for entry in self.client.get_with_auto_paging(url=evaluation_set_url, query_params=query_params)
+            if entry["name"] == evaluation_set
+        ]
+        if any(matches):
+            return matches[0]
+        return None
 
     def _get_labels_from_evaluation_set(
         self, workspace: Optional[str] = None, evaluation_set_id: Optional[str] = None
