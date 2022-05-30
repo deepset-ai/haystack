@@ -1102,6 +1102,7 @@ class EvaluationRunClient:
         eval_mode: Literal["integrated", "isolated", None] = None,
         debug: Optional[bool] = None,
         comment: Optional[str] = None,
+        tags: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Updates an evaluation run.
@@ -1130,6 +1131,7 @@ class EvaluationRunClient:
                 "debug": debug,
                 "eval_mode": eval_mode_param,
                 "comment": comment,
+                "tags": tags,
             },
             headers=headers,
         )
@@ -1390,6 +1392,7 @@ class DeepsetCloudExperiments:
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
         comment: Optional[str] = None,
+        tags: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Creates an evaluation run.
@@ -1403,7 +1406,11 @@ class DeepsetCloudExperiments:
         :param debug: Wheter to enable debug output.
         :param comment: Comment to add about to the evaluation run.
         :param tags: Tags to add to the evaluation run.
-        :param headers: Headers to pass to API call
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
         """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.create_eval_run(
@@ -1413,6 +1420,7 @@ class DeepsetCloudExperiments:
             eval_mode=eval_mode,
             debug=debug,
             comment=comment,
+            tags=tags,
         )
 
     @classmethod
@@ -1427,6 +1435,7 @@ class DeepsetCloudExperiments:
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
         comment: Optional[str] = None,
+        tags: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Updates an evaluation run.
@@ -1440,7 +1449,11 @@ class DeepsetCloudExperiments:
         :param debug: Wheter to enable debug output.
         :param comment: Comment to add about to the evaluation run.
         :param tags: Tags to add to the evaluation run.
-        :param headers: Headers to pass to API call
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
         """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.update_eval_run(
@@ -1450,6 +1463,7 @@ class DeepsetCloudExperiments:
             eval_mode=eval_mode,
             debug=debug,
             comment=comment,
+            tags=tags,
         )
 
     @classmethod
@@ -1466,7 +1480,11 @@ class DeepsetCloudExperiments:
         :param eval_run_name: The name of the evaluation run.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
                           If None, the EvaluationRunClient's default workspace is used.
-        :param headers: Headers to pass to API call
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
         """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.get_eval_run(eval_run_name=eval_run_name)
@@ -1485,7 +1503,11 @@ class DeepsetCloudExperiments:
         :param eval_run_name: The name of the evaluation run.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
                           If None, the EvaluationRunClient's default workspace is used.
-        :param headers: Headers to pass to API call
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
         """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         return client.delete_eval_run(eval_run_name=eval_run_name)
@@ -1504,7 +1526,11 @@ class DeepsetCloudExperiments:
         :param eval_run_name: The name of the evaluation run.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
                           If None, the EvaluationRunClient's default workspace is used.
-        :param headers: Headers to pass to API call
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
         """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         client.start_eval_run(eval_run_name=eval_run_name)
@@ -1522,6 +1548,7 @@ class DeepsetCloudExperiments:
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         debug: bool = False,
         comment: Optional[str] = None,
+        tags: Optional[List[str]] = None,
     ):
         """
         Creates and starts an evaluation run.
@@ -1535,7 +1562,11 @@ class DeepsetCloudExperiments:
         :param debug: Wheter to enable debug output.
         :param comment: Comment to add about to the evaluation run.
         :param tags: Tags to add to the evaluation run.
-        :param headers: Headers to pass to API call
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
         """
         cls.create_run(
             eval_run_name=eval_run_name,
@@ -1547,5 +1578,6 @@ class DeepsetCloudExperiments:
             eval_mode=eval_mode,
             debug=debug,
             comment=comment,
+            tags=tags,
         )
         cls.start_run(eval_run_name=eval_run_name, workspace=workspace, api_key=api_key, api_endpoint=api_endpoint)
