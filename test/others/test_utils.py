@@ -5,6 +5,7 @@ import pandas as pd
 from pathlib import Path
 
 import responses
+from responses import matchers
 from haystack.utils.deepsetcloud import DeepsetCloud
 
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
@@ -391,3 +392,505 @@ def test_list_files_on_deepset_cloud():
     assert len(files) == 2
     assert files[0]["name"] == "sample_pdf_1.pdf"
     assert files[1]["name"] == "sample_pdf_2.pdf"
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_create_eval_run():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={"data": {"eval_run_name": "my-eval-run-1"}},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "name": "my-eval-run-1",
+                        "pipeline_name": "my-pipeline-1",
+                        "evaluation_set_name": "my-eval-set-1",
+                        "eval_mode": 0,
+                        "comment": "this is my first run",
+                        "debug": False,
+                        "tags": ["my-experiment-1"],
+                    }
+                )
+            ],
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={
+                "data": [
+                    {
+                        "created_at": "2022-05-24T12:13:16.445857+00:00",
+                        "eval_mode": 0,
+                        "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                        "name": "my-eval-run-1",
+                        "comment": "this is my first run",
+                        "tags": ["my-experiment-1"],
+                        "eval_run_labels": [],
+                        "logs": {},
+                        "metrics": {
+                            "integrated_exact_match": None,
+                            "integrated_f1": None,
+                            "integrated_sas": None,
+                            "isolated_exact_match": None,
+                            "isolated_f1": None,
+                            "isolated_sas": None,
+                            "mean_average_precision": None,
+                            "mean_reciprocal_rank": None,
+                            "normal_discounted_cummulative_gain": None,
+                            "precision": None,
+                            "recall_multi_hit": None,
+                            "recall_single_hit": None,
+                        },
+                        "parameters": {
+                            "debug": False,
+                            "eval_mode": 0,
+                            "evaluation_set_name": "my-eval-set-1",
+                            "pipeline_name": "my-pipeline-1",
+                        },
+                        "status": 1,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+            status=200,
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
+            json={
+                "created_at": "2022-05-24T12:13:16.445857+00:00",
+                "eval_mode": 0,
+                "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                "name": "my-eval-run-1",
+                "comment": "this is my first run",
+                "tags": ["my-experiment-1"],
+                "eval_run_labels": [],
+                "logs": {},
+                "metrics": {
+                    "integrated_exact_match": None,
+                    "integrated_f1": None,
+                    "integrated_sas": None,
+                    "isolated_exact_match": None,
+                    "isolated_f1": None,
+                    "isolated_sas": None,
+                    "mean_average_precision": None,
+                    "mean_reciprocal_rank": None,
+                    "normal_discounted_cummulative_gain": None,
+                    "precision": None,
+                    "recall_multi_hit": None,
+                    "recall_single_hit": None,
+                },
+                "parameters": {
+                    "debug": False,
+                    "eval_mode": 0,
+                    "evaluation_set_name": "my-eval-set-1",
+                    "pipeline_name": "my-pipeline-1",
+                },
+                "status": 1,
+            },
+            status=200,
+        )
+
+    client = DeepsetCloud.get_eval_run_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    client.create_eval_run(
+        eval_run_name="my-eval-run-1",
+        pipeline_config_name="my-pipeline-1",
+        evaluation_set="my-eval-set-1",
+        eval_mode="integrated",
+        comment="this is my first run",
+        tags=["my-experiment-1"],
+    )
+
+    runs = client.get_eval_runs()
+    assert len(runs) == 1
+    assert runs[0]["name"] == "my-eval-run-1"
+    assert runs[0]["tags"] == ["my-experiment-1"]
+    assert runs[0]["comment"] == "this is my first run"
+    assert runs[0]["parameters"]["pipeline_name"] == "my-pipeline-1"
+    assert runs[0]["parameters"]["evaluation_set_name"] == "my-eval-set-1"
+
+    run = client.get_eval_run("my-eval-run-1")
+    assert run["name"] == "my-eval-run-1"
+    assert run["tags"] == ["my-experiment-1"]
+    assert run["comment"] == "this is my first run"
+    assert run["parameters"]["pipeline_name"] == "my-pipeline-1"
+    assert run["parameters"]["evaluation_set_name"] == "my-eval-set-1"
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_update_eval_run():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={"data": {"eval_run_name": "my-eval-run-1"}},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "name": "my-eval-run-1",
+                        "pipeline_name": "my-pipeline-1",
+                        "evaluation_set_name": "my-eval-set-1",
+                        "eval_mode": 0,
+                        "comment": "this is my first run",
+                        "debug": False,
+                        "tags": ["my-experiment-1"],
+                    }
+                )
+            ],
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
+            json={
+                "created_at": "2022-05-24T12:13:16.445857+00:00",
+                "eval_mode": 0,
+                "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                "name": "my-eval-run-1",
+                "comment": "this is my first run",
+                "tags": ["my-experiment-1"],
+                "eval_run_labels": [],
+                "logs": {},
+                "metrics": {
+                    "integrated_exact_match": None,
+                    "integrated_f1": None,
+                    "integrated_sas": None,
+                    "isolated_exact_match": None,
+                    "isolated_f1": None,
+                    "isolated_sas": None,
+                    "mean_average_precision": None,
+                    "mean_reciprocal_rank": None,
+                    "normal_discounted_cummulative_gain": None,
+                    "precision": None,
+                    "recall_multi_hit": None,
+                    "recall_single_hit": None,
+                },
+                "parameters": {
+                    "debug": False,
+                    "eval_mode": 0,
+                    "evaluation_set_name": "my-eval-set-1",
+                    "pipeline_name": "my-pipeline-1",
+                },
+                "status": "CREATED",
+            },
+            status=200,
+        )
+
+        responses.add(
+            method=responses.PATCH,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
+            json={"data": {"eval_run_name": "my-eval-run-1"}},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    {"pipeline_name": "my-pipeline-2", "comment": "this is my first run with second pipeline"}
+                )
+            ],
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
+            json={
+                "created_at": "2022-05-24T12:13:16.445857+00:00",
+                "eval_mode": 0,
+                "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                "name": "my-eval-run-1",
+                "comment": "this is my first run with second pipeline",
+                "tags": ["my-experiment-1"],
+                "eval_run_labels": [],
+                "logs": {},
+                "metrics": {
+                    "integrated_exact_match": None,
+                    "integrated_f1": None,
+                    "integrated_sas": None,
+                    "isolated_exact_match": None,
+                    "isolated_f1": None,
+                    "isolated_sas": None,
+                    "mean_average_precision": None,
+                    "mean_reciprocal_rank": None,
+                    "normal_discounted_cummulative_gain": None,
+                    "precision": None,
+                    "recall_multi_hit": None,
+                    "recall_single_hit": None,
+                },
+                "parameters": {
+                    "debug": False,
+                    "eval_mode": 0,
+                    "evaluation_set_name": "my-eval-set-1",
+                    "pipeline_name": "my-pipeline-2",
+                },
+                "status": "CREATED",
+            },
+            status=200,
+        )
+
+    client = DeepsetCloud.get_eval_run_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    client.create_eval_run(
+        eval_run_name="my-eval-run-1",
+        pipeline_config_name="my-pipeline-1",
+        evaluation_set="my-eval-set-1",
+        eval_mode="integrated",
+        comment="this is my first run",
+        tags=["my-experiment-1"],
+    )
+
+    run = client.get_eval_run("my-eval-run-1")
+    assert run["name"] == "my-eval-run-1"
+    assert run["tags"] == ["my-experiment-1"]
+    assert run["comment"] == "this is my first run"
+    assert run["parameters"]["pipeline_name"] == "my-pipeline-1"
+    assert run["parameters"]["evaluation_set_name"] == "my-eval-set-1"
+
+    client.update_eval_run(
+        eval_run_name="my-eval-run-1",
+        pipeline_config_name="my-pipeline-2",
+        comment="this is my first run with second pipeline",
+    )
+
+    run = client.get_eval_run("my-eval-run-1")
+    assert run["name"] == "my-eval-run-1"
+    assert run["tags"] == ["my-experiment-1"]
+    assert run["comment"] == "this is my first run with second pipeline"
+    assert run["parameters"]["pipeline_name"] == "my-pipeline-2"
+    assert run["parameters"]["evaluation_set_name"] == "my-eval-set-1"
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_start_eval_run():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={"data": {"eval_run_name": "my-eval-run-1"}},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "name": "my-eval-run-1",
+                        "pipeline_name": "my-pipeline-1",
+                        "evaluation_set_name": "my-eval-set-1",
+                        "eval_mode": 0,
+                        "comment": "this is my first run",
+                        "debug": False,
+                        "tags": ["my-experiment-1"],
+                    }
+                )
+            ],
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
+            json={
+                "created_at": "2022-05-24T12:13:16.445857+00:00",
+                "eval_mode": 0,
+                "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                "name": "my-eval-run-1",
+                "comment": "this is my first run",
+                "tags": ["my-experiment-1"],
+                "eval_run_labels": [],
+                "logs": {},
+                "metrics": {
+                    "integrated_exact_match": None,
+                    "integrated_f1": None,
+                    "integrated_sas": None,
+                    "isolated_exact_match": None,
+                    "isolated_f1": None,
+                    "isolated_sas": None,
+                    "mean_average_precision": None,
+                    "mean_reciprocal_rank": None,
+                    "normal_discounted_cummulative_gain": None,
+                    "precision": None,
+                    "recall_multi_hit": None,
+                    "recall_single_hit": None,
+                },
+                "parameters": {
+                    "debug": False,
+                    "eval_mode": 0,
+                    "evaluation_set_name": "my-eval-set-1",
+                    "pipeline_name": "my-pipeline-1",
+                },
+                "status": "CREATED",
+            },
+            status=200,
+        )
+
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1/start",
+            json={},
+            status=200,
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
+            json={
+                "created_at": "2022-05-24T12:13:16.445857+00:00",
+                "eval_mode": 0,
+                "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                "name": "my-eval-run-1",
+                "comment": "this is my first run",
+                "tags": ["my-experiment-1"],
+                "eval_run_labels": [],
+                "logs": {},
+                "metrics": {
+                    "integrated_exact_match": None,
+                    "integrated_f1": None,
+                    "integrated_sas": None,
+                    "isolated_exact_match": None,
+                    "isolated_f1": None,
+                    "isolated_sas": None,
+                    "mean_average_precision": None,
+                    "mean_reciprocal_rank": None,
+                    "normal_discounted_cummulative_gain": None,
+                    "precision": None,
+                    "recall_multi_hit": None,
+                    "recall_single_hit": None,
+                },
+                "parameters": {
+                    "debug": False,
+                    "eval_mode": 0,
+                    "evaluation_set_name": "my-eval-set-1",
+                    "pipeline_name": "my-pipeline-1",
+                },
+                "status": "STARTED",
+            },
+            status=200,
+        )
+
+    client = DeepsetCloud.get_eval_run_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    client.create_eval_run(
+        eval_run_name="my-eval-run-1",
+        pipeline_config_name="my-pipeline-1",
+        evaluation_set="my-eval-set-1",
+        eval_mode="integrated",
+        comment="this is my first run",
+        tags=["my-experiment-1"],
+    )
+
+    run = client.get_eval_run("my-eval-run-1")
+    assert run["name"] == "my-eval-run-1"
+    assert run["tags"] == ["my-experiment-1"]
+    assert run["comment"] == "this is my first run"
+    assert run["parameters"]["pipeline_name"] == "my-pipeline-1"
+    assert run["parameters"]["evaluation_set_name"] == "my-eval-set-1"
+    assert run["status"] == "CREATED"
+
+    client.start_eval_run(eval_run_name="my-eval-run-1")
+
+    run = client.get_eval_run("my-eval-run-1")
+    assert run["name"] == "my-eval-run-1"
+    assert run["tags"] == ["my-experiment-1"]
+    assert run["comment"] == "this is my first run"
+    assert run["parameters"]["pipeline_name"] == "my-pipeline-1"
+    assert run["parameters"]["evaluation_set_name"] == "my-eval-set-1"
+    assert run["status"] == "STARTED"
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_delete_eval_run():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={"data": {"eval_run_name": "my-eval-run-1"}},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "name": "my-eval-run-1",
+                        "pipeline_name": "my-pipeline-1",
+                        "evaluation_set_name": "my-eval-set-1",
+                        "eval_mode": 0,
+                        "comment": "this is my first run",
+                        "debug": False,
+                        "tags": ["my-experiment-1"],
+                    }
+                )
+            ],
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={
+                "data": [
+                    {
+                        "created_at": "2022-05-24T12:13:16.445857+00:00",
+                        "eval_mode": 0,
+                        "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                        "name": "my-eval-run-1",
+                        "comment": "this is my first run",
+                        "tags": ["my-experiment-1"],
+                        "eval_run_labels": [],
+                        "logs": {},
+                        "metrics": {
+                            "integrated_exact_match": None,
+                            "integrated_f1": None,
+                            "integrated_sas": None,
+                            "isolated_exact_match": None,
+                            "isolated_f1": None,
+                            "isolated_sas": None,
+                            "mean_average_precision": None,
+                            "mean_reciprocal_rank": None,
+                            "normal_discounted_cummulative_gain": None,
+                            "precision": None,
+                            "recall_multi_hit": None,
+                            "recall_single_hit": None,
+                        },
+                        "parameters": {
+                            "debug": False,
+                            "eval_mode": 0,
+                            "evaluation_set_name": "my-eval-set-1",
+                            "pipeline_name": "my-pipeline-1",
+                        },
+                        "status": 1,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+            status=200,
+        )
+
+        responses.add(
+            method=responses.DELETE, url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1", status=204
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={"data": [], "has_more": False, "total": 0},
+            status=200,
+        )
+
+    client = DeepsetCloud.get_eval_run_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    client.create_eval_run(
+        eval_run_name="my-eval-run-1",
+        pipeline_config_name="my-pipeline-1",
+        evaluation_set="my-eval-set-1",
+        eval_mode="integrated",
+        comment="this is my first run",
+        tags=["my-experiment-1"],
+    )
+
+    runs = client.get_eval_runs()
+    assert len(runs) == 1
+
+    run = client.delete_eval_run("my-eval-run-1")
+
+    runs = client.get_eval_runs()
+    assert len(runs) == 0
