@@ -841,7 +841,7 @@ class EvaluationSetClient:
             evaluation_set = self.evaluation_set
 
         evaluation_set_response = self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
-        if evaluation_set is None:
+        if evaluation_set_response is None:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
         return evaluation_set_response["total_labels"]
