@@ -1815,9 +1815,19 @@ class Pipeline:
             )
 
             # create the Pipeline definition with how the Component are connected
-            pipeline_definitions[pipeline_name]["nodes"].append(
-                {"name": node_name, "inputs": list(self.graph.predecessors(node_name))}
-            )
+            inputs = []
+            for predecessor in self.graph.predecessors(node_name):
+                predecessor_out_edges = list(self.graph.edges(predecessor, data=True))
+                # if there are multiple outputs and we're not coming from a root node we have to specify the stream
+                if predecessor not in VALID_ROOT_NODES and len(predecessor_out_edges) > 1:
+                    target_edge = next(edge for edge in predecessor_out_edges if edge[1] == node_name)
+                    # data consists of a dictionary containing the stream_id at the "label" key
+                    stream_id = target_edge[2]["label"]
+                    inputs.append(f"{predecessor}.{stream_id}")
+                else:
+                    inputs.append(predecessor)
+
+            pipeline_definitions[pipeline_name]["nodes"].append({"name": node_name, "inputs": inputs})
 
         config = {
             "components": list(component_definitions.values()),
