@@ -850,7 +850,7 @@ class Pipeline:
 
         :param index_pipeline: The indexing pipeline to use.
         :param query_pipeline: The query pipeline to evaluate.
-        :param evaluation_set_labels: The labels to evaluate on forming an evalution set.
+        :param evaluation_set_labels: The labels to evaluate on forming an evaluation set.
         :param corpus_file_paths: The files to be indexed and searched during evaluation forming a corpus.
         :param experiment_name: The name of the experiment
         :param experiment_run_name: The name of the experiment run
