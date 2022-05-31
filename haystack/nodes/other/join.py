@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Optional, List, Tuple, Dict, Union, Any
 
 from haystack import MultiLabel, Document
