@@ -16,10 +16,10 @@ jobs:
     steps:
 
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-          repository: ${{github.event.pull_request.head.repo.full_name}}
-          ref: ${{ github.head_ref }}
+        # with:
+        #   fetch-depth: 0
+        #   repository: ${{github.event.pull_request.head.repo.full_name}}
+        #   ref: ${{ github.head_ref }}
           
       - name: Setup Python
         uses: ./.github/actions/python_cache/
@@ -31,9 +31,9 @@ jobs:
           pip install rest_api/
           pip install ui/
 
-      # Get any additional commit that might have been pushed in the meantime
-      - name: Pull changes (if any)
-        run: git pull origin ${{ github.head_ref }}
+      # # Get any additional commit that might have been pushed in the meantime
+      # - name: Pull changes (if any)
+      #   run: git pull origin ${{ github.head_ref }}
 
       - name: Code and Docs Updates
         run: ./.github/utils/code_and_docs.sh
