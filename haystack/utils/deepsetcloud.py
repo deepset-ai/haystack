@@ -872,8 +872,8 @@ class EvaluationSetClient:
         When using Haystack annotation tool make sure to choose CSV as export format. The resulting file matches the expected format.
 
         Currently, deepset Cloud only supports CSV files (having "," as delimiter) with the following columns:
-        - question (or query): the labelled question (required)
-        - text: the answer or relevant text to the question or query (required)
+        - question (or query): the labelled question or query (required)
+        - text: the answer to the question or relevant text to the query (required)
         - context: the surrounding words of the text (should be more than 100 characters) (optional)
         - file_name: the name of the file within the workspace that contains the text (optional)
         - answer_start: the character position within the file that marks the start of the text (optional)
