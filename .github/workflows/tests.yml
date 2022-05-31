@@ -25,6 +25,7 @@ jobs:
 
   mypy:
     runs-on: ubuntu-latest
+
     steps:
 
     - uses: actions/checkout@v2
@@ -35,6 +36,7 @@ jobs:
         # Mypy can't run properly on 3.7 as it misses support for Literal types.
         # FIXME once we drop support for 3.7, use the cache.
         python-version: 3.8
+        cache: pip
 
     - name: Install dependencies
       run: |
@@ -61,6 +63,7 @@ jobs:
   
   pylint:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
 
@@ -68,7 +71,10 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Pylint
       run: |
@@ -76,6 +82,8 @@ jobs:
 
 
   unit-tests-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs:
      - mypy
      - pylint
@@ -87,14 +95,15 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -131,9 +140,10 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
       with:
-        prefix: windows
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Install pdftotext
       run: |
@@ -152,10 +162,11 @@ jobs:
   
 
   elasticsearch-tests-linux:
+    runs-on: ubuntu-latest
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
 
@@ -169,7 +180,10 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Install Haystack
       run: pip install .
@@ -182,11 +196,11 @@ jobs:
 
 
   elasticsearch-tests-windows:
+    runs-on: windows-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
     needs:
      - mypy
      - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
@@ -199,13 +213,15 @@ jobs:
         choco install elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
+
     - name: Install Haystack
       run: pip install .
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
       with:
-        prefix: windows
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Run tests
       env:
@@ -215,17 +231,20 @@ jobs:
   
 
   faiss-tests-linux:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') || !github.event.pull_request.draft
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -242,25 +261,27 @@ jobs:
 
 
   faiss-tests-windows:
+    runs-on: windows-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
     needs:
      - mypy
      - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
       with:
-        prefix: windows
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Install pdftotext
       run: |
         choco install xpdf-utils
         choco install openjdk11
         refreshenv
+
     - name: Install Haystack
       run: pip install .[faiss]
 
@@ -272,17 +293,20 @@ jobs:
 
 
   milvus-tests-linux:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') || !github.event.pull_request.draft
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Setup Milvus
       run: |
@@ -290,6 +314,7 @@ jobs:
         wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
         sudo docker-compose up -d
         sudo docker-compose ps
+
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
@@ -306,11 +331,11 @@ jobs:
 
 # FIXME: seems like we can't run containers on Windows
   # milvus-tests-windows:
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
   #   needs:
   #    - mypy
   #    - pylint
-  #   runs-on: windows-latest
-  #   if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
 
   #   steps:
   #   - uses: actions/checkout@v2
@@ -344,17 +369,20 @@ jobs:
 
 
   weaviate-tests-linux:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') || !github.event.pull_request.draft
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Setup Weaviate
       run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
@@ -372,13 +400,14 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=weaviate
   
+
 # FIXME: seems like we can't run containers on Windows
   # weaviate-tests-windows:
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
   #   needs:
   #    - mypy
   #    - pylint
-  #   runs-on: windows-latest
-  #   if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
   #   steps:
   #   - uses: actions/checkout@v2
@@ -408,17 +437,20 @@ jobs:
 
 
   pinecone-tests-linux:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
     needs:
      - mypy
      - pylint
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -434,13 +466,14 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
 
-  # FIXME very slow and very little platform dependency, so to evaluate
+
+  # FIXME: very slow and very little platform dependency, so to evaluate
   # pinecone-tests-windows:
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
   #   needs:
   #    - mypy
   #    - pylint
-  #   runs-on: windows-latest
-  #   if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
   #   steps:
   #   - uses: actions/checkout@v2
@@ -468,18 +501,20 @@ jobs:
 
 
   rest-and-ui-tests-linux:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') || !github.event.pull_request.draft
     needs:
       - unit-tests-linux
       - elasticsearch-tests-linux
-
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
@@ -491,26 +526,29 @@ jobs:
       run: |
         pip install rest_api/
         pip install ui/
+
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
         
+
   rest-and-ui-tests-windows:
+    runs-on: windows-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
     needs: 
      - unit-tests-windows
      - elasticsearch-tests-windows
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
       with:
-        prefix: windows
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Set up Elasticsearch and pdftotext
       run: |
@@ -520,10 +558,12 @@ jobs:
         choco install elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
+
     - name: Install REST API and UI
       run: |
         pip install rest_api/
         pip install ui/
+  
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
@@ -532,11 +572,11 @@ jobs:
   
 
   integration-tests-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs:
       - unit-tests-linux
       - elasticsearch-tests-linux
-
-    timeout-minutes: 30
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
@@ -545,13 +585,15 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
-    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Run Elasticsearch
       run: |
@@ -584,6 +626,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
+  
     - name: Install Haystack
       run: pip install .
 
@@ -595,13 +638,12 @@ jobs:
 
 
   integration-tests-windows:
+    runs-on: windows-latest
+    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
+    timeout-minutes: 30
     needs: 
      - unit-tests-windows
      - elasticsearch-tests-windows
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
-    timeout-minutes: 30
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix: 
@@ -625,9 +667,10 @@ jobs:
         Get-Service elasticsearch-service-x64 | Start-Service
 
     - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      uses: actions/setup-python@v2
       with:
-        prefix: windows
+        python-version: ${{ inputs.pythonVersion }}
+        cache: pip
 
     - name: Install Haystack
       run: pip install .
