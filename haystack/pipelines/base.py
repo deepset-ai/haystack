@@ -1818,8 +1818,8 @@ class Pipeline:
             inputs = []
             for predecessor in self.graph.predecessors(node_name):
                 predecessor_out_edges = list(self.graph.edges(predecessor, data=True))
-                # if there are multiple outputs we have to specify the stream
-                if len(predecessor_out_edges) > 1:
+                # if there are multiple outputs and we're not coming from a root node we have to specify the stream
+                if predecessor not in VALID_ROOT_NODES and len(predecessor_out_edges) > 1:
                     target_edge = next(edge for edge in predecessor_out_edges if edge[1] == node_name)
                     # data consists of a dictionary containing the stream_id at the "label" key
                     stream_id = target_edge[2]["label"]
