@@ -4,6 +4,8 @@ import logging
 import multiprocessing
 from pathlib import Path
 from collections import defaultdict
+import os
+import tempfile
 from time import perf_counter
 import torch
 
@@ -24,6 +26,7 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 
+from huggingface_hub import create_repo, HfFolder, Repository
 
 logger = logging.getLogger(__name__)
 
@@ -687,6 +690,50 @@ class FARMReader(BaseReader):
         logger.info(f"Saving reader model to {directory}")
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
+
+    def save_to_remote(self, 
+                    model_name: str,
+                    hf_organization: Optional[str] = None,
+                    private: Optional[bool] = None,
+                    commit_message: str = "Add new model to Hugging Face."):
+
+        token = HfFolder.get_token()
+        if token is None:
+            raise ValueError("You must login to the Hugging Face hub on this computer by typing `transformers-cli login`.")
+        
+        repo_url = create_repo(
+                token,
+                model_name,
+                organization=hf_organization,
+                private=private,
+                repo_type=None,
+                exist_ok=True)
+        
+        transformer_models = self.inferencer.model.convert_to_transformers()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo = Repository(tmp_dir, clone_from=repo_url)
+            
+            self.save(tmp_dir)
+            transformer_models[0].save_pretrained(tmp_dir)
+
+            large_files = []
+            for root, dirs, files in os.walk(tmp_dir):
+                for filename in files:
+                    file_path = os.path.join(root, filename)
+                    rel_path = os.path.relpath(file_path, tmp_dir)
+
+                    if os.path.getsize(file_path) > (5 * 1024 * 1024):
+                        large_files.append(rel_path)
+
+            if len(large_files) > 0:
+                logger.info("Track files with git lfs: {}".format(", ".join(large_files)))
+                repo.lfs_track(large_files)
+
+            logger.info("Push model to the hub. This might take a while")
+            commit_url = repo.push_to_hub(commit_message=commit_message)
+
+        return commit_url
 
     def predict_batch(
         self,
