@@ -654,7 +654,7 @@ def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 0.5
     assert metrics["Reader"]["exact_match"] == 0.5
     assert metrics["Reader"]["f1"] == 0.5
-    assert metrics["Reader"]["sas"] == 0.5
+    assert metrics["Reader"]["sas"] == pytest.approx(0.5)
 
     metrics = eval_result.calculate_metrics(answer_scope="document_id_and_context")
 
@@ -666,7 +666,7 @@ def test_extractive_qa_eval_answer_scope(reader, retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 0.5
     assert metrics["Reader"]["exact_match"] == 0.5
     assert metrics["Reader"]["f1"] == 0.5
-    assert metrics["Reader"]["sas"] == 0.5
+    assert metrics["Reader"]["sas"] == pytest.approx(0.5)
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
