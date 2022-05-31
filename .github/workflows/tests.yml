@@ -74,15 +74,14 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ inputs.pythonVersion }}
-        cache: pip
+        #cache: pip
 
     - name: Install packages
       run: |
         pip install --upgrade pip
-        pip install .[dev]
+        pip install .[all]
         pip install rest_api/
         pip install ui/
-        pip install .[all]
 
     - name: Pylint
       run: |
