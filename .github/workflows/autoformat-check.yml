@@ -2,8 +2,10 @@ name: Code & Documentation Check
 
 on:
   workflow_dispatch: # Activate this workflow manually
-  pull_request:
-
+  workflow_run:
+    workflows: [Code & Documentation Updates, Tests]
+    types:
+      - completed
 
 jobs: 
 
