@@ -691,29 +691,29 @@ class FARMReader(BaseReader):
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def save_to_remote(self, 
-                    model_name: str,
-                    hf_organization: Optional[str] = None,
-                    private: Optional[bool] = None,
-                    commit_message: str = "Add new model to Hugging Face."):
+    def save_to_remote(
+        self,
+        model_name: str,
+        hf_organization: Optional[str] = None,
+        private: Optional[bool] = None,
+        commit_message: str = "Add new model to Hugging Face.",
+    ):
 
         token = HfFolder.get_token()
         if token is None:
-            raise ValueError("You must login to the Hugging Face hub on this computer by typing `transformers-cli login`.")
-        
+            raise ValueError(
+                "You must login to the Hugging Face hub on this computer by typing `transformers-cli login`."
+            )
+
         repo_url = create_repo(
-                token,
-                model_name,
-                organization=hf_organization,
-                private=private,
-                repo_type=None,
-                exist_ok=True)
-        
+            token, model_name, organization=hf_organization, private=private, repo_type=None, exist_ok=True
+        )
+
         transformer_models = self.inferencer.model.convert_to_transformers()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo = Repository(tmp_dir, clone_from=repo_url)
-            
+
             self.save(tmp_dir)
             transformer_models[0].save_pretrained(tmp_dir)
 
