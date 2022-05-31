@@ -869,14 +869,15 @@ class EvaluationSetClient:
         """
         Uploads an evaluation set.
         The name of file that you uploaded becomes the name of the evaluation set in deepset Cloud.
+        When using Haystack annotation tool make sure to choose CSV as export format. The resulting file matches the expected format.
 
         Currently, deepset Cloud only supports CSV files (having "," as delimiter) with the following columns:
-        - question (or query): the labelled question
-        - text: the answer or relevant text to the question or query
-        - context: the surrounding words of the text (should be more than 100 characters)
-        - file_name: the name of the file within the workspace that contains the text
-        - answer_start: the character position within the file that marks the start of the text
-        - answer_end: the character position within the file that marks the end of the text
+        - question (or query): the labelled question (required)
+        - text: the answer or relevant text to the question or query (required)
+        - context: the surrounding words of the text (should be more than 100 characters) (optional)
+        - file_name: the name of the file within the workspace that contains the text (optional)
+        - answer_start: the character position within the file that marks the start of the text (optional)
+        - answer_end: the character position within the file that marks the end of the text (optional)
 
         :param file_path: Path to the evaluation set file to be uploaded.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
