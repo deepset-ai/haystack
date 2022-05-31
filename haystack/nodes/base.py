@@ -190,7 +190,6 @@ class BaseComponent(ABC):
         run_signature_args = inspect.signature(run_method).parameters
         run_signature_arg_names = run_signature_args.keys()
 
-
         takes_kwargs = next(reversed(run_signature_args.values())).kind == 4 if len(run_signature_args) > 0 else False
 
         run_params: Dict[str, Any] = {}
