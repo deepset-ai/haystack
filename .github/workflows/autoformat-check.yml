@@ -1,0 +1,51 @@
+name: Code & Documentation Check
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  pull_request:
+
+
+jobs: 
+
+  # This CI action mirrors autoformat.yml, with the difference that it
+  # runs on Haystack's end. If the contributor hasn't run autoformat.yml, 
+  # then this check will fail.
+  check:
+    runs-on: ubuntu-latest
+    #needs: integration-tests-linux
+    steps:
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+          ref: ${{ github.head_ref }}
+          
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[all]
+          pip install rest_api/
+          pip install ui/
+
+      # Get any additional commit that might have been pushed in the meantime
+      - name: Pull changes (if any)
+        run: git pull origin ${{ github.head_ref }}
+
+      - name: Code and Docs Updates
+        run: ./.github/utils/code_and_docs.sh
+
+      # If there is anything to commit, fail
+      - name: Check status
+        run: |
+          if [[ `git status --porcelain` ]]; then
+            git status
+            echo ""
+            echo "This means that the 'autoformat.yml' action didn't run."
+            echo "Please enable GitHub Action on your fork to pass this check!"
+            echo "See https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks for instructions"
+            exit 1
+          fi
