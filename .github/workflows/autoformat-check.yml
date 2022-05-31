@@ -17,12 +17,9 @@ jobs:
     steps:
 
       - uses: actions/checkout@v2
-        
+            
       - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ inputs.pythonVersion }}
-          cache: pip
+        uses: ./.github/actions/python_cache/
 
       - name: Install Dependencies
         run: |
