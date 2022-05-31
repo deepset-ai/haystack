@@ -799,7 +799,7 @@ class EvaluationSetClient:
 
         :return: list of Label
         """
-        evaluation_set_response = self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+        evaluation_set_response = self.get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
         if evaluation_set_response is None:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
@@ -840,7 +840,7 @@ class EvaluationSetClient:
         if not evaluation_set:
             evaluation_set = self.evaluation_set
 
-        evaluation_set_response = self._get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
+        evaluation_set_response = self.get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
         if evaluation_set_response is None:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
@@ -865,9 +865,50 @@ class EvaluationSetClient:
         evaluation_set_url = f"{url}/evaluation_sets"
         return self.client.get_with_auto_paging(url=evaluation_set_url)
 
-    def _get_evaluation_set(
+    def upload_evaluation_set(self, file_path: Path, workspace: Optional[str] = None):
+        """
+        Uploads an evaluation set file.
+        The evaluation set will be accessible under the name of the uploaded file.
+
+        Currently only CSV files (having "," as delimiter) with the following columns are supported:
+        - question (or query): the question or query of the label
+        - text: the answer or relevant text to the question or query
+        - context: the surrounding words of the text (should be more than 100 characters)
+        - file_name: the name of the file within the workspace that contains the text
+        - answer_start: the character position within the file that marks the start of the text
+        - answer_end: the character position within the file that marks the end of the text
+
+        :param file_path: Path to the evaluation set file to be uploaded.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+        """
+        workspace_url = self._build_workspace_url(workspace)
+        target_url = f"{workspace_url}/evaluation_sets/import"
+        try:
+            mime_type = guess_type(str(file_path))
+            with open(file_path, "rb") as file:
+                self.client.post(url=target_url, files={"file": (file_path.name, file, mime_type)})
+        except Exception as e:
+            logger.exception(f"Error uploading evaluation set file {file_path}")
+
+        logger.info(
+            f"Successfully uploaded evaluation set file {file_path}. You can access it now under evaluation set '{file_path.name}'."
+        )
+
+    def get_evaluation_set(
         self, evaluation_set: Optional[str] = None, workspace: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
+        """
+        Returns information about the evaluation set.
+
+        :param evaluation_set: Name of the evaluation set in deepset Cloud.
+                               If None, the EvaluationSetClient's default evaluation set (self.evaluation_set) will be used.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+
+        :return: Dictionary that represent deepset Cloud evaluation sets.
+                 These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
+        """
         url = self._build_workspace_url(workspace=workspace)
         evaluation_set_url = f"{url}/evaluation_sets"
 
