@@ -4,12 +4,23 @@ from typing import Optional, List, Tuple, Dict, Union, Any
 from haystack import MultiLabel, Document, Answer
 from haystack.nodes.base import BaseComponent
 
+
 class JoinNode(BaseComponent):
-    def run(self, inputs: Optional[List[dict]] = None, query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[dict] = None, answers: Optional[List[Answer]] = None, **kwargs) -> Tuple[Dict, str]:
+    def run(
+        self,
+        inputs: Optional[List[dict]] = None,
+        query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[dict] = None,
+        answers: Optional[List[Answer]] = None,
+        **kwargs
+    ) -> Tuple[Dict, str]:
         if inputs:
             return self.run_accumulated(inputs, **kwargs)
         return self.run_accumulated(inputs=[{"query": query, "file_paths": file_paths, "labels": labels, "documents": documents, "meta": meta, "answers": answers}], **kwargs)
-    
+
     @abstractmethod
     def run_accumulated(self, inputs: List[dict]) -> Tuple[Dict, str]:
         pass
