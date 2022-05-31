@@ -76,6 +76,11 @@ jobs:
         python-version: ${{ inputs.pythonVersion }}
         cache: pip
 
+    - name: Install packages
+      run: |
+        pip install --upgrade pip
+        pip install .[test]
+
     - name: Pylint
       run: |
         pylint -ry -j 0 haystack/ rest_api/ ui/
@@ -110,7 +115,10 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Haystack
-      run: pip install .
+      run: |
+        pip install --upgrade pip
+        pip install .
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run tests
       env:
@@ -152,7 +160,11 @@ jobs:
         refreshenv
 
     - name: Install Haystack
-      run: pip install .
+      run: |
+        pip install --upgrade pip
+        pip install .
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+
 
     - name: Run tests
       env:
@@ -186,7 +198,11 @@ jobs:
         cache: pip
 
     - name: Install Haystack
-      run: pip install .
+      run: |
+        pip install --upgrade pip
+        pip install .
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+
 
     - name: Run tests
       env:
@@ -215,7 +231,11 @@ jobs:
         Get-Service elasticsearch-service-x64 | Start-Service
 
     - name: Install Haystack
-      run: pip install .
+      run: |
+        pip install --upgrade pip
+        pip install .
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+
 
     - name: Setup Python
       uses: actions/setup-python@v2
@@ -251,7 +271,10 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Haystack
-      run: pip install .[faiss]
+      run: |
+        pip install --upgrade pip
+        pip install .[faiss]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run tests
       env:
@@ -283,7 +306,10 @@ jobs:
         refreshenv
 
     - name: Install Haystack
-      run: pip install .[faiss]
+      run: |
+        pip install --upgrade pip
+        pip install .[faiss]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run tests
       env:
@@ -320,7 +346,10 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Haystack
-      run: pip install .[milvus]
+      run: |
+        pip install --upgrade pip
+        pip install .[milvus]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run tests
       env:
@@ -392,7 +421,10 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Haystack
-      run: pip install .[weaviate]
+      run: |
+        pip install --upgrade pip
+        pip install .[weaviate]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run tests
       env:
@@ -457,7 +489,10 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Haystack
-      run: pip install .[pinecone]
+      run: |
+        pip install --upgrade pip
+        pip install .[pinecone]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run tests
       env:
@@ -524,6 +559,7 @@ jobs:
 
     - name: Install REST API and UI
       run: |
+        pip install --upgrade pip
         pip install rest_api/
         pip install ui/
 
@@ -561,6 +597,7 @@ jobs:
 
     - name: Install REST API and UI
       run: |
+        pip install --upgrade pip
         pip install rest_api/
         pip install ui/
   
@@ -628,7 +665,10 @@ jobs:
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
   
     - name: Install Haystack
-      run: pip install .
+      run: |
+        pip install --upgrade pip
+        pip install .[all]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run tests
       env:
@@ -673,7 +713,10 @@ jobs:
         cache: pip
 
     - name: Install Haystack
-      run: pip install .
+      run: |
+        pip install --upgrade pip
+        pip install .[all]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
     - name: Run tests
       env:
