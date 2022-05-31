@@ -76,12 +76,20 @@ jobs:
         python-version: ${{ inputs.pythonVersion }}
         #cache: pip
 
-    - name: Install packages
-      run: |
-        pip install --upgrade pip
-        pip install .[all]
-        pip install rest_api/
-        pip install ui/
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install dev
+      run: pip install .[dev]
+
+    - name: Install rest
+      run: pip install rest_api/
+
+    - name: Install ui
+      run: pip install ui/
+
+    - name: Install all
+      run: pip install .[all]
 
     - name: Pylint
       run: |
