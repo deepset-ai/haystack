@@ -4,6 +4,8 @@ from typing import Optional, List, Tuple, Dict, Union, Any
 from haystack import MultiLabel, Document, Answer
 from haystack.nodes.base import BaseComponent
 
+import warnings
+
 
 class JoinNode(BaseComponent):
     def run(
@@ -19,6 +21,7 @@ class JoinNode(BaseComponent):
     ) -> Tuple[Dict, str]:
         if inputs:
             return self.run_accumulated(inputs, **kwargs)
+        warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
         return self.run_accumulated(
             inputs=[
                 {
@@ -52,6 +55,7 @@ class JoinNode(BaseComponent):
     ) -> Tuple[Dict, str]:
         if inputs:
             return self.run_batch_accumulated(inputs=inputs, **kwargs)
+        warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
         return self.run_batch_accumulated(
             inputs=[
                 {
