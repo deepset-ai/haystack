@@ -894,3 +894,21 @@ def test_delete_eval_run():
 
     runs = client.get_eval_runs()
     assert len(runs) == 0
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_upload_eval_set(caplog):
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/import",
+            json={"evaluation_set_id": "c2d06025-2c00-43b5-8f73-b81b12e63afc"},
+            status=200,
+        )
+
+    client = DeepsetCloud.get_evaluation_set_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    with caplog.at_level(logging.INFO):
+        client.upload_evaluation_set(file_path=SAMPLES_PATH / "dc/matching_test_1.csv")
+        assert f"Successfully uploaded evaluation set file" in caplog.text
+        assert f"You can access it now under evaluation set 'matching_test_1.csv'." in caplog.text
