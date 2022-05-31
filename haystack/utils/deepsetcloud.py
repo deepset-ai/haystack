@@ -886,7 +886,7 @@ class EvaluationSetClient:
         workspace_url = self._build_workspace_url(workspace)
         target_url = f"{workspace_url}/evaluation_sets/import"
         try:
-            mime_type = guess_type(str(file_path))
+            mime_type = guess_type(str(file_path))[0]
             with open(file_path, "rb") as file:
                 self.client.post(url=target_url, files={"file": (file_path.name, file, mime_type)})
         except Exception as e:
@@ -978,7 +978,7 @@ class FileClient:
         file_ids = []
         for file_path, meta in zip(file_paths, metas):
             try:
-                mime_type = guess_type(str(file_path))
+                mime_type = guess_type(str(file_path))[0]
                 with open(file_path, "rb") as file:
                     response_file_upload = self.client.post(
                         url=files_url,
