@@ -18,7 +18,7 @@ class JoinNode(BaseComponent):
         meta: Optional[dict] = None,
         answers: Optional[List[Answer]] = None,
         **kwargs
-    ) -> Tuple[Dict, str]:
+    ) -> Tuple[Dict, str]:  # type: ignore
         if inputs:
             return self.run_accumulated(inputs, **kwargs)
         warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
@@ -52,7 +52,7 @@ class JoinNode(BaseComponent):
         debug: Optional[bool] = None,
         answers: Optional[List[Answer]] = None,
         **kwargs
-    ) -> Tuple[Dict, str]:
+    ) -> Tuple[Dict, str]: # type: ignore
         if inputs:
             return self.run_batch_accumulated(inputs=inputs, **kwargs)
         warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
