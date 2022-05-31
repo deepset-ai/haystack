@@ -795,7 +795,7 @@ class EvaluationSetClient:
 
         :param evaluation_set: name of the evaluation set for which labels should be fetched
         :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+                          If None, the EvaluationSetClient's default workspace (self.workspace) is used.
 
         :return: list of Label
         """
@@ -831,9 +831,9 @@ class EvaluationSetClient:
         Counts labels for a given evaluation set in deepset cloud.
 
         :param evaluation_set: Optional evaluation set in deepset Cloud
-                               If None, the EvaluationSetClient's default evaluation set (self.evaluation_set) will be used.
+                               If None, the EvaluationSetClient's default evaluation set (self.evaluation_set) is used.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+                          If None, the EvaluationSetClient's default workspace (self.workspace) is used.
 
         :return: Number of labels for the given (or defaulting) index
         """
@@ -851,7 +851,7 @@ class EvaluationSetClient:
         Searches for all evaluation set names in the given workspace in deepset Cloud.
 
         :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+                          If None, the EvaluationSetClient's default workspace (self.workspace) is used.
 
         :return: List of dictionaries that represent deepset Cloud evaluation sets.
                  These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
@@ -867,11 +867,11 @@ class EvaluationSetClient:
 
     def upload_evaluation_set(self, file_path: Path, workspace: Optional[str] = None):
         """
-        Uploads an evaluation set file.
-        The evaluation set will be accessible under the name of the uploaded file.
+        Uploads an evaluation set.
+        The name of file that you uploaded becomes the name of the evaluation set in deepset Cloud.
 
-        Currently only CSV files (having "," as delimiter) with the following columns are supported:
-        - question (or query): the question or query of the label
+        Currently, deepset Cloud only supports CSV files (having "," as delimiter) with the following columns:
+        - question (or query): the labelled question
         - text: the answer or relevant text to the question or query
         - context: the surrounding words of the text (should be more than 100 characters)
         - file_name: the name of the file within the workspace that contains the text
@@ -880,7 +880,7 @@ class EvaluationSetClient:
 
         :param file_path: Path to the evaluation set file to be uploaded.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+                          If None, the EvaluationSetClient's default workspace (self.workspace) is used.
         """
         workspace_url = self._build_workspace_url(workspace)
         target_url = f"{workspace_url}/evaluation_sets/import"
@@ -902,11 +902,11 @@ class EvaluationSetClient:
         Returns information about the evaluation set.
 
         :param evaluation_set: Name of the evaluation set in deepset Cloud.
-                               If None, the EvaluationSetClient's default evaluation set (self.evaluation_set) will be used.
+                               If None, the EvaluationSetClient's default evaluation set (self.evaluation_set) is used.
         :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the EvaluationSetClient's default workspace (self.workspace) will be used.
+                          If None, the EvaluationSetClient's default workspace (self.workspace) is used.
 
-        :return: Dictionary that represent deepset Cloud evaluation sets.
+        :return: Dictionary that represents deepset Cloud evaluation sets.
                  These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "total_labels") as fields.
         """
         url = self._build_workspace_url(workspace=workspace)
