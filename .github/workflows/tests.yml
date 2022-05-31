@@ -79,7 +79,7 @@ jobs:
     - name: Install packages
       run: |
         pip install --upgrade pip
-        pip install .[test]
+        pip install .[dev]
 
     - name: Pylint
       run: |
