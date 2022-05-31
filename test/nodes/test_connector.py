@@ -28,10 +28,9 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
     body = crawler.driver.find_element_by_tag_name("body")
     expected_crawled_content = body.text
 
-    with open(crawled_page, 'r') as crawled_file:
+    with open(crawled_page, "r") as crawled_file:
         page_data = json.load(crawled_file)
         return page_data["content"] == expected_crawled_content
-
 
 
 #
@@ -119,7 +118,6 @@ def test_crawler_filter_urls(test_url, tmp_path):
     paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
     assert len(paths) == 1
     assert content_match(crawler, test_url + "/page1.html", paths[0])
-    
     assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
 
 
