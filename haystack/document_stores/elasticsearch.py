@@ -502,9 +502,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
-        body: dict = {"size": 0, "aggs": {
-            "metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}
-        }}
+        body: dict = {
+            "size": 0,
+            "aggs": {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}},
+        }
         if query:
             body["query"] = {
                 "bool": {
