@@ -1,11 +1,9 @@
 from abc import abstractmethod
 from typing import Optional, List, Tuple, Dict, Union, Any
+import warnings
 
 from haystack import MultiLabel, Document, Answer
 from haystack.nodes.base import BaseComponent
-
-import warnings
-
 
 class JoinNode(BaseComponent):
     def run(
