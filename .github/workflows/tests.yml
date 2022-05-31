@@ -79,9 +79,7 @@ jobs:
     - name: Install packages
       run: |
         pip install --upgrade pip
-        pip install 'rest_api/'
-        pip install 'ui/'
-        pip install '.[test]'
+        pip install .[dev]
 
     - name: Pylint
       run: |
