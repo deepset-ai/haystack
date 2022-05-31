@@ -36,7 +36,7 @@ jobs:
         # Mypy can't run properly on 3.7 as it misses support for Literal types.
         # FIXME once we drop support for 3.7, use the cache.
         python-version: 3.8
-        #cache: pip
+        cache: pip
 
     - name: Install dependencies
       run: |
@@ -74,21 +74,21 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ inputs.pythonVersion }}
-        #cache: pip
+        cache: pip
 
     - name: Upgrade pip
       run: pip install --upgrade pip
 
-    - name: Install dev
+    - name: Install dev deps
       run: pip install .[dev]
 
-    - name: Install rest
+    - name: Install REST API deps
       run: pip install rest_api/
 
-    - name: Install ui
+    - name: Install UI deps
       run: pip install ui/
 
-    - name: Install all
+    - name: Install extra deps
       run: pip install .[all]
 
     - name: Pylint
@@ -124,12 +124,17 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
 
+    - name: Install base deps
+      run: pip install .
+
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install base deps
+      run: pip install .
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
@@ -169,12 +174,11 @@ jobs:
         choco install openjdk11
         refreshenv
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
 
+    - name: Install base deps
+      run: pip install .
 
     - name: Run tests
       env:
@@ -207,12 +211,11 @@ jobs:
         python-version: ${{ inputs.pythonVersion }}
         cache: pip
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
 
+    - name: Install base deps
+      run: pip install .
 
     - name: Run tests
       env:
@@ -240,12 +243,11 @@ jobs:
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
 
+    - name: Install base deps
+      run: pip install .
 
     - name: Setup Python
       uses: actions/setup-python@v2
@@ -280,11 +282,11 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .[faiss]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install base deps
+      run: pip install .[faiss]
 
     - name: Run tests
       env:
@@ -315,11 +317,11 @@ jobs:
         choco install openjdk11
         refreshenv
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .[faiss]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install base deps
+      run: pip install .[faiss]
 
     - name: Run tests
       env:
@@ -355,11 +357,11 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .[milvus]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install base deps
+      run: pip install .[milvus]
 
     - name: Run tests
       env:
@@ -430,11 +432,11 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .[weaviate]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install base deps
+      run: pip install .[weaviate]
 
     - name: Run tests
       env:
@@ -498,11 +500,11 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .[pinecone]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install base deps
+      run: pip install .[pinecone]
 
     - name: Run tests
       env:
@@ -674,11 +676,11 @@ jobs:
         sudo apt update
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
   
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .[all]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install extras deps
+      run: pip install .[all]
 
     - name: Run tests
       env:
@@ -722,11 +724,11 @@ jobs:
         python-version: ${{ inputs.pythonVersion }}
         cache: pip
 
-    - name: Install Haystack
-      run: |
-        pip install --upgrade pip
-        pip install .[all]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+    - name: Upgrade pip
+      run: pip install --upgrade pip
+
+    - name: Install extras deps
+      run: pip install .[all]
 
     - name: Run tests
       env:
