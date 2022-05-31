@@ -1,7 +1,2 @@
 # This requirements.txt is required by setup-python to perform caching.
 # Regularly check if this is still necessary
-
-.[all]
-rest_api/
-ui/
-torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html

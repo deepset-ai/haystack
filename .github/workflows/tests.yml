@@ -36,7 +36,7 @@ jobs:
         # Mypy can't run properly on 3.7 as it misses support for Literal types.
         # FIXME once we drop support for 3.7, use the cache.
         python-version: 3.8
-        cache: pip
+        #cache: pip
 
     - name: Install dependencies
       run: |
