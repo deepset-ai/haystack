@@ -25,7 +25,7 @@ class DocumentToSpeech(BaseComponent):
         audio_format: str = "wav",
         subtype: str = "PCM_16",
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
-        transformers_params: Optional[Dict[str, Any]] = None
+        transformers_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Convert an input Document into an audio file containing the document's content read out loud.
@@ -34,7 +34,7 @@ class DocumentToSpeech(BaseComponent):
         :param generated_audio_dir: folder to save the audio file to
         :param audio_format: the format to save the audio into (wav, mp3, ...)
         :param subtype: see soundfile.write()
-        :param audio_naming_function: function mapping the input text into the audio file name. 
+        :param audio_naming_function: function mapping the input text into the audio file name.
                 By default, the audio file gets the name from the MD5 sum of the input text.
         :param transformers_params: parameters to pass over to the Text2Speech.from_pretrained() call.
         """

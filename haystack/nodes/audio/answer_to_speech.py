@@ -24,7 +24,7 @@ class AnswerToSpeech(BaseComponent):
         audio_format: str = "wav",
         subtype: str = "PCM_16",
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
-        transformers_params: Optional[Dict[str, Any]] = None
+        transformers_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Convert an input Answer into an audio file containing the answer's answer and context read out loud.
@@ -33,7 +33,7 @@ class AnswerToSpeech(BaseComponent):
         :param generated_audio_dir: folder to save the audio file to
         :param audio_format: the format to save the audio into (wav, mp3, ...)
         :param subtype: see soundfile.write()
-        :param audio_naming_function: function mapping the input text into the audio file name. 
+        :param audio_naming_function: function mapping the input text into the audio file name.
                 By default, the audio file gets the name from the MD5 sum of the input text.
         :param transformers_params: parameters to pass over to the Text2Speech.from_pretrained() call.
         """
@@ -64,7 +64,6 @@ class AnswerToSpeech(BaseComponent):
             audio_answers.append(audio_answer)
 
         return {"answers": audio_answers}, "output_1"
-
 
     def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, AudioAnswer], str]:
         results = {"answers": []}

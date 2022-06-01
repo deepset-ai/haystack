@@ -258,10 +258,10 @@ class GeneratedAudioDocument(AudioDocument):
 
     @classmethod
     def from_text_document(
-        cls, 
-        document_object: Document, 
-        generated_audio_content: Any = None, 
-        additional_meta: Optional[Dict[str, Any]] = None
+        cls,
+        document_object: Document,
+        generated_audio_content: Any = None,
+        additional_meta: Optional[Dict[str, Any]] = None,
     ):
         doc_dict = document_object.to_dict()
         doc_dict = {key: value for key, value in doc_dict.items() if value}
@@ -389,7 +389,11 @@ class GeneratedAudioAnswer(AudioAnswer):
 
     @classmethod
     def from_text_answer(
-        cls, answer_object: Answer, generated_audio_answer: Any, generated_audio_context: Optional[Any] = None, additional_meta: Optional[Dict[str, Any]] = None
+        cls,
+        answer_object: Answer,
+        generated_audio_answer: Any,
+        generated_audio_context: Optional[Any] = None,
+        additional_meta: Optional[Dict[str, Any]] = None,
     ):
         answer_dict = answer_object.to_dict()
         answer_dict = {key: value for key, value in answer_dict.items() if value}
