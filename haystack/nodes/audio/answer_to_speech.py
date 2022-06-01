@@ -24,7 +24,7 @@ class AnswerToSpeech(BaseComponent):
         audio_format: str = "wav",
         subtype: str = "PCM_16",
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
-        transformers_params: Optional[Dict[str, Any]] = None
+        transformers_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Convert an input Answer into an audio file containing the answer's answer and context read out loud.
@@ -33,7 +33,7 @@ class AnswerToSpeech(BaseComponent):
         :param generated_audio_path: folder to save the audio file to
         :param audio_format: the format to save the audio into (wav, mp3, ...)
         :param subtype: see soundfile.write()
-        :param audio_naming_function: function mapping the input text into the audio file name. 
+        :param audio_naming_function: function mapping the input text into the audio file name.
                 By default, the audio file gets the name from the MD5 sum of the input text.
         :param transformers_params: parameters to pass over to the Text2Speech.from_pretrained() call.
         """
@@ -44,10 +44,9 @@ class AnswerToSpeech(BaseComponent):
         self.subtype = subtype
         self.audio_naming_function = audio_naming_function
 
-
     def run(
-        self, 
-        answers: List[Answer], 
+        self,
+        answers: List[Answer],
         generated_audio_path: Optional[Path] = None,
         audio_format: Optional[str] = None,
         subtype: Optional[str] = None,
@@ -68,16 +67,19 @@ class AnswerToSpeech(BaseComponent):
             context_audio = self.converter.text_to_audio_file(answer.context, **params)
 
             audio_answer = GeneratedAudioAnswer.from_text_answer(
-                answer_object=answer, 
-                generated_audio_answer=answer_audio, 
-                generated_audio_context=context_audio, 
-                additional_meta={"audio_format": params["audio_format"], "subtype": params["subtype"], "sample_rate": self.converter.model.fs}
+                answer_object=answer,
+                generated_audio_answer=answer_audio,
+                generated_audio_context=context_audio,
+                additional_meta={
+                    "audio_format": params["audio_format"],
+                    "subtype": params["subtype"],
+                    "sample_rate": self.converter.model.fs,
+                },
             )
             audio_answer.type = "generative"
             audio_answers.append(audio_answer)
 
         return {"answers": audio_answers}, "output_1"
-
 
     def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, AudioAnswer], str]:
         results = {"answers": []}

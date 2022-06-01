@@ -26,7 +26,7 @@ class TextToSpeech:
         self.model = _Text2SpeechModel.from_pretrained(model_name_or_path, **(transformers_params or {}))
 
     def text_to_audio_file(
-        self, 
+        self,
         text: str,
         generated_audio_path: Path,
         audio_format: str = "wav",
@@ -40,7 +40,7 @@ class TextToSpeech:
         :param generated_audio_path: folder to save the audio file to
         :param audio_format: the format to save the audio into (wav, mp3, ...)
         :param subtype: see soundfile.write()
-        :param audio_naming_function: function mapping the input text into the audio file name. 
+        :param audio_naming_function: function mapping the input text into the audio file name.
                 By default, the audio file gets the name from the MD5 sum of the input text.
         :return: the path to the generated file
         """
@@ -59,8 +59,7 @@ class TextToSpeech:
 
         return generated_audio_file
 
-
-    def text_to_audio_data(self,  text: str) -> np.array:
+    def text_to_audio_data(self, text: str) -> np.array:
         """
         Convert an input string into a numpy array representing the audio.
 

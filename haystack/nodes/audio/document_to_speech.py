@@ -24,7 +24,7 @@ class DocumentToSpeech(BaseComponent):
         audio_format: str = "wav",
         subtype: str = "PCM_16",
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
-        transformers_params: Optional[Dict[str, Any]] = None
+        transformers_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Convert an input Document into an audio file containing the document's content read out loud.
@@ -33,7 +33,7 @@ class DocumentToSpeech(BaseComponent):
         :param generated_audio_path: folder to save the audio file to
         :param audio_format: the format to save the audio into (wav, mp3, ...)
         :param subtype: see soundfile.write()
-        :param audio_naming_function: function mapping the input text into the audio file name. 
+        :param audio_naming_function: function mapping the input text into the audio file name.
                 By default, the audio file gets the name from the MD5 sum of the input text.
         :param transformers_params: parameters to pass over to the Text2Speech.from_pretrained() call.
         """
@@ -45,8 +45,8 @@ class DocumentToSpeech(BaseComponent):
         self.audio_naming_function = audio_naming_function
 
     def run(
-        self, 
-        documents: List[Document], 
+        self,
+        documents: List[Document],
         generated_audio_path: Optional[Path] = None,
         audio_format: Optional[str] = None,
         subtype: Optional[str] = None,
@@ -67,14 +67,17 @@ class DocumentToSpeech(BaseComponent):
 
             audio_document = GeneratedAudioDocument.from_text_document(
                 document_object=doc,
-                generated_audio_content=content_audio, 
-                additional_meta={"audio_format": params["audio_format"], "subtype": params["subtype"], "sample_rate": self.converter.model.fs}
+                generated_audio_content=content_audio,
+                additional_meta={
+                    "audio_format": params["audio_format"],
+                    "subtype": params["subtype"],
+                    "sample_rate": self.converter.model.fs,
+                },
             )
             audio_document.type = "generative"
             audio_documents.append(audio_document)
 
         return {"documents": audio_documents}, "output_1"
-
 
     def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, AudioDocument], str]:
         results = {"documents": []}
