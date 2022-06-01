@@ -502,7 +502,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
-        body: dict = {"size": 0, "aggs": {"metadata_agg": {"terms": {"field": key}}}}
+        body: dict = {
+            "size": 0,
+            "aggs": {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}},
+        }
         if query:
             body["query"] = {
                 "bool": {
@@ -514,11 +517,23 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
         result = self.client.search(body=body, index=index, headers=headers)
-        buckets = result["aggregations"]["metadata_agg"]["buckets"]
-        for bucket in buckets:
-            bucket["count"] = bucket.pop("doc_count")
-            bucket["value"] = bucket.pop("key")
-        return buckets
+
+        values = []
+        current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
+        after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
+        for bucket in current_buckets:
+            values.append({"value": bucket["key"][key], "count": bucket["doc_count"]})
+
+        # Only 10 results get returned at a time, so apply pagination
+        while after_key:
+            body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
+            result = self.client.search(body=body, index=index, headers=headers)
+            current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
+            after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
+            for bucket in current_buckets:
+                values.append({"value": bucket["key"][key], "count": bucket["doc_count"]})
+
+        return values
 
     def write_documents(
         self,
