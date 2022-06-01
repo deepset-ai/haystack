@@ -57,7 +57,9 @@ class TextToSpeech:
         if not os.path.exists(file_path):
             audio_data = self.text_to_audio_data(text)
             if audio_format == "wav":
-                sf.write(file=file_path, data=audio_data, samplerate=self.model.fs, subtype=subtype, format=audio_format)
+                sf.write(
+                    file=file_path, data=audio_data, samplerate=self.model.fs, subtype=subtype, format=audio_format
+                )
             else:
                 self.compress_audio(path=file_path, data=audio_data, sample_rate=self.model.fs, format=audio_format)
 
@@ -73,11 +75,20 @@ class TextToSpeech:
         output = self.model(text)["wav"]
         return output.numpy()
 
-    
-    def compress_audio(self, path: Path, data: np.array, format: str, sample_rate: int, sample_witdh: int = 2, channels_count: int = 1, bitrate: str="320k", normalized=True):
+    def compress_audio(
+        self,
+        path: Path,
+        data: np.array,
+        format: str,
+        sample_rate: int,
+        sample_witdh: int = 2,
+        channels_count: int = 1,
+        bitrate: str = "320k",
+        normalized=True,
+    ):
         """
         Export a Numpy array into an audio file of the desired format. Support all formats supported by `pydub.AudioSegment.export()`
         """
-        data = np.int16((data * 2 ** 15) if normalized else data)
+        data = np.int16((data * 2**15) if normalized else data)
         audio = AudioSegment(data.tobytes(), frame_rate=sample_rate, sample_width=sample_witdh, channels=channels_count)
         audio.export(path, format=format, bitrate=bitrate)
