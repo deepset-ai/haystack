@@ -307,11 +307,11 @@ def docs(docs_all_formats) -> List[Document]:
 def docs_with_ids(docs) -> List[Document]:
     # Should be already sorted
     uuids = [
-        UUID('190a2421-7e48-4a49-a639-35a86e202dfb'),
-        UUID('20ff1706-cb55-4704-8ae8-a3459774c8dc'),
-        UUID('5078722f-07ae-412d-8ccb-b77224c4bacb'),
-        UUID('81d8ca45-fad1-4d1c-8028-d818ef33d755'),
-        UUID('f985789f-1673-4d8f-8d5f-2b8d3a9e8e23'),
+        UUID("190a2421-7e48-4a49-a639-35a86e202dfb"),
+        UUID("20ff1706-cb55-4704-8ae8-a3459774c8dc"),
+        UUID("5078722f-07ae-412d-8ccb-b77224c4bacb"),
+        UUID("81d8ca45-fad1-4d1c-8028-d818ef33d755"),
+        UUID("f985789f-1673-4d8f-8d5f-2b8d3a9e8e23"),
     ]
     uuids.sort()
     for doc, uuid in zip(docs, uuids):

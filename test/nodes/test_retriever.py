@@ -212,7 +212,7 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         embedding /= np.linalg.norm(embedding)
         print("-----> ", doc.id, embedding[0], expected_value, isclose(embedding[0], expected_value, rel_tol=0.001))
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
-    #assert False
+    # assert False
 
 
 @pytest.mark.slow
