@@ -5,13 +5,13 @@ import hashlib
 from pathlib import Path
 
 from haystack.nodes import BaseComponent
-from haystack.schema import Answer, AudioAnswer, GeneratedAudioAnswer
+from haystack.schema import Document, AudioDocument, GeneratedAudioDocument
 from haystack.nodes.audio._text_to_speech import TextToSpeech
 
 
-class AnswerToSpeech(BaseComponent):
+class DocumentToSpeech(BaseComponent):
     """
-    This node converts text-based Answers into AudioAnswers, where the answer and its context are
+    This node converts text-based Documents into AudioDocuments, where the content is
     read out into an audio file.
     """
 
@@ -20,13 +20,13 @@ class AnswerToSpeech(BaseComponent):
     def __init__(
         self,
         model_name_or_path: Union[str, Path] = "espnet/kan-bayashi_ljspeech_vits",
-        generated_audio_path: Path = Path(__file__).parent / "generated_audio_answers",
+        generated_audio_path: Path = Path(__file__).parent / "generated_audio_documents",
         audio_format: str = "wav",
         subtype: str = "PCM_16",
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
     ):
         """
-        Convert an input Answer into an audio file containing the answer's answer and context read out loud.
+        Convert an input Document into an audio file containing the document's content read out loud.
 
         :param model_name_or_path: the text to speech model, for example `espnet/kan-bayashi_ljspeech_vits`
         :param generated_audio_path: folder to save the audio file to
@@ -42,15 +42,14 @@ class AnswerToSpeech(BaseComponent):
         self.subtype = subtype
         self.audio_naming_function = audio_naming_function
 
-
     def run(
         self, 
-        answers: List[Answer], 
+        documents: List[Document], 
         generated_audio_path: Optional[Path] = None,
         audio_format: Optional[str] = None,
         subtype: Optional[str] = None,
         audio_naming_function: Optional[Callable] = None,
-    ) -> Tuple[Dict[str, AudioAnswer], str]:
+    ) -> Tuple[Dict[str, AudioDocument], str]:
 
         params = {
             "generated_audio_path": generated_audio_path or self.generated_audio_path,
@@ -58,28 +57,26 @@ class AnswerToSpeech(BaseComponent):
             "subtype": subtype or self.subtype,
             "audio_naming_function": audio_naming_function or self.audio_naming_function,
         }
-        audio_answers = []
-        for answer in answers:
+        audio_documents = []
+        for doc in documents:
 
-            logging.info(f"Processing answer '{answer.answer}' and its context...")
-            answer_audio = self.converter.text_to_audio_file(text=answer.answer, **params)
-            context_audio = self.converter.text_to_audio_file(answer.context, **params)
+            logging.info(f"Processing document '{doc.id}'...")
+            content_audio = self.converter.text_to_audio_file(doc.content, **params)
 
-            audio_answer = GeneratedAudioAnswer.from_text_answer(
-                answer_object=answer, 
-                generated_audio_answer=answer_audio, 
-                generated_audio_context=context_audio, 
+            audio_document = GeneratedAudioDocument.from_text_document(
+                document_object=doc,
+                generated_audio_content=content_audio, 
                 additional_meta={"format": audio_format, "subtype": subtype, "sample_rate": self.converter.model.fs}
             )
-            audio_answer.type = "generative"
-            audio_answers.append(audio_answer)
+            audio_document.type = "generative"
+            audio_documents.append(audio_document)
 
-        return {"answers": audio_answers}, "output_1"
+        return {"documents": audio_documents}, "output_1"
 
 
-    def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, AudioAnswer], str]:
-        results = {"answers": []}
-        for answers_list in answers:
-            results["answers"].append(self.run(answers_list))
+    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, AudioDocument], str]:
+        results = {"documents": []}
+        for docs_list in documents:
+            results["documents"].append(self.run(docs_list))
 
         return results, "output_1"

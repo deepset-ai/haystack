@@ -1,4 +1,5 @@
 from __future__ import annotations
+from audioop import add
 
 import typing
 from typing import Any, Optional, Dict, List, Union
@@ -40,7 +41,7 @@ BaseConfig.arbitrary_types_allowed = True
 @dataclass
 class Document:
     content: Union[str, pd.DataFrame]
-    content_type: Literal["text", "table", "image"]
+    content_type: Literal["text", "table", "image", "audio"]
     id: str
     meta: Dict[str, Any]
     score: Optional[float] = None
@@ -53,7 +54,7 @@ class Document:
     def __init__(
         self,
         content: Union[str, pd.DataFrame],
-        content_type: Literal["text", "table", "image"] = "text",
+        content_type: Literal["text", "table", "image", "audio"] = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
         meta: Dict[str, Any] = None,
@@ -236,6 +237,41 @@ class Document:
 
 
 @dataclass
+class AudioDocument(Document):
+    content: Path
+    content_type: Literal["text", "table", "image", "audio"] = "audio"
+
+    def __str__(self):
+        return f"<AudioDocument: content='{self.content}'>"
+
+    def __repr__(self):
+        return f"<AudioDocument {asdict(self)}>"
+
+
+@dataclass
+class GeneratedAudioDocument(AudioDocument):
+    content_transcript: Optional[str] = None
+
+    @classmethod
+    def from_text_document(
+        cls, 
+        document_object: Answer, 
+        generated_audio_content: Any = None, 
+        additional_meta: Optional[Dict[str, Any]] = None
+    ):
+        doc_dict = document_object.to_dict()
+        doc_dict = {key: value for key, value in doc_dict.items() if value}
+
+        doc_dict["content_transcript"] = doc_dict["content"]
+        doc_dict["content"] = generated_audio_content
+
+        if additional_meta:
+            doc_dict["meta"] = additional_meta.update(doc_dict.get("meta", {}))
+
+        return cls(**doc_dict)
+
+
+@dataclass
 class Span:
     start: int
     end: int
@@ -349,7 +385,7 @@ class GeneratedAudioAnswer(AudioAnswer):
 
     @classmethod
     def from_text_answer(
-        cls, answer_object: Answer, generated_audio_answer: Any, generated_audio_context: Optional[Any] = None
+        cls, answer_object: Answer, generated_audio_answer: Any, generated_audio_context: Optional[Any] = None, additional_meta: Optional[Dict[str, Any]] = None
     ):
         answer_dict = answer_object.to_dict()
         answer_dict = {key: value for key, value in answer_dict.items() if value}
@@ -359,6 +395,9 @@ class GeneratedAudioAnswer(AudioAnswer):
 
         answer_dict["answer"] = generated_audio_answer
         answer_dict["context"] = generated_audio_context
+
+        if additional_meta:
+            answer_dict["meta"] = additional_meta.update(answer_dict.get("meta", {}))
 
         return cls(**answer_dict)
 
