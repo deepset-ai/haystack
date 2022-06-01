@@ -1391,8 +1391,9 @@ def test_elasticsearch_synonyms():
 @pytest.mark.embedding_dim(384)
 def test_similarity_score(document_store_with_docs):
     retriever = EmbeddingRetriever(
-        document_store=document_store_with_docs, embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
-        model_format="farm"
+        document_store=document_store_with_docs,
+        embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        model_format="farm",
     )
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1412,7 +1413,7 @@ def test_similarity_score_without_scaling(document_store_with_docs):
         document_store=document_store_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
         scale_score=False,
-        model_format="farm"
+        model_format="farm",
     )
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1432,7 +1433,7 @@ def test_similarity_score_dot_product(document_store_dot_product_with_docs):
     retriever = EmbeddingRetriever(
         document_store=document_store_dot_product_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
-        model_format="farm"
+        model_format="farm",
     )
     document_store_dot_product_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
