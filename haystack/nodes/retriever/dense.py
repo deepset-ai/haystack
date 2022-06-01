@@ -1537,9 +1537,11 @@ class EmbeddingRetriever(BaseRetriever):
         if self.model_format not in _EMBEDDING_ENCODERS.keys():
             raise ValueError(f"Unknown retriever embedding model format {model_format}")
 
-        if self.embedding_model.startswith("sentence-transformers") \
-                and model_format \
-                and model_format != "sentence_transformers":
+        if (
+            self.embedding_model.startswith("sentence-transformers")
+            and model_format
+            and model_format != "sentence_transformers"
+        ):
             logger.warning(
                 f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
                 f" You may need to set 'model_format='sentence_transformers' to ensure correct loading of model."

@@ -2265,7 +2265,6 @@
             },
             "model_format": {
               "title": "Model Format",
-              "default": "farm",
               "type": "string"
             },
             "pooling_strategy": {
