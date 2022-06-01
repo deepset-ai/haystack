@@ -171,11 +171,13 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
-    # time.sleep(1)
-    docs = document_store.get_all_documents()
-    docs = sorted(docs, key=lambda d: d.id)
 
-    expected_values = [0.0048, 0.01096, 0.0089, 0.0078, -0.0062]
+    docs = document_store.get_all_documents()
+    docs.sort(key=lambda d: d.id)
+
+    print([doc.id for doc in docs])
+
+    expected_values = [0.00482, -0.00626, 0.010966, 0.00780, 0.00892]
     for doc, expected_value in zip(docs, expected_values):
         embedding = doc.embedding
         # always normalize vector as faiss returns normalized vectors and other document stores do not
@@ -198,14 +200,19 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
-    # time.sleep(1)
+
     docs = document_store.get_all_documents()
     docs = sorted(docs, key=lambda d: d.id)
 
-    expected_values = [0.6704, 0.7178, 0.6866, 0.2874, 0.7180]
+    expected_values = [0.14267, 0.15099, 0.14383, 0.05975, 0.14017]
     for doc, expected_value in zip(docs, expected_values):
-        assert len(doc.embedding) == 128
-        assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
+        embedding = doc.embedding
+        assert len(embedding) == 128
+        # always normalize vector as faiss returns normalized vectors and other document stores do not
+        embedding /= np.linalg.norm(embedding)
+        print("-----> ", doc.id, embedding[0], expected_value, isclose(embedding[0], expected_value, rel_tol=0.001))
+        assert isclose(embedding[0], expected_value, rel_tol=0.001)
+    #assert False
 
 
 @pytest.mark.slow
