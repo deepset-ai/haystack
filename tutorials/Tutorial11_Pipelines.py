@@ -34,7 +34,6 @@ def tutorial11_pipelines():
     # Initialize dense retriever
     embedding_retriever = EmbeddingRetriever(
         document_store,
-        model_format="sentence_transformers",
         embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
     )
     document_store.update_embeddings(embedding_retriever, update_existing_embeddings=False)

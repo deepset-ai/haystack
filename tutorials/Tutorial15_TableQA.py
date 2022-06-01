@@ -57,7 +57,6 @@ def tutorial15_tableqa():
     retriever = EmbeddingRetriever(
         document_store=document_store,
         embedding_model="deepset/all-mpnet-base-v2-table",
-        model_format="sentence_transformers",
     )
 
     # Add table embeddings to the tables in DocumentStore
