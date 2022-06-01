@@ -149,7 +149,7 @@ class Crawler(BaseComponent):
             logger.info(f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data.")
         else:
             logger.info(f"Fetching from {urls} to `{output_dir}`")
-            
+
             # Start by writing out the initial list of urls
             if filter_urls:
                 pattern = re.compile("|".join(filter_urls))
@@ -290,7 +290,7 @@ class Crawler(BaseComponent):
         self.driver.get(base_url)
         a_elements = self.driver.find_elements_by_xpath("//a[@href]")
         sub_links = set()
-        
+
         for i in a_elements:
             sub_link = i.get_attribute("href")
             if not (already_found_links and sub_link in already_found_links):
