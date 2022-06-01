@@ -1,5 +1,4 @@
 from __future__ import annotations
-from audioop import add
 
 import typing
 from typing import Any, Optional, Dict, List, Union
@@ -241,7 +240,7 @@ class AudioDocument(Document):
     content: Path
 
     def __init__(self, *args, **kwargs):
-        if not "content_type" in kwargs.keys():
+        if "content_type" not in kwargs.keys():
             kwargs["content_type"] = "audio"
         super().__init__(*args, **kwargs)
 
