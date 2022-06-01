@@ -1391,8 +1391,7 @@ def test_elasticsearch_synonyms():
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_sentence_transformers(document_store_with_docs):
     retriever = EmbeddingRetriever(
-        document_store=document_store_with_docs,
-        embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        document_store=document_store_with_docs, embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2"
     )
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)

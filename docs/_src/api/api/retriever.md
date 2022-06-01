@@ -1186,10 +1186,10 @@ def __init__(document_store: BaseDocumentStore, embedding_model: str, model_vers
 provided, it will be inferred automatically from the model configuration files.
 Options:
 
-- ``'farm'``
-- ``'transformers'``
-- ``'sentence_transformers'``
-- ``'retribert'``
+- ``'farm'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+- ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+- ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
+- ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
 - `pooling_strategy`: Strategy for combining the embeddings from the model (for farm / transformers models only).
 Options:
 
