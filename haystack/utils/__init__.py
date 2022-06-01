@@ -10,7 +10,7 @@ from haystack.utils.doc_store import (
     stop_opensearch,
     stop_service,
 )
-from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudError
+from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudError, DeepsetCloudExperiments
 from haystack.utils.export_utils import (
     print_answers,
     print_documents,

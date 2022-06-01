@@ -1202,17 +1202,15 @@ def test_custom_embedding_field(document_store_type, tmp_path):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_get_meta_values_by_key(document_store: BaseDocumentStore):
-    documents = [
-        Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "11"}),
-        Document(content="Doc2", meta={"meta_key_1": "2", "meta_key_2": "22"}),
-        Document(content="Doc3", meta={"meta_key_1": "3", "meta_key_2": "33"}),
-    ]
+    documents = [Document(content=f"Doc{i}", meta={"meta_key_1": f"{i}", "meta_key_2": f"{i}{i}"}) for i in range(20)]
     document_store.write_documents(documents)
 
     # test without filters or query
     result = document_store.get_metadata_values_by_key(key="meta_key_1")
+    possible_values = [f"{i}" for i in range(20)]
+    assert len(result) == 20
     for bucket in result:
-        assert bucket["value"] in ["1", "2", "3"]
+        assert bucket["value"] in possible_values
         assert bucket["count"] == 1
 
     # test with filters but no query
