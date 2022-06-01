@@ -26,7 +26,7 @@ def test_output(prediction):
 
 
 def test_output_batch_single_query_single_doc_list(reader, docs):
-    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=docs, top_k=5)
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=docs, top_k=5)
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?"]
     # Expected output: List of lists of answers
@@ -37,7 +37,7 @@ def test_output_batch_single_query_single_doc_list(reader, docs):
 
 
 def test_output_batch_single_query_multiple_doc_lists(reader, docs):
-    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs, docs], top_k=5)
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?"]
     # Expected output: List of lists of answers
