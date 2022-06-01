@@ -1,4 +1,4 @@
-from typing import Union, Callable, Any
+from typing import Union, Callable, Any, Optional, Dict, Any
 
 import os
 import hashlib
@@ -17,12 +17,13 @@ class TextToSpeech:
     NOTE: This is NOT a node. Use AnswerToSpeech or DocumentToSpeech.
     """
 
-    def __init__(self, model_name_or_path: Union[str, Path]):
+    def __init__(self, model_name_or_path: Union[str, Path], transformers_params: Optional[Dict[str, Any]] = None):
         """
         :param model_name_or_path: the text to speech model, for example `espnet/kan-bayashi_ljspeech_vits`
+        :param transformers_params: parameters to pass over to the Text2Speech.from_pretrained() call.
         """
         super().__init__()
-        self.model = _Text2SpeechModel.from_pretrained(model_name_or_path)
+        self.model = _Text2SpeechModel.from_pretrained(model_name_or_path, **(transformers_params or {}))
 
     def text_to_audio_file(
         self, 

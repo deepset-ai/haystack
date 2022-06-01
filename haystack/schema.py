@@ -239,7 +239,11 @@ class Document:
 @dataclass
 class AudioDocument(Document):
     content: Path
-    content_type: Literal["text", "table", "image", "audio"] = "audio"
+
+    def __init__(self, *args, **kwargs):
+        if not "content_type" in kwargs.keys():
+            kwargs["content_type"] = "audio"
+        super().__init__(*args, **kwargs)
 
     def __str__(self):
         return f"<AudioDocument: content='{self.content}'>"
@@ -255,7 +259,7 @@ class GeneratedAudioDocument(AudioDocument):
     @classmethod
     def from_text_document(
         cls, 
-        document_object: Answer, 
+        document_object: Document, 
         generated_audio_content: Any = None, 
         additional_meta: Optional[Dict[str, Any]] = None
     ):
@@ -264,9 +268,10 @@ class GeneratedAudioDocument(AudioDocument):
 
         doc_dict["content_transcript"] = doc_dict["content"]
         doc_dict["content"] = generated_audio_content
+        doc_dict["content_type"] = "audio"
 
         if additional_meta:
-            doc_dict["meta"] = additional_meta.update(doc_dict.get("meta", {}))
+            doc_dict["meta"] = additional_meta | (document_object.meta or {})
 
         return cls(**doc_dict)
 
@@ -379,7 +384,6 @@ class AudioAnswer(Answer):
 
 @dataclass
 class GeneratedAudioAnswer(AudioAnswer):
-    type: str = "text-to-speech"
     answer_transcript: Optional[str] = None
     context_transcript: Optional[str] = None
 
@@ -397,7 +401,7 @@ class GeneratedAudioAnswer(AudioAnswer):
         answer_dict["context"] = generated_audio_context
 
         if additional_meta:
-            answer_dict["meta"] = additional_meta.update(answer_dict.get("meta", {}))
+            answer_dict["meta"] = additional_meta | (answer_object.meta or {})
 
         return cls(**answer_dict)
 

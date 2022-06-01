@@ -1,5 +1,5 @@
 import logging
-from typing import Union, Callable, Optional, List, Dict, Tuple
+from typing import Any, Union, Callable, Optional, List, Dict, Tuple
 
 import hashlib
 from pathlib import Path
@@ -24,6 +24,7 @@ class AnswerToSpeech(BaseComponent):
         audio_format: str = "wav",
         subtype: str = "PCM_16",
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
+        transformers_params: Optional[Dict[str, Any]] = None
     ):
         """
         Convert an input Answer into an audio file containing the answer's answer and context read out loud.
@@ -34,9 +35,10 @@ class AnswerToSpeech(BaseComponent):
         :param subtype: see soundfile.write()
         :param audio_naming_function: function mapping the input text into the audio file name. 
                 By default, the audio file gets the name from the MD5 sum of the input text.
+        :param transformers_params: parameters to pass over to the Text2Speech.from_pretrained() call.
         """
         super().__init__()
-        self.converter = TextToSpeech(model_name_or_path=model_name_or_path)
+        self.converter = TextToSpeech(model_name_or_path=model_name_or_path, transformers_params=transformers_params)
         self.generated_audio_path = generated_audio_path
         self.audio_format = audio_format
         self.subtype = subtype
@@ -69,7 +71,7 @@ class AnswerToSpeech(BaseComponent):
                 answer_object=answer, 
                 generated_audio_answer=answer_audio, 
                 generated_audio_context=context_audio, 
-                additional_meta={"format": audio_format, "subtype": subtype, "sample_rate": self.converter.model.fs}
+                additional_meta={"audio_format": params["audio_format"], "subtype": params["subtype"], "sample_rate": self.converter.model.fs}
             )
             audio_answer.type = "generative"
             audio_answers.append(audio_answer)
