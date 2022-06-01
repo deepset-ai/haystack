@@ -591,7 +591,9 @@ def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_forma
 
     with caplog.at_level(logging.WARNING):
         EmbeddingRetriever(
-            document_store=document_store, embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+            document_store=document_store,
+            embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+            model_format="farm",
         )
 
         assert (
