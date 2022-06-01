@@ -1476,10 +1476,10 @@ class EmbeddingRetriever(BaseRetriever):
                              provided, it will be inferred automatically from the model configuration files.
                              Options:
 
-                             - ``'farm'``
-                             - ``'transformers'``
-                             - ``'sentence_transformers'``
-                             - ``'retribert'``
+                             - ``'farm'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+                             - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+                             - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
+                             - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
@@ -1545,6 +1545,8 @@ class EmbeddingRetriever(BaseRetriever):
             logger.warning(
                 f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
                 f" You may need to set model_format='sentence_transformers' to ensure correct loading of model."
+                f"As an alternative, you can let Haystack derive the format automatically by not setting the "
+                f"'model_format' parameter at all."
             )
 
         self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](self)
