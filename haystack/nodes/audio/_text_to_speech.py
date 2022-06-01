@@ -5,9 +5,10 @@ import hashlib
 from pathlib import Path
 
 import numpy as np
-
-from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
 import soundfile as sf
+
+from pydub import AudioSegment
+from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
 
 
 class TextToSpeech:
@@ -28,7 +29,7 @@ class TextToSpeech:
     def text_to_audio_file(
         self, 
         text: str,
-        generated_audio_path: Path,
+        generated_audio_dir: Path,
         audio_format: str = "wav",
         subtype: str = "PCM_16",
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
@@ -37,7 +38,7 @@ class TextToSpeech:
         Convert an input string into an audio file containing the same string read out loud.
 
         :param text: the text to convert into audio
-        :param generated_audio_path: folder to save the audio file to
+        :param generated_audio_dir: folder to save the audio file to
         :param audio_format: the format to save the audio into (wav, mp3, ...)
         :param subtype: see soundfile.write()
         :param audio_naming_function: function mapping the input text into the audio file name. 
@@ -45,19 +46,22 @@ class TextToSpeech:
         :return: the path to the generated file
         """
 
-        if not os.path.exists(generated_audio_path):
-            os.mkdir(generated_audio_path)
+        if not os.path.exists(generated_audio_dir):
+            os.mkdir(generated_audio_dir)
 
         filename = audio_naming_function(text)
-        generated_audio_file = generated_audio_path / f"{filename}.{audio_format}"
+        file_path = generated_audio_dir / f"{filename}.{audio_format}"
 
         # We avoid regenerating if a file with the same name is already in the folder, to save time.
         # This happens rather often in text from AnswerToSpeech.
-        if not os.path.exists(generated_audio_file):
+        if not os.path.exists(file_path):
             audio_data = self.text_to_audio_data(text)
-            sf.write(generated_audio_file, audio_data, self.model.fs, subtype)
+            if audio_format == "wav":
+                sf.write(file=file_path, data=audio_data, samplerate=self.model.fs, subtype=subtype, format=audio_format)
+            else:
+                self.compress_audio(path=file_path, data=audio_data, sample_rate=self.model.fs, format=audio_format)
 
-        return generated_audio_file
+        return file_path
 
 
     def text_to_audio_data(self,  text: str) -> np.array:
@@ -69,3 +73,12 @@ class TextToSpeech:
         """
         output = self.model(text)["wav"]
         return output.numpy()
+
+    
+    def compress_audio(self, path: Path, data: np.array, format: str, sample_rate: int, sample_witdh: int = 2, channels_count: int = 1, bitrate: str="320k", normalized=True):
+        """
+        Export a Numpy array into an audio file of the desired format. Support all formats supported by `pydub.AudioSegment.export()`
+        """
+        data = np.int16((data * 2 ** 15) if normalized else data)
+        audio = AudioSegment(data.tobytes(), frame_rate=sample_rate, sample_width=sample_witdh, channels=channels_count)
+        audio.export(path, format=format, bitrate=bitrate)

@@ -1,3 +1,4 @@
+from email.mime import audio
 import logging
 from typing import Union, Callable, Optional, List, Dict, Tuple, Any
 
@@ -20,7 +21,7 @@ class DocumentToSpeech(BaseComponent):
     def __init__(
         self,
         model_name_or_path: Union[str, Path] = "espnet/kan-bayashi_ljspeech_vits",
-        generated_audio_path: Path = Path(__file__).parent / "generated_audio_documents",
+        generated_audio_dir: Path = Path(__file__).parent / "generated_audio_documents",
         audio_format: str = "wav",
         subtype: str = "PCM_16",
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
@@ -30,7 +31,7 @@ class DocumentToSpeech(BaseComponent):
         Convert an input Document into an audio file containing the document's content read out loud.
 
         :param model_name_or_path: the text to speech model, for example `espnet/kan-bayashi_ljspeech_vits`
-        :param generated_audio_path: folder to save the audio file to
+        :param generated_audio_dir: folder to save the audio file to
         :param audio_format: the format to save the audio into (wav, mp3, ...)
         :param subtype: see soundfile.write()
         :param audio_naming_function: function mapping the input text into the audio file name. 
@@ -39,36 +40,24 @@ class DocumentToSpeech(BaseComponent):
         """
         super().__init__()
         self.converter = TextToSpeech(model_name_or_path=model_name_or_path, transformers_params=transformers_params)
-        self.generated_audio_path = generated_audio_path
-        self.audio_format = audio_format
-        self.subtype = subtype
-        self.audio_naming_function = audio_naming_function
-
-    def run(
-        self, 
-        documents: List[Document], 
-        generated_audio_path: Optional[Path] = None,
-        audio_format: Optional[str] = None,
-        subtype: Optional[str] = None,
-        audio_naming_function: Optional[Callable] = None,
-    ) -> Tuple[Dict[str, AudioDocument], str]:
-
-        params = {
-            "generated_audio_path": generated_audio_path or self.generated_audio_path,
-            "audio_format": audio_format or self.audio_format,
-            "subtype": subtype or self.subtype,
-            "audio_naming_function": audio_naming_function or self.audio_naming_function,
+        self.params = {
+            "generated_audio_dir": generated_audio_dir,
+            "audio_format": audio_format,
+            "subtype": subtype,
+            "audio_naming_function": audio_naming_function,
         }
+
+    def run(self, documents: List[Document]) -> Tuple[Dict[str, AudioDocument], str]:    # type: ignore
         audio_documents = []
         for doc in documents:
 
             logging.info(f"Processing document '{doc.id}'...")
-            content_audio = self.converter.text_to_audio_file(doc.content, **params)
+            content_audio = self.converter.text_to_audio_file(text=doc.content, **self.params)
 
             audio_document = GeneratedAudioDocument.from_text_document(
                 document_object=doc,
                 generated_audio_content=content_audio, 
-                additional_meta={"audio_format": params["audio_format"], "subtype": params["subtype"], "sample_rate": self.converter.model.fs}
+                additional_meta={"audio_format": self.params["audio_format"], "sample_rate": self.converter.model.fs}
             )
             audio_document.type = "generative"
             audio_documents.append(audio_document)
@@ -76,7 +65,7 @@ class DocumentToSpeech(BaseComponent):
         return {"documents": audio_documents}, "output_1"
 
 
-    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, AudioDocument], str]:
+    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, AudioDocument], str]:    # type: ignore
         results = {"documents": []}
         for docs_list in documents:
             results["documents"].append(self.run(docs_list))
