@@ -54,10 +54,7 @@ def tutorial15_tableqa():
     # **Here:** We use the EmbeddingRetriever capable of retrieving relevant content among a database
     # of texts and tables using dense embeddings.
 
-    retriever = EmbeddingRetriever(
-        document_store=document_store,
-        embedding_model="deepset/all-mpnet-base-v2-table",
-    )
+    retriever = EmbeddingRetriever(document_store=document_store, embedding_model="deepset/all-mpnet-base-v2-table")
 
     # Add table embeddings to the tables in DocumentStore
     document_store.update_embeddings(retriever=retriever)
