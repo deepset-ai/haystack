@@ -1389,6 +1389,24 @@ def test_elasticsearch_synonyms():
     "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
+def test_similarity_score_sentence_transformers(document_store_with_docs):
+    retriever = EmbeddingRetriever(
+        document_store=document_store_with_docs,
+        embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+    )
+    document_store_with_docs.update_embeddings(retriever)
+    pipeline = DocumentSearchPipeline(retriever)
+    prediction = pipeline.run("Paul lives in New York")
+    scores = [document.score for document in prediction["documents"]]
+    assert scores == pytest.approx(
+        [0.8497486114501953, 0.6622999012470245, 0.6077829301357269, 0.5928314849734306, 0.5614184625446796], abs=1e-3
+    )
+
+
+@pytest.mark.parametrize(
+    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+)
+@pytest.mark.embedding_dim(384)
 def test_similarity_score(document_store_with_docs):
     retriever = EmbeddingRetriever(
         document_store=document_store_with_docs,
