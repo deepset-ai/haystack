@@ -140,6 +140,9 @@ jobs:
         choco install openjdk11
         refreshenv
 
+    - name: Install sndfile (audio support)
+      run: sudo apt-get install libsndfile1
+
     - name: Install Haystack
       run: pip install .
 
@@ -583,6 +586,10 @@ jobs:
       run: |
         sudo apt update
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
+
+    - name: Install sndfile (audio support)
+      run: sudo apt-get install libsndfile1
+
     - name: Install Haystack
       run: pip install .
 
