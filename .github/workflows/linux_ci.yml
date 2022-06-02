@@ -261,6 +261,9 @@ jobs:
         sudo apt update
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
+    - name: Install sndfile
+      run: sudo apt-get install libsndfile1
+
     - name: Install Dependencies (on cache miss only)
       # The cache might miss during the execution of an action: there should always be a fallback step to
       # rebuild it in case it goes missing

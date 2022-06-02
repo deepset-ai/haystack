@@ -1,11 +1,15 @@
 from typing import Union, Callable, Any, Optional, Dict
 
 import os
+import logging
 import hashlib
 from pathlib import Path
 
 import numpy as np
-import soundfile as sf
+try:
+    import soundfile as sf
+except OSError as ose:
+    logging.exception("sndfile not found. Please install soundfile's dependencies (https://python-soundfile.readthedocs.io/en/latest/)")
 
 from pydub import AudioSegment
 from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
