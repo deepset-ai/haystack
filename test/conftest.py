@@ -674,10 +674,7 @@ def get_retriever(retriever_type, document_store):
         )
     elif retriever_type == "retribert":
         retriever = EmbeddingRetriever(
-            document_store=document_store,
-            embedding_model="yjernite/retribert-base-uncased",
-            model_format="retribert",
-            use_gpu=False,
+            document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
         )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
