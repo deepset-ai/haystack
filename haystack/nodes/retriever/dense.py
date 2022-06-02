@@ -1,4 +1,4 @@
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Any
 
 import logging
 from pathlib import Path
@@ -1851,3 +1851,50 @@ class EmbeddingRetriever(BaseRetriever):
 
         # Model is neither sentence-transformers nor retribert model -> use _DefaultEmbeddingEncoder
         return "farm"
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ) -> None:
+        """
+        Trains/adapts the underlying embedding model.
+
+        Each training data example is a dictionary with the following keys:
+
+        * question: the question string
+        * pos_doc: the positive document string
+        * neg_doc: the negative document string
+        * score: the score margin
+
+
+        :param training_data: The training data
+        :type training_data: List[Dict[str, Any]]
+        :param learning_rate: The learning rate
+        :type learning_rate: float
+        :param n_epochs: The number of epochs
+        :type n_epochs: int
+        :param num_warmup_steps: The number of warmup steps
+        :type num_warmup_steps: int
+        :param batch_size: The batch size to use for the training, defaults to 16
+        :type batch_size: int (optional)
+        """
+        self.embedding_encoder.train(
+            training_data,
+            learning_rate=learning_rate,
+            n_epochs=n_epochs,
+            num_warmup_steps=num_warmup_steps,
+            batch_size=batch_size,
+        )
+
+    def save(self, save_dir: Union[Path, str]) -> None:
+        """
+        Save the model to the given directory
+
+        :param save_dir: The directory where the model will be saved
+        :type save_dir: Union[Path, str]
+        """
+        self.embedding_encoder.save(save_dir=save_dir)

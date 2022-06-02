@@ -79,6 +79,7 @@ from haystack.nodes import (
     retriever,
     summarizer,
     translator,
+    label_generator,
 )
 
 # Note that we ignore the ImportError here because if the user did not install
