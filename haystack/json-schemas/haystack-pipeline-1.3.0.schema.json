@@ -114,6 +114,9 @@
             "$ref": "#/definitions/PreProcessorComponent"
           },
           {
+            "$ref": "#/definitions/PseudoLabelGeneratorComponent"
+          },
+          {
             "$ref": "#/definitions/QuestionGeneratorComponent"
           },
           {
@@ -2608,6 +2611,75 @@
               }
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PseudoLabelGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PseudoLabelGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "question_producer": {
+              "title": "Question Producer",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            },
+            "retriever": {
+              "title": "Retriever",
+              "type": "string"
+            },
+            "cross_encoder_model_name_or_path": {
+              "title": "Cross Encoder Model Name Or Path",
+              "default": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+              "type": "string"
+            },
+            "total_number_of_questions": {
+              "title": "Total Number Of Questions",
+              "default": 9223372036854775807,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "question_producer",
+            "retriever"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
