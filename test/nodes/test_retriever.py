@@ -177,7 +177,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
 
     print([doc.id for doc in docs])
 
-    expected_values = [0.00482, -0.00626, 0.010966, 0.00780, 0.00892]
+    expected_values = [0.00892, 0.00780, 0.00482, -0.00626, 0.010966]
     for doc, expected_value in zip(docs, expected_values):
         embedding = doc.embedding
         # always normalize vector as faiss returns normalized vectors and other document stores do not
@@ -204,7 +204,7 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
     docs = document_store.get_all_documents()
     docs = sorted(docs, key=lambda d: d.id)
 
-    expected_values = [0.14267, 0.15099, 0.14383, 0.05975, 0.14017]
+    expected_values = [0.14017, 0.05975, 0.14267, 0.15099, 0.14383]
     for doc, expected_value in zip(docs, expected_values):
         embedding = doc.embedding
         assert len(embedding) == 128
