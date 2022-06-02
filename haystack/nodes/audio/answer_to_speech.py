@@ -58,7 +58,7 @@ class AnswerToSpeech(BaseComponent):
                 answer_object=answer,
                 generated_audio_answer=answer_audio,
                 generated_audio_context=context_audio,
-                additional_meta={"audio_format": self.params["audio_format"], "sample_rate": self.converter.model.fs}
+                additional_meta={"audio_format": self.params["audio_format"], "sample_rate": self.converter.model.fs},
             )
             audio_answer.type = "generative"
             audio_answers.append(audio_answer)
