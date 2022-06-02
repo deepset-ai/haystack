@@ -11,7 +11,6 @@ from haystack.nodes.audio._text_to_speech import TextToSpeech
 from ..conftest import SAMPLES_PATH
 
 
-
 def test_text_to_speech_audio_data():
     text2speech = TextToSpeech(
         model_name_or_path="espnet/kan-bayashi_ljspeech_vits",
@@ -29,9 +28,7 @@ def test_text_to_speech_audio_file(tmp_path):
         transformers_params={"seed": 777, "always_fix_seed": True},
     )
     expected_audio_data, _ = sf.read(SAMPLES_PATH / "audio" / "answer.wav")
-    audio_file = text2speech.text_to_audio_file(
-        text="answer", generated_audio_dir=tmp_path / "test_audio"
-    )
+    audio_file = text2speech.text_to_audio_file(text="answer", generated_audio_dir=tmp_path / "test_audio")
     assert os.path.exists(audio_file)
     assert np.allclose(expected_audio_data, sf.read(audio_file)[0], atol=0.0001)
 
