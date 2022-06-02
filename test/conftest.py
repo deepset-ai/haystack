@@ -269,7 +269,20 @@ class MockReader(BaseReader):
 @pytest.fixture
 def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
     return [
-        # Document object for a doc
+        # metafield at the top level for backward compatibility
+        {
+            "content": "My name is Paul and I live in New York",
+            "meta_field": "test2",
+            "name": "filename2",
+            "date_field": "2019-10-01",
+            "numeric_field": 5.0,
+        },
+        # "dict" format
+        {
+            "content": "My name is Carla and I live in Berlin",
+            "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
+        },
+        # Document object
         Document(
             content="My name is Christelle and I live in Paris",
             meta={"meta_field": "test3", "name": "filename3", "date_field": "2018-10-01", "numeric_field": 4.5},
@@ -281,20 +294,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
         Document(
             content="My name is Matteo and I live in Rome",
             meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
-        ),
-        # "dict" format
-        {
-            "content": "My name is Carla and I live in Berlin",
-            "meta": {"meta_field": "test1", "name": "filename1", "date_field": "2020-03-01", "numeric_field": 5.5},
-        },
-        # metafield at the top level for backward compatibility
-        {
-            "content": "My name is Paul and I live in New York",
-            "meta_field": "test2",
-            "name": "filename2",
-            "date_field": "2019-10-01",
-            "numeric_field": 5.0,
-        },
+        )        
     ]
 
 
