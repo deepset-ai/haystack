@@ -39,7 +39,7 @@ class AnswerToSpeech(BaseComponent):
         """
         super().__init__()
         self.converter = TextToSpeech(model_name_or_path=model_name_or_path, transformers_params=transformers_params)
-        self.params = {
+        self.params: Dict[str, Any] = {
             "generated_audio_dir": generated_audio_dir,
             "audio_format": audio_format,
             "subtype": subtype,
@@ -65,7 +65,7 @@ class AnswerToSpeech(BaseComponent):
 
         return {"answers": audio_answers}, "output_1"
 
-    def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, AudioAnswer], str]:
+    def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, List[AudioAnswer]], str]:   # type: ignore
         results = {"answers": []}
         for answers_list in answers:
             results["answers"].append(self.run(answers_list))

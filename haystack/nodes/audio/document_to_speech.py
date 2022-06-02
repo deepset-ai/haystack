@@ -40,7 +40,7 @@ class DocumentToSpeech(BaseComponent):
         """
         super().__init__()
         self.converter = TextToSpeech(model_name_or_path=model_name_or_path, transformers_params=transformers_params)
-        self.params = {
+        self.params: Dict[str, Any] = {
             "generated_audio_dir": generated_audio_dir,
             "audio_format": audio_format,
             "subtype": subtype,
@@ -64,7 +64,7 @@ class DocumentToSpeech(BaseComponent):
 
         return {"documents": audio_documents}, "output_1"
 
-    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, AudioDocument], str]:  # type: ignore
+    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, List[AudioDocument]], str]:  # type: ignore
         results = {"documents": []}
         for docs_list in documents:
             results["documents"].append(self.run(docs_list))
