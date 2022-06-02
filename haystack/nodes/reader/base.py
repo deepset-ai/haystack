@@ -25,10 +25,7 @@ class BaseReader(BaseComponent):
 
     @abstractmethod
     def predict_batch(
-        self,
-        queries: Union[str, List[str]],
-        documents: Union[List[Document], List[List[Document]]],
-        top_k: Optional[int] = None,
+        self, queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None
     ):
         pass
 
@@ -111,7 +108,7 @@ class BaseReader(BaseComponent):
 
     def run_batch(  # type: ignore
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,

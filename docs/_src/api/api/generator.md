@@ -38,20 +38,20 @@ Generated answers plus additional infos in a dict
 #### BaseGenerator.predict\_batch
 
 ```python
-def predict_batch(queries: Union[str, List[str]], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
 ```
 
 Generate the answer to the input queries. The generation will be conditioned on the supplied documents.
 
 These documents can for example be retrieved via the Retriever.
 
-- If you provide a single query...
+- If you provide a list containing a single query...
 
     - ... and a single list of Documents, the query will be applied to each Document individually.
     - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
       will be aggregated per Document list.
 
-- If you provide a list of queries...
+- If you provide a list of multiple queries...
 
     - ... and a single list of Documents, each query will be applied to each Document individually.
     - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
@@ -59,7 +59,7 @@ These documents can for example be retrieved via the Retriever.
 
 **Arguments**:
 
-- `queries`: Single query or list of queries.
+- `queries`: List of queries.
 - `documents`: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
 Can be a single list of Documents or a list of lists of Documents.
 - `top_k`: Number of returned answers per query.

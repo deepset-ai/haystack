@@ -502,7 +502,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
-        body: dict = {"size": 0, "aggs": {"metadata_agg": {"terms": {"field": key}}}}
+        body: dict = {
+            "size": 0,
+            "aggs": {"metadata_agg": {"composite": {"sources": [{key: {"terms": {"field": key}}}]}}},
+        }
         if query:
             body["query"] = {
                 "bool": {
@@ -514,11 +517,23 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
                 body["query"] = {"bool": {}}
             body["query"]["bool"].update({"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()})
         result = self.client.search(body=body, index=index, headers=headers)
-        buckets = result["aggregations"]["metadata_agg"]["buckets"]
-        for bucket in buckets:
-            bucket["count"] = bucket.pop("doc_count")
-            bucket["value"] = bucket.pop("key")
-        return buckets
+
+        values = []
+        current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
+        after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
+        for bucket in current_buckets:
+            values.append({"value": bucket["key"][key], "count": bucket["doc_count"]})
+
+        # Only 10 results get returned at a time, so apply pagination
+        while after_key:
+            body["aggs"]["metadata_agg"]["composite"]["after"] = after_key
+            result = self.client.search(body=body, index=index, headers=headers)
+            current_buckets = result["aggregations"]["metadata_agg"]["buckets"]
+            after_key = result["aggregations"]["metadata_agg"].get("after_key", False)
+            for bucket in current_buckets:
+                values.append({"value": bucket["key"][key], "count": bucket["doc_count"]})
+
+        return values
 
     def write_documents(
         self,
@@ -1054,7 +1069,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
     def query_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -1067,15 +1082,14 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
         scale_score: bool = True,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
 
-        This method lets you find relevant documents for a single query string (output: List of Documents), or a
-        a list of query strings (output: List of Lists of Documents).
+        This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
 
-        :param queries: Single query or list of queries.
+        :param queries: List of query strings.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. Can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
@@ -1160,11 +1174,6 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if headers is None:
             headers = {}
 
-        single_query = False
-        if not isinstance(queries, list):
-            single_query = True
-            queries = [queries]
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -1199,10 +1208,7 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
             ]
             all_documents.append(cur_documents)
 
-        if single_query:
-            return cur_documents
-        else:
-            return all_documents
+        return all_documents
 
     def _construct_query_body(
         self,
@@ -2177,8 +2183,9 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
         method: dict = {"space_type": space_type, "name": "hnsw", "engine": "nmslib"}
 
         if self.index_type == "flat":
-            # use default parameters
-            pass
+            # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
+            # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
+            method["parameters"] = {"ef_construction": 512, "m": 16}
         elif self.index_type == "hnsw":
             method["parameters"] = {"ef_construction": 80, "m": 64}
         else:

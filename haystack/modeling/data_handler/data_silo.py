@@ -672,7 +672,7 @@ class DataSiloForCrossVal:
         all_data = ConcatDataset(sets_to_concat)  # type: Dataset
 
         documents = []
-        keyfunc = lambda x: x[id_index][0]
+        keyfunc = lambda x: x[id_index][0]  # pylint: disable=unnecessary-lambda-assignment
         all_data = sorted(all_data.datasets, key=keyfunc)  # type: ignore
         for key, document in groupby(all_data, key=keyfunc):  # type: ignore
             documents.append(list(document))
@@ -698,7 +698,7 @@ class DataSiloForCrossVal:
 
             train_samples = []
             for doc in actual_train_set:
-                keyfunc = lambda x: x[id_index][1]
+                keyfunc = lambda x: x[id_index][1]  # pylint: disable=unnecessary-lambda-assignment
                 doc = sorted(doc, key=keyfunc)
                 for key, question in groupby(doc, key=keyfunc):
                     # add all available answrs to train set
@@ -729,7 +729,7 @@ class DataSiloForCrossVal:
     def _split_for_qa(
         documents: List, id_index: int, n_splits: int = 5, shuffle: bool = True, random_state: Optional[int] = None
     ):
-        keyfunc = lambda x: x[id_index][1]
+        keyfunc = lambda x: x[id_index][1]  # pylint: disable=unnecessary-lambda-assignment
         if shuffle:
             fixed_random = random.Random()
             fixed_random.seed(random_state)

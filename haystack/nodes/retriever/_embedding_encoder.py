@@ -1,17 +1,20 @@
-from typing import TYPE_CHECKING, Callable, List, Union, Dict
-
 import logging
 from abc import abstractmethod
-import numpy as np
-from tqdm.auto import tqdm
-import torch
-from torch.utils.data.sampler import SequentialSampler
-from transformers import AutoTokenizer, AutoModel
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union
 
-from haystack.schema import Document
+import numpy as np
+import torch
+from sentence_transformers import InputExample, losses
+from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SequentialSampler
+from tqdm.auto import tqdm
+from transformers import AutoModel, AutoTokenizer
+
+from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
-from haystack.modeling.data_handler.dataloader import NamedDataLoader
+from haystack.schema import Document
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -38,6 +41,47 @@ class _BaseEmbeddingEncoder:
 
         :param docs: List of documents to embed
         :return: Embeddings, one per input document
+        """
+        pass
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        """
+        Trains/adapts the underlying embedding model.
+
+        Each training data example is a dictionary with the following keys:
+
+        * question: the question string
+        * pos_doc: the positive document string
+        * neg_doc: the negative document string
+        * score: the score margin
+
+
+        :param training_data: The training data
+        :type training_data: List[Dict[str, Any]]
+        :param learning_rate: The learning rate
+        :type learning_rate: float
+        :param n_epochs: The number of training epochs
+        :type n_epochs: int
+        :param num_warmup_steps: The number of warmup steps
+        :type num_warmup_steps: int
+        :param batch_size: The batch size to use for the training, defaults to 16
+        :type batch_size: int (optional)
+        """
+        pass
+
+    def save(self, save_dir: Union[Path, str]):
+        """
+        Save the model to the given directory
+
+        :param save_dir: The directory where the model will be saved
+        :type save_dir: Union[Path, str]
         """
         pass
 
@@ -87,6 +131,19 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         passages = [d.content for d in docs]  # type: ignore
         return self.embed(passages)
 
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError("train method can only be used with sentence-transformers EmbeddingRetriever(s)")
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError("save method can only be used with sentence-transformers EmbeddingRetriever(s)")
+
 
 class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
@@ -126,6 +183,33 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+
+        train_examples = [
+            InputExample(texts=[i["question"], i["pos_doc"], i["neg_doc"]], label=i["score"]) for i in training_data
+        ]
+        logger.info(f"GPL training/adapting {self.embedding_model} with {len(train_examples)} examples")
+        train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
+        train_loss = losses.MarginMSELoss(self.embedding_model)
+
+        # Tune the model
+        self.embedding_model.fit(
+            train_objectives=[(train_dataloader, train_loss)],
+            epochs=n_epochs,
+            optimizer_params={"lr": learning_rate},
+            warmup_steps=int(len(train_dataloader) * 0.1) if num_warmup_steps is None else num_warmup_steps,
+        )
+
+    def save(self, save_dir: Union[Path, str]):
+        self.embedding_model.save(path=str(save_dir))
 
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -207,6 +291,19 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
         dataset, tensornames = convert_features_to_dataset(features=features_flat)
         return dataset, tensornames
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError("train method can only be used with sentence-transformers EmbeddingRetriever(s)")
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError("save method can only be used with sentence-transformers EmbeddingRetriever(s)")
 
 
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {

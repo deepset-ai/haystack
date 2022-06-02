@@ -108,15 +108,17 @@ def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_d
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
-    res = retriever_with_docs.retrieve_batch(queries="Who lives in Berlin?")
+    res = retriever_with_docs.retrieve_batch(queries=["Who lives in Berlin?"])
 
-    # Expected return type: list of Documents
+    # Expected return type: List of lists of Documents
     assert isinstance(res, list)
-    assert isinstance(res[0], Document)
+    assert isinstance(res[0], list)
+    assert isinstance(res[0][0], Document)
 
-    assert res[0].content == "My name is Carla and I live in Berlin"
-    assert len(res) == 5
-    assert res[0].meta["name"] == "filename1"
+    assert len(res) == 1
+    assert len(res[0]) == 5
+    assert res[0][0].content == "My name is Carla and I live in Berlin"
+    assert res[0][0].meta["name"] == "filename1"
 
 
 def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_with_docs):
@@ -589,11 +591,13 @@ def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_forma
 
     with caplog.at_level(logging.WARNING):
         EmbeddingRetriever(
-            document_store=document_store, embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+            document_store=document_store,
+            embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+            model_format="farm",
         )
 
         assert (
-            "You may need to set 'model_format='sentence_transformers' to ensure correct loading of model."
+            "You may need to set model_format='sentence_transformers' to ensure correct loading of model."
             in caplog.text
         )
 

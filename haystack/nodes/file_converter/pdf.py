@@ -215,7 +215,7 @@ class PDFToTextOCRConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
-        encoding: Optional[str] = "UTF-8",
+        encoding: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -236,7 +236,7 @@ class PDFToTextOCRConverter(BaseConverter):
                                 This option can be used to add test for encoding errors. If the extracted text is
                                 not one of the valid languages, then it might likely be encoding error resulting
                                 in garbled text.
-        :param encoding: Select the file encoding (default is `UTF-8`)
+        :param encoding: Not applicable
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -251,7 +251,7 @@ class PDFToTextOCRConverter(BaseConverter):
             for image in images:
                 temp_img = tempfile.NamedTemporaryFile(dir=os.path.dirname(os.path.realpath(__file__)), suffix=".jpeg")
                 image.save(temp_img.name)
-                pages.append(self.image_2_text.convert(file_path=temp_img.name, encoding=encoding)[0].content)
+                pages.append(self.image_2_text.convert(file_path=temp_img.name)[0].content)
         except Exception as exception:
             logger.error(f"File {file_path} has an error \n {exception}")
 

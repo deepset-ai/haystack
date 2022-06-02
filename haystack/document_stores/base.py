@@ -793,15 +793,20 @@ class KeywordDocumentStore(BaseDocumentStore):
     @abstractmethod
     def query_batch(
         self,
-        queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        queries: List[str],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
         scale_score: bool = True,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.

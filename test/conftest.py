@@ -235,7 +235,7 @@ class MockRetriever(BaseRetriever):
     def retrieve(self, query: str, top_k: int):
         pass
 
-    def retrieve_batch(self, queries: Union[str, List[str]], top_k: int):
+    def retrieve_batch(self, queries: List[str], top_k: int):
         pass
 
 
@@ -608,14 +608,14 @@ def prediction(reader, test_docs_xs):
 @pytest.fixture(scope="function")
 def batch_prediction_single_query_single_doc_list(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=docs, top_k=5)
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=docs, top_k=5)
     return prediction
 
 
 @pytest.fixture(scope="function")
 def batch_prediction_single_query_multiple_doc_lists(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs, docs], top_k=5)
     return prediction
 
 
@@ -672,12 +672,16 @@ def get_retriever(retriever_type, document_store):
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False
         )
-    elif retriever_type == "retribert":
+    elif retriever_type == "embedding_sbert":
         retriever = EmbeddingRetriever(
             document_store=document_store,
-            embedding_model="yjernite/retribert-base-uncased",
-            model_format="retribert",
+            embedding_model="sentence-transformers/msmarco-distilbert-base-tas-b",
+            model_format="sentence_transformers",
             use_gpu=False,
+        )
+    elif retriever_type == "retribert":
+        retriever = EmbeddingRetriever(
+            document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
         )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
