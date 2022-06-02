@@ -77,7 +77,7 @@ def tutorial5_evaluation():
     # For more information and suggestions on different models check out the documentation at: https://www.sbert.net/docs/pretrained_models.html
 
     # from haystack.retriever import EmbeddingRetriever, DensePassageRetriever
-    # retriever = EmbeddingRetriever(document_store=document_store, model_format="sentence_transformers",
+    # retriever = EmbeddingRetriever(document_store=document_store,
     #                                embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1")
     # retriever = DensePassageRetriever(document_store=document_store,
     #                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",

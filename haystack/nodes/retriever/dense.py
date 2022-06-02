@@ -3,6 +3,7 @@ from typing import List, Dict, Union, Optional
 import logging
 from pathlib import Path
 from copy import deepcopy
+from requests.exceptions import HTTPError
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -11,6 +12,8 @@ import torch
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
+from huggingface_hub import hf_hub_download
+from transformers import AutoConfig
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
@@ -1452,7 +1455,7 @@ class EmbeddingRetriever(BaseRetriever):
         use_gpu: bool = True,
         batch_size: int = 32,
         max_seq_len: int = 512,
-        model_format: str = "farm",
+        model_format: Optional[str] = None,
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
         top_k: int = 10,
@@ -1469,11 +1472,14 @@ class EmbeddingRetriever(BaseRetriever):
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to encode at once.
         :param max_seq_len: Longest length of each document sequence. Maximum number of tokens for the document text. Longer ones will be cut down.
-        :param model_format: Name of framework that was used for saving the model. Options:
+        :param model_format: Name of framework that was used for saving the model or model type. If no model_format is
+                             provided, it will be inferred automatically from the model configuration files.
+                             Options:
 
-                             - ``'farm'``
-                             - ``'transformers'``
-                             - ``'sentence_transformers'``
+                             - ``'farm'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+                             - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+                             - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
+                             - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
@@ -1514,7 +1520,6 @@ class EmbeddingRetriever(BaseRetriever):
 
         self.document_store = document_store
         self.embedding_model = embedding_model
-        self.model_format = model_format
         self.model_version = model_version
         self.use_gpu = use_gpu
         self.batch_size = batch_size
@@ -1525,19 +1530,26 @@ class EmbeddingRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
+        self.model_format = self._infer_model_format(embedding_model) if model_format is None else model_format
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
-        if model_format not in _EMBEDDING_ENCODERS.keys():
+        if self.model_format not in _EMBEDDING_ENCODERS.keys():
             raise ValueError(f"Unknown retriever embedding model format {model_format}")
 
-        if self.embedding_model.startswith("sentence-transformers") and self.model_format != "sentence_transformers":
+        if (
+            self.embedding_model.startswith("sentence-transformers")
+            and model_format
+            and model_format != "sentence_transformers"
+        ):
             logger.warning(
                 f"You seem to be using a Sentence Transformer embedding model but 'model_format' is set to '{self.model_format}'."
-                f" You may need to set 'model_format='sentence_transformers' to ensure correct loading of model."
+                f" You may need to set model_format='sentence_transformers' to ensure correct loading of model."
+                f"As an alternative, you can let Haystack derive the format automatically by not setting the "
+                f"'model_format' parameter at all."
             )
 
-        self.embedding_encoder = _EMBEDDING_ENCODERS[model_format](self)
+        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](self)
         self.embed_meta_fields = embed_meta_fields
 
     def retrieve(
@@ -1817,3 +1829,25 @@ class EmbeddingRetriever(BaseRetriever):
             doc.content = "\n".join(meta_data_fields + [doc.content])
             linearized_docs.append(doc)
         return linearized_docs
+
+    @staticmethod
+    def _infer_model_format(model_name_or_path: str) -> str:
+        # Check if model name is a local directory with sentence transformers config file in it
+        if Path(model_name_or_path).exists():
+            if Path(f"{model_name_or_path}/config_sentence_transformers.json").exists():
+                return "sentence_transformers"
+        # Check if sentence transformers config file in model hub
+        else:
+            try:
+                hf_hub_download(repo_id=model_name_or_path, filename="config_sentence_transformers.json")
+                return "sentence_transformers"
+            except HTTPError:
+                pass
+
+        # Check if retribert model
+        config = AutoConfig.from_pretrained(model_name_or_path)
+        if config.model_type == "retribert":
+            return "retribert"
+
+        # Model is neither sentence-transformers nor retribert model -> use _DefaultEmbeddingEncoder
+        return "farm"
