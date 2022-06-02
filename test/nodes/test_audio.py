@@ -106,19 +106,10 @@ def test_document_to_speech(tmp_path):
     )
     expected_audio_content = SAMPLES_PATH / "audio" / "this is the content of the document.wav"
 
-<<<<<<< HEAD
     doc2speech = DocumentToSpeech(
         generated_audio_dir=tmp_path / "test_audio",
         audio_naming_function=lambda text: text,
         transformers_params={"seed": 777, "always_fix_seed": True},
-=======
-    tmp_path = Path(__file__).parent
-
-    doc2speech = DocumentToSpeech(
-        generated_audio_path=tmp_path / "test_audio",
-        audio_naming_function=lambda text: text,
-        transformers_params={"always_fix_seed": True},
->>>>>>> 1ba20100865d960b2432b344fed999aa9ada71e1
     )
     results, _ = doc2speech.run(documents=[text_doc])
 
