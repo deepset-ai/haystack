@@ -131,7 +131,9 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         if vector_dim is not None:
             warnings.warn(
-                "The 'vector_dim' parameter is deprecated, " "use 'embedding_dim' instead.", DeprecationWarning, 2
+                message="The 'vector_dim' parameter is deprecated, use 'embedding_dim' instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
             )
             self.embedding_dim = vector_dim
         else:
@@ -341,7 +343,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        vector_id = sum([index.ntotal for index in self.faiss_indexes.values()])
+        vector_id = sum(index.ntotal for index in self.faiss_indexes.values())
 
         result = self._query(
             index=index,
