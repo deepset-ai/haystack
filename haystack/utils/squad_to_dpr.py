@@ -83,7 +83,7 @@ class HaystackDocumentStore:
     def __init__(self, store_type: str = "ElasticsearchDocumentStore", **kwargs):
         if store_type not in ["ElasticsearchDocumentStore", "FAISSDocumentStore"]:
             raise Exception(
-                "At the moment we only deal with one of these types:" "ElasticsearchDocumentStore", "FAISSDocumentStore"
+                "At the moment we only deal with one of these types: ElasticsearchDocumentStore, FAISSDocumentStore"
             )
 
         self._store_type = store_type

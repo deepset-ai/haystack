@@ -589,7 +589,7 @@ class Pipeline:
         """
         if file_paths is not None or meta is not None:
             logger.info(
-                "It seems that an indexing Pipeline is run, " "so using the nodes' run method instead of run_batch."
+                "It seems that an indexing Pipeline is run, so using the nodes' run method instead of run_batch."
             )
             if isinstance(queries, list):
                 raise PipelineError("For indexing, only a single query can be provided.")

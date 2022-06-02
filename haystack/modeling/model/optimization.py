@@ -28,14 +28,14 @@ try:
 
     except AttributeError:
         APEX_PARALLEL_AVAILABLE = False
-        logger.info("apex.parallel not found, won't use it." "See https://nvidia.github.io/apex/parallel.html")
+        logger.info("apex.parallel not found, won't use it. See https://nvidia.github.io/apex/parallel.html")
 
     AMP_AVAILABLE = True
 
 except ImportError:
     AMP_AVAILABLE = False
     APEX_PARALLEL_AVAILABLE = False
-    logger.info("apex not found, won't use it. " "See https://nvidia.github.io/apex/")
+    logger.info("apex not found, won't use it. See https://nvidia.github.io/apex/")
 
 
 class WrappedDataParallel(DataParallel):
