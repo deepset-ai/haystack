@@ -1,9 +1,10 @@
+from typing import List
 from pathlib import Path
 
 import pytest
 
+from haystack import Document
 from haystack.nodes import QuestionGenerator, EmbeddingRetriever, PseudoLabelGenerator
-from test.conftest import DOCS_WITH_EMBEDDINGS
 
 
 @pytest.mark.slow
@@ -11,9 +12,9 @@ from test.conftest import DOCS_WITH_EMBEDDINGS
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator(
-    document_store, retriever: EmbeddingRetriever, question_generator: QuestionGenerator, tmp_path: Path
+    document_store, retriever: EmbeddingRetriever, question_generator: QuestionGenerator, tmp_path: Path, docs_with_true_emb: List[Document]
 ):
-    document_store.write_documents(DOCS_WITH_EMBEDDINGS)
+    document_store.write_documents(docs_with_true_emb)
     psg = PseudoLabelGenerator(question_generator, retriever)
     train_examples = []
     for idx, doc in enumerate(document_store):
@@ -33,9 +34,9 @@ def test_pseudo_label_generator(
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_using_question_document_pairs(
-    document_store, retriever: EmbeddingRetriever, tmp_path: Path
+    document_store, retriever: EmbeddingRetriever, tmp_path: Path, docs_with_true_emb: List[Document]
 ):
-    document_store.write_documents(DOCS_WITH_EMBEDDINGS)
+    document_store.write_documents(docs_with_true_emb)
     docs = [
         {
             "question": "What is the capital of Germany?",
