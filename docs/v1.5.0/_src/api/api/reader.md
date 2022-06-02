@@ -91,7 +91,7 @@ The higher the value, answers that are more apart are filtered out. 0 correspond
 - `use_confidence_scores`: Sets the type of score that is returned with every predicted answer.
 `True` => a scaled confidence / relevance score between [0, 1].
 This score can also be further calibrated on your dataset via self.eval()
-(see https://haystack.deepset.ai/components/reader#confidence-scores) .
+(see https://haystack.deepset.ai/components/v1.5.0/reader#confidence-scores) .
 `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
 from the model for the predicted span.
 - `confidence_threshold`: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.

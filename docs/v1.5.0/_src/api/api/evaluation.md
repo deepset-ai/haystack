@@ -15,7 +15,7 @@ Ranker, in order to assess its performance. Performance metrics are stored in th
 sample passes through it. To view the results of the evaluation, call EvalDocuments.print(). Note that results
 from this Node may differ from that when calling Retriever.eval() since that is a closed domain evaluation. Have
 a look at our evaluation tutorial for more info about open vs closed domain eval (
-https://haystack.deepset.ai/tutorials/evaluation).
+https://haystack.deepset.ai/tutorials/v1.5.0/evaluation).
 
 EvalDocuments node is deprecated and will be removed in a future version.
 Please use pipeline.eval() instead.
@@ -68,7 +68,7 @@ individually or to assess the extractive QA performance of the whole pipeline. P
 this class and updated as each sample passes through it. To view the results of the evaluation, call EvalAnswers.print().
 Note that results from this Node may differ from that when calling Reader.eval()
 since that is a closed domain evaluation. Have a look at our evaluation tutorial for more info about
-open vs closed domain eval (https://haystack.deepset.ai/tutorials/evaluation).
+open vs closed domain eval (https://haystack.deepset.ai/tutorials/v1.5.0/evaluation).
 
 EvalAnswers node is deprecated and will be removed in a future version.
 Please use pipeline.eval() instead.

@@ -4238,7 +4238,7 @@ steps:
 - call `Pipeline.deploy_on_deepset_cloud()` passing the `pipeline_config_name`
 
 DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
-See [https://haystack.deepset.ai/components/document-store](https://haystack.deepset.ai/components/document-store)
+See [https://haystack.deepset.ai/components/v1.5.0/document-store](https://haystack.deepset.ai/components/v1.5.0/document-store)
 for more information.
 
 **Arguments**:

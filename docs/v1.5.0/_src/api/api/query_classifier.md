@@ -62,7 +62,7 @@ and the further processing can be customized. You can define this by connecting 
   output_2 => statement
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
   
-  See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
+  See also the [tutorial](https://haystack.deepset.ai/tutorials/v1.5.0/pipelines) on pipelines.
 
 <a id="sklearn.SklearnQueryClassifier.__init__"></a>
 
@@ -135,7 +135,7 @@ from this node.
   [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
   
   
-  See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
+  See also the [tutorial](https://haystack.deepset.ai/tutorials/v1.5.0/pipelines) on pipelines.
 
 <a id="transformers.TransformersQueryClassifier.__init__"></a>
 
