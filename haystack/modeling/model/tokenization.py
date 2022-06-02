@@ -262,7 +262,7 @@ class Tokenizer:
         else:
             # Fall back to inferring type from model name
             logger.warning(
-                "Could not infer Tokenizer type from config. Trying to infer " "Tokenizer type from model name."
+                "Could not infer Tokenizer type from config. Trying to infer Tokenizer type from model name."
             )
             tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
 
