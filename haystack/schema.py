@@ -483,10 +483,9 @@ class Label:
         return f"<Label: {self.to_dict()}>"
 
 
-def is_positive_label(label): 
-    return ( 
-        (label.is_correct_answer and label.is_correct_document) or 
-        (label.answer is None and label.is_correct_document)
+def is_positive_label(label):
+    return (label.is_correct_answer and label.is_correct_document) or (
+        label.answer is None and label.is_correct_document
     )
 
 
@@ -518,7 +517,7 @@ class MultiLabel:
         labels = list(set(labels))
         if drop_negative_labels:
             labels = [l for l in labels if is_positive_label(l)]
-            
+
         if drop_no_answers:
             labels = [l for l in labels if l.no_answer == False]
 
