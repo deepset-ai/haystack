@@ -294,7 +294,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
         Document(
             content="My name is Matteo and I live in Rome",
             meta={"meta_field": "test5", "name": "filename5", "date_field": "2019-01-01", "numeric_field": 0.0},
-        )        
+        ),
     ]
 
 
