@@ -139,9 +139,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         if vector_dim is not None:
             warnings.warn(
-                message="The 'vector_dim' parameter is deprecated, use 'embedding_dim' instead.", 
-                category=DeprecationWarning, 
-                stacklevel=2
+                message="The 'vector_dim' parameter is deprecated, use 'embedding_dim' instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
             )
             self.embedding_dim = vector_dim
         else:
