@@ -217,7 +217,7 @@ class ParsrConverter(BaseConverter):
 
         row_idx_start = 0
         caption = ""
-        number_of_columns = max([len(row["content"]) for row in element["content"]])
+        number_of_columns = max(len(row["content"]) for row in element["content"])
         number_of_rows = len(element["content"])
         table_list = [[""] * number_of_columns for _ in range(number_of_rows)]
 
