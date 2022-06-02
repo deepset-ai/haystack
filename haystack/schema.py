@@ -270,7 +270,7 @@ class GeneratedAudioDocument(AudioDocument):
         doc_dict["content_type"] = "audio"
 
         doc_dict["meta"] = (document_object.meta or {}) | (additional_meta or {})
- 
+
         return cls(**doc_dict)
 
 
@@ -368,7 +368,7 @@ class Answer:
 
 @dataclass
 class AudioAnswer(Answer):
-    answer: Path   # type: ignore
+    answer: Path  # type: ignore
     context: Optional[Path] = None
     offsets_in_document: Optional[Any] = None
     offsets_in_context: Optional[Any] = None
