@@ -2,7 +2,7 @@
     "openapi": "3.0.2",
     "info": {
         "title": "Haystack REST API",
-        "version": "1.5.0"
+        "version": "1.3.0"
     },
     "paths": {
         "/initialized": {
@@ -12,7 +12,7 @@
                 ],
                 "summary": "Check Status",
                 "description": "This endpoint can be used during startup to understand if the\nserver is ready to take any requests, or is still loading.\n\nThe recommended approach is to call this endpoint with a short timeout,\nlike 500ms, and in case of no reply, consider the server busy.",
-                "operationId": "check_status",
+                "operationId": "check_status_initialized_get",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -32,7 +32,7 @@
                 ],
                 "summary": "Haystack Version",
                 "description": "Get the running Haystack version.",
-                "operationId": "haystack_version",
+                "operationId": "haystack_version_hs_version_get",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -52,7 +52,7 @@
                 ],
                 "summary": "Query",
                 "description": "This endpoint receives the question as a string and allows the requester to set\nadditional parameters that will be passed on to the Haystack pipeline.",
-                "operationId": "query",
+                "operationId": "query_query_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -94,19 +94,13 @@
                 ],
                 "summary": "Get Feedback",
                 "description": "This endpoint allows the API user to retrieve all the feedback that has been submitted\nthrough the `POST /feedback` endpoint.",
-                "operationId": "get_feedback",
+                "operationId": "get_feedback_feedback_get",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "title": "Response Get Feedback Feedback Get",
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Label"
-                                    }
-                                }
+                                "schema": {}
                             }
                         }
                     }
@@ -118,7 +112,7 @@
                 ],
                 "summary": "Post Feedback",
                 "description": "This endpoint allows the API user to submit feedback on an answer for a particular query.\n\nFor example, the user can send feedback on whether the answer was correct and\nwhether the right snippet was identified as the answer.\n\nInformation submitted through this endpoint is used to train the underlying QA model.",
-                "operationId": "post_feedback",
+                "operationId": "post_feedback_feedback_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -126,7 +120,7 @@
                                 "title": "Feedback",
                                 "anyOf": [
                                     {
-                                        "$ref": "#/components/schemas/Label"
+                                        "$ref": "#/components/schemas/LabelSerialized"
                                     },
                                     {
                                         "$ref": "#/components/schemas/CreateLabelSerialized"
@@ -164,7 +158,7 @@
                 ],
                 "summary": "Delete Feedback",
                 "description": "This endpoint allows the API user to delete all the\nfeedback that has been sumbitted through the\n`POST /feedback` endpoint",
-                "operationId": "delete_feedback",
+                "operationId": "delete_feedback_feedback_delete",
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -184,7 +178,7 @@
                 ],
                 "summary": "Get Feedback Metrics",
                 "description": "This endpoint returns basic accuracy metrics based on user feedback,\ne.g., the ratio of correct answers or correctly identified documents.\nYou can filter the output by document or label.\n\nExample:\n\n`curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback'      --header 'Content-Type: application/json'      --data-raw '{ \"filters\": {\"document_id\": [\"XRR3xnEBCYVTkbTystOB\"]} }'`",
-                "operationId": "get_feedback_metrics",
+                "operationId": "get_feedback_metrics_eval_feedback_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -223,7 +217,7 @@
                 ],
                 "summary": "Export Feedback",
                 "description": "This endpoint returns JSON output in the SQuAD format for question/answer pairs\nthat were marked as \"relevant\" by user feedback through the `POST /feedback` endpoint.\n\nThe context_size param can be used to limit response size for large documents.",
-                "operationId": "export_feedback",
+                "operationId": "export_feedback_export_feedback_get",
                 "parameters": [
                     {
                         "required": false,
@@ -285,7 +279,7 @@
                 ],
                 "summary": "Upload File",
                 "description": "You can use this endpoint to upload a file for indexing\n(see https://haystack.deepset.ai/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store).",
-                "operationId": "upload_file",
+                "operationId": "upload_file_file_upload_post",
                 "requestBody": {
                     "content": {
                         "multipart/form-data": {
@@ -325,7 +319,7 @@
                 ],
                 "summary": "Get Documents",
                 "description": "This endpoint allows you to retrieve documents contained in your document store.\nYou can filter the documents to delete by metadata (like the document's name),\nor provide an empty JSON object to clear the document store.\n\nExample of filters:\n`'{\"filters\": {{\"name\": [\"some\", \"more\"], \"category\": [\"only_one\"]}}'`\n\nTo get all documents you should provide an empty dict, like:\n`'{\"filters\": {}}'`",
-                "operationId": "get_documents",
+                "operationId": "get_documents_documents_get_by_filters_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -345,7 +339,7 @@
                                     "title": "Response Get Documents Documents Get By Filters Post",
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/Document"
+                                        "$ref": "#/components/schemas/DocumentSerialized"
                                     }
                                 }
                             }
@@ -371,7 +365,7 @@
                 ],
                 "summary": "Delete Documents",
                 "description": "This endpoint allows you to delete documents contained in your document store.\nYou can filter the documents to delete by metadata (like the document's name),\nor provide an empty JSON object to clear the document store.\n\nExample of filters:\n`'{\"filters\": {{\"name\": [\"some\", \"more\"], \"category\": [\"only_one\"]}}'`\n\nTo get all documents you should provide an empty dict, like:\n`'{\"filters\": {}}'`",
-                "operationId": "delete_documents",
+                "operationId": "delete_documents_documents_delete_by_filters_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -410,8 +404,8 @@
     },
     "components": {
         "schemas": {
-            "Answer": {
-                "title": "Answer",
+            "AnswerSerialized": {
+                "title": "AnswerSerialized",
                 "required": [
                     "answer"
                 ],
@@ -437,14 +431,7 @@
                     },
                     "context": {
                         "title": "Context",
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "string"
-                            }
-                        ]
+                        "type": "string"
                     },
                     "offsets_in_document": {
                         "title": "Offsets In Document",
@@ -539,7 +526,7 @@
                         "type": "string"
                     },
                     "document": {
-                        "$ref": "#/components/schemas/Document"
+                        "$ref": "#/components/schemas/DocumentSerialized"
                     },
                     "is_correct_answer": {
                         "title": "Is Correct Answer",
@@ -558,7 +545,7 @@
                         "type": "string"
                     },
                     "answer": {
-                        "$ref": "#/components/schemas/Answer"
+                        "$ref": "#/components/schemas/AnswerSerialized"
                     },
                     "no_answer": {
                         "title": "No Answer",
@@ -587,8 +574,8 @@
                 },
                 "additionalProperties": false
             },
-            "Document": {
-                "title": "Document",
+            "DocumentSerialized": {
+                "title": "DocumentSerialized",
                 "required": [
                     "content",
                     "content_type",
@@ -599,14 +586,7 @@
                 "properties": {
                     "content": {
                         "title": "Content",
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "string"
-                            }
-                        ]
+                        "type": "string"
                     },
                     "content_type": {
                         "title": "Content Type",
@@ -631,7 +611,17 @@
                     },
                     "embedding": {
                         "title": "Embedding",
-                        "type": "string"
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    },
+                    "id_hash_keys": {
+                        "title": "Id Hash Keys",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -648,50 +638,9 @@
                                     "type": "string"
                                 },
                                 {
-                                    "type": "integer"
-                                },
-                                {
-                                    "type": "number"
-                                },
-                                {
-                                    "type": "boolean"
-                                },
-                                {
                                     "type": "array",
                                     "items": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "integer"
-                                            },
-                                            {
-                                                "type": "number"
-                                            },
-                                            {
-                                                "type": "boolean"
-                                            }
-                                        ]
-                                    }
-                                },
-                                {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "integer"
-                                            },
-                                            {
-                                                "type": "number"
-                                            },
-                                            {
-                                                "type": "boolean"
-                                            }
-                                        ]
+                                        "type": "string"
                                     }
                                 }
                             ]
@@ -712,8 +661,8 @@
                     }
                 }
             },
-            "Label": {
-                "title": "Label",
+            "LabelSerialized": {
+                "title": "LabelSerialized",
                 "required": [
                     "id",
                     "query",
@@ -733,7 +682,7 @@
                         "type": "string"
                     },
                     "document": {
-                        "$ref": "#/components/schemas/Document"
+                        "$ref": "#/components/schemas/DocumentSerialized"
                     },
                     "is_correct_answer": {
                         "title": "Is Correct Answer",
@@ -752,7 +701,7 @@
                         "type": "string"
                     },
                     "answer": {
-                        "$ref": "#/components/schemas/Answer"
+                        "$ref": "#/components/schemas/AnswerSerialized"
                     },
                     "no_answer": {
                         "title": "No Answer",
@@ -818,7 +767,7 @@
                         "title": "Answers",
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Answer"
+                            "$ref": "#/components/schemas/AnswerSerialized"
                         },
                         "default": []
                     },
@@ -826,7 +775,7 @@
                         "title": "Documents",
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Document"
+                            "$ref": "#/components/schemas/DocumentSerialized"
                         },
                         "default": []
                     },
@@ -867,14 +816,7 @@
                         "title": "Location",
                         "type": "array",
                         "items": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "integer"
-                                }
-                            ]
+                            "type": "string"
                         }
                     },
                     "msg": {
