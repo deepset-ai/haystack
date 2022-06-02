@@ -210,9 +210,7 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         assert len(embedding) == 128
         # always normalize vector as faiss returns normalized vectors and other document stores do not
         embedding /= np.linalg.norm(embedding)
-        print("-----> ", doc.id, embedding[0], expected_value, isclose(embedding[0], expected_value, rel_tol=0.001))
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
-    # assert False
 
 
 @pytest.mark.slow
@@ -231,7 +229,7 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
     table_doc = Document(content=table, content_type="table", id="6")
     document_store.write_documents([table_doc])
     document_store.update_embeddings(retriever=retriever)
-    # time.sleep(1)
+
     docs = document_store.get_all_documents()
     docs = sorted(docs, key=lambda d: d.id)
 
