@@ -46,7 +46,7 @@ class DocumentToSpeech(BaseComponent):
             "audio_naming_function": audio_naming_function,
         }
 
-    def run(self, documents: List[Document]) -> Tuple[Dict[str, AudioDocument], str]:  # type: ignore
+    def run(self, documents: List[Document]) -> Tuple[Dict[str, List[AudioDocument]], str]:  # type: ignore
         audio_documents = []
         for doc in documents:
 
@@ -63,7 +63,7 @@ class DocumentToSpeech(BaseComponent):
 
         return {"documents": audio_documents}, "output_1"
 
-    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, List[AudioDocument]], str]:  # type: ignore
+    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, List[List[AudioDocument]]], str]:  # type: ignore
         results = {"documents": []}
         for docs_list in documents:
             results["documents"].append(self.run(docs_list))

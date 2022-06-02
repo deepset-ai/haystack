@@ -46,13 +46,14 @@ class AnswerToSpeech(BaseComponent):
             "audio_naming_function": audio_naming_function,
         }
 
-    def run(self, answers: List[Answer]) -> Tuple[Dict[str, AudioAnswer], str]:
+    def run(self, answers: List[Answer]) -> Tuple[Dict[str, AudioAnswer], str]:  # type: ignore
         audio_answers = []
         for answer in answers:
 
             logging.info(f"Processing answer '{answer.answer}' and its context...")
             answer_audio = self.converter.text_to_audio_file(text=answer.answer, **self.params)
-            context_audio = self.converter.text_to_audio_file(text=answer.context, **self.params)
+            if isinstance(answer.context, str):
+                context_audio = self.converter.text_to_audio_file(text=answer.context, **self.params)
 
             audio_answer = GeneratedAudioAnswer.from_text_answer(
                 answer_object=answer,
