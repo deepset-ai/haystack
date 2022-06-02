@@ -12,7 +12,11 @@ from haystack.nodes import QuestionGenerator, EmbeddingRetriever, PseudoLabelGen
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator(
-    document_store, retriever: EmbeddingRetriever, question_generator: QuestionGenerator, tmp_path: Path, docs_with_true_emb: List[Document]
+    document_store,
+    retriever: EmbeddingRetriever,
+    question_generator: QuestionGenerator,
+    tmp_path: Path,
+    docs_with_true_emb: List[Document],
 ):
     document_store.write_documents(docs_with_true_emb)
     psg = PseudoLabelGenerator(question_generator, retriever)
