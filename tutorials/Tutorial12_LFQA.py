@@ -36,7 +36,7 @@ def tutorial12_lfqa():
     document_store.write_documents(docs)
 
     """
-    Initalize Retriever and Reader/Generator:
+    Initialize Retriever and Reader/Generator:
     We use a `DensePassageRetriever` and we invoke `update_embeddings` to index the embeddings of documents in the `FAISSDocumentStore`
     """
 

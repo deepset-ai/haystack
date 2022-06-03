@@ -1858,7 +1858,7 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
 
 
 @responses.activate
-def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
+def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
     deepset_cloud_document_store,
 ):
     if MOCK_DC:

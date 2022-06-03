@@ -42,7 +42,7 @@ def tutorial3_basic_qa_pipeline_without_elasticsearch():
     # Now, let's write the docs to our DB.
     document_store.write_documents(docs)
 
-    # ## Initalize Retriever, Reader & Pipeline
+    # ## Initialize Retriever, Reader & Pipeline
     #
     # ### Retriever
     #

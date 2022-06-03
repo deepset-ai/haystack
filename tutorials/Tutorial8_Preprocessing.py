@@ -37,7 +37,7 @@ def tutorial8_preprocessing():
     Haystack's converter classes are designed to help you turn files on your computer into the documents
     that can be processed by the Haystack pipeline.
     There are file converters for txt, pdf, docx files as well as a converter that is powered by Apache Tika.
-    The parameter `valid_langugages` does not convert files to the target language, but checks if the conversion worked as expected.
+    The parameter `valid_languages` does not convert files to the target language, but checks if the conversion worked as expected.
     """
 
     # Here are some examples of how you would use file converters
