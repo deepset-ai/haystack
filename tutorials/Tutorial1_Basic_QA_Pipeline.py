@@ -65,7 +65,7 @@ def tutorial1_basic_qa_pipeline():
     # Now, let's write the docs to our DB.
     document_store.write_documents(docs)
 
-    # ## Initalize Retriever & Reader
+    # ## Initialize Retriever & Reader
     #
     # ### Retriever
     #
