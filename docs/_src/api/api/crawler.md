@@ -34,7 +34,7 @@ Init object with basic params for crawling (can be overwritten later).
 
 **Arguments**:
 
-- `output_dir`: Path for the directory to store files
+- `output_dir`: Path for the directory to store files.
 - `urls`: List of http(s) address(es) (can also be supplied later when calling crawl())
 - `crawler_depth`: How many sublinks to follow from the initial list of URLs. Current options:
 0: Only initial list of urls
