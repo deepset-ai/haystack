@@ -140,8 +140,7 @@ jobs:
         choco install openjdk11
         refreshenv
 
-    - name: Install sndfile (audio support)
-      run: sudo apt-get install libsndfile1
+    # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
     - name: Install Haystack
       run: pip install .
