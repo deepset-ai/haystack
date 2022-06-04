@@ -17,6 +17,7 @@ env:
   SUITES_EXCLUDED_FROM_WINDOWS: 
     --ignore=test/pipelines/test_ray.py 
     --ignore=test/document_stores/test_knowledge_graph.py 
+    --ignore=test/nodes/test_audio.py 
     --ignore=test/nodes/test_connector.py 
     --ignore=test/nodes/test_summarizer_translation.py 
     --ignore=test/nodes/test_summarizer.py
