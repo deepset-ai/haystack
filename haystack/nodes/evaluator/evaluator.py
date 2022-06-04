@@ -303,8 +303,8 @@ class EvalAnswers(BaseComponent):
         if self.open_domain:
             top_1_em = calculate_em_str_multi(gold_labels, predictions[0])
             top_1_f1 = calculate_f1_str_multi(gold_labels, predictions[0])
-            top_k_em = max([calculate_em_str_multi(gold_labels, p) for p in predictions])
-            top_k_f1 = max([calculate_f1_str_multi(gold_labels, p) for p in predictions])
+            top_k_em = max(calculate_em_str_multi(gold_labels, p) for p in predictions)
+            top_k_f1 = max(calculate_f1_str_multi(gold_labels, p) for p in predictions)
         else:
             logger.error(
                 "Closed Domain Reader Evaluation not yet implemented for Pipelines. Use Reader.eval() instead."

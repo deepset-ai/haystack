@@ -1205,17 +1205,15 @@ def test_custom_embedding_field(document_store_type, tmp_path):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_get_meta_values_by_key(document_store: BaseDocumentStore):
-    documents = [
-        Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "11"}),
-        Document(content="Doc2", meta={"meta_key_1": "2", "meta_key_2": "22"}),
-        Document(content="Doc3", meta={"meta_key_1": "3", "meta_key_2": "33"}),
-    ]
+    documents = [Document(content=f"Doc{i}", meta={"meta_key_1": f"{i}", "meta_key_2": f"{i}{i}"}) for i in range(20)]
     document_store.write_documents(documents)
 
     # test without filters or query
     result = document_store.get_metadata_values_by_key(key="meta_key_1")
+    possible_values = [f"{i}" for i in range(20)]
+    assert len(result) == 20
     for bucket in result:
-        assert bucket["value"] in ["1", "2", "3"]
+        assert bucket["value"] in possible_values
         assert bucket["count"] == 1
 
     # test with filters but no query
@@ -1392,9 +1390,28 @@ def test_elasticsearch_synonyms():
     "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
-def test_similarity_score(document_store_with_docs):
+def test_similarity_score_sentence_transformers(document_store_with_docs):
     retriever = EmbeddingRetriever(
         document_store=document_store_with_docs, embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2"
+    )
+    document_store_with_docs.update_embeddings(retriever)
+    pipeline = DocumentSearchPipeline(retriever)
+    prediction = pipeline.run("Paul lives in New York")
+    scores = [document.score for document in prediction["documents"]]
+    assert scores == pytest.approx(
+        [0.8497486114501953, 0.6622999012470245, 0.6077829301357269, 0.5928314849734306, 0.5614184625446796], abs=1e-3
+    )
+
+
+@pytest.mark.parametrize(
+    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+)
+@pytest.mark.embedding_dim(384)
+def test_similarity_score(document_store_with_docs):
+    retriever = EmbeddingRetriever(
+        document_store=document_store_with_docs,
+        embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        model_format="farm",
     )
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1414,6 +1431,7 @@ def test_similarity_score_without_scaling(document_store_with_docs):
         document_store=document_store_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
         scale_score=False,
+        model_format="farm",
     )
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1433,6 +1451,7 @@ def test_similarity_score_dot_product(document_store_dot_product_with_docs):
     retriever = EmbeddingRetriever(
         document_store=document_store_dot_product_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        model_format="farm",
     )
     document_store_dot_product_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1452,6 +1471,7 @@ def test_similarity_score_dot_product_without_scaling(document_store_dot_product
         document_store=document_store_dot_product_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
         scale_score=False,
+        model_format="farm",
     )
     document_store_dot_product_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1841,7 +1861,7 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
 
 
 @responses.activate
-def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
+def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
     deepset_cloud_document_store,
 ):
     if MOCK_DC:
