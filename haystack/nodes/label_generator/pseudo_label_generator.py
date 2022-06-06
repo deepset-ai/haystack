@@ -71,7 +71,9 @@ class PseudoLabelGenerator(BaseComponent):
             if isinstance(example, dict) and "question" in example and "document" in example:
                 self.question_document_pairs = question_producer
             else:
-                raise ValueError("The question_producer list must contain dictionaries with keys 'question' and 'document'.")
+                raise ValueError(
+                    "The question_producer list must contain dictionaries with keys 'question' and 'document'."
+                )
         else:
             raise ValueError("Provide either a QuestionGenerator or a non-empty list of questions/document pairs.")
 

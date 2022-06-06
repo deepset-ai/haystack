@@ -71,7 +71,7 @@ class _BaseEmbeddingEncoder:
         :type n_epochs: int
         :param num_warmup_steps: The number of warmup steps for the model. Warmup steps are epochs when the learning rate is very low. You can use them at the beginning of the training to prevent early overfitting of your model. Required.
         :type num_warmup_steps: int
-        :param batch_size: The batch size to use for the training. Optional. The default values is 16. 
+        :param batch_size: The batch size to use for the training. Optional. The default values is 16.
         :type batch_size: int (optional)
         """
         pass
@@ -139,10 +139,14 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         num_warmup_steps: int = None,
         batch_size: int = 16,
     ):
-        raise NotImplementedError("You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers.")
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
 
     def save(self, save_dir: Union[Path, str]):
-        raise NotImplementedError("You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers.")
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
 
 
 class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -300,10 +304,14 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         num_warmup_steps: int = None,
         batch_size: int = 16,
     ):
-        raise NotImplementedError("You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers.")
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
 
     def save(self, save_dir: Union[Path, str]):
-        raise NotImplementedError("You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers.")
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
 
 
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
