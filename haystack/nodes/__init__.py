@@ -2,7 +2,6 @@ from haystack.utils.import_utils import safe_import
 
 from haystack.nodes.base import BaseComponent
 
-from haystack.nodes.audio import AnswerToSpeech, DocumentToSpeech
 from haystack.nodes.answer_generator import BaseGenerator, RAGenerator, Seq2SeqGenerator
 from haystack.nodes.document_classifier import BaseDocumentClassifier, TransformersDocumentClassifier
 from haystack.nodes.evaluator import EvalDocuments, EvalAnswers
@@ -44,3 +43,5 @@ from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
 
 Crawler = safe_import("haystack.nodes.connector.crawler", "Crawler", "crawler")  # Has optional dependencies
+AnswerToSpeech = safe_import("haystack.nodes.audio.answer_to_speech", "AnswerToSpeech", "audio")  # Has optional dependencies
+DocumentToSpeech = safe_import("haystack.nodes.audio.document_to_speech", "DocumentToSpeech", "audio")  # Has optional dependencies
