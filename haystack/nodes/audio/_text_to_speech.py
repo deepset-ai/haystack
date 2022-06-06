@@ -9,13 +9,12 @@ import numpy as np
 
 try:
     import soundfile as sf
+    from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
 except OSError as ose:
     logging.exception(
         "sndfile not found. The node will most likely crash. Please install soundfile's dependencies (https://python-soundfile.readthedocs.io/en/latest/)"
     )
-
 from pydub import AudioSegment
-from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
 
 from haystack.errors import AudioNodeError
 
