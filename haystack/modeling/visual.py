@@ -91,7 +91,7 @@ WATERING_CAN = r"""
 """
 
 WORKER_M = r""" 0  
-/|\
+/|\ 
 /'\ """
 
 WORKER_F = r""" 0  
