@@ -170,6 +170,9 @@ jobs:
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
+      - name: Install sndfile
+        run: sudo apt-get install libsndfile1
+        
       # Get any additional commit that might have been pushed in the meantime
       - name: Pull changes (if any)
         run: git pull origin ${{ github.head_ref }}
