@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import numpy as np
 import soundfile as sf
@@ -19,7 +18,7 @@ def test_text_to_speech_audio_data():
     expected_audio_data, _ = sf.read(SAMPLES_PATH / "audio" / "answer.wav")
     audio_data = text2speech.text_to_audio_data(text="answer")
 
-    assert np.allclose(expected_audio_data, audio_data, atol=0.0001)
+    assert np.allclose(expected_audio_data, audio_data, atol=0.001)
 
 
 def test_text_to_speech_audio_file(tmp_path):
@@ -30,7 +29,7 @@ def test_text_to_speech_audio_file(tmp_path):
     expected_audio_data, _ = sf.read(SAMPLES_PATH / "audio" / "answer.wav")
     audio_file = text2speech.text_to_audio_file(text="answer", generated_audio_dir=tmp_path / "test_audio")
     assert os.path.exists(audio_file)
-    assert np.allclose(expected_audio_data, sf.read(audio_file)[0], atol=0.0001)
+    assert np.allclose(expected_audio_data, sf.read(audio_file)[0], atol=0.001)
 
 
 def test_text_to_speech_compress_audio(tmp_path):
@@ -59,7 +58,7 @@ def test_text_to_speech_naming_function(tmp_path):
     )
     assert os.path.exists(audio_file)
     assert audio_file.name == expected_audio_file.name
-    assert np.allclose(sf.read(expected_audio_file)[0], sf.read(audio_file)[0], atol=0.0001)
+    assert np.allclose(sf.read(expected_audio_file)[0], sf.read(audio_file)[0], atol=0.001)
 
 
 def test_answer_to_speech(tmp_path):
@@ -93,8 +92,8 @@ def test_answer_to_speech(tmp_path):
     assert audio_answer.meta["some_meta"] == "some_value"
     assert audio_answer.meta["audio_format"] == "wav"
 
-    assert np.array_equal(sf.read(audio_answer.answer)[0], sf.read(expected_audio_answer)[0])
-    assert np.array_equal(sf.read(audio_answer.context)[0], sf.read(expected_audio_context)[0])
+    assert np.allclose(sf.read(audio_answer.answer)[0], sf.read(expected_audio_answer)[0], atol=0.001)
+    assert np.allclose(sf.read(audio_answer.context)[0], sf.read(expected_audio_context)[0], atol=0.001)
 
 
 def test_document_to_speech(tmp_path):
@@ -118,4 +117,5 @@ def test_document_to_speech(tmp_path):
     assert audio_doc.meta["name"] == "test_document.txt"
     assert audio_doc.meta["audio_format"] == "wav"
 
-    assert np.array_equal(sf.read(audio_doc.content)[0], sf.read(expected_audio_content)[0])
+    assert np.allclose(sf.read(audio_doc.content)[0], sf.read(expected_audio_content)[0], atol=0.001)
+
