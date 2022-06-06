@@ -13,9 +13,11 @@ from test.conftest import DOCS_WITH_EMBEDDINGS
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 @pytest.mark.parametrize("batch", [True, False])
 def test_pseudo_label_generator(
-        document_store: BaseDocumentStore, retriever: EmbeddingRetriever, question_generator: QuestionGenerator,
-        batch: bool,
-        tmp_path: Path
+    document_store: BaseDocumentStore,
+    retriever: EmbeddingRetriever,
+    question_generator: QuestionGenerator,
+    batch: bool,
+    tmp_path: Path,
 ):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     psg = PseudoLabelGenerator(question_generator, retriever)
@@ -45,7 +47,7 @@ def test_pseudo_label_generator(
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 @pytest.mark.parametrize("batch", [True, False])
 def test_pseudo_label_generator_using_question_document_pairs(
-        document_store: BaseDocumentStore, retriever: EmbeddingRetriever, batch: bool, tmp_path: Path
+    document_store: BaseDocumentStore, retriever: EmbeddingRetriever, batch: bool, tmp_path: Path
 ):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     docs = [
