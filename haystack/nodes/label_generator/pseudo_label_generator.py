@@ -39,7 +39,7 @@ class PseudoLabelGenerator(BaseComponent):
         cross_encoder_model_name_or_path: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         max_questions_per_document: int = 3,
         top_k: int = 50,
-        batch_size: int = 4,
+        batch_size: int = 16,
         progress_bar: bool = True,
     ):
         """
