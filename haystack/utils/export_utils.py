@@ -7,7 +7,7 @@ from collections import defaultdict
 
 import pandas as pd
 
-from haystack.schema import Document, Answer
+from haystack.schema import Document, Answer, AudioAnswer, GeneratedAudioAnswer
 from haystack.document_stores.sql import DocumentORM
 
 
@@ -24,7 +24,18 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     :return: None
     """
     # Defines the fields to keep in the Answer for each detail level
-    fields_to_keep_by_level = {"minimum": ["answer", "context"], "medium": ["answer", "context", "score"]}
+    fields_to_keep_by_level = {
+        "minimum": {
+            Answer: ["answer", "context"],
+            AudioAnswer: ["answer", "context"],
+            GeneratedAudioAnswer: ["answer", "answer_transcript", "context", "context_transcript"],
+        }, 
+        "medium": {
+            Answer: ["answer", "context", "score"],
+            AudioAnswer: ["answer", "context", "score"],
+            GeneratedAudioAnswer: ["answer", "answer_transcript", "context", "context_transcript", "score"],
+        }, 
+    }
 
     if not "answers" in results.keys():
         raise ValueError(
@@ -45,7 +56,7 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
         for ans in answers:
             filtered_ans = {
                 field: getattr(ans, field)
-                for field in fields_to_keep_by_level[details]
+                for field in fields_to_keep_by_level[details][type(ans)]
                 if getattr(ans, field) is not None
             }
             filtered_answers.append(filtered_ans)
