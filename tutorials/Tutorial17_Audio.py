@@ -1,9 +1,9 @@
-# ## Make your QA Pipelines talk!
+# ## Make Your QA Pipelines Talk!
 #
 # Question answering works primarily on text, but Haystack provides some features for
 # audio files that contain speech as well.
 #
-# In this tutorial we're going to see how to use `AnswerToSpeech` to convert answers
+# In this tutorial, we're going to see how to use `AnswerToSpeech` to convert answers
 # into audio files.
 #
 from haystack.document_stores import ElasticsearchDocumentStore
@@ -71,7 +71,7 @@ def tutorial17_audio_features():
     # Now we will create a pipeline very similar to the basic ExtractiveQAPipeline of Tutorial 1,
     # with the addition of a node that converts our answers into audio files!
     #
-    # Note that if you're doing document retrieval, Haystack provides and a DocumentToSpeech node
+    # Note that if you're doing document retrieval, Haystack provides a DocumentToSpeech node
     # that can be used in a similar way (or in an indexing pipeline).
 
     retriever = BM25Retriever(document_store=document_store)
