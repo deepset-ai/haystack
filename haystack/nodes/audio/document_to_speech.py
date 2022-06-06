@@ -74,6 +74,6 @@ class DocumentToSpeech(BaseComponent):
     def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, List[List[AudioDocument]]], str]:  # type: ignore
         results: Dict[str, List[List[AudioDocument]]] = {"documents": []}
         for docs_list in documents:
-            results["documents"].append(self.run(docs_list))
+            results["documents"].append(self.run(docs_list)[0])
 
         return results, "output_1"

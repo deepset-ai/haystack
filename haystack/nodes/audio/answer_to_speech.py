@@ -77,6 +77,6 @@ class AnswerToSpeech(BaseComponent):
     def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, List[AudioAnswer]], str]:  # type: ignore
         results: Dict[str, List[AudioAnswer]] = {"answers": []}
         for answers_list in answers:
-            results["answers"].append(self.run(answers_list))
+            results["answers"].append(self.run(answers_list)[0])
 
         return results, "output_1"
